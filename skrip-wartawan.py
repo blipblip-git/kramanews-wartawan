@@ -1,9 +1,10 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V4.2 (DATELINE + TANPA ATRIBUSI)
+#  AI WARTAWAN KRAMANEWS — V4.6 (KUOTA HEMAT + BREAKING DIPERLUAS)
 #  Mode 1 (shift 24 jam)  : python3 skrip-wartawan.py
 #  Mode 2 (sekali jalan)  : python3 skrip-wartawan.py --sekali
 #  Jadwal shift (WIB): 06, 10, 14, 16, 19
-#  Baru: berita tanpa menyebut portal sumber + dateline lokasi
+#  Kuota: ±8-9 berita/sesi × 5 sesi = ±40-45 berita/hari
+#  Kunci: dibaca dari GitHub Secrets (bukan ditulis di file)
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -21,9 +22,6 @@ from urllib.parse import quote_plus
 DEEPSEEK_KEY         = os.environ.get('DEEPSEEK_KEY', '')
 SUPABASE_PUBLISHABLE = os.environ.get('SUPABASE_PUBLISHABLE', '')
 # ══════════════════════════════════════════════════════════════════════════
-# Untuk tes di laptop, jalankan:
-# DEEPSEEK_KEY='sk-...' SUPABASE_PUBLISHABLE='sb_publishable_...' python3 skrip-wartawan.py --sekali
-# ══════════════════════════════════════════════════════════════════════════
 
 SUPABASE_URL = 'https://imcvijgytdjjpotlaltv.supabase.co'
 REST_URL     = SUPABASE_URL + '/rest/v1/articles'
@@ -35,24 +33,43 @@ WIB = timezone(timedelta(hours=7))
 
 SCHEDULE_JAM = [6, 10, 14, 16, 19]
 
+# ═══ KUOTA HEMAT: ±8-9 berita/sesi × 5 sesi = ±40-45 berita/hari ═══
 TARGET_PER_SESI = {
-    'nasional':      3,
-    'daerah':        10,
-    'internasional': 3,
-    'ekonomi':       5,
-    'olahraga':      5,
-    'teknologi':     3,
-    'hiburan':       2,
-    'kesehatan':     2,
+    'nasional':      1,
+    'daerah':        2,   # termasuk wajib Kaltara/Tarakan
+    'internasional': 1,
+    'ekonomi':       1,
+    'olahraga':      1,
+    'teknologi':     1,
+    'hiburan':       1,
+    'kesehatan':     1,
 }
 
+# ═══ SIAGA: kata kunci urgen DIPERLUAS (bencana + transportasi + kriminal + negara) ═══
 URGENT_KEYWORDS = [
+    # bencana alam
     'gempa', 'tsunami', 'banjir', 'erupsi', 'gunung meletus', 'longsor',
-    'kebakaran hutan', 'puting beliung', 'korban jiwa', 'mengungsi',
-    'bencana alam', 'ditangkap', 'ott', 'korupsi', 'tersangka', 'suap',
+    'kebakaran hebat', 'kebakaran', 'puting beliung', 'korban jiwa',
+    'mengungsi', 'bencana alam',
     'earthquake', 'flood', 'volcano', 'eruption', 'wildfire',
-    'hurricane', 'typhoon', 'landslide', 'war', 'missile', 'airstrike',
-    'explosion', 'attack', 'killed', 'evacuated',
+    'hurricane', 'typhoon', 'landslide',
+    # transportasi (kapal & pesawat)
+    'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perairan',
+    'pesawat jatuh', 'pesawat hilang', 'kecelakaan pesawat',
+    'ferry sinks', 'boat sinking', 'plane crash', 'air disaster',
+    'flight missing', 'airplane missing',
+    # kriminal besar
+    'ditangkap', 'ott', 'korupsi', 'tersangka', 'suap',
+    'pembunuhan', 'terbunuh', 'asasinate', 'dibunuh', 'pejabat dibunuh',
+    'perampokan besar', 'rampok bank', 'perampokan bersenjata',
+    'assassination', 'murder', 'bank robbery', 'armed robbery',
+    'killed', 'explosion', 'attack', 'war', 'missile', 'airstrike',
+    'evacuated',
+    # peristiwa negara / proyek besar
+    'presiden meresmikan', 'wapres meresmikan', 'presiden melakukan',
+    'jokowi meresmikan', 'prabowo meresmikan', 'proyek strategis nasional',
+    'inaugurasi proyek', 'peresmian proyek', 'groundbreaking',
+    'president inaugurates', 'president opens',
 ]
 
 KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
@@ -177,13 +194,16 @@ URGENT_FEEDS = [
     GN('volcanic eruption', 'en', 'Google News Erupsi'),
     GN('war conflict breaking', 'en', 'Google News Perang'),
     GN('missile attack', 'en', 'Google News Serangan'),
+    GN('ferry sinks', 'en', 'Google News Kapal Tenggelam'),
+    GN('plane crash', 'en', 'Google News Pesawat Jatuh'),
+    GN('bank robbery', 'en', 'Google News Perampokan'),
+    GN('president inaugurates', 'en', 'Google News Peresmian Presiden'),
 ]
 
 LUAR_NEGERI_WORDS = ['jepang', 'china', 'amerika', 'eropa', 'luar negeri', 'inggris',
                      'india', 'korea', 'australia', 'turki', 'israel', 'gaza',
                      'ukraina', 'rusia', 'malaysia', 'thailand', 'taiwan', 'timor leste']
 
-# ═══ PROMPT BARU V4.2: tanpa atribusi portal + WAJIB dateline ═══
 SYSTEM_PROMPT = """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
@@ -192,37 +212,26 @@ ATURAN GAYA PENULISAN (WAJIB):
 - Tulis seperti wartawan portal besar Indonesia. LAPOR BERITA LANGSUNG.
 - DILARANG KERAS menyebut nama portal, media, situs, atau sumber berita mana pun
   di dalam isi berita (misalnya: "Berdasarkan laporan...", "Dilansir dari...",
-  "Dikutip dari...", "menurut siaran pers ...", "dikutip CNN/detik/Reuters/Kompas...").
+  "Dikutip dari...", "menurut siaran pers...", "dikutip CNN/detik/Reuters/Kompas...").
 - JANGAN menjelaskan dari mana informasi didapat. Pembaca tidak perlu tahu.
 - Cukup ceritakan langsung: kronologi, fakta, angka, dampak — seolah kamu wartawan
   yang meliput langsung di lokasi.
-- Contoh pembuka yang BENAR:
-  "Jakarta - Pemerintah resmi mengumumkan program bantuan modal UMKM..."
-  "TARAKAN, KALTARA - Hujan deras sejak dini hari menyebabkan..."
-- Contoh pembuka yang SALAH (dilarang):
-  "Berdasarkan laporan CNN Indonesia, pemerintah resmi mengumumkan..."
-  "Dilansir dari Kompas, hujan deras menyebabkan..."
 
 ATURAN DATELINE (WAJIB - SANGAT PENTING):
 - Baris pertama isi berita HARUS diawali DATELINE lokasi kejadian, format:
   "KOTA, PROVINSI/NEGARA - " lalu langsung lanjut kalimat berita.
-- Untuk berita Indonesia: gunakan format "KOTA, PROVINSI - " (contoh:
-  "TARAKAN, KALTARA - ...", "SURABAYA, JAWA TIMUR - ...", "JAKARTA - ...").
-- Untuk berita luar negeri: gunakan format "KOTA, NEGARA - " (contoh:
-  "SHENZHEN, CHINA - ...", "LIVERPOOL, INGGRIS - ...", "TOKYO, JEPANG - ...").
+- Untuk berita Indonesia: "KOTA, PROVINSI - " (contoh: "TARAKAN, KALTARA - ...").
+- Untuk berita luar negeri: "KOTA, NEGARA - " (contoh: "SHENZHEN, CHINA - ...").
 - Dateline ditulis HURUF KAPITAL, diakhiri tanda hubung "-" lalu langsung isi berita.
-- Tentukan dateline dari lokasi kejadian utama yang ada di materi sumber.
-- Jika lokasi benar-benar tidak disebutkan sama sekali, gunakan "INDONESIA - " atau
-  nama negara terkait.
+- Jika lokasi tidak disebutkan sama sekali, gunakan "INDONESIA - " atau nama negara.
 
 ATURAN PANJANG & ISI (WAJIB):
-- Panjang total: 350-500 kata (5-7 paragraf). KEBUTUHAN MINIMAL — jangan berhenti di 200 kata.
-- Paragraf 1: inti berita — siapa, apa, kapan, di mana. Langsung ke point.
-- Paragraf 2-4: detail penting, data/angka jika ada, kronologi, dan dampaknya.
+- Panjang total: 350-500 kata (5-7 paragraf). KEBUTUHAN MINIMAL.
+- Paragraf 1: inti berita — siapa, apa, kapan, di mana.
+- Paragraf 2-4: detail penting, data/angka, kronologi, dan dampaknya.
 - Paragraf 5-6: konteks yang relevan SELAMA tidak mengarang fakta spesifik.
 - Paragraf terakhir: langkah selanjutnya atau penutup netral.
 - Kalimat pendek, jelas, mudah dipahami pembaca awam.
-- Memperpanjang berita dengan MEMPERDALAM penjelasan dan konteks, BUKAN mengulang.
 
 ATURAN JUDUL (WAJIB):
 - Buat judul ORISINAL yang MENARIK — JANGAN menyalin judul sumber.
@@ -386,14 +395,6 @@ def ai_write(user_content, timeout=150):
     obj = parse_ai_json(r.json()['choices'][0]['message']['content'])
     return obj['judul'].strip(), obj['isi'].strip(), obj['ringkasan'].strip()
 
-def extract_dateline(isi):
-    """Pisahkan dateline 'KOTA, PROVINSI - ' dari awal isi berita.
-    Return (dateline, sisa_isi)."""
-    m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+(.*)$', isi, re.DOTALL)
-    if m:
-        return m.group(1).strip(), m.group(2).strip()
-    return '', isi
-
 def ai_rewrite_single(c):
     user = ('MATERI SUMBER:\n'
             'Judul asli: ' + c['title'] + '\n'
@@ -420,7 +421,9 @@ def is_urgent(title, summary):
     return any(k in t for k in URGENT_KEYWORDS)
 
 def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status, breaking=False):
-    dateline, isi_bersih = extract_dateline(isi)
+    m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+(.*)$', isi, re.DOTALL)
+    dateline = m.group(1).strip() if m else ''
+    isi_bersih = m.group(2).strip() if m else isi
     payload = {
         'title': judul, 'excerpt': ringkasan, 'content': isi_bersih,
         'category': cat, 'author': AUTHOR_NAME,
@@ -438,7 +441,7 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status, brea
 def sesi_siaga(today_urls, seen):
     made = 0
     slots = breaking_slots()
-    print('\n🚨 SIAGA — memantau bencana/perang/korupsi (slot breaking: ' + str(slots) + ')...')
+    print('\n🚨 SIAGA — memantau bencana/transportasi/kriminal/proyek negara (slot breaking: ' + str(slots) + ')...')
     cands = collect_candidates(URGENT_FEEDS, today_urls, seen)
     for c in cands:
         if made >= 3:
@@ -577,9 +580,9 @@ def main_sekali():
 
 def main():
     print('=' * 56)
-    print(' 🐝 AI WARTAWAN KRAMANEWS V4.2 — MODE SHIFT OTOMATIS')
+    print(' 🐝 AI WARTAWAN KRAMANEWS V4.6 — MODE SHIFT OTOMATIS')
     print(' ⏰ Jadwal berburu (WIB): ' + ', '.join(str(h).zfill(2) + ':00' for h in SCHEDULE_JAM))
-    print(' ✍️  Penulis: ' + AUTHOR_NAME)
+    print(' ✍️  Penulis: ' + AUTHOR_NAME + ' | Kuota: ±40-45 berita/hari')
     print(' 💡 Biarkan terminal ini terbuka. Stop: Ctrl+C')
     print('=' * 56)
 
