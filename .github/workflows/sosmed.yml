@@ -1,0 +1,21 @@
+name: KramaNews Sosmed Auto-Post
+
+on:
+  schedule:
+    - cron: '0 0,2,4,6,8,10,12,14,16,18,20,22 * * *'   # setiap 2 jam (UTC)
+  workflow_dispatch:
+
+jobs:
+  posting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - run: python3 skrip-sosmed.py
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          SUPABASE_PUBLISHABLE: ${{ secrets.SUPABASE_PUBLISHABLE }}
