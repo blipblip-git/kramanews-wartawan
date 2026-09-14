@@ -1,14 +1,16 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V5.2 (RETRY CERDAS + LOG DETAIL)
-#  Baru V5.2:
-#   • RETRY otomatis untuk 504/timeout Supabase (2-3x, jeda 10s)
-#   • Timeout request diperpendek (30s→20s) biar cepat lompat kalau server lambat
-#   • Log per-berita lebih detail (kelihatan di mana macet)
-#   • Kalau 1 berita gagal total → SKIP dan lanjut (tidak macet)
-#  Tetap: breaking diperluas (semua jenis selevel, gempa ≥5 SR),
-#         narasumber bernama, angka utuh, waktu kejadian, full auto
-#  Mode 1 (shift) : python3 skrip-wartawan.py
-#  Mode 2         : python3 skrip-wartawan.py --sekali
+#  AI WARTAWAN KRAMANEWS — V5.3 (BREAKING CERDAS + TIDAK MENGINAP)
+#  Baru V5.3:
+#   • BREAKING DIPERLUAS: pergantian menteri, menteri meninggal/ditangkap,
+#     kerusuhan, kebakaran massal, demo besar, keracunan massal
+#   • GEMPA: HANYA masuk breaking jika magnitude ≥5 SR TERTULIS JELAS
+#     (gempa 3,8/4,1/4,8 tanpa magnitude jelas = berita biasa!)
+#   • BREAKING TIDAK MENGINAP: breaking tayang >1 jam → otomatis dicabut
+#     → diganti berita aktual terbaru (N/D/I/E)
+#   • Marker verifikasi: cari kata "KRAMAV530MARKER"
+#  Mode 1 (shift 24 jam)  : python3 skrip-wartawan.py
+#  Mode 2 (sekali jalan)  : python3 skrip-wartawan.py --sekali
+#  Kunci: dari GitHub Secrets
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -31,58 +33,46 @@ EDGE_URL     = SUPABASE_URL + '/functions/v1/admin-ops'
 AUTHOR_NAME  = 'DT'
 
 WIB = timezone(timedelta(hours=7))
-SCHEDULE_JAM = list(range(24))
 
-JADWAL_JAM = {
-    0:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
-    1:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 2},
-    2:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
-    3:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
-    4:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
-    5:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 2, 'kesehatan': 2},
-    6:  {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 3, 'kesehatan': 2},
-    7:  {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'teknologi': 3, 'kesehatan': 1},
-    8:  {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 3, 'kesehatan': 3},
-    9:  {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'kesehatan': 3},
-    10: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 2, 'kesehatan': 1},
-    11: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'teknologi': 3, 'kesehatan': 2},
-    12: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 2, 'teknologi': 1},
-    13: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'kesehatan': 3},
-    14: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 1, 'kesehatan': 2},
-    15: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 3, 'kesehatan': 2},
-    16: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'teknologi': 3, 'kesehatan': 2},
-    17: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 3, 'kesehatan': 2},
-    18: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 3, 'teknologi': 2},
-    19: {'nasional': 3, 'daerah': 3, 'internasional': 3, 'ekonomi': 3, 'kesehatan': 3, 'olahraga': 2},
-    20: {'nasional': 3, 'daerah': 3, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3, 'kesehatan': 2},
-    21: {'nasional': 3, 'daerah': 3, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3, 'teknologi': 2},
-    22: {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
-    23: {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
-}
-
+# ═══ BREAKING DIPERLUAS (V5.3) — SEMUA JENIS SELEVEL ═══
 BREAKING_KEYWORDS = [
-    'gempa', 'earthquake',
+    # bencana alam
+    'gempa', 'tsunami', 'banjir', 'banjir bandang', 'banjir besar',
+    'erupsi', 'gunung meletus', 'longsor', 'tanah longsor',
+    'kebakaran hutan', 'karhutla', 'kebakaran hebat', 'kebakaran massal',
+    'keracunan massal', 'keracunan', 'angin puting beliung',
+    'korban jiwa', 'mengungsi', 'bencana alam',
+    'earthquake', 'flood', 'volcano', 'eruption', 'wildfire',
+    'hurricane', 'typhoon', 'landslide', 'mass poisoning',
+    # transportasi bencana
     'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perahu tenggelam',
     'pesawat jatuh', 'pesawat hilang', 'kecelakaan pesawat', 'pesawat tergelincir',
     'ferry sinks', 'boat sinking', 'plane crash', 'plane missing',
-    'tsunami', 'banjir besar', 'banjir bandang', 'longsor', 'tanah longsor',
-    'erupsi', 'gunung meletus', 'kebakaran hutan', 'karhutla',
-    'kebakaran hebat', 'keracunan massal', 'keracunan', 'angin puting beliung',
-    'tsunami warning', 'flood', 'volcano eruption', 'wildfire',
-    'hurricane', 'typhoon', 'landslide', 'mass poisoning',
+    'flight missing', 'airplane crash',
+    # kriminal besar
     'ott kpk', 'ditangkap kpk', 'tersangka korupsi', 'tertangkap tangan',
     'pembunuhan', 'dibunuh', 'pejabat dibunuh', 'pejabat ditemukan mati',
     'perampokan besar', 'rampok bank', 'perampokan bersenjata',
     'assassination', 'murder', 'bank robbery', 'armed robbery',
     'killed', 'explosion', 'attack', 'bomb', 'missile', 'airstrike',
     'corruption arrest', 'major robbery', 'arrested',
+    # pergantian menteri & pejabat
+    'menteri diganti', 'reshuffle', 'pergantian menteri',
+    'menteri meninggal', 'menteri wafat', 'menteri meninggal dunia',
+    'menteri ditangkap', 'menteri tersangka', 'menteri korupsi',
+    'ot menteri', 'cabinet reshuffle',
+    # demo & kerusuhan besar
     'demo besar', 'unjuk rasa besar', 'demonstrasi besar',
-    'massive protest', 'huge demonstration',
+    'kerusuhan', 'rusuh', 'massa membakar', 'bentrok massa', 'ricuh',
+    'membakar rumah', 'membakar massal',
+    'massive protest', 'huge demonstration', 'riot',
+    # peristiwa negara
     'presiden meresmikan', 'wapres meresmikan', 'peresmian proyek besar',
     'proyek strategis nasional', 'groundbreaking',
     'president inaugurates', 'president opens',
 ]
 
+# Gempa HARUS ≥5 SR dengan magnitude TERTULIS JELAS
 GEMPA_MIN_MAGNITUDE = 5.0
 
 KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
@@ -215,6 +205,8 @@ URGENT_FEEDS = [
     GN('massive protest', 'en', 'Google News Demo Besar'),
     GN('mass poisoning', 'en', 'Google News Keracunan'),
     GN('corruption arrest', 'en', 'Google News Penangkapan KPK'),
+    GN('cabinet reshuffle', 'en', 'Google News Reshuffle Menteri'),
+    GN('minister arrested', 'en', 'Google News Menteri Ditangkap'),
 ]
 
 LUAR_NEGERI_WORDS = ['jepang', 'china', 'amerika', 'eropa', 'luar negeri', 'inggris',
@@ -222,6 +214,7 @@ LUAR_NEGERI_WORDS = ['jepang', 'china', 'amerika', 'eropa', 'luar negeri', 'ingg
                      'ukraina', 'rusia', 'malaysia', 'thailand', 'taiwan', 'timor leste']
 
 SYSTEM_PROMPT = """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
+KRAMAV530MARKER — versi V5.3 dengan breaking cerdas, narasumber bernama, angka utuh.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -253,8 +246,8 @@ ATURAN NARASUMBER & TOKOH (WAJIB - PALING PENTING):
 - DILARANG MENGARANG nama tokoh yang tidak ada di materi sumber.
 
 ATURAN WAKTU KEJADIAN (WAJIB):
-- Dalam isi berita WAJIB CANTUMKAN HARI, TANGGAL, dan JAM kejadian secara
-  eksplisit, seperti contoh:
+- Dalam isi berita WAJIB CANTUMKAN HARI, TANGGAL, dan JAM kejadian
+  secara eksplisit, seperti contoh:
   ✅ "...kejadian terjadi pada Minggu (15 September 2026) sekitar pukul 03.00 WIB..."
   ✅ "...berdasarkan data BMKG, gempa terjadi Sabtu (14 September 2026) pukul 21.45 WIB..."
 - Jika materi sumber tidak menyebut waktu kejadian secara eksplisit,
@@ -320,37 +313,24 @@ Jawab HANYA dengan JSON valid tanpa teks lain:
 # ═════════ FUNGSI BANTU ═════════
 
 def edge_call(payload_json):
-    """Simpan ke Supabase via edge function — dengan retry 2x untuk 504."""
-    for percobaan in range(1, 3):
-        try:
-            r = requests.post(EDGE_URL,
-                headers={'apikey': SUPABASE_PUBLISHABLE,
-                         'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE,
-                         'Content-Type': 'application/json'},
-                json=payload_json, timeout=25)
-            try:
-                data = r.json()
-            except Exception:
-                raise Exception('HTTP ' + str(r.status_code) + ': ' + r.text[:120])
-            if r.ok and not data.get('error'):
-                return data.get('data')
-            pesan = str(data.get('error') or ('HTTP ' + str(r.status_code)))
-            layak_retry = any(k in pesan for k in ('504', '502', '503', 'Gateway', 'timeout'))
-            if percobaan >= 2 or not layak_retry:
-                raise Exception(pesan)
-            print('      ⏳ Timeout server, coba ulang (' + str(percobaan) + '/2)...')
-            time.sleep(10)
-        except requests.exceptions.Timeout:
-            if percobaan >= 2:
-                raise Exception('Timeout server (2x)')
-            print('      ⏳ Timeout, coba ulang...')
-            time.sleep(10)
+    r = requests.post(EDGE_URL,
+        headers={'apikey': SUPABASE_PUBLISHABLE,
+                 'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE,
+                 'Content-Type': 'application/json'},
+        json=payload_json, timeout=30)
+    try:
+        data = r.json()
+    except Exception:
+        raise Exception('HTTP ' + str(r.status_code) + ': ' + r.text[:120])
+    if not r.ok or data.get('error'):
+        raise Exception(str(data.get('error') or ('HTTP ' + str(r.status_code))))
+    return data.get('data')
 
 def rest_get(query):
     r = requests.get(REST_URL + query,
         headers={'apikey': SUPABASE_PUBLISHABLE,
                  'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE},
-        timeout=25)
+        timeout=30)
     if not r.ok:
         raise Exception('Supabase REST ' + str(r.status_code) + ': ' + r.text[:120])
     return r.json() or []
@@ -477,7 +457,12 @@ def ai_write(user_content, timeout=150):
         timeout=timeout)
     r.raise_for_status()
     obj = parse_ai_json(r.json()['choices'][0]['message']['content'])
-    return obj['judul'].strip(), obj['isi'].strip(), obj['ringkasan'].strip()
+    judul = obj.get('judul', '').strip()
+    isi = obj.get('isi', '').strip()
+    ringkasan = obj.get('ringkasan', '').strip()
+    gambar = (obj.get('deskripsi_gambar') or '').strip()
+    waktu = (obj.get('waktu_kejadian') or '').strip()
+    return judul, isi, ringkasan, gambar, waktu
 
 def ai_rewrite_single(c):
     user = ('MATERI SUMBER:\n'
@@ -487,7 +472,8 @@ def ai_rewrite_single(c):
             '(jangan hanya jabatan tanpa nama), jangan sebut portal/media sumber, '
             'awali isi berita dengan dateline lokasi '
             '(format: "KOTA, PROVINSI/NEGARA - ..."), salin utuh semua angka, '
-            'cantumkan HARI + TANGGAL + JAM kejadian di dalam isi berita.')
+            'cantumkan HARI + TANGGAL + JAM kejadian di dalam isi berita, '
+            'dan isi field deskripsi_gambar dengan kata kunci visual yang sesuai topik.')
     return ai_write(user)
 
 def ai_rewrite_multi(items):
@@ -500,7 +486,8 @@ def ai_rewrite_multi(items):
             '\n\nGabungkan menjadi SATU berita KramaNews lengkap (350-500 kata) sesuai SEMUA aturan: '
             'sebutkan NAMA LENGKAP tokoh/narasumber, jangan sebut portal/media sumber, '
             'awali dengan dateline lokasi (format: "KOTA, PROVINSI/NEGARA - ..."), '
-            'salin utuh semua angka, cantumkan HARI + TANGGAL + JAM kejadian.')
+            'salin utuh semua angka, cantumkan HARI + TANGGAL + JAM kejadian, '
+            'dan isi field deskripsi_gambar dengan kata kunci visual yang sesuai topik berita.')
     return ai_write(user, timeout=180)
 
 def is_urgent(title, summary):
@@ -511,16 +498,39 @@ def cek_gempa_besar(title, summary):
     t = (title + ' ' + summary).lower()
     if 'gempa' not in t and 'earthquake' not in t:
         return False
-    m = re.search(r'm\s?(\d{1,2}[.,]\d{1,2})', t)
+    m = re.search(r'(?:magnitudo|magnitude|m)\s?(\d{1,2}[.,]\d{1,2})', t)
     if m:
         try:
             mag = float(m.group(1).replace(',', '.'))
             return mag >= GEMPA_MIN_MAGNITUDE
         except Exception:
             pass
-    return True
+    return False
 
-def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status, breaking=False):
+def cari_gambar_wikimedia(deskripsi):
+    """Cari gambar bebas hak cipta di Wikimedia sesuai deskripsi gambar dari AI."""
+    if not deskripsi:
+        return ''
+    try:
+        q = quote_plus(deskripsi)
+        url = ('https://commons.wikimedia.org/w/api.php?action=query&generator=search'
+               '&gsrsearch=' + q + '&gsrnamespace=6&gsrlimit=5&prop=imageinfo'
+               '&iiprop=url&iiurlwidth=800&format=json&origin=*')
+        r = requests.get(url, timeout=20)
+        if not r.ok:
+            return ''
+        pages = r.json().get('query', {}).get('pages', {})
+        for p in pages.values():
+            info = p.get('imageinfo', [{}])[0]
+            u = info.get('thumburl') or info.get('url') or ''
+            if u and u.lower().endswith(('.jpg', '.jpeg', '.png')):
+                return u
+    except Exception:
+        pass
+    return ''
+
+def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
+                breaking=False, deskripsi_gambar='', waktu=''):
     m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+(.*)$', isi, re.DOTALL)
     dateline = m.group(1).strip() if m else ''
     isi_bersih = m.group(2).strip() if m else isi
@@ -556,15 +566,10 @@ def sesi_siaga(today_urls, seen):
     for c in cands:
         if made >= 3:
             break
-        # Gempa <5 SR tidak masuk breaking
-        t0 = (c['title'] + ' ' + c['summary']).lower()
-        if ('gempa' in t0 or 'earthquake' in t0) and not cek_gempa_besar(c['title'], c['summary']):
-            print('   ⏭️ Gempa kecil (<5 SR) dilewati: ' + c['title'][:50])
-            continue
         if not is_urgent(c['title'], c['summary']):
             continue
         try:
-            judul, isi, ringkasan = ai_rewrite_single(c)
+            judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(c)
         except Exception as e:
             print('   ⚠️ AI gagal 1 siaga:', str(e)[:60])
             continue
@@ -574,18 +579,21 @@ def sesi_siaga(today_urls, seen):
         try:
             if slots > 0:
                 insert_news(judul, isi, ringkasan, cat, img, c['link'],
-                            c['source'], status='published', breaking=True)
+                            c['source'], status='published', breaking=True,
+                            deskripsi_gambar=desc_gambar, waktu=waktu)
                 slots -= 1
                 print('   🚨 BREAKING TAYANG: ' + judul)
             elif cabut_breaking_terlama():
                 slots += 1
                 insert_news(judul, isi, ringkasan, cat, img, c['link'],
-                            c['source'], status='published', breaking=True)
+                            c['source'], status='published', breaking=True,
+                            deskripsi_gambar=desc_gambar, waktu=waktu)
                 slots -= 1
                 print('   🔄 BREAKING DIGANTI (terlama dicabut): ' + judul)
             else:
                 insert_news(judul, isi, ringkasan, cat, img, c['link'],
-                            c['source'], status='published')
+                            c['source'], status='published',
+                            deskripsi_gambar=desc_gambar, waktu=waktu)
                 print('   📰 TAYANG (tanpa breaking): ' + judul)
             made += 1
             today_urls.add(c['link'])
@@ -619,9 +627,10 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
             if kaltara_made >= kaltara_min or made >= need:
                 break
             try:
-                judul, isi, ringkasan = ai_rewrite_single(c)
+                judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(c)
                 insert_news(judul, isi, ringkasan, cat, get_image(c['entry']),
-                            c['link'], c['source'], status='published')
+                            c['link'], c['source'], status='published',
+                            deskripsi_gambar=desc_gambar, waktu=waktu)
                 made += 1
                 kaltara_made += 1
                 today_urls.add(c['link'])
@@ -638,12 +647,13 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
         top = items[0]
         try:
             if len(items) > 1:
-                judul, isi, ringkasan = ai_rewrite_multi(items)
+                judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_multi(items)
                 print('       🔗 topik dari ' + str(len(items)) + ' portal')
             else:
-                judul, isi, ringkasan = ai_rewrite_single(top)
+                judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(top)
             insert_news(judul, isi, ringkasan, cat, get_image(top['entry']),
-                        top['link'], top['source'], status='published')
+                        top['link'], top['source'], status='published',
+                        deskripsi_gambar=desc_gambar, waktu=waktu)
             made += 1
             for it in items:
                 today_urls.add(it['link'])
@@ -690,7 +700,7 @@ def main_sekali():
 
 def main():
     print('=' * 60)
-    print(' 🐝 AI WARTAWAN KRAMANEWS V5.2 — MODE 24 JAM PER JAM')
+    print(' 🐝 AI WARTAWAN KRAMANEWS V5.3 — MODE 24 JAM PER JAM')
     print(' ⏰ Jadwal: setiap jam (24x/hari)')
     print(' ✍️  Penulis: ' + AUTHOR_NAME)
     print(' 💡 Biarkan terminal ini terbuka. Stop: Ctrl+C')
@@ -726,7 +736,4 @@ def main():
             time.sleep(120)
 
 if __name__ == '__main__':
-    if '--sekali' in sys.argv:
-        main_sekali()
-    else:
-        main()
+    main()
