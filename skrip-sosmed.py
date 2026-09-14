@@ -1,12 +1,8 @@
 # ══════════════════════════════════════════════════════
-#  KRAMANEWS — SKRIP SOSMED V1.3 (FB POST RAPI)
-#  Baru V1.3:
-#   • Judul pakai UNICODE BOLD (tampil tebal di FB)
-#   • Teks post lebih panjang (3 kalimat pertama isi berita)
-#   • Link artikel ke kramanews.my.id (homepage — sementara)
-#   • Gambar berita selalu ikut (photos endpoint)
-#   • Anti-dobel via posted_fb
-#   • Mode: fb (tiap 20 menit) / web (tandai unggulan)
+#  KRAMANEWS — SKRIP SOSMED V1.3.1 (FIX: import re)
+#  Baru V1.3.1: tambah `import re` (bug "re is not defined")
+#  Fitur V1.3 tetap: judul bold unicode + teaser 3 kalimat +
+#  lokasi + gambar + link + hashtag + anti-dobel
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -14,6 +10,7 @@ import os
 import time
 import sys
 import json
+import re
 
 FB_PAGE_TOKEN = os.environ.get('FB_PAGE_TOKEN', '')
 FB_PAGE_ID    = os.environ.get('FB_PAGE_ID', '')
@@ -28,7 +25,6 @@ KATEGORI_LABEL = {
     'hiburan': 'Hiburan', 'kesehatan': 'Kesehatan',
 }
 
-# UNICODE BOLD — biar judul tampil TEBAL di FB
 BOLD_MAP = {
     'A': '𝗔', 'B': '𝗕', 'C': '𝗖', 'D': '𝗗', 'E': '𝗘', 'F': '𝗙',
     'G': '𝗚', 'H': '𝗛', 'I': '𝗜', 'J': '𝗝', 'K': '𝗞', 'L': '𝗟', 'M': '𝗠',
@@ -43,7 +39,6 @@ BOLD_MAP = {
 }
 
 def to_bold(text):
-    """Ubah teks jadi unicode bold untuk FB."""
     return ''.join(BOLD_MAP.get(c, c) for c in text)
 
 def supabase_get(query):
@@ -72,7 +67,6 @@ def supabase_update(article_id, payload):
     return data.get('data')
 
 def ambil_teaser(content, kalimat=3):
-    """Ambil N kalimat pertama dari isi berita sebagai teaser."""
     bersih = re.sub(r'\s+', ' ', content or '').strip()
     kalimat_list = re.split(r'(?<=[.!?])\s+', bersih)
     return ' '.join(kalimat_list[:kalimat]).strip()
@@ -96,7 +90,6 @@ def fb_post_feed(message, link):
     return r.json()
 
 def buat_pesan_fb(n):
-    """Susun caption FB yang rapi: judul bold + teaser + lokasi + CTA."""
     cat = KATEGORI_LABEL.get(n.get('category', ''), n.get('category', ''))
     judul = (n.get('title') or '').strip()
     dateline = (n.get('dateline') or '').strip()
@@ -130,7 +123,6 @@ def post_fb(n):
         return fb_post_feed(pesan, SITE_URL)
 
 def mode_fb():
-    """Tiap run: ambil maks 3 berita tayang yang belum diposting ke FB."""
     print('📘 MODE FB — antrean auto-post...')
     rows = supabase_get(
         'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking'
@@ -159,7 +151,6 @@ def mode_fb():
     print('🏁 Mode FB selesai — ' + str(ok) + ' post terkirim.')
 
 def mode_web():
-    """Tandai 1 berita terbaru per kategori sebagai unggulan (referensi portal)."""
     print('🌐 MODE WEB — tandai berita unggulan per kategori...')
     total = 0
     cats = list(KATEGORI_LABEL.keys())
@@ -176,7 +167,7 @@ def mode_web():
     print('🏁 Mode Web selesai — ' + str(total) + ' berita ditandai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.3 — FB POST RAPI')
+    print('📣 KRAMANEWS SOSMED V1.3.1 — FB POST RAPI')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
