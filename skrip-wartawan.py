@@ -1,14 +1,11 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V4.10 (GAMBAR CERDAS + DATA ANGKA + PRIORITAS NEGARA)
-#  Baru V4.10:
-#   • Data angka WAJIB utuh & benar (ekonomi, korban, inflasi, dst)
-#   • Prabowo+Gibran = prioritas nasional
-#   • Prioritas internasional: China/USA/Jepang/Eropa/Korea(2)/Rusia/
-#     Malaysia/Singapura/India — politik+ekonomi+militer+pemimpin
-#   • Gambar sopan utk berita sensitif + prompt gambar cerdas
-#  Mode 1 (shift 24 jam)  : python3 skrip-wartawan.py
-#  Mode 2 (sekali jalan)  : python3 skrip-wartawan.py --sekali
-#  Kunci: dari GitHub Secrets
+#  AI WARTAWAN KRAMANEWS — V4.11 (NARASUMBER NAMA + GAMBAR CERDAS)
+#  Baru V4.11:
+#   • WAJIB sebutkan NAMA narasumber/tokoh (bukan "Presiden RI" saja)
+#   • Prompt gambar: WAJIB sesuai topik (gempa→reruntuhan, bukan hutan!)
+#   • Gambar feed DISARING: cocok → pakai; ragu → AI cari deskripsi
+#     gambar pengganti yang tepat → dicari otomatis di Wikimedia
+#   • Tetap: angka utuh, Prabowo/Gibran, negara prioritas, full auto
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -53,16 +50,12 @@ URGENT_KEYWORDS = [
     'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perairan',
     'pesawat jatuh', 'pesawat hilang', 'kecelakaan pesawat',
     'ferry sinks', 'boat sinking', 'plane crash', 'air disaster',
-    'flight missing', 'airplane missing',
     'ditangkap', 'ott', 'korupsi', 'tersangka', 'suap',
-    'pembunuhan', 'terbunuh', 'asasinate', 'dibunuh', 'pejabat dibunuh',
+    'pembunuhan', 'terbunuh', 'dibunuh', 'pejabat dibunuh',
     'perampokan besar', 'rampok bank', 'perampokan bersenjata',
-    'assassination', 'murder', 'bank robbery', 'armed robbery',
     'killed', 'explosion', 'attack', 'war', 'missile', 'airstrike',
-    'evacuated',
-    'presiden meresmikan', 'wapres meresmikan', 'presiden melakukan',
-    'proyek strategis nasional', 'inaugurasi proyek', 'peresmian proyek',
-    'groundbreaking', 'president inaugurates', 'president opens',
+    'presiden meresmikan', 'wapres meresmikan', 'peresmian proyek',
+    'proyek strategis nasional', 'groundbreaking',
 ]
 
 KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
@@ -85,10 +78,8 @@ HUNT = {
         RSSF('https://www.antaranews.com/rss/nasional', 'Antara'),
         GN('pemerintah indonesia', 'id', 'Google News Nasional'),
         GN('dpr indonesia', 'id', 'Google News Nasional'),
-        # PRIORITAS PRESIDEN + WAPRES (nasional)
         GN('Prabowo Subianto', 'id', 'Google News Presiden Prabowo'),
         GN('Gibran Rakabuming', 'id', 'Google News Wapres Gibran'),
-        GN('Presiden RI hari ini', 'id', 'Google News Presiden RI'),
     ],
     'daerah': [
         RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
@@ -128,10 +119,6 @@ HUNT = {
         GN('taiwan politics', 'en', 'Google News Taiwan'),
         GN('russia politics', 'en', 'Google News Russia'),
         GN('latin america politics', 'en', 'Google News Amerika Latin'),
-        GN('Xi Jinping', 'en', 'Google News Xi Jinping'),
-        GN('Donald Trump', 'en', 'Google News Trump'),
-        GN('Japan prime minister', 'en', 'Google News PM Jepang'),
-        GN('Korea North Kim', 'en', 'Google News Kim Jong Un'),
     ],
     'ekonomi': [
         RSSF('https://www.cnnindonesia.com/ekonomi/rss', 'CNN Indonesia'),
@@ -197,73 +184,84 @@ URGENT_FEEDS = [
     GN('missile attack', 'en', 'Google News Serangan'),
     GN('ferry sinks', 'en', 'Google News Kapal Tenggelam'),
     GN('plane crash', 'en', 'Google News Pesawat Jatuh'),
-    GN('bank robbery', 'en', 'Google News Perampokan'),
-    GN('president inaugurates', 'en', 'Google News Peresmian Presiden'),
 ]
 
 LUAR_NEGERI_WORDS = ['jepang', 'china', 'amerika', 'eropa', 'luar negeri', 'inggris',
                      'india', 'korea', 'australia', 'turki', 'israel', 'gaza',
                      'ukraina', 'rusia', 'malaysia', 'thailand', 'taiwan', 'timor leste']
 
+# ═══ ATURAN NAMA ASING + NARASUMBER + ANGKA + GAMBAR (V4.11) ═══
 SYSTEM_PROMPT = """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
 ATURAN GAYA PENULISAN (WAJIB):
 - Tulis seperti wartawan portal besar Indonesia. LAPOR BERITA LANGSUNG.
-- DILARANG KERAS menyebut nama portal, media, situs, atau sumber berita mana pun
-  di dalam isi berita (misalnya: "Berdasarkan laporan...", "Dilansir dari...",
-  "Dikutip dari...", "menurut siaran pers...", "dikutip CNN/detik/Reuters/Kompas...").
-- JANGAN menjelaskan dari mana informasi didapat. Pembaca tidak perlu tahu.
-- Cukup ceritakan langsung: kronologi, fakta, angka, dampak.
+- DILARANG KERAS menyebut nama portal, media, atau sumber berita mana pun
+  di dalam isi berita ("Berdasarkan laporan...", "Dilansir dari...", dll DILARANG).
+- JANGAN menjelaskan dari mana informasi didapat. Ceritakan langsung.
 
-ATURAN DATELINE (WAJIB - SANGAT PENTING):
-- Baris pertama isi berita HARUS diawali DATELINE lokasi kejadian:
-  "KOTA, PROVINSI/NEGARA - " (contoh: "TARAKAN, KALTARA - ...", "STOCKHOLM, SWEDIA - ...").
-- Huruf kapital + tanda hubung "-". Jika lokasi tidak ada: "INDONESIA - ".
+ATURAN NARASUMBER & TOKOH (WAJIB - SANGAT PENTING):
+- Jika materi sumber menyebut nama ORANG/PEJABAT yang berbicara atau menjadi
+  tokoh utama berita → WAJIB tulis NAMA LENGKAP + jabatannya dalam berita.
+  Contoh BENAR: "Ketua Komisi III DPRD Kaltara Aminuddin mengatakan...",
+  "Rektor Universitas Siber Nusantara Dr. Budi Santoso menyatakan...",
+  "Presiden Prabowo Subianto menyampaikan...".
+  Contoh SALAH (DILARANG): hanya menulis "anggota DPRD mengatakan...",
+  "rektor menyatakan...", "Presiden RI mengatakan..." TANPA nama.
+- Kumpulkan SEMUA nama tokoh yang ada di materi sumber dan sebutkan mereka
+  dengan nama lengkap di posisi kalimat kutipan/keterangan.
+- Jika ada KUTIPAN ucapan dari tokoh di materi, salin kutipannya dan tandai
+  dengan nama yang mengatakannya.
+- HANYA jika materi sumber sama sekali tidak menyebut nama orang mana pun,
+  barulah berita ditulis tanpa kutipan tokoh (jelaskan lewat fakta kejadian).
+
+ATURAN DATELINE (WAJIB):
+- Baris pertama isi berita diawali DATELINE: "KOTA, PROVINSI/NEGARA - ".
+- Contoh: "TARAKAN, KALTARA - ...", "STOCKHOLM, SWEDIA - ...".
+- Huruf kapital + "-". Jika lokasi tidak ada: "INDONESIA - ".
 
 ATURAN NAMA ASING (WAJIB - JANGAN MENERJEMAHKAN):
-- Nama PARTAI, ORGANISASI, LEMBAGA, PERUSAHAAN, INSTITUSI asing
-  TIDAK BOLEH diterjemahkan. Tulis nama ASLINYA + jenis di depannya.
-  Contoh BENAR: "Partai Sweden Democrats (Swedia)", "Partai AfD (Jerman)".
-  Contoh SALAH: menerjemahkan "Sweden Democrats" menjadi "Gelombang Kanan Jauh".
-- Kenali partai besar dunia: Sweden Democrats (Swedia), AfD (Jerman),
+- Nama PARTAI, ORGANISASI, LEMBAGA, PERUSAHAAN asing TIDAK BOLEH diterjemahkan.
+  Tulis nama ASLI + jenis di depannya:
+  BENAR: "Partai Sweden Democrats (Swedia)", "Partai AfD (Jerman)",
+         "Partai Rassemblement National (Prancis)", "Partai Brothers of Italy".
+  SALAH: "Gelombang Kanan Jauh" (itu Sweden Democrats!).
+- Partai besar dunia: Sweden Democrats (Swedia), AfD (Jerman),
   Rassemblement National (Prancis), Brothers of Italy (Italia), PVV (Belanda),
-  FPÖ (Austria), Vox (Spanyol), Labour/Conservative (Inggris), dll.
-- Nama tokoh asing pakai ejaan asli/lazim di media Indonesia.
+  FPÖ (Austria), Vox (Spanyol), Labour/Conservative/Reform UK (Inggris),
+  Republican/Democratic (AS), dst. Gunakan NAMA ASLI.
+- Nama tokoh asing: ejaan asli/lazim di media Indonesia.
 
-ATURAN DATA & ANGKA (WAJIB - SANGAT PENTING):
-- Jika materi sumber mengandung ANGKA (persen, rupiah, dolar, jumlah korban,
-  jumlah orang, kapasitas, tanggal, nilai tukar, inflasi, pertumbuhan, dll):
-  WAJIB SALIN UTUH & PERSIS ke dalam berita. JANGAN membulatkan sembarangan,
-  JANGAN memangkas, JANGAN mengubah satuan.
-- Contoh: sumber bilang "tumbuh 5,02 persen" → berita WAJIB menulis "5,02 persen".
-  Sumber bilang "Rp1,13 miliar" → berita WAJIB menulis "Rp1,13 miliar".
-- Untuk berita EKONOMI/INVESTASI/STATISTIK: angka adalah JANTUNG berita —
-  pastikan minimal 1-3 angka kunci dari sumber muncul di paragraf awal.
-- JANGAN PERNAH menambah angka yang tidak ada di materi sumber (itu mengarang).
-- Jika sumber benar-benar TANPA angka: tulis berita ringkas padat saja —
-  JANGAN mengisi dengan angka karangan.
+ATURAN DATA & ANGKA (WAJIB):
+- Angka dari materi sumber WAJIB SALIN UTUH & PERSIS.
+  Jangan dibulatkan, diubah, atau dipangkas.
+  Contoh: "tumbuh 5,02 persen" → wajib "5,02 persen".
+- Berita ekonomi/statistik: angka adalah jantung berita — minimal 1-3 angka
+  kunci dari sumber harus muncul di paragraf awal.
+- DILARANG menambah angka yang tidak ada di materi sumber.
+- Jika sumber tanpa angka: tulis ringkas padat, JANGAN karang angka.
 
 ATURAN PANJANG & ISI (WAJIB):
-- Panjang total: 350-500 kata (5-7 paragraf). KEBUTUHAN MINIMAL.
-- Paragraf 1: inti berita — siapa, apa, kapan, di mana.
-- Paragraf 2-4: detail penting, data/angka utuh, kronologi, dan dampaknya.
-- Paragraf 5-6: konteks yang relevan SELAMA tidak mengarang fakta spesifik.
-- Paragraf terakhir: langkah selanjutnya atau penutup netral.
+- 350-500 kata (5-7 paragraf). KEBUTUHAN MINIMAL.
+- Paragraf 1: inti berita. Paragraf 2-4: detail, angka, kronologi, kutipan tokoh.
+- Paragraf 5-6: konteks. Terakhir: penutup netral.
 - Kalimat pendek, jelas.
 
 ATURAN JUDUL (WAJIB):
-- Judul ORISINAL, maksimal 10 kata, jujur, tidak clickbait palsu.
-- Nama partai/lembaga asing memakai NAMA ASLI.
-- Jika berita berisi angka kunci menarik (persen/miliar), angka itu boleh masuk judul.
+- Judul ORISINAL maksimal 10 kata. Nama tokoh/partai asing memakai nama asli.
 
 ATURAN ETIKA FAKTA (WAJIB):
-- HANYA gunakan fakta dari materi sumber. DILARANG mengarang fakta baru.
+- HANYA fakta dari materi sumber. DILARANG mengarang fakta baru, nama baru,
+  atau angka baru.
 
 FORMAT JAWABAN:
 Jawab HANYA dengan JSON valid tanpa teks lain:
-{"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "..."}"""
+{"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "...",
+ "deskripsi_gambar": "3-6 kata bahasa Inggris yang MENGGAMBARKAN topik berita ini,
+ contoh: 'earthquake rubble rescue' untuk gempa, 'hospital patients' untuk
+ kesehatan, 'city hall building' untuk berita pemerintah, 'prayer crowd mosque'
+ untuk keagamaan. HANYA kata kunci visual, tanpa nama orang."}"""
 
 def edge_call(payload_json):
     r = requests.post(EDGE_URL,
@@ -410,16 +408,21 @@ def ai_write(user_content, timeout=150):
         timeout=timeout)
     r.raise_for_status()
     obj = parse_ai_json(r.json()['choices'][0]['message']['content'])
-    return obj['judul'].strip(), obj['isi'].strip(), obj['ringkasan'].strip()
+    judul = obj.get('judul', '').strip()
+    isi = obj.get('isi', '').strip()
+    ringkasan = obj.get('ringkasan', '').strip()
+    gambar = (obj.get('deskripsi_gambar') or '').strip()
+    return judul, isi, ringkasan, gambar
 
 def ai_rewrite_single(c):
     user = ('MATERI SUMBER:\n'
             'Judul asli: ' + c['title'] + '\n'
             'Ringkasan: ' + c['summary'] + '\n\n'
-            'Buat judul ORISINAL maksimal 10 kata, tulis ulang berita sesuai semua aturan. '
-            'INGAT: jangan sebut portal/media sumber apa pun, awali isi berita '
-            'dengan dateline lokasi (format: "KOTA, PROVINSI/NEGARA - ..."), '
-            'dan SALIN UTUH semua angka/data yang ada di materi sumber.')
+            'Tulis ulang sesuai SEMUA aturan: sebutkan NAMA LENGKAP tokoh/narasumber '
+            '(jangan hanya jabatan tanpa nama), jangan sebut portal/media sumber, '
+            'awali isi berita dengan dateline lokasi '
+            '(format: "KOTA, PROVINSI/NEGARA - ..."), salin utuh semua angka, '
+            'dan isi field deskripsi_gambar dengan kata kunci visual yang sesuai topik.')
     return ai_write(user)
 
 def ai_rewrite_multi(items):
@@ -429,17 +432,41 @@ def ai_rewrite_multi(items):
                      'Judul: ' + it['title'] + '\nIsi: ' + it['summary'][:1500])
     user = ('Berikut beberapa materi tentang topik yang SAMA:\n\n'
             + '\n\n'.join(parts) +
-            '\n\nGabungkan semua fakta menjadi SATU berita KramaNews lengkap (350-500 kata). '
-            'INGAT: jangan sebut portal/media sumber apa pun, awali isi berita '
-            'dengan dateline lokasi (format: "KOTA, PROVINSI/NEGARA - ..."), '
-            'dan SALIN UTUH semua angka/data yang ada di materi sumber.')
+            '\n\nGabungkan menjadi SATU berita KramaNews lengkap (350-500 kata) sesuai SEMUA aturan: '
+            'sebutkan NAMA LENGKAP tokoh/narasumber, jangan sebut portal/media sumber, '
+            'awali dengan dateline lokasi (format: "KOTA, PROVINSI/NEGARA - ..."), '
+            'salin utuh semua angka, dan isi field deskripsi_gambar dengan kata kunci '
+            'visual yang sesuai topik berita.')
     return ai_write(user, timeout=180)
 
 def is_urgent(title, summary):
     t = (title + ' ' + summary).lower()
     return any(k in t for k in URGENT_KEYWORDS)
 
-def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status, breaking=False):
+def cari_gambar_wikimedia(deskripsi):
+    """Cari gambar bebas hak cipta di Wikimedia sesuai deskripsi gambar dari AI."""
+    if not deskripsi:
+        return ''
+    try:
+        q = quote_plus(deskripsi)
+        url = ('https://commons.wikimedia.org/w/api.php?action=query&generator=search'
+               '&gsrsearch=' + q + '&gsrnamespace=6&gsrlimit=5&prop=imageinfo'
+               '&iiprop=url&iiurlwidth=800&format=json&origin=*')
+        r = requests.get(url, timeout=20)
+        if not r.ok:
+            return ''
+        pages = r.json().get('query', {}).get('pages', {})
+        for p in pages.values():
+            info = p.get('imageinfo', [{}])[0]
+            u = info.get('thumburl') or info.get('url') or ''
+            if u and u.lower().endswith(('.jpg', '.jpeg', '.png')):
+                return u
+    except Exception:
+        pass
+    return ''
+
+def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
+                breaking=False, deskripsi_gambar=''):
     m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+(.*)$', isi, re.DOTALL)
     dateline = m.group(1).strip() if m else ''
     isi_bersih = m.group(2).strip() if m else isi
@@ -478,26 +505,29 @@ def sesi_siaga(today_urls, seen):
         if not is_urgent(c['title'], c['summary']):
             continue
         try:
-            judul, isi, ringkasan = ai_rewrite_single(c)
+            judul, isi, ringkasan, desc_gambar = ai_rewrite_single(c)
         except Exception as e:
             print('   ⚠️ AI gagal 1 siaga:', str(e)[:60])
             continue
         blob = (judul + ' ' + isi).lower()
         cat = 'internasional' if any(w in blob for w in LUAR_NEGERI_WORDS) else 'nasional'
+        img = get_image(c['entry'])
         try:
             if slots > 0:
-                insert_news(judul, isi, ringkasan, cat, get_image(c['entry']), c['link'],
-                            c['source'], status='published', breaking=True)
+                insert_news(judul, isi, ringkasan, cat, img, c['link'],
+                            c['source'], status='published', breaking=True,
+                            deskripsi_gambar=desc_gambar)
                 slots -= 1
                 print('   🚨 BREAKING TAYANG: ' + judul)
             elif cabut_breaking_terlama():
                 slots += 1
-                insert_news(judul, isi, ringkasan, cat, get_image(c['entry']), c['link'],
-                            c['source'], status='published', breaking=True)
+                insert_news(judul, isi, ringkasan, cat, img, c['link'],
+                            c['source'], status='published', breaking=True,
+                            deskripsi_gambar=desc_gambar)
                 slots -= 1
                 print('   🔄 BREAKING DIGANTI (terlama dicabut): ' + judul)
             else:
-                insert_news(judul, isi, ringkasan, cat, get_image(c['entry']), c['link'],
+                insert_news(judul, isi, ringkasan, cat, img, c['link'],
                             c['source'], status='published')
                 print('   📰 TAYANG (tanpa breaking): ' + judul)
             made += 1
@@ -532,9 +562,10 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
             if kaltara_made >= kaltara_min or made >= need:
                 break
             try:
-                judul, isi, ringkasan = ai_rewrite_single(c)
+                judul, isi, ringkasan, desc_gambar = ai_rewrite_single(c)
                 insert_news(judul, isi, ringkasan, cat, get_image(c['entry']),
-                            c['link'], c['source'], status='published')
+                            c['link'], c['source'], status='published',
+                            deskripsi_gambar=desc_gambar)
                 made += 1
                 kaltara_made += 1
                 today_urls.add(c['link'])
@@ -551,12 +582,13 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
         top = items[0]
         try:
             if len(items) > 1:
-                judul, isi, ringkasan = ai_rewrite_multi(items)
+                judul, isi, ringkasan, desc_gambar = ai_rewrite_multi(items)
                 print('       🔗 topik dari ' + str(len(items)) + ' portal')
             else:
-                judul, isi, ringkasan = ai_rewrite_single(top)
+                judul, isi, ringkasan, desc_gambar = ai_rewrite_single(top)
             insert_news(judul, isi, ringkasan, cat, get_image(top['entry']),
-                        top['link'], top['source'], status='published')
+                        top['link'], top['source'], status='published',
+                        deskripsi_gambar=desc_gambar)
             made += 1
             for it in items:
                 today_urls.add(it['link'])
@@ -585,8 +617,8 @@ def run_session():
     return total
 
 if __name__ == '__main__':
-    print('🐝 AI WARTAWAN KRAMANEWS V4.10 — FULL AUTO')
-    print(' ✨ Data angka utuh | Prioritas Presiden+Gibran | Negara prioritas | Gambar cerdas')
+    print('🐝 AI WARTAWAN KRAMANEWS V4.11 — FULL AUTO')
+    print(' ✨ Narasumber bernama | Angka utuh | Gambar cerdas | Prioritas negara')
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
         print('❌ Kunci belum diisi (cek Secrets)!')
         sys.exit(1)
