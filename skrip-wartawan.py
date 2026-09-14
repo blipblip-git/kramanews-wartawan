@@ -1,10 +1,11 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V4.6 (KUOTA HEMAT + BREAKING DIPERLUAS)
+#  AI WARTAWAN KRAMANEWS — V4.7 (KUOTA HEMAT + BREAKING DIPERLUAS + NAMA ASING)
 #  Mode 1 (shift 24 jam)  : python3 skrip-wartawan.py
 #  Mode 2 (sekali jalan)  : python3 skrip-wartawan.py --sekali
 #  Jadwal shift (WIB): 06, 10, 14, 16, 19
 #  Kuota: ±8-9 berita/sesi × 5 sesi = ±40-45 berita/hari
 #  Kunci: dibaca dari GitHub Secrets (bukan ditulis di file)
+#  Baru V4.7: nama partai/lembaga asing TIDAK diterjemahkan (nama asli)
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -67,9 +68,8 @@ URGENT_KEYWORDS = [
     'evacuated',
     # peristiwa negara / proyek besar
     'presiden meresmikan', 'wapres meresmikan', 'presiden melakukan',
-    'jokowi meresmikan', 'prabowo meresmikan', 'proyek strategis nasional',
-    'inaugurasi proyek', 'peresmian proyek', 'groundbreaking',
-    'president inaugurates', 'president opens',
+    'proyek strategis nasional', 'inaugurasi proyek', 'peresmian proyek',
+    'groundbreaking', 'president inaugurates', 'president opens',
 ]
 
 KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
@@ -221,9 +221,28 @@ ATURAN DATELINE (WAJIB - SANGAT PENTING):
 - Baris pertama isi berita HARUS diawali DATELINE lokasi kejadian, format:
   "KOTA, PROVINSI/NEGARA - " lalu langsung lanjut kalimat berita.
 - Untuk berita Indonesia: "KOTA, PROVINSI - " (contoh: "TARAKAN, KALTARA - ...").
-- Untuk berita luar negeri: "KOTA, NEGARA - " (contoh: "SHENZHEN, CHINA - ...").
+- Untuk berita luar negeri: "KOTA, NEGARA - " (contoh: "STOCKHOLM, SWEDIA - ...").
 - Dateline ditulis HURUF KAPITAL, diakhiri tanda hubung "-" lalu langsung isi berita.
 - Jika lokasi tidak disebutkan sama sekali, gunakan "INDONESIA - " atau nama negara.
+
+ATURAN NAMA ASING (WAJIB - JANGAN MENERJEMAHKAN):
+- Nama PARTAI, ORGANISASI, LEMBAGA, PERUSAHAAN, dan INSTITUSI asing
+  TIDAK BOLEH diterjemahkan ke bahasa Indonesia.
+- Tulis nama ASLINYA, dengan jenis di depannya. Contoh BENAR:
+  "Partai Sweden Democrats (Swedia)", "Partai AfD (Jerman)",
+  "Partai Rassemblement National (Prancis)", "Partai Brothers of Italy (Italia)",
+  "Partai PVV (Belanda)", "Partai Freedom Party of Austria (FPÖ)",
+  "Partai Vox (Spanyol)", "Perusahaan Tesla (AS)", "Lembaga WHO (PBB)".
+- Contoh SALAH (DILARANG KERAS): menerjemahkan "Sweden Democrats" menjadi
+  "Gelombang Kanan Jauh", atau menerjemahkan nama partai/lembaga lain apa pun.
+- Kenali partai-partai besar dunia dan gunakan nama ASLI + negara asalnya:
+  Swedia: Sweden Democrats | Jerman: AfD, CDU/CSU, SPD | Prancis:
+  Rassemblement National, La France Insoumise | Italia: Brothers of Italy, Lega |
+  Belanda: PVV, D66 | Austria: FPÖ | Spanyol: Vox, PSOE | Inggris: Labour,
+  Conservative, Reform UK | Denmark: Danish People's Party |
+  Finlandia: Finns Party | Norwegia: Progress Party |
+  AS: Republican Party, Democratic Party | dst.
+- Nama tokoh asing tetap memakai ejaan asli/nama yang lazim di media Indonesia.
 
 ATURAN PANJANG & ISI (WAJIB):
 - Panjang total: 350-500 kata (5-7 paragraf). KEBUTUHAN MINIMAL.
@@ -236,6 +255,7 @@ ATURAN PANJANG & ISI (WAJIB):
 ATURAN JUDUL (WAJIB):
 - Buat judul ORISINAL yang MENARIK — JANGAN menyalin judul sumber.
 - Maksimal 10 kata. Jujur, TIDAK clickbait palsu.
+- Nama partai/lembaga asing dalam judul juga memakai NAMA ASLI (tidak diterjemahkan).
 
 ATURAN ETIKA FAKTA (WAJIB):
 - HANYA gunakan fakta dari materi sumber. DILARANG mengarang fakta baru.
@@ -580,7 +600,7 @@ def main_sekali():
 
 def main():
     print('=' * 56)
-    print(' 🐝 AI WARTAWAN KRAMANEWS V4.6 — MODE SHIFT OTOMATIS')
+    print(' 🐝 AI WARTAWAN KRAMANEWS V4.7 — MODE SHIFT OTOMATIS')
     print(' ⏰ Jadwal berburu (WIB): ' + ', '.join(str(h).zfill(2) + ':00' for h in SCHEDULE_JAM))
     print(' ✍️  Penulis: ' + AUTHOR_NAME + ' | Kuota: ±40-45 berita/hari')
     print(' 💡 Biarkan terminal ini terbuka. Stop: Ctrl+C')
