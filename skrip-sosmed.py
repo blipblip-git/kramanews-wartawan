@@ -1,9 +1,9 @@
 # ══════════════════════════════════════════════════════
-#  KRAMANEWS — SKRIP SOSMED V1.4 (LINK ARTIKEL SPESIFIK)
-#  Baru V1.4:
-#   • Link FB = kramanews.my.id/?baca=ID → pembaca klik →
-#     berita LANGSUNG TERBUKA (bukan homepage!)
-#   • Tetap: judul unicode bold + teaser + lokasi + gambar + hashtag
+#  KRAMANEWS — SKRIP SOSMED V1.5 (RETRY OTOMATIS 504)
+#  Baru V1.5:
+#   • SEMUA permintaan Supabase otomatis RETRY 3x (jeda 10-20 detik)
+#     → solusi 504 Gateway Timeout dari Supabase free tier
+#   • Tetap: FB post rapi V1.3 (bold + lokasi + teaser + gambar + link ?baca=ID)
 #   • Tetap: anti-dobel via posted_fb
 # ══════════════════════════════════════════════════════
 
@@ -43,23 +43,48 @@ BOLD_MAP = {
 def to_bold(text):
     return ''.join(BOLD_MAP.get(c, c) for c in text)
 
+def retry(func, nama, max_coba=3):
+    """Coba fungsi hingga 3x dengan jeda 10 detik — solusi 504 Gateway Timeout."""
+    for percobaan in range(1, max_coba + 1):
+        try:
+            return func()
+        except Exception as e:
+            pesan_err = str(e)
+            # 504/502/503/timeout = layak di-retry; error lain (400/401) = langsung lempar
+            layak_retry = any(k in pesan_err for k in ('504', '502', '503', 'Gateway', 'timeout', 'Timeout'))
+            if percobaan >= max_coba or not layak_retry:
+                raise
+            print(f'   ⏳ {nama} gagal ({pesan_err[:60]}), coba ulang {percobaan}/{max_coba-1} dalam 10 detik...')
+            time.sleep(10)
+
 def supabase_get(query):
-    r = requests.get(SUPABASE_URL + '/rest/v1/' + query,
+    return retry(
+        lambda: requests.get(SUPABASE_URL + '/rest/v1/' + query,
+            headers={'apikey': SUPABASE_ANON,
+                     'Authorization': 'Bearer ' + SUPABASE_ANON},
+            timeout=30),
+        'Supabase GET'
+    ).json() if True else None
+
+def supabase_get_safe(query):
+    r = retry(lambda: requests.get(SUPABASE_URL + '/rest/v1/' + query,
         headers={'apikey': SUPABASE_ANON,
                  'Authorization': 'Bearer ' + SUPABASE_ANON},
-        timeout=30)
+        timeout=30), 'Supabase GET')
     if not r.ok:
         raise Exception('Supabase GET ' + str(r.status_code) + ': ' + r.text[:150])
     return r.json() or []
 
 def supabase_update(article_id, payload):
-    r = requests.post(
-        'https://imcvijgytdjjpotlaltv.supabase.co/functions/v1/admin-ops',
-        headers={'apikey': SUPABASE_ANON,
-                 'Authorization': 'Bearer ' + SUPABASE_ANON,
-                 'Content-Type': 'application/json'},
-        json={'action': 'update', 'id': article_id, 'payload': payload},
-        timeout=30)
+    def do_update():
+        return requests.post(
+            'https://imcvijgytdjjpotlaltv.supabase.co/functions/v1/admin-ops',
+            headers={'apikey': SUPABASE_ANON,
+                     'Authorization': 'Bearer ' + SUPABASE_ANON,
+                     'Content-Type': 'application/json'},
+            json={'action': 'update', 'id': article_id, 'payload': payload},
+            timeout=30)
+    r = retry(do_update, 'Supabase UPDATE')
     try:
         data = r.json()
     except Exception:
@@ -127,7 +152,7 @@ def post_fb(n):
 
 def mode_fb():
     print('📘 MODE FB — antrean auto-post...')
-    rows = supabase_get(
+    rows = supabase_get_safe(
         'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking'
         '&status=eq.published&posted_fb=eq.false'
         '&order=created_at.desc&limit=3')
@@ -158,7 +183,7 @@ def mode_web():
     total = 0
     cats = list(KATEGORI_LABEL.keys())
     for cat in cats:
-        rows = supabase_get(
+        rows = supabase_get_safe(
             'articles?select=id,title,category,updated_at'
             '&status=eq.published&category=eq.' + cat +
             '&featured=eq.false&breaking=eq.false'
@@ -170,7 +195,7 @@ def mode_web():
     print('🏁 Mode Web selesai — ' + str(total) + ' berita ditandai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.4 — LINK ARTIKEL SPESIFIK')
+    print('📣 KRAMANEWS SOSMED V1.5 — RETRY OTOMATIS')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
