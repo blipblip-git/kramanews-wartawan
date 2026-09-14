@@ -1,8 +1,10 @@
 # ══════════════════════════════════════════════════════
-#  KRAMANEWS — SKRIP SOSMED V1.3.1 (FIX: import re)
-#  Baru V1.3.1: tambah `import re` (bug "re is not defined")
-#  Fitur V1.3 tetap: judul bold unicode + teaser 3 kalimat +
-#  lokasi + gambar + link + hashtag + anti-dobel
+#  KRAMANEWS — SKRIP SOSMED V1.4 (LINK ARTIKEL SPESIFIK)
+#  Baru V1.4:
+#   • Link FB = kramanews.my.id/?baca=ID → pembaca klik →
+#     berita LANGSUNG TERBUKA (bukan homepage!)
+#   • Tetap: judul unicode bold + teaser + lokasi + gambar + hashtag
+#   • Tetap: anti-dobel via posted_fb
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -95,6 +97,7 @@ def buat_pesan_fb(n):
     dateline = (n.get('dateline') or '').strip()
     content = (n.get('content') or '').strip()
     teaser = ambil_teaser(content, kalimat=3)
+    link_artikel = SITE_URL + '/?baca=' + str(n.get('id'))
 
     lines = []
     if n.get('breaking'):
@@ -108,7 +111,7 @@ def buat_pesan_fb(n):
         lines.append(teaser)
     lines.append('')
     lines.append('🔗 Baca selengkapnya di KramaNews:')
-    lines.append(SITE_URL)
+    lines.append(link_artikel)
     lines.append('')
     lines.append('#' + cat.replace(' ', '') + ' #KramaNews #BeritaTerkini')
 
@@ -120,7 +123,7 @@ def post_fb(n):
     if img:
         return fb_post_photo(pesan, img)
     else:
-        return fb_post_feed(pesan, SITE_URL)
+        return fb_post_feed(pesan, SITE_URL + '/?baca=' + str(n.get('id')))
 
 def mode_fb():
     print('📘 MODE FB — antrean auto-post...')
@@ -167,7 +170,7 @@ def mode_web():
     print('🏁 Mode Web selesai — ' + str(total) + ' berita ditandai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.3.1 — FB POST RAPI')
+    print('📣 KRAMANEWS SOSMED V1.4 — LINK ARTIKEL SPESIFIK')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
