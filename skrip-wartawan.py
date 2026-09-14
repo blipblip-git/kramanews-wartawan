@@ -1,12 +1,12 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V4.12 (NARASUMBER NAMA WAJIB + GAMBAR CERDAS)
-#  Mode 1 (shift 24 jam)  : python3 skrip-wartawan.py
-#  Mode 2 (sekali jalan)  : python3 skrip-wartawan.py --sekali
-#  Jadwal shift (WIB): 06, 10, 14, 16, 19
-#  Kuota: ±8-9 berita/sesi × 5 sesi = ±40-45 berita/hari
-#  Kunci: dibaca dari GitHub Secrets (bukan ditulis di file)
-#  Baru V4.12: NARASUMBER WAJIB NAMA (contoh konkret) — narasumber tanpa
-#              nama = berita masuk DRAFT untuk review manual
+#  AI WARTAWAN KRAMANEWS — V5.1 (24 JAM + BREAKING CERDAS + WAKTU KEJADIAN)
+#  Baru V5.1:
+#   • BREAKING BERVARIASI: gempa, kapal, pesawat, KPK, demo, keracunan,
+#     kebakaran, pejabat dibunuh, perampokan, dsb — SEMUA SELEVEL
+#   • Gempa <5 SR → TIDAK masuk breaking (biasa saja)
+#   • Gempa ≥5 SR / kapal tenggelam / pesawat jatuh → BREAKING
+#   • WAJIB cantumkan HARI + TANGGAL + JAM kejadian di dalam isi berita
+#   • Kuota malam (20:00–05:00 WIB) dikurangi jadi 2 berita/jam
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -20,51 +20,78 @@ import feedparser
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote_plus
 
-# ═════════ KONFIGURASI — kunci dari environment (GitHub Secrets) ═════════
 DEEPSEEK_KEY         = os.environ.get('DEEPSEEK_KEY', '')
 SUPABASE_PUBLISHABLE = os.environ.get('SUPABASE_PUBLISHABLE', '')
-# ══════════════════════════════════════════════════════════════════════════
 
 SUPABASE_URL = 'https://imcvijgytdjjpotlaltv.supabase.co'
 REST_URL     = SUPABASE_URL + '/rest/v1/articles'
 EDGE_URL     = SUPABASE_URL + '/functions/v1/admin-ops'
 AUTHOR_NAME  = 'DT'
-STATE_FILE   = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kramanews-sesi.json')
 
 WIB = timezone(timedelta(hours=7))
-SCHEDULE_JAM = [6, 10, 14, 16, 19]
+SCHEDULE_JAM = list(range(24))
 
-TARGET_PER_SESI = {
-    'nasional':      1,
-    'daerah':        2,
-    'internasional': 1,
-    'ekonomi':       1,
-    'olahraga':      1,
-    'teknologi':     1,
-    'hiburan':       1,
-    'kesehatan':     1,
+# ═══ JADWAL 24 JAM (dari V5.0 + revisi kuota malam) ═══
+JADWAL_JAM = {
+    0:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
+    1:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 2},
+    2:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
+    3:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
+    4:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
+    5:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 2, 'kesehatan': 2},
+    6:  {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 3, 'kesehatan': 2},
+    7:  {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'teknologi': 3, 'kesehatan': 1},
+    8:  {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 3, 'kesehatan': 3},
+    9:  {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'kesehatan': 3},
+    10: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 2, 'kesehatan': 1},
+    11: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'teknologi': 3, 'kesehatan': 2},
+    12: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 2, 'teknologi': 1},
+    13: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'kesehatan': 3},
+    14: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 1, 'kesehatan': 2},
+    15: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 3, 'kesehatan': 2},
+    16: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'teknologi': 3, 'kesehatan': 2},
+    17: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 3, 'kesehatan': 2},
+    18: {'nasional': 3, 'daerah': 5, 'internasional': 3, 'ekonomi': 3, 'olahraga': 3, 'teknologi': 2},
+    19: {'nasional': 3, 'daerah': 3, 'internasional': 3, 'ekonomi': 3, 'kesehatan': 3, 'olahraga': 2},
+    20: {'nasional': 3, 'daerah': 3, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3, 'kesehatan': 2},
+    21: {'nasional': 3, 'daerah': 3, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3, 'teknologi': 2},
+    22: {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
+    23: {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
 }
 
-URGENT_KEYWORDS = [
-    'gempa', 'tsunami', 'banjir', 'erupsi', 'gunung meletus', 'longsor',
-    'kebakaran hebat', 'kebakaran', 'puting beliung', 'korban jiwa',
-    'mengungsi', 'bencana alam',
-    'earthquake', 'flood', 'volcano', 'eruption', 'wildfire',
-    'hurricane', 'typhoon', 'landslide',
-    'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perairan',
-    'pesawat jatuh', 'pesawat hilang', 'kecelakaan pesawat',
-    'ferry sinks', 'boat sinking', 'plane crash', 'air disaster',
-    'flight missing', 'airplane missing',
-    'ditangkap', 'ott', 'korupsi', 'tersangka', 'suap',
-    'pembunuhan', 'terbunuh', 'asasinate', 'dibunuh', 'pejabat dibunuh',
+# ═══ BREAKING CERDAS (V5.1) — SEMUA SELEVEL, TIDAK PRIORITAS GEMPA SAJA ═══
+BREAKING_KEYWORDS = [
+    # GEMPA — HANYA ≥5 SR (diedit di is_urgent)
+    'gempa', 'earthquake',
+    # TRANSPORTASI BENCANA
+    'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perahu tenggelam',
+    'pesawat jatuh', 'pesawat hilang', 'kecelakaan pesawat', 'pesawat tergelincir',
+    'ferry sinks', 'boat sinking', 'plane crash', 'plane missing',
+    'flight missing', 'airplane crash',
+    # BENCANA ALAM LAIN
+    'tsunami', 'banjir besar', 'banjir bandang', 'longsor', 'tanah longsor',
+    'erupsi', 'gunung meletus', 'kebakaran hutan', 'karhutla',
+    'kebakaran hebat', 'keracunan massal', 'keracunan', 'angin puting beliung',
+    'tsunami warning', 'flood', 'volcano eruption', 'wildfire',
+    'hurricane', 'typhoon', 'landslide', 'mass poisoning',
+    # KRIMINAL BESAR
+    'ott kpk', 'ditangkap kpk', 'tersangka korupsi', 'tertangkap tangan',
+    'pembunuhan', 'dibunuh', 'pejabat dibunuh', 'pejabat ditemukan mati',
     'perampokan besar', 'rampok bank', 'perampokan bersenjata',
     'assassination', 'murder', 'bank robbery', 'armed robbery',
-    'killed', 'explosion', 'attack', 'war', 'missile', 'airstrike',
-    'evacuated',
-    'presiden meresmikan', 'wapres meresmikan', 'presiden melakukan',
-    'proyek strategis nasional', 'inaugurasi proyek', 'peresmian proyek',
-    'groundbreaking', 'president inaugurates', 'president opens',
+    'killed', 'explosion', 'attack', 'bomb', 'missile', 'airstrike',
+    'corruption arrest', 'major robbery', 'arrested',
+    # DEMO BESAR
+    'demo besar', 'unjuk rasa besar', 'demonstrasi besar',
+    'massive protest', 'huge demonstration',
+    # PERISTIWA NEGARA
+    'presiden meresmikan', 'wapres meresmikan', 'peresmian proyek besar',
+    'proyek strategis nasional', 'groundbreaking',
+    'president inaugurates', 'president opens',
 ]
+
+# Gempa harus ≥5 SR untuk masuk breaking
+GEMPA_MIN_MAGNITUDE = 5.0
 
 KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
                  'tana tidung', 'sesayap', 'juata', 'amal', 'kayu putih']
@@ -193,7 +220,9 @@ URGENT_FEEDS = [
     GN('ferry sinks', 'en', 'Google News Kapal Tenggelam'),
     GN('plane crash', 'en', 'Google News Pesawat Jatuh'),
     GN('bank robbery', 'en', 'Google News Perampokan'),
-    GN('president inaugurates', 'en', 'Google News Peresmian Presiden'),
+    GN('massive protest', 'en', 'Google News Demo Besar'),
+    GN('mass poisoning', 'en', 'Google News Keracunan'),
+    GN('corruption arrest', 'en', 'Google News Penangkapan KPK'),
 ]
 
 LUAR_NEGERI_WORDS = ['jepang', 'china', 'amerika', 'eropa', 'luar negeri', 'inggris',
@@ -219,7 +248,6 @@ ATURAN NARASUMBER & TOKOH (WAJIB - PALING PENTING):
   ✅ "Rektor Universitas Siber Nusantara, Dr. Budi Santoso, menyatakan..."
   ✅ "Presiden Prabowo Subianto menyampaikan bahwa..."
   ✅ "Kepala BMKG, Dwikorita Karnawati, menjelaskan..."
-  ✅ "Gubernur Kalteng, Sugianto Sabran, menyebutkan bahwa..."
 - FORMAT SALAH (DILARANG KERAS):
   ❌ "anggota DPRD mengatakan..." (tanpa nama)
   ❌ "rektor universitas menyatakan..." (tanpa nama)
@@ -228,10 +256,20 @@ ATURAN NARASUMBER & TOKOH (WAJIB - PALING PENTING):
   dengan nama lengkap di posisi kalimat kutipan/keterangan.
 - Jika ada KUTIPAN LANGSUNG dari tokoh di materi, salin kutipannya dan
   tandai dengan nama yang mengatakannya.
-- HANYA jika materi sumber SAMA SEKALI tidak menyebut nama orang mana pun
-  (misal hanya fakta kejadian murni), barulah berita ditulis tanpa kutipan
-  tokoh — jelaskan lewat fakta kejadian.
+- Jika materi SAMA SEKALI tidak menyebut nama orang mana pun, barulah berita
+  ditulis tanpa kutipan tokoh — jelaskan lewat fakta kejadian.
 - DILARANG MENGARANG nama tokoh yang tidak ada di materi sumber.
+
+ATURAN WAKTU KEJADIAN (WAJIB - BARU V5.1):
+- Dalam isi berita WAJIB CANTUMKAN HARI, TANGGAL, dan JAM kejadian secara
+  eksplisit, seperti contoh:
+  ✅ "...kejadian terjadi pada Minggu (15 September 2026) sekitar pukul 03.00 WIB..."
+  ✅ "...berdasarkan data BMKG, gempa terjadi Sabtu (14 September 2026) pukul 21.45 WIB..."
+  ✅ "...peristiwa itu terjadi Jumat (13 September 2026) di kawasan..."
+- Jika materi sumber tidak menyebut hari/tanggal/jam secara eksplisit,
+  gunakan tanggal "today" dari konteks, ATAU tulis keterangan umum seperti
+  "belum dikonfirmasi waktu pasti kejadian". JANGAN mengarang tanggal.
+- Format penulisan tanggal di Indonesia: Hari (Tanggal Bulan Tahun) pukul Jam:Menit WIB
 
 ATURAN DATELINE (WAJIB):
 - Baris pertama isi berita diawali DATELINE: "KOTA, PROVINSI/NEGARA - ".
@@ -286,7 +324,8 @@ ATURAN GAMBAR (WAJIB - deskripsi_gambar):
 FORMAT JAWABAN:
 Jawab HANYA dengan JSON valid tanpa teks lain:
 {"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "...",
- "deskripsi_gambar": "visual keywords"}"""
+ "deskripsi_gambar": "visual keywords",
+ "waktu_kejadian": "Hari (Tanggal Bulan Tahun) pukul Jam:Menit WIB atau UTC"}"""
 
 # ═════════ FUNGSI BANTU ═════════
 
@@ -439,7 +478,8 @@ def ai_write(user_content, timeout=150):
     isi = obj.get('isi', '').strip()
     ringkasan = obj.get('ringkasan', '').strip()
     gambar = (obj.get('deskripsi_gambar') or '').strip()
-    return judul, isi, ringkasan, gambar
+    waktu = (obj.get('waktu_kejadian') or '').strip()
+    return judul, isi, ringkasan, gambar, waktu
 
 def ai_rewrite_single(c):
     user = ('MATERI SUMBER:\n'
@@ -449,6 +489,7 @@ def ai_rewrite_single(c):
             '(jangan hanya jabatan tanpa nama), jangan sebut portal/media sumber, '
             'awali isi berita dengan dateline lokasi '
             '(format: "KOTA, PROVINSI/NEGARA - ..."), salin utuh semua angka, '
+            'cantumkan HARI + TANGGAL + JAM kejadian di dalam isi berita, '
             'dan isi field deskripsi_gambar dengan kata kunci visual yang sesuai topik.')
     return ai_write(user)
 
@@ -462,13 +503,30 @@ def ai_rewrite_multi(items):
             '\n\nGabungkan menjadi SATU berita KramaNews lengkap (350-500 kata) sesuai SEMUA aturan: '
             'sebutkan NAMA LENGKAP tokoh/narasumber, jangan sebut portal/media sumber, '
             'awali dengan dateline lokasi (format: "KOTA, PROVINSI/NEGARA - ..."), '
-            'salin utuh semua angka, dan isi field deskripsi_gambar dengan kata kunci '
-            'visual yang sesuai topik berita.')
+            'salin utuh semua angka, cantumkan HARI + TANGGAL + JAM kejadian, '
+            'dan isi field deskripsi_gambar dengan kata kunci visual yang sesuai topik berita.')
     return ai_write(user, timeout=180)
 
 def is_urgent(title, summary):
     t = (title + ' ' + summary).lower()
-    return any(k in t for k in URGENT_KEYWORDS)
+    return any(k in t for k in BREAKING_KEYWORDS)
+
+# Cek gempa ≥5 SR (jangan semua gempa masuk breaking)
+def cek_gempa_besar(title, summary):
+    """Cek apakah ada mention gempa dengan magnitude ≥5. Kalau tidak, skip gempa kecil."""
+    t = (title + ' ' + summary).lower()
+    if 'gempa' not in t and 'earthquake' not in t:
+        return False
+    # cari magnitude
+    m = re.search(r'm\s?(\d{1,2}[.,]\d{1,2})', t)
+    if m:
+        try:
+            mag = float(m.group(1).replace(',', '.'))
+            return mag >= GEMPA_MIN_MAGNITUDE
+        except Exception:
+            pass
+    # kalau tidak bisa dibaca magnitude, asumsikan besar (breaking)
+    return True
 
 def cari_gambar_wikimedia(deskripsi):
     """Cari gambar bebas hak cipta di Wikimedia sesuai deskripsi gambar dari AI."""
@@ -529,10 +587,16 @@ def sesi_siaga(today_urls, seen):
     for c in cands:
         if made >= 3:
             break
+        # Filter: gempa <5 SR tidak masuk breaking
+        t = (c['title'] + ' ' + c['summary']).lower()
+        is_gempa = ('gempa' in t or 'earthquake' in t)
+        if is_gempa and not cek_gempa_besar(c['title'], c['summary']):
+            print('   ⏭️ Gempa kecil (<5 SR) dilewati: ' + c['title'][:50])
+            continue
         if not is_urgent(c['title'], c['summary']):
             continue
         try:
-            judul, isi, ringkasan, desc_gambar = ai_rewrite_single(c)
+            judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(c)
         except Exception as e:
             print('   ⚠️ AI gagal 1 siaga:', str(e)[:60])
             continue
@@ -543,20 +607,20 @@ def sesi_siaga(today_urls, seen):
             if slots > 0:
                 insert_news(judul, isi, ringkasan, cat, img, c['link'],
                             c['source'], status='published', breaking=True,
-                            deskripsi_gambar=desc_gambar)
+                            deskripsi_gambar=desc_gambar, waktu=waktu)
                 slots -= 1
                 print('   🚨 BREAKING TAYANG: ' + judul)
             elif cabut_breaking_terlama():
                 slots += 1
                 insert_news(judul, isi, ringkasan, cat, img, c['link'],
                             c['source'], status='published', breaking=True,
-                            deskripsi_gambar=desc_gambar)
+                            deskripsi_gambar=desc_gambar, waktu=waktu)
                 slots -= 1
                 print('   🔄 BREAKING DIGANTI (terlama dicabut): ' + judul)
             else:
                 insert_news(judul, isi, ringkasan, cat, img, c['link'],
                             c['source'], status='published',
-                            deskripsi_gambar=desc_gambar)
+                            deskripsi_gambar=desc_gambar, waktu=waktu)
                 print('   📰 TAYANG (tanpa breaking): ' + judul)
             made += 1
             today_urls.add(c['link'])
@@ -590,10 +654,10 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
             if kaltara_made >= kaltara_min or made >= need:
                 break
             try:
-                judul, isi, ringkasan, desc_gambar = ai_rewrite_single(c)
+                judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(c)
                 insert_news(judul, isi, ringkasan, cat, get_image(c['entry']),
                             c['link'], c['source'], status='published',
-                            deskripsi_gambar=desc_gambar)
+                            deskripsi_gambar=desc_gambar, waktu=waktu)
                 made += 1
                 kaltara_made += 1
                 today_urls.add(c['link'])
@@ -610,13 +674,13 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
         top = items[0]
         try:
             if len(items) > 1:
-                judul, isi, ringkasan, desc_gambar = ai_rewrite_multi(items)
+                judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_multi(items)
                 print('       🔗 topik dari ' + str(len(items)) + ' portal')
             else:
-                judul, isi, ringkasan, desc_gambar = ai_rewrite_single(top)
+                judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(top)
             insert_news(judul, isi, ringkasan, cat, get_image(top['entry']),
                         top['link'], top['source'], status='published',
-                        deskripsi_gambar=desc_gambar)
+                        deskripsi_gambar=desc_gambar, waktu=waktu)
             made += 1
             for it in items:
                 today_urls.add(it['link'])
@@ -629,12 +693,15 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
     print('   → Hasil: ' + str(made) + ' TAYANG')
     return made
 
-def run_session():
+def run_session(hour):
     today_urls = get_today_state()
     seen = set()
     total = 0
     total += sesi_siaga(today_urls, seen)
-    for cat, need in TARGET_PER_SESI.items():
+
+    quota = JADWAL_JAM.get(hour, {'nasional': 3})
+    print('\n📊 Kuota jam ' + str(hour).zfill(2) + ':00 WIB')
+    for cat, need in quota.items():
         try:
             if cat == 'daerah':
                 total += sesi_kategori(cat, need, today_urls, seen, kaltara_min=2)
@@ -644,14 +711,59 @@ def run_session():
             print('   ❌ Kategori ' + cat + ' error: ' + str(e)[:80])
     return total
 
-if __name__ == '__main__':
-    print('🐝 AI WARTAWAN KRAMANEWS V4.12 — FULL AUTO')
-    print(' ✨ Narasumber bernama WAJIB | Angka utuh | Gambar cerdas | Nama asing asli')
+# ═════════ PROGRAM UTAMA ═════════
+
+def main_sekali():
+    print('🐝 AI WARTAWAN — MODE SEKALI JALAN (' + datetime.now(WIB).strftime('%H:%M WIB') + ')')
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
-        print('❌ Kunci belum diisi (cek Secrets)!')
-        sys.exit(1)
+        print('❌ Kunci belum diisi!')
+        return
     try:
-        total = run_session()
+        hour = datetime.now(WIB).hour
+        total = run_session(hour)
         print(' 🏁 Selesai — total ' + str(total) + ' berita TAYANG.')
     except Exception as e:
         print(' ❌ Gagal: ' + str(e)[:100])
+
+def main():
+    print('=' * 60)
+    print(' 🐝 AI WARTAWAN KRAMANEWS V5.1 — MODE 24 JAM PER JAM')
+    print(' ⏰ Jadwal: setiap jam (24x/hari)')
+    print(' ✍️  Penulis: ' + AUTHOR_NAME)
+    print(' 💡 Biarkan terminal ini terbuka. Stop: Ctrl+C')
+    print('=' * 60)
+
+    if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
+        print('❌ DEEPSEEK_KEY / SUPABASE_PUBLISHABLE belum diisi!')
+        return
+
+    while True:
+        try:
+            now = datetime.now(WIB)
+            hour = now.hour
+            print('\n' + '=' * 60)
+            print(' ⏰ SESI JAM ' + str(hour).zfill(2) + ':00 WIB — mulai berburu...')
+            print('=' * 60)
+            try:
+                total = run_session(hour)
+                print('\n 🏁 Sesi selesai — total ' + str(total) + ' berita TAYANG.')
+            except Exception as e:
+                print(' ❌ Sesi gagal: ' + str(e)[:100])
+            next_run = now.replace(hour=(hour + 1) % 24, minute=0, second=0, microsecond=0)
+            if next_run <= now:
+                next_run = next_run + timedelta(days=1)
+            wait_sec = max(0, (next_run - datetime.now(WIB)).total_seconds())
+            print(' ⏳ Menunggu jam berikutnya... (' + str(int(wait_sec)) + ' detik)')
+            time.sleep(wait_sec)
+        except KeyboardInterrupt:
+            print('\n👋 Wartawan AI berhenti. Sampai jumpa!')
+            break
+        except Exception as e:
+            print(' ⚠️ Loop error: ' + str(e)[:80])
+            time.sleep(120)
+
+if __name__ == '__main__':
+    if '--sekali' in sys.argv:
+        main_sekali()
+    else:
+        main()
