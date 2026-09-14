@@ -1,11 +1,12 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V4.11 (NARASUMBER NAMA + GAMBAR CERDAS)
-#  Baru V4.11:
-#   • WAJIB sebutkan NAMA narasumber/tokoh (bukan "Presiden RI" saja)
-#   • Prompt gambar: WAJIB sesuai topik (gempa→reruntuhan, bukan hutan!)
-#   • Gambar feed DISARING: cocok → pakai; ragu → AI cari deskripsi
-#     gambar pengganti yang tepat → dicari otomatis di Wikimedia
-#   • Tetap: angka utuh, Prabowo/Gibran, negara prioritas, full auto
+#  AI WARTAWAN KRAMANEWS — V4.12 (NARASUMBER NAMA WAJIB + GAMBAR CERDAS)
+#  Mode 1 (shift 24 jam)  : python3 skrip-wartawan.py
+#  Mode 2 (sekali jalan)  : python3 skrip-wartawan.py --sekali
+#  Jadwal shift (WIB): 06, 10, 14, 16, 19
+#  Kuota: ±8-9 berita/sesi × 5 sesi = ±40-45 berita/hari
+#  Kunci: dibaca dari GitHub Secrets (bukan ditulis di file)
+#  Baru V4.12: NARASUMBER WAJIB NAMA (contoh konkret) — narasumber tanpa
+#              nama = berita masuk DRAFT untuk review manual
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -19,13 +20,16 @@ import feedparser
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote_plus
 
+# ═════════ KONFIGURASI — kunci dari environment (GitHub Secrets) ═════════
 DEEPSEEK_KEY         = os.environ.get('DEEPSEEK_KEY', '')
 SUPABASE_PUBLISHABLE = os.environ.get('SUPABASE_PUBLISHABLE', '')
+# ══════════════════════════════════════════════════════════════════════════
 
 SUPABASE_URL = 'https://imcvijgytdjjpotlaltv.supabase.co'
 REST_URL     = SUPABASE_URL + '/rest/v1/articles'
 EDGE_URL     = SUPABASE_URL + '/functions/v1/admin-ops'
 AUTHOR_NAME  = 'DT'
+STATE_FILE   = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kramanews-sesi.json')
 
 WIB = timezone(timedelta(hours=7))
 SCHEDULE_JAM = [6, 10, 14, 16, 19]
@@ -50,12 +54,16 @@ URGENT_KEYWORDS = [
     'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perairan',
     'pesawat jatuh', 'pesawat hilang', 'kecelakaan pesawat',
     'ferry sinks', 'boat sinking', 'plane crash', 'air disaster',
+    'flight missing', 'airplane missing',
     'ditangkap', 'ott', 'korupsi', 'tersangka', 'suap',
-    'pembunuhan', 'terbunuh', 'dibunuh', 'pejabat dibunuh',
+    'pembunuhan', 'terbunuh', 'asasinate', 'dibunuh', 'pejabat dibunuh',
     'perampokan besar', 'rampok bank', 'perampokan bersenjata',
+    'assassination', 'murder', 'bank robbery', 'armed robbery',
     'killed', 'explosion', 'attack', 'war', 'missile', 'airstrike',
-    'presiden meresmikan', 'wapres meresmikan', 'peresmian proyek',
-    'proyek strategis nasional', 'groundbreaking',
+    'evacuated',
+    'presiden meresmikan', 'wapres meresmikan', 'presiden melakukan',
+    'proyek strategis nasional', 'inaugurasi proyek', 'peresmian proyek',
+    'groundbreaking', 'president inaugurates', 'president opens',
 ]
 
 KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
@@ -184,37 +192,46 @@ URGENT_FEEDS = [
     GN('missile attack', 'en', 'Google News Serangan'),
     GN('ferry sinks', 'en', 'Google News Kapal Tenggelam'),
     GN('plane crash', 'en', 'Google News Pesawat Jatuh'),
+    GN('bank robbery', 'en', 'Google News Perampokan'),
+    GN('president inaugurates', 'en', 'Google News Peresmian Presiden'),
 ]
 
 LUAR_NEGERI_WORDS = ['jepang', 'china', 'amerika', 'eropa', 'luar negeri', 'inggris',
                      'india', 'korea', 'australia', 'turki', 'israel', 'gaza',
                      'ukraina', 'rusia', 'malaysia', 'thailand', 'taiwan', 'timor leste']
 
-# ═══ ATURAN NAMA ASING + NARASUMBER + ANGKA + GAMBAR (V4.11) ═══
 SYSTEM_PROMPT = """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
 ATURAN GAYA PENULISAN (WAJIB):
 - Tulis seperti wartawan portal besar Indonesia. LAPOR BERITA LANGSUNG.
-- DILARANG KERAS menyebut nama portal, media, atau sumber berita mana pun
+- DILARANG KERAS menyebut nama portal, media, situs, atau sumber berita mana pun
   di dalam isi berita ("Berdasarkan laporan...", "Dilansir dari...", dll DILARANG).
 - JANGAN menjelaskan dari mana informasi didapat. Ceritakan langsung.
 
-ATURAN NARASUMBER & TOKOH (WAJIB - SANGAT PENTING):
-- Jika materi sumber menyebut nama ORANG/PEJABAT yang berbicara atau menjadi
-  tokoh utama berita → WAJIB tulis NAMA LENGKAP + jabatannya dalam berita.
-  Contoh BENAR: "Ketua Komisi III DPRD Kaltara Aminuddin mengatakan...",
-  "Rektor Universitas Siber Nusantara Dr. Budi Santoso menyatakan...",
-  "Presiden Prabowo Subianto menyampaikan...".
-  Contoh SALAH (DILARANG): hanya menulis "anggota DPRD mengatakan...",
-  "rektor menyatakan...", "Presiden RI mengatakan..." TANPA nama.
+ATURAN NARASUMBER & TOKOH (WAJIB - PALING PENTING):
+- Jika materi sumber menyebut NAMA ORANG yang menjadi sumber berita, tokoh
+  utama, atau pejabat yang berbicara → WAJIB SEBUTKAN NAMA LENGKAPNYA
+  dalam isi berita, bersama jabatannya.
+- FORMAT KUTIPAN YANG WAJIB:
+  ✅ "Ketua Komisi III DPRD Kaltara, Aminuddin, mengatakan bahwa..."
+  ✅ "Rektor Universitas Siber Nusantara, Dr. Budi Santoso, menyatakan..."
+  ✅ "Presiden Prabowo Subianto menyampaikan bahwa..."
+  ✅ "Kepala BMKG, Dwikorita Karnawati, menjelaskan..."
+  ✅ "Gubernur Kalteng, Sugianto Sabran, menyebutkan bahwa..."
+- FORMAT SALAH (DILARANG KERAS):
+  ❌ "anggota DPRD mengatakan..." (tanpa nama)
+  ❌ "rektor universitas menyatakan..." (tanpa nama)
+  ❌ "Presiden RI mengatakan..." (tanpa nama Prabowo)
 - Kumpulkan SEMUA nama tokoh yang ada di materi sumber dan sebutkan mereka
   dengan nama lengkap di posisi kalimat kutipan/keterangan.
-- Jika ada KUTIPAN ucapan dari tokoh di materi, salin kutipannya dan tandai
-  dengan nama yang mengatakannya.
-- HANYA jika materi sumber sama sekali tidak menyebut nama orang mana pun,
-  barulah berita ditulis tanpa kutipan tokoh (jelaskan lewat fakta kejadian).
+- Jika ada KUTIPAN LANGSUNG dari tokoh di materi, salin kutipannya dan
+  tandai dengan nama yang mengatakannya.
+- HANYA jika materi sumber SAMA SEKALI tidak menyebut nama orang mana pun
+  (misal hanya fakta kejadian murni), barulah berita ditulis tanpa kutipan
+  tokoh — jelaskan lewat fakta kejadian.
+- DILARANG MENGARANG nama tokoh yang tidak ada di materi sumber.
 
 ATURAN DATELINE (WAJIB):
 - Baris pertama isi berita diawali DATELINE: "KOTA, PROVINSI/NEGARA - ".
@@ -227,18 +244,16 @@ ATURAN NAMA ASING (WAJIB - JANGAN MENERJEMAHKAN):
   BENAR: "Partai Sweden Democrats (Swedia)", "Partai AfD (Jerman)",
          "Partai Rassemblement National (Prancis)", "Partai Brothers of Italy".
   SALAH: "Gelombang Kanan Jauh" (itu Sweden Democrats!).
-- Partai besar dunia: Sweden Democrats (Swedia), AfD (Jerman),
-  Rassemblement National (Prancis), Brothers of Italy (Italia), PVV (Belanda),
-  FPÖ (Austria), Vox (Spanyol), Labour/Conservative/Reform UK (Inggris),
-  Republican/Democratic (AS), dst. Gunakan NAMA ASLI.
+- Partai besar dunia: Sweden Democrats, AfD, Rassemblement National,
+  Brothers of Italy, PVV, FPÖ, Vox, Labour, Conservative, Reform UK,
+  Republican, Democratic. Gunakan NAMA ASLI.
 - Nama tokoh asing: ejaan asli/lazim di media Indonesia.
 
 ATURAN DATA & ANGKA (WAJIB):
 - Angka dari materi sumber WAJIB SALIN UTUH & PERSIS.
   Jangan dibulatkan, diubah, atau dipangkas.
   Contoh: "tumbuh 5,02 persen" → wajib "5,02 persen".
-- Berita ekonomi/statistik: angka adalah jantung berita — minimal 1-3 angka
-  kunci dari sumber harus muncul di paragraf awal.
+- Berita ekonomi/statistik: minimal 1-3 angka kunci dari sumber muncul.
 - DILARANG menambah angka yang tidak ada di materi sumber.
 - Jika sumber tanpa angka: tulis ringkas padat, JANGAN karang angka.
 
@@ -252,16 +267,28 @@ ATURAN JUDUL (WAJIB):
 - Judul ORISINAL maksimal 10 kata. Nama tokoh/partai asing memakai nama asli.
 
 ATURAN ETIKA FAKTA (WAJIB):
-- HANYA fakta dari materi sumber. DILARANG mengarang fakta baru, nama baru,
-  atau angka baru.
+- HANYA fakta dari materi sumber. DILARANG mengarang fakta, nama, atau angka.
+
+ATURAN GAMBAR (WAJIB - deskripsi_gambar):
+- Isi field "deskripsi_gambar" dengan 3-6 kata kunci bahasa Inggris yang
+  MENGGAMBARKAN TOPIK berita ini secara VISUAL.
+- Contoh BENAR:
+  Gempa: "earthquake rubble rescue"
+  Kesehatan/RS: "hospital patients medical staff"
+  Keagamaan: "prayer crowd mosque"
+  Pemerintah: "city hall government building"
+  Olahraga: "football stadium match"
+  Kebakaran: "fire smoke burning building"
+- Contoh SALAH: hutan rimbun untuk berita gempa, nelayan di laut untuk berita
+  kebakaran, pemandangan kota untuk berita posko kesehatan.
+- HANYA kata kunci visual, TANPA nama orang.
 
 FORMAT JAWABAN:
 Jawab HANYA dengan JSON valid tanpa teks lain:
 {"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "...",
- "deskripsi_gambar": "3-6 kata bahasa Inggris yang MENGGAMBARKAN topik berita ini,
- contoh: 'earthquake rubble rescue' untuk gempa, 'hospital patients' untuk
- kesehatan, 'city hall building' untuk berita pemerintah, 'prayer crowd mosque'
- untuk keagamaan. HANYA kata kunci visual, tanpa nama orang."}"""
+ "deskripsi_gambar": "visual keywords"}"""
+
+# ═════════ FUNGSI BANTU ═════════
 
 def edge_call(payload_json):
     r = requests.post(EDGE_URL,
@@ -528,7 +555,8 @@ def sesi_siaga(today_urls, seen):
                 print('   🔄 BREAKING DIGANTI (terlama dicabut): ' + judul)
             else:
                 insert_news(judul, isi, ringkasan, cat, img, c['link'],
-                            c['source'], status='published')
+                            c['source'], status='published',
+                            deskripsi_gambar=desc_gambar)
                 print('   📰 TAYANG (tanpa breaking): ' + judul)
             made += 1
             today_urls.add(c['link'])
@@ -617,8 +645,8 @@ def run_session():
     return total
 
 if __name__ == '__main__':
-    print('🐝 AI WARTAWAN KRAMANEWS V4.11 — FULL AUTO')
-    print(' ✨ Narasumber bernama | Angka utuh | Gambar cerdas | Prioritas negara')
+    print('🐝 AI WARTAWAN KRAMANEWS V4.12 — FULL AUTO')
+    print(' ✨ Narasumber bernama WAJIB | Angka utuh | Gambar cerdas | Nama asing asli')
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
         print('❌ Kunci belum diisi (cek Secrets)!')
         sys.exit(1)
