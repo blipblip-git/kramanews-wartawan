@@ -77,7 +77,7 @@ def main():
     rows = supabase_get(
         'articles?select=id,title,excerpt,category,img,posted_fb'
         '&status=eq.published&posted_fb=eq.false'
-        '&order=created_at.desc&limit=3')
+        '&order=created_at.desc&limit=10')
 
     if not rows:
         print('✅ Tidak ada berita baru yang perlu diposting. Selesai.')
