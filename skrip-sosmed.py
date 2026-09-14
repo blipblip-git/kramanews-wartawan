@@ -1,10 +1,14 @@
 # ══════════════════════════════════════════════════════
-#  KRAMANEWS — SKRIP SOSMED V1.5 (RETRY OTOMATIS 504)
-#  Baru V1.5:
-#   • SEMUA permintaan Supabase otomatis RETRY 3x (jeda 10-20 detik)
-#     → solusi 504 Gateway Timeout dari Supabase free tier
-#   • Tetap: FB post rapi V1.3 (bold + lokasi + teaser + gambar + link ?baca=ID)
-#   • Tetap: anti-dobel via posted_fb
+#  KRAMANEWS — SKRIP SOSMED V1.6 (CAPTION FB OPTIMAL)
+#  Baru V1.6:
+#   • Caption direstrukturisasi — YANG PENTING DI 3 BARIS ATAS:
+#     Baris 1: 🚨 BREAKING: + Judul Bold (jika breaking)
+#     Baris 1 (biasa): Judul Bold + 📍 Lokasi dalam baris yang sama
+#     Baris 2-3: Teaser isi berita
+#     Lalu: link artikel + hashtag
+#   • Tanpa "🚨 BREAKING NEWS" sendirian (buang baris berharga)
+#   • Tanpa baris kosong berlebihan
+#   • Tetap: anti-dobel posted_fb, retry 504, link ?baca=ID
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -44,33 +48,24 @@ def to_bold(text):
     return ''.join(BOLD_MAP.get(c, c) for c in text)
 
 def retry(func, nama, max_coba=3):
-    """Coba fungsi hingga 3x dengan jeda 10 detik — solusi 504 Gateway Timeout."""
     for percobaan in range(1, max_coba + 1):
         try:
             return func()
         except Exception as e:
             pesan_err = str(e)
-            # 504/502/503/timeout = layak di-retry; error lain (400/401) = langsung lempar
             layak_retry = any(k in pesan_err for k in ('504', '502', '503', 'Gateway', 'timeout', 'Timeout'))
             if percobaan >= max_coba or not layak_retry:
                 raise
             print(f'   ⏳ {nama} gagal ({pesan_err[:60]}), coba ulang {percobaan}/{max_coba-1} dalam 10 detik...')
             time.sleep(10)
 
-def supabase_get(query):
-    return retry(
-        lambda: requests.get(SUPABASE_URL + '/rest/v1/' + query,
+def supabase_get_safe(query):
+    def do_get():
+        return requests.get(SUPABASE_URL + '/rest/v1/' + query,
             headers={'apikey': SUPABASE_ANON,
                      'Authorization': 'Bearer ' + SUPABASE_ANON},
-            timeout=30),
-        'Supabase GET'
-    ).json() if True else None
-
-def supabase_get_safe(query):
-    r = retry(lambda: requests.get(SUPABASE_URL + '/rest/v1/' + query,
-        headers={'apikey': SUPABASE_ANON,
-                 'Authorization': 'Bearer ' + SUPABASE_ANON},
-        timeout=30), 'Supabase GET')
+            timeout=30)
+    r = retry(do_get, 'Supabase GET')
     if not r.ok:
         raise Exception('Supabase GET ' + str(r.status_code) + ': ' + r.text[:150])
     return r.json() or []
@@ -117,6 +112,11 @@ def fb_post_feed(message, link):
     return r.json()
 
 def buat_pesan_fb(n):
+    """Caption FB optimal — yang penting di 3 baris atas:
+    Baris 1: emoji + JUDUL BOLD
+    Baris 2: 📍 Lokasi
+    Baris 3-4: Teaser
+    Lalu: link + hashtag"""
     cat = KATEGORI_LABEL.get(n.get('category', ''), n.get('category', ''))
     judul = (n.get('title') or '').strip()
     dateline = (n.get('dateline') or '').strip()
@@ -125,19 +125,21 @@ def buat_pesan_fb(n):
     link_artikel = SITE_URL + '/?baca=' + str(n.get('id'))
 
     lines = []
+    # Baris 1: JUDUL BOLD (dengan tanda breaking jika ada, di depan judul)
     if n.get('breaking'):
-        lines.append('🚨 BREAKING NEWS')
-        lines.append('')
-    lines.append(to_bold(judul))
-    lines.append('')
+        lines.append('🚨 ' + to_bold(judul))
+    else:
+        lines.append(to_bold(judul))
+    # Baris 2: lokasi (kalau ada)
     if dateline:
         lines.append('📍 ' + dateline)
+    # Baris 3: teaser isi berita
     if teaser:
+        lines.append('')
         lines.append(teaser)
+    # Link + hashtag
     lines.append('')
-    lines.append('🔗 Baca selengkapnya di KramaNews:')
-    lines.append(link_artikel)
-    lines.append('')
+    lines.append('🔗 Baca selengkapnya: ' + link_artikel)
     lines.append('#' + cat.replace(' ', '') + ' #KramaNews #BeritaTerkini')
 
     return '\n'.join(lines)
@@ -195,7 +197,7 @@ def mode_web():
     print('🏁 Mode Web selesai — ' + str(total) + ' berita ditandai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.5 — RETRY OTOMATIS')
+    print('📣 KRAMANEWS SOSMED V1.6 — CAPTION FB OPTIMAL')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
