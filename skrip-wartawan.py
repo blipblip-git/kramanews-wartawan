@@ -1,11 +1,11 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V4.7 (KUOTA HEMAT + BREAKING DIPERLUAS + NAMA ASING)
-#  Mode 1 (shift 24 jam)  : python3 skrip-wartawan.py
-#  Mode 2 (sekali jalan)  : python3 skrip-wartawan.py --sekali
-#  Jadwal shift (WIB): 06, 10, 14, 16, 19
-#  Kuota: ±8-9 berita/sesi × 5 sesi = ±40-45 berita/hari
-#  Kunci: dibaca dari GitHub Secrets (bukan ditulis di file)
-#  Baru V4.7: nama partai/lembaga asing TIDAK diterjemahkan (nama asli)
+#  AI WARTAWAN KRAMANEWS — V4.9 (FULL AUTO — TANPA DRAFT!)
+#  Semua berita AI langsung PUBLISHED:
+#   • Breaking baru → langsung breaking, slot penuh = ganti breaking terlama
+#   • Berita kategori → langsung published
+#   • Draft hanya untuk yang AI meragukan (materi terlalu tipis)
+#  Mode 1 (shift) : python3 skrip-wartawan.py
+#  Mode 2         : python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -19,25 +19,20 @@ import feedparser
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote_plus
 
-# ═════════ KONFIGURASI — kunci dari environment (GitHub Secrets) ═════════
 DEEPSEEK_KEY         = os.environ.get('DEEPSEEK_KEY', '')
 SUPABASE_PUBLISHABLE = os.environ.get('SUPABASE_PUBLISHABLE', '')
-# ══════════════════════════════════════════════════════════════════════════
 
 SUPABASE_URL = 'https://imcvijgytdjjpotlaltv.supabase.co'
 REST_URL     = SUPABASE_URL + '/rest/v1/articles'
 EDGE_URL     = SUPABASE_URL + '/functions/v1/admin-ops'
 AUTHOR_NAME  = 'DT'
-STATE_FILE   = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kramanews-sesi.json')
 
 WIB = timezone(timedelta(hours=7))
-
 SCHEDULE_JAM = [6, 10, 14, 16, 19]
 
-# ═══ KUOTA HEMAT: ±8-9 berita/sesi × 5 sesi = ±40-45 berita/hari ═══
 TARGET_PER_SESI = {
     'nasional':      1,
-    'daerah':        2,   # termasuk wajib Kaltara/Tarakan
+    'daerah':        2,
     'internasional': 1,
     'ekonomi':       1,
     'olahraga':      1,
@@ -46,27 +41,22 @@ TARGET_PER_SESI = {
     'kesehatan':     1,
 }
 
-# ═══ SIAGA: kata kunci urgen DIPERLUAS (bencana + transportasi + kriminal + negara) ═══
 URGENT_KEYWORDS = [
-    # bencana alam
     'gempa', 'tsunami', 'banjir', 'erupsi', 'gunung meletus', 'longsor',
     'kebakaran hebat', 'kebakaran', 'puting beliung', 'korban jiwa',
     'mengungsi', 'bencana alam',
     'earthquake', 'flood', 'volcano', 'eruption', 'wildfire',
     'hurricane', 'typhoon', 'landslide',
-    # transportasi (kapal & pesawat)
     'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perairan',
     'pesawat jatuh', 'pesawat hilang', 'kecelakaan pesawat',
     'ferry sinks', 'boat sinking', 'plane crash', 'air disaster',
     'flight missing', 'airplane missing',
-    # kriminal besar
     'ditangkap', 'ott', 'korupsi', 'tersangka', 'suap',
     'pembunuhan', 'terbunuh', 'asasinate', 'dibunuh', 'pejabat dibunuh',
     'perampokan besar', 'rampok bank', 'perampokan bersenjata',
     'assassination', 'murder', 'bank robbery', 'armed robbery',
     'killed', 'explosion', 'attack', 'war', 'missile', 'airstrike',
     'evacuated',
-    # peristiwa negara / proyek besar
     'presiden meresmikan', 'wapres meresmikan', 'presiden melakukan',
     'proyek strategis nasional', 'inaugurasi proyek', 'peresmian proyek',
     'groundbreaking', 'president inaugurates', 'president opens',
@@ -214,58 +204,38 @@ ATURAN GAYA PENULISAN (WAJIB):
   di dalam isi berita (misalnya: "Berdasarkan laporan...", "Dilansir dari...",
   "Dikutip dari...", "menurut siaran pers...", "dikutip CNN/detik/Reuters/Kompas...").
 - JANGAN menjelaskan dari mana informasi didapat. Pembaca tidak perlu tahu.
-- Cukup ceritakan langsung: kronologi, fakta, angka, dampak — seolah kamu wartawan
-  yang meliput langsung di lokasi.
+- Cukup ceritakan langsung: kronologi, fakta, angka, dampak.
 
-ATURAN DATELINE (WAJIB - SANGAT PENTING):
-- Baris pertama isi berita HARUS diawali DATELINE lokasi kejadian, format:
-  "KOTA, PROVINSI/NEGARA - " lalu langsung lanjut kalimat berita.
-- Untuk berita Indonesia: "KOTA, PROVINSI - " (contoh: "TARAKAN, KALTARA - ...").
-- Untuk berita luar negeri: "KOTA, NEGARA - " (contoh: "STOCKHOLM, SWEDIA - ...").
-- Dateline ditulis HURUF KAPITAL, diakhiri tanda hubung "-" lalu langsung isi berita.
-- Jika lokasi tidak disebutkan sama sekali, gunakan "INDONESIA - " atau nama negara.
+ATURAN DATELINE (WAJIB):
+- Baris pertama isi berita HARUS diawali DATELINE lokasi kejadian:
+  "KOTA, PROVINSI/NEGARA - " (contoh: "TARAKAN, KALTARA - ...").
+- Luar negeri: "KOTA, NEGARA - " (contoh: "STOCKHOLM, SWEDIA - ...").
+- Huruf kapital + tanda hubung "-". Jika lokasi tidak ada: "INDONESIA - ".
 
 ATURAN NAMA ASING (WAJIB - JANGAN MENERJEMAHKAN):
-- Nama PARTAI, ORGANISASI, LEMBAGA, PERUSAHAAN, dan INSTITUSI asing
-  TIDAK BOLEH diterjemahkan ke bahasa Indonesia.
-- Tulis nama ASLINYA, dengan jenis di depannya. Contoh BENAR:
-  "Partai Sweden Democrats (Swedia)", "Partai AfD (Jerman)",
-  "Partai Rassemblement National (Prancis)", "Partai Brothers of Italy (Italia)",
-  "Partai PVV (Belanda)", "Partai Freedom Party of Austria (FPÖ)",
-  "Partai Vox (Spanyol)", "Perusahaan Tesla (AS)", "Lembaga WHO (PBB)".
-- Contoh SALAH (DILARANG KERAS): menerjemahkan "Sweden Democrats" menjadi
-  "Gelombang Kanan Jauh", atau menerjemahkan nama partai/lembaga lain apa pun.
-- Kenali partai-partai besar dunia dan gunakan nama ASLI + negara asalnya:
-  Swedia: Sweden Democrats | Jerman: AfD, CDU/CSU, SPD | Prancis:
-  Rassemblement National, La France Insoumise | Italia: Brothers of Italy, Lega |
-  Belanda: PVV, D66 | Austria: FPÖ | Spanyol: Vox, PSOE | Inggris: Labour,
-  Conservative, Reform UK | Denmark: Danish People's Party |
-  Finlandia: Finns Party | Norwegia: Progress Party |
-  AS: Republican Party, Democratic Party | dst.
-- Nama tokoh asing tetap memakai ejaan asli/nama yang lazim di media Indonesia.
+- Nama PARTAI, ORGANISASI, LEMBAGA, PERUSAHAAN, INSTITUSI asing
+  TIDAK BOLEH diterjemahkan. Tulis nama ASLINYA + jenis di depannya.
+  Contoh BENAR: "Partai Sweden Democrats (Swedia)", "Partai AfD (Jerman)".
+  Contoh SALAH: "Gelombang Kanan Jauh" (itu seharusnya Partai Sweden Democrats).
 
 ATURAN PANJANG & ISI (WAJIB):
 - Panjang total: 350-500 kata (5-7 paragraf). KEBUTUHAN MINIMAL.
 - Paragraf 1: inti berita — siapa, apa, kapan, di mana.
-- Paragraf 2-4: detail penting, data/angka, kronologi, dan dampaknya.
+- Paragraf 2-4: detail, data/angka, kronologi, dampak.
 - Paragraf 5-6: konteks yang relevan SELAMA tidak mengarang fakta spesifik.
 - Paragraf terakhir: langkah selanjutnya atau penutup netral.
-- Kalimat pendek, jelas, mudah dipahami pembaca awam.
+- Kalimat pendek, jelas.
 
 ATURAN JUDUL (WAJIB):
-- Buat judul ORISINAL yang MENARIK — JANGAN menyalin judul sumber.
-- Maksimal 10 kata. Jujur, TIDAK clickbait palsu.
-- Nama partai/lembaga asing dalam judul juga memakai NAMA ASLI (tidak diterjemahkan).
+- Judul ORISINAL, maksimal 10 kata, jujur, tidak clickbait palsu.
+- Nama partai/lembaga asing memakai NAMA ASLI.
 
 ATURAN ETIKA FAKTA (WAJIB):
 - HANYA gunakan fakta dari materi sumber. DILARANG mengarang fakta baru.
-- Larangan menyebut sumber TIDAK memberi izin mengarang — tetap setia pada fakta.
 
 FORMAT JAWABAN:
 Jawab HANYA dengan JSON valid tanpa teks lain:
-{"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2\\n\\nparagraf3", "ringkasan": "..."}"""
-
-# ═════════ FUNGSI BANTU ═════════
+{"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "..."}"""
 
 def edge_call(payload_json):
     r = requests.post(EDGE_URL,
@@ -291,7 +261,7 @@ def rest_get(query):
     return r.json() or []
 
 def get_today_state():
-    rows = rest_get('?select=source_url,category,written_by,created_at&order=created_at.desc&limit=300')
+    rows = rest_get('?select=source_url,created_at&order=created_at.desc&limit=300')
     today = datetime.now(WIB).date()
     urls = set()
     for row in rows:
@@ -303,12 +273,13 @@ def get_today_state():
             pass
     return urls
 
-def breaking_slots():
+def get_breaking_list():
+    """Daftar breaking yang tayang: id + kapan dibuat (untuk cabut terlama)."""
     try:
-        rows = rest_get('?select=id&breaking=eq.true&status=eq.published')
-        return max(0, 3 - len(rows))
+        rows = rest_get('?select=id,created_at&breaking=eq.true&status=eq.published&order=created_at.asc')
+        return rows or []
     except Exception:
-        return 0
+        return []
 
 def get_image(entry):
     mc = entry.get('media_content')
@@ -456,12 +427,23 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status, brea
         payload['breaking'] = True
     edge_call({'action': 'insert', 'payload': payload})
 
+def cabut_breaking_terlama():
+    """Slot penuh → cabut tanda breaking dari breaking yang PALING LAMA."""
+    brk = get_breaking_list()
+    if brk:
+        terlama = brk[0]
+        edge_call({'action': 'update', 'id': terlama['id'],
+                   'payload': {'breaking': False, 'updated_at': datetime.now(timezone.utc).isoformat()}})
+        print('   🔄 Breaking terlama dicabut otomatis (ID ' + str(terlama['id']) + ')')
+        return True
+    return False
+
 # ═════════ SESI BERBURU ═════════
 
 def sesi_siaga(today_urls, seen):
     made = 0
-    slots = breaking_slots()
-    print('\n🚨 SIAGA — memantau bencana/transportasi/kriminal/proyek negara (slot breaking: ' + str(slots) + ')...')
+    slots = 3 - len(get_breaking_list())
+    print('\n🚨 SIAGA — slot breaking tersedia: ' + str(slots) + '...')
     cands = collect_candidates(URGENT_FEEDS, today_urls, seen)
     for c in cands:
         if made >= 3:
@@ -482,9 +464,17 @@ def sesi_siaga(today_urls, seen):
                 slots -= 1
                 print('   🚨 BREAKING TAYANG: ' + judul)
             else:
-                insert_news(judul, isi, ringkasan, cat, get_image(c['entry']), c['link'],
-                            c['source'], status='draft')
-                print('   ⭐ Breaking penuh → draft: ' + judul)
+                # AUTO GANTI: cabut breaking terlama → tayangkan yang baru
+                if cabut_breaking_terlama():
+                    slots += 1
+                    insert_news(judul, isi, ringkasan, cat, get_image(c['entry']), c['link'],
+                                c['source'], status='published', breaking=True)
+                    slots -= 1
+                    print('   🔄 BREAKING DIGANTI (terlama dicabut): ' + judul)
+                else:
+                    insert_news(judul, isi, ringkasan, cat, get_image(c['entry']), c['link'],
+                                c['source'], status='published')  # tetap tayang tanpa breaking
+                    print('   📰 TAYANG (tanpa breaking): ' + judul)
             made += 1
             today_urls.add(c['link'])
         except Exception as e:
@@ -519,7 +509,7 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
             try:
                 judul, isi, ringkasan = ai_rewrite_single(c)
                 insert_news(judul, isi, ringkasan, cat, get_image(c['entry']),
-                            c['link'], c['source'], status='draft')
+                            c['link'], c['source'], status='published')
                 made += 1
                 kaltara_made += 1
                 today_urls.add(c['link'])
@@ -527,7 +517,7 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
             except Exception as e:
                 print('   ⚠️ Gagal 1 kaltara:', str(e)[:60])
             time.sleep(2)
-        print('   → Kaltara terpenuhi: ' + str(kaltara_made) + '/' + str(kaltara_min))
+        print('   → Kaltara: ' + str(kaltara_made) + '/' + str(kaltara_min))
 
     for g in groups:
         if made >= need:
@@ -541,17 +531,17 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
             else:
                 judul, isi, ringkasan = ai_rewrite_single(top)
             insert_news(judul, isi, ringkasan, cat, get_image(top['entry']),
-                        top['link'], top['source'], status='draft')
+                        top['link'], top['source'], status='published')
             made += 1
             for it in items:
                 today_urls.add(it['link'])
-            print('   ✅ [' + str(made) + '/' + str(need) + '] ' + judul)
+            print('   ✅ [' + str(made) + '/' + str(need) + '] TAYANG: ' + judul)
         except Exception as e:
             print('   ⚠️ Gagal proses 1 kelompok:', str(e)[:80])
             continue
         time.sleep(2)
 
-    print('   → Hasil: ' + str(made) + ' draft')
+    print('   → Hasil: ' + str(made) + ' TAYANG')
     return made
 
 def run_session():
@@ -569,78 +559,13 @@ def run_session():
             print('   ❌ Kategori ' + cat + ' error: ' + str(e)[:80])
     return total
 
-# ═════════ STATE SESI ═════════
-
-def load_state():
-    try:
-        with open(STATE_FILE, 'r') as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-def save_state(st):
-    try:
-        with open(STATE_FILE, 'w') as f:
-            json.dump(st, f)
-    except Exception:
-        pass
-
-# ═════════ PROGRAM UTAMA ═════════
-
-def main_sekali():
-    print('🐝 AI WARTAWAN — MODE SEKALI JALAN (' + datetime.now(WIB).strftime('%H:%M WIB') + ')')
+if __name__ == '__main__':
+    print('🐝 AI WARTAWAN KRAMANEWS V4.9 — FULL AUTO (SEMUA LANGSUNG TAYANG)')
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
-        print('❌ Kunci belum diisi!')
-        return
+        print('❌ Kunci belum diisi (cek Secrets)!')
+        sys.exit(1)
     try:
         total = run_session()
-        print(' 🏁 Selesai — total ' + str(total) + ' berita dibuat.')
+        print(' 🏁 Selesai — total ' + str(total) + ' berita TAYANG.')
     except Exception as e:
         print(' ❌ Gagal: ' + str(e)[:100])
-
-def main():
-    print('=' * 56)
-    print(' 🐝 AI WARTAWAN KRAMANEWS V4.7 — MODE SHIFT OTOMATIS')
-    print(' ⏰ Jadwal berburu (WIB): ' + ', '.join(str(h).zfill(2) + ':00' for h in SCHEDULE_JAM))
-    print(' ✍️  Penulis: ' + AUTHOR_NAME + ' | Kuota: ±40-45 berita/hari')
-    print(' 💡 Biarkan terminal ini terbuka. Stop: Ctrl+C')
-    print('=' * 56)
-
-    if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
-        print('❌ DEEPSEEK_KEY / SUPABASE_PUBLISHABLE belum diisi!')
-        return
-
-    while True:
-        try:
-            now = datetime.now(WIB)
-            today = now.strftime('%Y-%m-%d')
-            st = load_state()
-            if st.get('date') != today:
-                st = {'date': today, 'done': []}
-
-            pending = [h for h in SCHEDULE_JAM if now.hour >= h and h not in st['done']]
-            if pending:
-                h = pending[-1]
-                print('\n' + '=' * 56)
-                print(' ⏰ SESI ' + str(h).zfill(2) + ':00 WIB — mulai berburu...')
-                print('=' * 56)
-                st['done'] = sorted(set(st['done'] + pending))
-                save_state(st)
-                try:
-                    total = run_session()
-                    print('\n 🏁 Sesi selesai — total ' + str(total) + ' berita dibuat.')
-                except Exception as e:
-                    print(' ❌ Sesi gagal: ' + str(e)[:100])
-            time.sleep(60)
-        except KeyboardInterrupt:
-            print('\n👋 Wartawan AI berhenti. Sampai jumpa!')
-            break
-        except Exception as e:
-            print(' ⚠️ Loop error: ' + str(e)[:80])
-            time.sleep(120)
-
-if __name__ == '__main__':
-    if '--sekali' in sys.argv:
-        main_sekali()
-    else:
-        main()
