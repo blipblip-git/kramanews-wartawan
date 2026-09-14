@@ -1,13 +1,14 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V5.3 (BERSIH & STABIL)
-#  • FULL AUTO: semua berita AI langsung TAYANG
-#  • Breaking auto-ganti (slot penuh = cabut terlama)
-#  • Narasumber WAJIB bernama (contoh konkret)
-#  • Angka WAJIB utuh & persis
-#  • Waktu kejadian (hari/tanggal/jam) ditulis DI DALAM isi berita
-#  • Nama partai/lembaga asing = NAMA ASLI
-#  • Jadwal: 24 jam/hari, kuota per jam
-#  Marker verifikasi: cari kata "KRAMAV530"
+#  AI WARTAWAN KRAMANEWS — V5.2 (RETRY CERDAS + LOG DETAIL)
+#  Baru V5.2:
+#   • RETRY otomatis untuk 504/timeout Supabase (2-3x, jeda 10s)
+#   • Timeout request diperpendek (30s→20s) biar cepat lompat kalau server lambat
+#   • Log per-berita lebih detail (kelihatan di mana macet)
+#   • Kalau 1 berita gagal total → SKIP dan lanjut (tidak macet)
+#  Tetap: breaking diperluas (semua jenis selevel, gempa ≥5 SR),
+#         narasumber bernama, angka utuh, waktu kejadian, full auto
+#  Mode 1 (shift) : python3 skrip-wartawan.py
+#  Mode 2         : python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -30,8 +31,8 @@ EDGE_URL     = SUPABASE_URL + '/functions/v1/admin-ops'
 AUTHOR_NAME  = 'DT'
 
 WIB = timezone(timedelta(hours=7))
+SCHEDULE_JAM = list(range(24))
 
-# ═══ JADWAL 24 JAM — KUOTA PER JAM (dari spesifikasi pemilik) ═══
 JADWAL_JAM = {
     0:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
     1:  {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 2},
@@ -59,7 +60,6 @@ JADWAL_JAM = {
     23: {'nasional': 3, 'daerah': 2, 'internasional': 5, 'ekonomi': 3, 'olahraga': 3},
 }
 
-# ═══ BREAKING CERDAS — SEMUA JENIS SELEVEL (TIDAK ANAK EMASKAN GEMPA) ═══
 BREAKING_KEYWORDS = [
     'gempa', 'earthquake',
     'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perahu tenggelam',
@@ -83,7 +83,6 @@ BREAKING_KEYWORDS = [
     'president inaugurates', 'president opens',
 ]
 
-# Gempa HARUS ≥5 SR untuk masuk breaking (gempa kecil = berita biasa)
 GEMPA_MIN_MAGNITUDE = 5.0
 
 KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
@@ -223,7 +222,6 @@ LUAR_NEGERI_WORDS = ['jepang', 'china', 'amerika', 'eropa', 'luar negeri', 'ingg
                      'ukraina', 'rusia', 'malaysia', 'thailand', 'taiwan', 'timor leste']
 
 SYSTEM_PROMPT = """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV530MARKER — versi V5.3 dengan aturan narasumber, angka, waktu kejadian.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -255,8 +253,8 @@ ATURAN NARASUMBER & TOKOH (WAJIB - PALING PENTING):
 - DILARANG MENGARANG nama tokoh yang tidak ada di materi sumber.
 
 ATURAN WAKTU KEJADIAN (WAJIB):
-- Dalam isi berita WAJIB CANTUMKAN HARI, TANGGAL, dan JAM kejadian
-  secara eksplisit, seperti contoh:
+- Dalam isi berita WAJIB CANTUMKAN HARI, TANGGAL, dan JAM kejadian secara
+  eksplisit, seperti contoh:
   ✅ "...kejadian terjadi pada Minggu (15 September 2026) sekitar pukul 03.00 WIB..."
   ✅ "...berdasarkan data BMKG, gempa terjadi Sabtu (14 September 2026) pukul 21.45 WIB..."
 - Jika materi sumber tidak menyebut waktu kejadian secara eksplisit,
@@ -299,31 +297,60 @@ ATURAN JUDUL (WAJIB):
 ATURAN ETIKA FAKTA (WAJIB):
 - HANYA fakta dari materi sumber. DILARANG mengarang fakta, nama, atau angka.
 
+ATURAN GAMBAR (WAJIB - deskripsi_gambar):
+- Isi field "deskripsi_gambar" dengan 3-6 kata kunci bahasa Inggris yang
+  MENGGAMBARKAN TOPIK berita ini secara VISUAL.
+- Contoh BENAR:
+  Gempa: "earthquake rubble rescue"
+  Kesehatan/RS: "hospital patients medical staff"
+  Keagamaan: "prayer crowd mosque"
+  Pemerintah: "city hall government building"
+  Olahraga: "football stadium match"
+  Kebakaran: "fire smoke burning building"
+- Contoh SALAH: hutan rimbun untuk berita gempa, nelayan di laut untuk berita
+  kebakaran, pemandangan kota untuk berita posko kesehatan.
+- HANYA kata kunci visual, TANPA nama orang.
+
 FORMAT JAWABAN:
 Jawab HANYA dengan JSON valid tanpa teks lain:
-{"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "..."}"""
+{"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "...",
+ "deskripsi_gambar": "visual keywords",
+ "waktu_kejadian": "Hari (Tanggal Bulan Tahun) pukul Jam:Menit WIB atau UTC"}"""
 
 # ═════════ FUNGSI BANTU ═════════
 
 def edge_call(payload_json):
-    r = requests.post(EDGE_URL,
-        headers={'apikey': SUPABASE_PUBLISHABLE,
-                 'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE,
-                 'Content-Type': 'application/json'},
-        json=payload_json, timeout=30)
-    try:
-        data = r.json()
-    except Exception:
-        raise Exception('HTTP ' + str(r.status_code) + ': ' + r.text[:120])
-    if not r.ok or data.get('error'):
-        raise Exception(str(data.get('error') or ('HTTP ' + str(r.status_code))))
-    return data.get('data')
+    """Simpan ke Supabase via edge function — dengan retry 2x untuk 504."""
+    for percobaan in range(1, 3):
+        try:
+            r = requests.post(EDGE_URL,
+                headers={'apikey': SUPABASE_PUBLISHABLE,
+                         'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE,
+                         'Content-Type': 'application/json'},
+                json=payload_json, timeout=25)
+            try:
+                data = r.json()
+            except Exception:
+                raise Exception('HTTP ' + str(r.status_code) + ': ' + r.text[:120])
+            if r.ok and not data.get('error'):
+                return data.get('data')
+            pesan = str(data.get('error') or ('HTTP ' + str(r.status_code)))
+            layak_retry = any(k in pesan for k in ('504', '502', '503', 'Gateway', 'timeout'))
+            if percobaan >= 2 or not layak_retry:
+                raise Exception(pesan)
+            print('      ⏳ Timeout server, coba ulang (' + str(percobaan) + '/2)...')
+            time.sleep(10)
+        except requests.exceptions.Timeout:
+            if percobaan >= 2:
+                raise Exception('Timeout server (2x)')
+            print('      ⏳ Timeout, coba ulang...')
+            time.sleep(10)
 
 def rest_get(query):
     r = requests.get(REST_URL + query,
         headers={'apikey': SUPABASE_PUBLISHABLE,
                  'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE},
-        timeout=30)
+        timeout=25)
     if not r.ok:
         raise Exception('Supabase REST ' + str(r.status_code) + ': ' + r.text[:120])
     return r.json() or []
@@ -460,7 +487,7 @@ def ai_rewrite_single(c):
             '(jangan hanya jabatan tanpa nama), jangan sebut portal/media sumber, '
             'awali isi berita dengan dateline lokasi '
             '(format: "KOTA, PROVINSI/NEGARA - ..."), salin utuh semua angka, '
-            'dan cantumkan HARI + TANGGAL + JAM kejadian di dalam isi berita.')
+            'cantumkan HARI + TANGGAL + JAM kejadian di dalam isi berita.')
     return ai_write(user)
 
 def ai_rewrite_multi(items):
@@ -480,7 +507,6 @@ def is_urgent(title, summary):
     t = (title + ' ' + summary).lower()
     return any(k in t for k in BREAKING_KEYWORDS)
 
-# Cek gempa ≥5 SR (gempa kecil = tidak masuk breaking)
 def cek_gempa_besar(title, summary):
     t = (title + ' ' + summary).lower()
     if 'gempa' not in t and 'earthquake' not in t:
@@ -530,6 +556,11 @@ def sesi_siaga(today_urls, seen):
     for c in cands:
         if made >= 3:
             break
+        # Gempa <5 SR tidak masuk breaking
+        t0 = (c['title'] + ' ' + c['summary']).lower()
+        if ('gempa' in t0 or 'earthquake' in t0) and not cek_gempa_besar(c['title'], c['summary']):
+            print('   ⏭️ Gempa kecil (<5 SR) dilewati: ' + c['title'][:50])
+            continue
         if not is_urgent(c['title'], c['summary']):
             continue
         try:
@@ -659,7 +690,7 @@ def main_sekali():
 
 def main():
     print('=' * 60)
-    print(' 🐝 AI WARTAWAN KRAMANEWS V5.3 — MODE 24 JAM PER JAM')
+    print(' 🐝 AI WARTAWAN KRAMANEWS V5.2 — MODE 24 JAM PER JAM')
     print(' ⏰ Jadwal: setiap jam (24x/hari)')
     print(' ✍️  Penulis: ' + AUTHOR_NAME)
     print(' 💡 Biarkan terminal ini terbuka. Stop: Ctrl+C')
@@ -695,4 +726,7 @@ def main():
             time.sleep(120)
 
 if __name__ == '__main__':
-    main()
+    if '--sekali' in sys.argv:
+        main_sekali()
+    else:
+        main()
