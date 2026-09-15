@@ -1,14 +1,11 @@
 # ══════════════════════════════════════════════════════
-#  KRAMANEWS — SKRIP SOSMED V1.6 (CAPTION FB OPTIMAL)
-#  Baru V1.6:
-#   • Caption direstrukturisasi — YANG PENTING DI 3 BARIS ATAS:
-#     Baris 1: 🚨 BREAKING: + Judul Bold (jika breaking)
-#     Baris 1 (biasa): Judul Bold + 📍 Lokasi dalam baris yang sama
-#     Baris 2-3: Teaser isi berita
-#     Lalu: link artikel + hashtag
-#   • Tanpa "🚨 BREAKING NEWS" sendirian (buang baris berharga)
-#   • Tanpa baris kosong berlebihan
-#   • Tetap: anti-dobel posted_fb, retry 504, link ?baca=ID
+#  KRAMANEWS — SKRIP SOSMED V1.7 (PRIORITAS KALTARA/TARAKAN)
+#  Baru V1.7:
+#   • Berita KALIMANTAN UTARA (Tarakan, Nunukan, Bulungan, Malinau)
+#     selalu DIPRIORITASKAN paling depan antrean FB
+#     → berita daerah terdepan update-nya di Facebook Page
+#   • Tetap: maks 3 post per run (anti spam FB), anti-dobel posted_fb,
+#     retry 504, link ?baca=ID, caption optimal
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -30,6 +27,17 @@ KATEGORI_LABEL = {
     'olahraga': 'Olahraga', 'teknologi': 'Teknologi',
     'hiburan': 'Hiburan', 'kesehatan': 'Kesehatan',
 }
+
+# ═══ KATA KUNCI PRIORITAS KALTARA (V1.7) ═══
+# Sengaja pakai kata yang SPESIFIK saja (tanpa 'amal'/'kayu putih'
+# karena terlalu umum dan bisa salah prioritas)
+KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
+                 'tana tidung', 'sesayap', 'juata']
+
+def is_kaltara(n):
+    """True jika berita terkait Kalimantan Utara/Tarakan."""
+    teks = ' '.join(str(n.get(k) or '') for k in ('title', 'dateline', 'excerpt', 'content')).lower()
+    return any(w in teks for w in KALTARA_WORDS)
 
 BOLD_MAP = {
     'A': '𝗔', 'B': '𝗕', 'C': '𝗖', 'D': '𝗗', 'E': '𝗘', 'F': '𝗙',
@@ -112,11 +120,6 @@ def fb_post_feed(message, link):
     return r.json()
 
 def buat_pesan_fb(n):
-    """Caption FB optimal — yang penting di 3 baris atas:
-    Baris 1: emoji + JUDUL BOLD
-    Baris 2: 📍 Lokasi
-    Baris 3-4: Teaser
-    Lalu: link + hashtag"""
     cat = KATEGORI_LABEL.get(n.get('category', ''), n.get('category', ''))
     judul = (n.get('title') or '').strip()
     dateline = (n.get('dateline') or '').strip()
@@ -125,19 +128,15 @@ def buat_pesan_fb(n):
     link_artikel = SITE_URL + '/?baca=' + str(n.get('id'))
 
     lines = []
-    # Baris 1: JUDUL BOLD (dengan tanda breaking jika ada, di depan judul)
     if n.get('breaking'):
         lines.append('🚨 ' + to_bold(judul))
     else:
         lines.append(to_bold(judul))
-    # Baris 2: lokasi (kalau ada)
     if dateline:
         lines.append('📍 ' + dateline)
-    # Baris 3: teaser isi berita
     if teaser:
         lines.append('')
         lines.append(teaser)
-    # Link + hashtag
     lines.append('')
     lines.append('🔗 Baca selengkapnya: ' + link_artikel)
     lines.append('#' + cat.replace(' ', '') + ' #KramaNews #BeritaTerkini')
@@ -153,20 +152,36 @@ def post_fb(n):
         return fb_post_feed(pesan, SITE_URL + '/?baca=' + str(n.get('id')))
 
 def mode_fb():
-    print('📘 MODE FB — antrean auto-post...')
+    print('📘 MODE FB — antrean auto-post (PRIORITAS KALTARA)...')
+
+    # Ambil lebih banyak kandidat (15) lalu diurutkan ulang:
+    # KALTARA/TARAKAN selalu paling depan, sisanya menyusul terbaru
     rows = supabase_get_safe(
         'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking'
         '&status=eq.published&posted_fb=eq.false'
-        '&order=created_at.desc&limit=3')
+        '&order=created_at.desc&limit=15')
 
     if not rows:
         print('✅ Tidak ada berita baru yang perlu diposting. Selesai.')
         return
 
+    prio = [n for n in rows if is_kaltara(n)]
+    lain = [n for n in rows if not is_kaltara(n)]
+    urutan = prio + lain
+
+    if prio:
+        print('🏝️ ' + str(len(prio)) + ' berita KALTARA/TARAKAN diprioritaskan di depan:')
+        for n in prio[:3]:
+            print('   • ' + (n.get('title') or '')[:60])
+
+    antre = urutan[:3]  # maksimal 3 post per run (anti spam FB)
+
     ok = 0
-    for n in rows:
+    for n in antre:
         if n.get('breaking'):
             print('🚨 BREAKING: ' + (n.get('title') or '')[:60])
+        elif is_kaltara(n):
+            print('🏝️ KALTARA PRIORITAS: ' + (n.get('title') or '')[:60])
         else:
             print('📤 Posting: ' + (n.get('title') or '')[:60])
         try:
@@ -197,7 +212,7 @@ def mode_web():
     print('🏁 Mode Web selesai — ' + str(total) + ' berita ditandai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.6 — CAPTION FB OPTIMAL')
+    print('📣 KRAMANEWS SOSMED V1.7 — PRIORITAS KALTARA/TARAKAN')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
