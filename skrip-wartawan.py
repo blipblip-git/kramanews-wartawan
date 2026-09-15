@@ -1,15 +1,13 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.2
-#  Baru V6.2:
-#   • FIX KRITIS: AI tidak lagi menolak breaking valid dengan alasan
-#     "tidak ada tanggal spesifik". Umur sumber SUDAH diverifikasi
-#     sistem (maks 30 jam) — jika tanggal eksplisit tidak ada di materi,
-#     AI wajib melanjutkan menulis dengan keterangan
-#     "belum dikonfirmasi waktu pasti kejadian".
-#     Tolak HANYA jika tanggal di materi jelas menunjukkan peristiwa lama.
-#   • Semua fitur V6.1 tetap: anti dobel, anti lama, breaking 3 slot,
-#     expire 30 menit, kuota per jam, Kaltara prioritas
-#   • Marker verifikasi: cari kata "KRAMAV620MARKER"
+#  AI WARTAWAN KRAMANEWS — V6.4 (KALIBRASI WITA)
+#  Baru V6.4:
+#   • ZONA WAKTU DIUBAH WIB → WITA (UTC+8): sesuai pembaca Tarakan/Kaltara
+#   • Semua label jam "WIB" → "WITA"
+#   • Kuota kategori kini jatuh tepat pada jam WITA Tarakan
+#   • Tanggal dinamis AI mengikuti WITA (hari berganti 00:00 WITA)
+#   • Fitur tetap lengkap: anti dobel, anti lama, fix V6.2 (AI tidak
+#     menolak breaking valid), breaking 3 slot, expire 30 menit
+#   • Marker verifikasi: cari kata "KRAMAV640MARKER"
 #  Mode 1 (loop 30 menit) : python3 skrip-wartawan.py
 #  Mode 2 (GitHub Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -35,9 +33,10 @@ REST_URL     = SUPABASE_URL + '/rest/v1/articles'
 EDGE_URL     = SUPABASE_URL + '/functions/v1/admin-ops'
 AUTHOR_NAME  = 'DT'
 
-WIB = timezone(timedelta(hours=7))
+# ═══ V6.4: ZONA WAKTU WITA (UTC+8) — WAKTU TARAKAN/KALTARA ═══
+WITA = timezone(timedelta(hours=8))
 
-# ═══ PENGATURAN V6.2 ═══
+# ═══ PENGATURAN V6.4 ═══
 BREAKING_MAX_SLOT   = 3      # slot breaking di hero
 BREAKING_UMUR_MENIT = 30     # breaking dicabut otomatis setelah 30 menit
 MAX_UMUR_BERITA_JAM = 30     # tolak materi RSS lebih tua dari 30 jam
@@ -50,7 +49,7 @@ HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
             'Agustus', 'September', 'Oktober', 'November', 'Desember']
 
-# ═══ JADWAL KUOTA PER JAM (WIB) ═══
+# ═══ JADWAL KUOTA PER JAM (WITA — waktu Tarakan) ═══
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'internasional': 1, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 2, 'internasional': 1, 'olahraga': 1},
@@ -251,7 +250,7 @@ DUNIA_KRITIS = [
 class BeritaLama(Exception):
     pass
 
-# ═══ ANTI BERITA DOBEL (V6.2) ═══
+# ═══ ANTI BERITA DOBEL (V6.4) ═══
 
 KATA_STOP_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
                       'sudah oleh sebagai ada adalah kata ujar bilang menurut the and '
@@ -290,14 +289,14 @@ def sudah_serupa(judul):
     return False
 
 def muat_judul_hari_ini():
-    """Ambil semua judul berita yang tayang hari ini (WIB) dari database."""
+    """Ambil semua judul berita yang tayang hari ini (WITA) dari database."""
     out = []
     try:
         rows = rest_get('?select=title,created_at&order=created_at.desc&limit=300')
-        today = datetime.now(WIB).date()
+        today = datetime.now(WITA).date()
         for row in rows:
             try:
-                d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00')).astimezone(WIB).date()
+                d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00')).astimezone(WITA).date()
                 if d == today and row.get('title'):
                     out.append(normalisasi_judul(row['title']))
             except Exception:
@@ -306,12 +305,12 @@ def muat_judul_hari_ini():
         print('   ⚠️ Gagal memuat judul hari ini:', str(e)[:60])
     return out
 
-# ═══ KONTEKS WAKTU DINAMIS (AI SELALU TAHU TANGGAL) ═══
+# ═══ KONTEKS WAKTU DINAMIS (AI SELALU TAHU TANGGAL — WITA) ═══
 def tanggal_panjang(d):
     return HARI_ID[d.weekday()] + ' (' + str(d.day) + ' ' + BULAN_ID[d.month] + ' ' + str(d.year) + ')'
 
 def konteks_waktu():
-    now = datetime.now(WIB)
+    now = datetime.now(WITA)
     kemarin = (now - timedelta(days=1)).date()
     return {'hari_ini': tanggal_panjang(now.date()),
             'kemarin': tanggal_panjang(kemarin),
@@ -320,7 +319,7 @@ def konteks_waktu():
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV620MARKER — V6.2: berita HANYA hari ini/kemarin, breaking cerdas, narasumber bernama.
+KRAMAV640MARKER — V6.4: berita HANYA hari ini/kemarin, breaking cerdas, narasumber bernama.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -360,10 +359,10 @@ ATURAN NARASUMBER & TOKOH (WAJIB):
 
 ATURAN WAKTU KEJADIAN (WAJIB):
 - Jika materi menyebut waktu kejadian: cantumkan HARI, TANGGAL, JAM
-  (contoh: "...terjadi pada """ + k['hari_ini'] + """ sekitar pukul 03.00 WIB...").
+  (contoh: "...terjadi pada """ + k['hari_ini'] + """ sekitar pukul 03.00 WITA...").
 - Jika materi TIDAK menyebut waktu: tulis "belum dikonfirmasi waktu pasti kejadian"
   — INI BUKAN ALASAN MENOLAK, tetap tulis beritanya.
-- JANGAN mengarang tanggal. Format: Hari (Tanggal Bulan """ + k['tahun'] + """) pukul Jam:Menit WIB
+- JANGAN mengarang tanggal. Format: Hari (Tanggal Bulan """ + k['tahun'] + """) pukul Jam:Menit WITA
 
 ATURAN DATELINE (WAJIB):
 - Baris pertama isi berita diawali: "KOTA, PROVINSI/NEGARA - ".
@@ -399,7 +398,7 @@ ATURAN GAMBAR (WAJIB - deskripsi_gambar):
 FORMAT JAWABAN — HANYA JSON valid tanpa teks lain:
 {"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "...",
  "deskripsi_gambar": "visual keywords",
- "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """) pukul Jam:Menit WIB atau 'belum dikonfirmasi waktu pasti kejadian'"}
+ "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """) pukul Jam:Menit WITA atau 'belum dikonfirmasi waktu pasti kejadian'"}
 INGAT: gunakan {"tolak": ...} HANYA jika tanggal peristiwa TERTULIS EKSPLISIT
 di materi dan jelas lebih lama dari kemarin. Tanpa bukti tertulis = TULIS BERITA."""
 
@@ -430,11 +429,11 @@ def rest_get(query):
 
 def get_today_state():
     rows = rest_get('?select=source_url,created_at&order=created_at.desc&limit=300')
-    today = datetime.now(WIB).date()
+    today = datetime.now(WITA).date()
     urls = set()
     for row in rows:
         try:
-            d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00')).astimezone(WIB).date()
+            d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00')).astimezone(WITA).date()
             if d == today and row.get('source_url'):
                 urls.add(row['source_url'])
         except Exception:
@@ -890,9 +889,9 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
 # ═════════ SESI UTAMA ═════════
 
 def run_session():
-    now = datetime.now(WIB)
+    now = datetime.now(WITA)
     print('\n' + '=' * 60)
-    print(' ⏰ SESI ' + now.strftime('%H:%M') + ' WIB — ' + tanggal_panjang(now.date()))
+    print(' ⏰ SESI ' + now.strftime('%H:%M') + ' WITA — ' + tanggal_panjang(now.date()))
     print('=' * 60)
 
     # 1) Cabut breaking yang sudah > 30 menit
@@ -911,10 +910,10 @@ def run_session():
     # 3) Patroli breaking — SELALU, 24 jam
     total = sesi_breaking(today_urls, seen)
 
-    # 4) Kuota kategori — HANYA jika jam ini ada di jadwal
+    # 4) Kuota kategori — HANYA jika jam ini ada di jadwal (jam WITA)
     quota = JADWAL_JAM.get(now.hour)
     if quota:
-        print('\n📊 Kuota jam ' + str(now.hour).zfill(2) + ':00 WIB → '
+        print('\n📊 Kuota jam ' + str(now.hour).zfill(2) + ':00 WITA → '
               + ', '.join(k.upper() + '=' + str(v) for k, v in quota.items()))
         for cat, need in quota.items():
             try:
@@ -925,11 +924,11 @@ def run_session():
             except Exception as e:
                 print('   ❌ Kategori ' + cat + ' error: ' + str(e)[:80])
     else:
-        print('\n   (Di luar jadwal kategori 06–20 WIB — hanya patroli breaking)')
+        print('\n   (Di luar jadwal kategori 06–20 WITA — hanya patroli breaking)')
     return total
 
 def main_sekali():
-    print('🐝 AI WARTAWAN V6.2 — MODE SEKALI JALAN (' + datetime.now(WIB).strftime('%H:%M WIB') + ')')
+    print('🐝 AI WARTAWAN V6.4 — MODE SEKALI JALAN (' + datetime.now(WITA).strftime('%H:%M WITA') + ')')
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
         print('❌ Kunci belum diisi!')
         return
@@ -941,8 +940,8 @@ def main_sekali():
 
 def main():
     print('=' * 60)
-    print(' 🐝 AI WARTAWAN KRAMANEWS V6.2 — LOOP TIAP 30 MENIT')
-    print(' ⏰ Breaking: patroli 24 jam | Kategori: sesuai JADWAL_JAM (06–20 WIB)')
+    print(' 🐝 AI WARTAWAN KRAMANEWS V6.4 — LOOP TIAP 30 MENIT (WITA)')
+    print(' ⏰ Breaking: patroli 24 jam | Kategori: sesuai JADWAL_JAM (06–20 WITA)')
     print(' ✍️  Penulis: ' + AUTHOR_NAME)
     print(' 💡 Stop: Ctrl+C')
     print('=' * 60)
