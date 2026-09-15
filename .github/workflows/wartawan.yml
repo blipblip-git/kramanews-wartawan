@@ -2,14 +2,16 @@ name: AI Wartawan KramaNews
 
 on:
   schedule:
-    # ═══ JAM RAMAI (05:00-21:59 WIB): tiap 30 MENIT ═══
-    # 22-23 UTC = 05:00-06:59 WIB
-    - cron: '0,30 22-23 * * *'
-    # 0-13 UTC = 07:00-20:59 WIB (mencakup semua jam kuota kategori 06-20 WIB)
-    - cron: '0,30 0-13 * * *'
-    # ═══ JAM TENANG (21:00-04:59 WIB): tiap 60 MENIT — hemat menit Actions ═══
-    # 14-21 UTC = 21:00-04:59 WIB
-    - cron: '0 14-21 * * *'
+    # ═══ MENIT 7 & 37 — SENGAJA TIDAK PAS MENIT 0/30 ═══
+    # Menit 0 & 30 = puncak kepadatan GitHub global → run sering
+    # tertunda lama atau dibuang (rekomendasi resmi GitHub:
+    # hindari awal jam). Menit sepi = run jauh lebih andal.
+    # 22-23 UTC = 05:00-06:59 WIB — tiap 30 menit
+    - cron: '7,37 22-23 * * *'
+    # 0-13 UTC = 07:00-20:59 WIB — tiap 30 menit (semua jam kuota kategori 06-20)
+    - cron: '7,37 0-13 * * *'
+    # 14-21 UTC = 21:00-04:59 WIB — tiap 60 menit (jam tenang, hemat menit)
+    - cron: '7 14-21 * * *'
   workflow_dispatch:
 
 jobs:
