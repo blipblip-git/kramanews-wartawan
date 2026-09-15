@@ -2,11 +2,12 @@ name: KramaNews Sosmed Auto-Post
 
 on:
   schedule:
-    # Setiap 20 MENIT (03:00–14:59 UTC = 10:00–21:59 WIB)
+    # Setiap 20 MENIT jam sibuk (03:00-14:59 UTC = 10:00-21:59 WIB)
     - cron: '*/20 3-14 * * *'
-    # Setiap 40 menit di jam tenang (15:00–02:59 UTC = 22:00–09:59 WIB)
-    - cron: '0,40 15-23 * * *'
-    - cron: '0,40 0-2 * * *'
+    # Setiap 30 MENIT di jam tenang (15:00-02:59 UTC = 22:00-09:59 WIB)
+    # Dipercepat dari 40 → 30 menit agar breaking (umur 30 menit) tetap keburu 🔴 di FB
+    - cron: '0,30 15-23 * * *'
+    - cron: '0,30 0-2 * * *'
   workflow_dispatch:
 
 jobs:
