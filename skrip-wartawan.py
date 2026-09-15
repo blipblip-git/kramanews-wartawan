@@ -1,16 +1,11 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.0
-#  Baru V6.0:
-#   • AI SELALU TAHU TANGGAL (dinamis, jam WIB) — anti berita lama
-#   • RSS difilter umur maks 30 jam + Google News when:1d
-#   • AI WAJIB MENOLAK materi lebih tua dari kemarin
-#   • BREAKING 3 SLOT: 1=domestik, 2=dunia, 3=fleksibel
-#   • GEMPA TIDAK LAGI DOMINAN: domestik M≥5.5, dunia M≥6.5 (tertulis jelas)
-#   • BREAKING EXPIRE: dicabut otomatis setelah 30 menit
-#   • JADWAL_JAM sesuai kuota 06:00–20:00 WIB (N/D/I/E/O/T/H/K)
-#   • Fix: urutan return ai_write (waktu & gambar sempat tertukar di V5.3)
-#   • Fix: cari_gambar_wikimedia() kini benar-benar dipakai (fallback gambar)
-#   • Marker verifikasi: cari kata "KRAMAV600MARKER"
+#  AI WARTAWAN KRAMANEWS — V6.1
+#  Baru V6.1:
+#   • ANTI BERITA DOBEL: cek kemiripan judul sebelum tayang
+#     (kasus: "80 Hektare Tarakan Terbakar" tayang 2x dari portal beda)
+#   • Semua fitur V6.0 tetap: tanggal dinamis, breaking 3 slot,
+#     expire 30 menit, anti dominasi gempa, kuota per jam
+#   • Marker verifikasi: cari kata "KRAMAV610MARKER"
 #  Mode 1 (loop 30 menit) : python3 skrip-wartawan.py
 #  Mode 2 (GitHub Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -24,6 +19,7 @@ import sys
 import random
 import feedparser
 from time import mktime
+from difflib import SequenceMatcher
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote_plus
 
@@ -37,13 +33,14 @@ AUTHOR_NAME  = 'DT'
 
 WIB = timezone(timedelta(hours=7))
 
-# ═══ PENGATURAN V6.0 ═══
+# ═══ PENGATURAN V6.1 ═══
 BREAKING_MAX_SLOT   = 3      # slot breaking di hero
 BREAKING_UMUR_MENIT = 30     # breaking dicabut otomatis setelah 30 menit
 MAX_UMUR_BERITA_JAM = 30     # tolak materi RSS lebih tua dari 30 jam
 GEMPA_DOM_MIN       = 5.5    # gempa Indonesia: breaking jika M >= ini (tertulis jelas)
 GEMPA_DUNIA_MIN     = 6.5    # gempa luar negeri: breaking jika M >= ini (tertulis jelas)
 SKOR_BREAKING_MIN   = 30     # skor minimal kandidat breaking
+AMBANG_MIRIP        = 0.50   # judul dianggap DOBEL jika kemiripan >= ini (0-1)
 
 HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
@@ -249,6 +246,61 @@ DUNIA_KRITIS = [
 class BeritaLama(Exception):
     pass
 
+# ═══ ANTI BERITA DOBEL (V6.1) ═══
+
+KATA_STOP_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
+                      'sudah oleh sebagai ada adalah kata ujar bilang menurut the and '
+                      'for with from that this have will been are was were their they '
+                      'about after'.split())
+
+def normalisasi_judul(s):
+    s = (s or '').lower()
+    s = re.sub(r'[^a-z0-9\s]', ' ', s)
+    return re.sub(r'\s+', ' ', s).strip()
+
+def kata_inti(judul):
+    return set(k for k in normalisasi_judul(judul).split()
+               if len(k) > 3 and k not in KATA_STOP_DOBEL)
+
+JUDUL_TERPAKAI = []  # judul berita hari ini (dari DB + sesi berjalan), sudah dinormalisasi
+
+def sudah_serupa(judul):
+    """True jika judul mirip dengan berita yang sudah tayang hari ini (anti dobel)."""
+    j = normalisasi_judul(judul)
+    if not j:
+        return False
+    ki = kata_inti(judul)
+    for t in JUDUL_TERPAKAI:
+        if not t:
+            continue
+        # Cek 1: kemiripan urutan huruf
+        if SequenceMatcher(None, j, t).ratio() >= AMBANG_MIRIP:
+            return True
+        # Cek 2: tumpang tindih kata inti (>=3 kata sama & >=70% dari set kecil)
+        kt = kata_inti(t)
+        if ki and kt:
+            sama = ki & kt
+            if len(sama) >= 3 and len(sama) / min(len(ki), len(kt)) >= 0.7:
+                return True
+    return False
+
+def muat_judul_hari_ini():
+    """Ambil semua judul berita yang tayang hari ini (WIB) dari database."""
+    out = []
+    try:
+        rows = rest_get('?select=title,created_at&order=created_at.desc&limit=300')
+        today = datetime.now(WIB).date()
+        for row in rows:
+            try:
+                d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00')).astimezone(WIB).date()
+                if d == today and row.get('title'):
+                    out.append(normalisasi_judul(row['title']))
+            except Exception:
+                pass
+    except Exception as e:
+        print('   ⚠️ Gagal memuat judul hari ini:', str(e)[:60])
+    return out
+
 # ═══ KONTEKS WAKTU DINAMIS (AI SELALU TAHU TANGGAL) ═══
 def tanggal_panjang(d):
     return HARI_ID[d.weekday()] + ' (' + str(d.day) + ' ' + BULAN_ID[d.month] + ' ' + str(d.year) + ')'
@@ -263,7 +315,7 @@ def konteks_waktu():
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV600MARKER — V6.0: berita HANYA hari ini/kemarin, breaking cerdas, narasumber bernama.
+KRAMAV610MARKER — V6.1: berita HANYA hari ini/kemarin, breaking cerdas, narasumber bernama.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -635,7 +687,7 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
     m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+(.*)$', isi, re.DOTALL)
     dateline = m.group(1).strip() if m else ''
     isi_bersih = m.group(2).strip() if m else isi
-    # ═══ FALLBACK GAMBAR WIKIMEDIA (sekarang benar-benar dipakai) ═══
+    # ═══ FALLBACK GAMBAR WIKIMEDIA ═══
     if not img and deskripsi_gambar:
         img = cari_gambar_wikimedia(deskripsi_gambar)
         if img:
@@ -651,6 +703,8 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
     if breaking:
         payload['breaking'] = True
     edge_call({'action': 'insert', 'payload': payload})
+    # Daftarkan judul ke daftar anti-dobel
+    JUDUL_TERPAKAI.append(normalisasi_judul(judul))
 
 # ═════════ SESI BREAKING — 3 SLOT ═════════
 
@@ -675,7 +729,7 @@ def sesi_breaking(today_urls, seen):
     print('   🌍 Kandidat breaking dunia layak: ' + str(len(skor_dun)))
 
     # Susun prioritas: slot1 = domestik terkuat, slot2 = dunia terkuat,
-    # slot3 = fleksibel (sisa terkuat, domestik didahulukan)
+    # slot3 = fleksibel (sisa terkuat)
     sisa = ([(c, s, 'dom') for c, s in skor_dom[1:]]
             + [(c, s, 'dun') for c, s in skor_dun[1:]])
     pilihan = []
@@ -689,8 +743,16 @@ def sesi_breaking(today_urls, seen):
     for label, c, asal in pilihan:
         if slots <= 0:
             break
+        # ANTI DOBEL: cek judul sumber sebelum panggil AI (hemat biaya)
+        if sudah_serupa(c['title']):
+            print('   🗑️ ' + label + ' — sumber dobel dengan berita yang sudah tayang, dilewati')
+            continue
         try:
             judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(c)
+            # ANTI DOBEL: cek judul hasil AI
+            if sudah_serupa(judul):
+                print('   🗑️ ' + label + ' — hasil AI dobel, dilewati: ' + judul[:50])
+                continue
             blob = (judul + ' ' + isi).lower()
             if asal == 'dun':
                 cat = 'internasional'
@@ -741,8 +803,14 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
         for c in kc:
             if kaltara_made >= kaltara_min or made >= need:
                 break
+            if sudah_serupa(c['title']):
+                print('   🗑️ Kaltara sumber dobel, dilewati: ' + c['title'][:50])
+                continue
             try:
                 judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(c)
+                if sudah_serupa(judul):
+                    print('   🗑️ Kaltara hasil AI dobel, dilewati: ' + judul[:50])
+                    continue
                 insert_news(judul, isi, ringkasan, cat, get_image(c['entry']),
                             c['link'], c['source'], status='published',
                             deskripsi_gambar=desc_gambar)
@@ -761,13 +829,24 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
         if made >= need:
             break
         items = g['items']
+        # ANTI DOBEL: jika topik ini sudah ditulis lewat jalur lain (mis. kaltara), skip
+        if any(it['link'] in today_urls for it in items):
+            continue
         top = items[0]
+        # ANTI DOBEL: cek judul sumber sebelum panggil AI (hemat biaya)
+        if sudah_serupa(top['title']):
+            print('   🗑️ Sumber dobel dengan berita yang sudah tayang, dilewati: ' + top['title'][:50])
+            continue
         try:
             if len(items) > 1:
                 judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_multi(items)
                 print('       🔗 topik dari ' + str(len(items)) + ' portal')
             else:
                 judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(top)
+            # ANTI DOBEL: cek judul hasil AI
+            if sudah_serupa(judul):
+                print('   🗑️ Hasil AI dobel, dilewati: ' + judul[:50])
+                continue
             insert_news(judul, isi, ringkasan, cat, get_image(top['entry']),
                         top['link'], top['source'], status='published',
                         deskripsi_gambar=desc_gambar)
@@ -799,13 +878,18 @@ def run_session():
     if tercabut:
         print('   (Slot breaking yang kosong otomatis diisi berita biasa N/I/D oleh web)')
 
+    # 2) Muat judul hari ini untuk mesin anti-dobel
+    JUDUL_TERPAKAI.clear()
+    JUDUL_TERPAKAI.extend(muat_judul_hari_ini())
+    print('   🧹 Anti-dobel: memuat ' + str(len(JUDUL_TERPAKAI)) + ' judul hari ini dari DB')
+
     today_urls = get_today_state()
     seen = set()
 
-    # 2) Patroli breaking — SELALU, 24 jam
+    # 3) Patroli breaking — SELALU, 24 jam
     total = sesi_breaking(today_urls, seen)
 
-    # 3) Kuota kategori — HANYA jika jam ini ada di jadwal
+    # 4) Kuota kategori — HANYA jika jam ini ada di jadwal
     quota = JADWAL_JAM.get(now.hour)
     if quota:
         print('\n📊 Kuota jam ' + str(now.hour).zfill(2) + ':00 WIB → '
@@ -823,7 +907,7 @@ def run_session():
     return total
 
 def main_sekali():
-    print('🐝 AI WARTAWAN V6.0 — MODE SEKALI JALAN (' + datetime.now(WIB).strftime('%H:%M WIB') + ')')
+    print('🐝 AI WARTAWAN V6.1 — MODE SEKALI JALAN (' + datetime.now(WIB).strftime('%H:%M WIB') + ')')
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
         print('❌ Kunci belum diisi!')
         return
@@ -835,7 +919,7 @@ def main_sekali():
 
 def main():
     print('=' * 60)
-    print(' 🐝 AI WARTAWAN KRAMANEWS V6.0 — LOOP TIAP 30 MENIT')
+    print(' 🐝 AI WARTAWAN KRAMANEWS V6.1 — LOOP TIAP 30 MENIT')
     print(' ⏰ Breaking: patroli 24 jam | Kategori: sesuai JADWAL_JAM (06–20 WIB)')
     print(' ✍️  Penulis: ' + AUTHOR_NAME)
     print(' 💡 Stop: Ctrl+C')
