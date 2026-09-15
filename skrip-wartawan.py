@@ -1,13 +1,23 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.4 (KALIBRASI WITA)
-#  Baru V6.4:
-#   • ZONA WAKTU DIUBAH WIB → WITA (UTC+8): sesuai pembaca Tarakan/Kaltara
-#   • Semua label jam "WIB" → "WITA"
-#   • Kuota kategori kini jatuh tepat pada jam WITA Tarakan
-#   • Tanggal dinamis AI mengikuti WITA (hari berganti 00:00 WITA)
-#   • Fitur tetap lengkap: anti dobel, anti lama, fix V6.2 (AI tidak
-#     menolak breaking valid), breaking 3 slot, expire 30 menit
-#   • Marker verifikasi: cari kata "KRAMAV640MARKER"
+#  AI WARTAWAN KRAMANEWS — V6.3 (KUALITAS ISI BERITA)
+#  Baru V6.3 (perbaikan kualitas — berbasis temuan pemilik):
+#   • TANGGAL PUBLIKASI RSS disuntikkan ke AI sebagai acuan waktu.
+#     AI WAJIB menuliskan tanggal kejadian (hari ini/kemarin) — frasa
+#     "belum dikonfirmasi waktu pasti kejadian" DILARANG KERAS dipakai.
+#   • NARASUMBER: nama ada di materi → wajib dikutip. Tidak ada →
+#     laporkan fakta langsung TANPA kalimat atribusi kosong
+#     ("dilaporkan", "menurut informasi", "diduga") — dan tetap
+#     DILARANG mengarang nama.
+#   • PANJANG MENGIKUTI MATERI: sumber kaya = 350-500 kata,
+#     sumber tipis = 200-300 kata — DILARANG menggembung dengan
+#     kalimat pengisi (penyebab berita "Jadwal Siaran" tanpa jadwal).
+#   • Berita berjudul/janji jadwal/daftar WAJIB memuat datanya yang
+#     ada di sumber; jika data tidak tersedia di sumber, JANGAN tulis
+#     judul yang menjanjikan data itu.
+#   • Semua fitur tetap: anti dobel, anti lama, fix V6.2 (tidak menolak
+#     breaking valid), breaking 3 slot, expire 30 menit, kuota per jam,
+#     Kaltara prioritas, ZONA WAKTU WITA (V6.4)
+#   • Marker verifikasi: cari kata "KRAMAV630MARKER"
 #  Mode 1 (loop 30 menit) : python3 skrip-wartawan.py
 #  Mode 2 (GitHub Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -33,10 +43,10 @@ REST_URL     = SUPABASE_URL + '/rest/v1/articles'
 EDGE_URL     = SUPABASE_URL + '/functions/v1/admin-ops'
 AUTHOR_NAME  = 'DT'
 
-# ═══ V6.4: ZONA WAKTU WITA (UTC+8) — WAKTU TARAKAN/KALTARA ═══
+# ═══ ZONA WAKTU WITA (UTC+8) — WAKTU TARAKAN/KALTARA (V6.4) ═══
 WITA = timezone(timedelta(hours=8))
 
-# ═══ PENGATURAN V6.4 ═══
+# ═══ PENGATURAN ═══
 BREAKING_MAX_SLOT   = 3      # slot breaking di hero
 BREAKING_UMUR_MENIT = 30     # breaking dicabut otomatis setelah 30 menit
 MAX_UMUR_BERITA_JAM = 30     # tolak materi RSS lebih tua dari 30 jam
@@ -246,11 +256,10 @@ DUNIA_KRITIS = [
     'plane crash', 'ferry sinks', 'train derailment', 'derailed',
     'resignation', 'overthrown', 'state of emergency', 'killed',
 ]
-
 class BeritaLama(Exception):
     pass
 
-# ═══ ANTI BERITA DOBEL (V6.4) ═══
+# ═══ ANTI BERITA DOBEL ═══
 
 KATA_STOP_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
                       'sudah oleh sebagai ada adalah kata ujar bilang menurut the and '
@@ -305,7 +314,7 @@ def muat_judul_hari_ini():
         print('   ⚠️ Gagal memuat judul hari ini:', str(e)[:60])
     return out
 
-# ═══ KONTEKS WAKTU DINAMIS (AI SELALU TAHU TANGGAL — WITA) ═══
+# ═══ KONTEKS WAKTU DINAMIS (WITA) ═══
 def tanggal_panjang(d):
     return HARI_ID[d.weekday()] + ' (' + str(d.day) + ' ' + BULAN_ID[d.month] + ' ' + str(d.year) + ')'
 
@@ -316,53 +325,78 @@ def konteks_waktu():
             'kemarin': tanggal_panjang(kemarin),
             'tahun': str(now.year)}
 
+# ═══ V6.3: TANGGAL PUBLIKASI RSS → FORMAT INDONESIA ═══
+def tanggal_publikasi_str(entry):
+    """Tanggal publikasi entry → 'Hari (Tanggal Bulan Tahun)' zona WITA. None jika tidak ada."""
+    t = entry.get('published_parsed') or entry.get('updated_parsed')
+    if not t:
+        return None
+    try:
+        pub = datetime.fromtimestamp(mktime(t), tz=timezone.utc).astimezone(WITA)
+        return tanggal_panjang(pub.date())
+    except Exception:
+        return None
+
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV640MARKER — V6.4: berita HANYA hari ini/kemarin, breaking cerdas, narasumber bernama.
+KRAMAV630MARKER — V6.3: berita berkualitas redaksi, tanggal konkret, narasumber jujur.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
-═══ ATURAN KEMUTAKHIRAN (PERBAIKAN V6.2 — BACA DENGAN SEKSAMA) ═══
+═══ ATURAN WAKTU (WAJIB — PERBAIKAN V6.3, PALING PENTING) ═══
 - HARI INI adalah """ + k['hari_ini'] + """.
 - KEMARIN adalah """ + k['kemarin'] + """.
 - Tahun berjalan: """ + k['tahun'] + """.
-- PENTING: Umur materi sumber SUDAH DIVERIFIKASI OLEH SISTEM — sumber dijamin
-  tidak lebih tua dari 30 jam. Jadi KAMU TIDAK PERLU MENEBAK umurnya.
-- ATURAN PENOLAKAN YANG BENAR:
-  ✅ TOLAK HANYA jika DI DALAM TEKS materi secara EKSPLISIT tertulis tanggal
-     peristiwa yang jelas lebih lama dari kemarin
-     (contoh tertulis: "12 Mei 2026", "tahun 2025", "bulan Maret lalu").
-  ❌ JANGAN PERNAH menolak hanya karena "tidak ada tanggal spesifik",
-     "tanggal tidak disebutkan", atau "tidak jelas kapan peristiwanya".
-     Banyak berita segar tidak mencantumkan tanggal di ringkasannya!
-  ✅ Jika tanggal eksplisit TIDAK ada di materi → LANJUTKAN MENULIS, dan di
-     dalam isi berita tulis keterangan wajar:
-     "belum dikonfirmasi waktu pasti kejadian" (atau sebutkan waktu hanya
-     jika memang tertulis di materi).
-- DILARANG KERAS menulis tanggal dari tahun sebelum """ + k['tahun'] + """ di dalam berita.
+- Setiap materi sumber yang kamu terima SUDAH DIVERIFIKASI SISTEM: segar,
+  maksimal 30 jam. TANGGAL PUBLIKASI sumber diberikan di pesan user.
+- WAJIB: kejadian dalam berita diberi waktu KONKRET — tulis
+  "pada [Hari (Tanggal Bulan Tahun)]" sesuai tanggal publikasi sumber
+  (yang berarti hari ini atau kemarin).
+  ✅ "...terjadi pada """ + k['hari_ini'] + """..."
+  ✅ "...dilansir Senin (14 September 2026)..." → tulis ulang jadi tanggal konkret.
+- DILARANG KERAS menulis frasa-frasa ini (atau variannya):
+  ❌ "belum dikonfirmasi waktu pasti kejadian"
+  ❌ "waktu kejadian belum dikonfirmasi"
+  ❌ "belum dikonfirmasi kapan peristiwa terjadi"
+  Karena tanggal sudah kamu pegang — tulis tanggalnya!
+- Jika materi menyebut waktu spesifik (pukul, pagi, malam), gabungkan dengan tanggal.
+- DILARANG mengarang JAM spesifik jika tidak tertulis di materi — cukup tanggalnya.
+- DILARANG KERAS menulis tanggal dari tahun sebelum """ + k['tahun'] + """.
+- TOLAK ({"tolak": ...}) HANYA jika ada tanggal peristiwa TERTULIS EKSPLISIT
+  di materi yang jelas lebih lama dari kemarin.
+
+ATURAN NARASUMBER (WAJIB — PERBAIKAN V6.3):
+- Jika materi sumber menyebut NAMA ORANG → WAJIB kutip dengan jabatan lengkap:
+  ✅ "Kepala BMKG, Dwikorita Karnawati, menjelaskan..."
+  ❌ "pihak BMKG menjelaskan..." (tanpa nama — DILARANG)
+- Jika materi TIDAK menyebut satu nama orang pun → LAPORKAN FAKTA LANGSUNG:
+  fokus pada apa, di mana, kapan, bagaimana — TANPA kalimat atribusi.
+- DILARANG KERAS memakai kalimat atribusi kosong pengganti narasumber:
+  ❌ "dilaporkan bahwa..."
+  ❌ "menurut informasi yang diterima..."
+  ❌ "diduga kuat..."
+  ❌ "kabarnya..."
+  ❌ "dikabarkan..."
+- DILARANG MENGARANG nama tokoh yang tidak ada di materi sumber.
+- Lebih baik paragraf fakta murni daripada kalimat atribusi kosong.
+
+ATURAN PANJANG (WAJIB — PERBAIKAN V6.3):
+- Target jumlah kata DIBERIKAN di pesan user — IKUTI target itu.
+- DILARANG KERAS menggembung berita dengan kalimat kosong, pengulangan,
+  atau basa-basi demi mencapai target kata.
+- Setiap kalimat WAJIB membawa informasi baru dari sumber.
+- Jika isi berita menjanjikan data (jadwal, daftar, angka, harga) yang TIDAK
+  ada di materi sumber → UBAH JUDUL agar tidak menjanjikan data itu.
+  Contoh: judul "Jadwal Siaran ..." WAJIB berisi jadwal di dalam berita;
+  jika sumber tidak memuat jadwal, jangan pakai judul "Jadwal ...".
 
 ATURAN GAYA PENULISAN (WAJIB):
 - Tulis seperti wartawan portal besar Indonesia. LAPOR BERITA LANGSUNG.
 - DILARANG KERAS menyebut nama portal, media, situs, atau sumber berita mana pun
   di dalam isi berita ("Berdasarkan laporan...", "Dilansir dari...", dll DILARANG).
 - JANGAN menjelaskan dari mana informasi didapat. Ceritakan langsung.
-
-ATURAN NARASUMBER & TOKOH (WAJIB):
-- Jika materi sumber menyebut NAMA ORANG (sumber, tokoh utama, pejabat yang
-  berbicara) → WAJIB SEBUTKAN NAMA LENGKAPNYA bersama jabatannya.
-  ✅ "Ketua Komisi III DPRD Kaltara, Aminuddin, mengatakan bahwa..."
-  ❌ "anggota DPRD mengatakan..." (tanpa nama — DILARANG)
-- Jika ada KUTIPAN LANGSUNG, salin dan tandai dengan nama yang mengatakannya.
-- HANYA jika materi SAMA SEKALI tidak menyebut nama orang, tulis tanpa kutipan tokoh.
-- DILARANG MENGARANG nama tokoh yang tidak ada di materi sumber.
-
-ATURAN WAKTU KEJADIAN (WAJIB):
-- Jika materi menyebut waktu kejadian: cantumkan HARI, TANGGAL, JAM
-  (contoh: "...terjadi pada """ + k['hari_ini'] + """ sekitar pukul 03.00 WITA...").
-- Jika materi TIDAK menyebut waktu: tulis "belum dikonfirmasi waktu pasti kejadian"
-  — INI BUKAN ALASAN MENOLAK, tetap tulis beritanya.
-- JANGAN mengarang tanggal. Format: Hari (Tanggal Bulan """ + k['tahun'] + """) pukul Jam:Menit WITA
+- Kalimat pendek, jelas, padat.
 
 ATURAN DATELINE (WAJIB):
 - Baris pertama isi berita diawali: "KOTA, PROVINSI/NEGARA - ".
@@ -379,12 +413,9 @@ ATURAN DATA & ANGKA (WAJIB):
 - Angka dari materi sumber WAJIB SALIN UTUH & PERSIS (contoh: "5,02 persen").
 - DILARANG menambah angka yang tidak ada di materi sumber.
 
-ATURAN PANJANG & ISI (WAJIB):
-- 350-500 kata (5-7 paragraf). Paragraf 1: inti. 2-4: detail, angka, kutipan.
-- 5-6: konteks. Terakhir: penutup netral. Kalimat pendek, jelas.
-
 ATURAN JUDUL (WAJIB):
 - Judul ORISINAL maksimal 10 kata.
+- Judul HARUS mencerminkan isi berita — tidak menjanjikan data yang tidak ditulis.
 
 ATURAN ETIKA FAKTA (WAJIB):
 - HANYA fakta dari materi sumber. DILARANG mengarang fakta, nama, atau angka.
@@ -398,9 +429,10 @@ ATURAN GAMBAR (WAJIB - deskripsi_gambar):
 FORMAT JAWABAN — HANYA JSON valid tanpa teks lain:
 {"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "...",
  "deskripsi_gambar": "visual keywords",
- "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """) pukul Jam:Menit WITA atau 'belum dikonfirmasi waktu pasti kejadian'"}
-INGAT: gunakan {"tolak": ...} HANYA jika tanggal peristiwa TERTULIS EKSPLISIT
-di materi dan jelas lebih lama dari kemarin. Tanpa bukti tertulis = TULIS BERITA."""
+ "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """)"}
+INGAT: frasa "belum dikonfirmasi waktu pasti kejadian" DILARANG — tulis
+tanggalnya dari TANGGAL PUBLIKASI yang diberikan. Tanpa bukti tertulis
+peristiwa lama = TULIS BERITA."""
 
 # ═════════ FUNGSI BANTU ═════════
 
@@ -544,8 +576,10 @@ def collect_candidates(sources, today_urls, seen):
                 title = t2
                 if portal and portal != 'Google News':
                     sname = portal
+            # ═══ V6.3: tangkap tanggal publikasi untuk disuntik ke AI ═══
             out.append({'title': title, 'summary': summary, 'link': link,
-                        'source': sname, 'entry': entry})
+                        'source': sname, 'entry': entry,
+                        'tgl_pub': tanggal_publikasi_str(entry)})
     return out
 
 def match_articles(candidates):
@@ -595,43 +629,84 @@ def ai_write(user_content, timeout=150):
     ringkasan = obj.get('ringkasan', '').strip()
     waktu = (obj.get('waktu_kejadian') or '').strip()
     gambar = (obj.get('deskripsi_gambar') or '').strip()
+    # ═══ V6.3: PEMERIKSA KUALITAS — blok kalimat pengisi ═══
+    pola_larang = ['belum dikonfirmasi waktu', 'waktu kejadian belum',
+                   'belum dikonfirmasi kapan', 'menurut informasi yang diterima',
+                   'diduga kuat', 'kabarnya', 'dikabarkan']
+    isi_lower = isi.lower()
+    if any(p in isi_lower for p in pola_larang):
+        raise Exception('diblokir pemeriksa V6.3: frasa larangan muncul di isi berita')
     # URUTAN KONSISTEN: judul, isi, ringkasan, WAKTU, GAMBAR
     return judul, isi, ringkasan, waktu, gambar
 
+def target_kata(summary):
+    """V6.3: panjang berita mengikuti kekayaan materi sumber."""
+    if len(summary or '') < 500:
+        return ('200-300 kata (3-5 paragraf) — sumber ringkas, tulis PADAT, '
+                'dilarang menggembung dengan kalimat pengisi.')
+    return '350-500 kata (5-7 paragraf).'
+
 def ai_rewrite_single(c):
     k = konteks_waktu()
+    tgl = c.get('tgl_pub')
+    if tgl:
+        baris_tgl = ('TANGGAL PUBLIKASI SUMBER: ' + tgl + ' — sumber terverifikasi segar.\n'
+                     'WAJIB: tulis kejadian dengan tanggal itu di dalam berita, contoh: '
+                     '"pada ' + tgl + '" (ini hari ini atau kemarin).\n')
+    else:
+        baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia — namun sistem sudah '
+                     'memverifikasi umur sumber maksimal 30 jam.\n'
+                     'WAJIB: tulis kejadian sebagai peristiwa TERKINI (hari ini atau '
+                     'kemarin: ' + k['hari_ini'] + ' / ' + k['kemarin'] + ') dengan tanggal konkret.\n')
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
-            'UMUR SUMBER: sudah diverifikasi sistem, tidak lebih dari 30 jam — AMAN DIPROSES.\n\n'
+            + baris_tgl +
+            'TARGET PANJANG: ' + target_kata(c.get('summary', '')) + '\n\n'
             'MATERI SUMBER:\n'
             'Judul asli: ' + c['title'] + '\n'
             'Ringkasan: ' + c['summary'] + '\n\n'
-            'Tulis ulang sesuai SEMUA aturan. INGAT ATURAN PENOLAKAN: tolak HANYA jika '
-            'ada tanggal peristiwa TERTULIS EKSPLISIT di materi yang jelas lebih lama dari '
-            'kemarin. Jika tanggal tidak disebutkan di materi, JANGAN tolak — tulis beritanya '
-            'dengan keterangan "belum dikonfirmasi waktu pasti kejadian".\n\n'
-            'Jika melanjutkan: sebutkan NAMA LENGKAP tokoh/narasumber, jangan sebut '
-            'portal/media sumber, awali isi berita dengan dateline lokasi, salin utuh semua '
-            'angka, dan isi deskripsi_gambar dengan kata kunci visual sesuai topik.')
+            'Tulis ulang sesuai SEMUA aturan:\n'
+            '- TANGGAL KONKRET di isi berita (dari tanggal publikasi di atas) — '
+            'DILARANG frasa "belum dikonfirmasi waktu pasti kejadian".\n'
+            '- Nama tokoh di materi WAJIB dikutip dengan jabatan; jika tidak ada nama, '
+            'laporkan fakta langsung tanpa kalimat atribusi kosong ("dilaporkan", '
+            '"menurut informasi") — dilarang mengarang nama.\n'
+            '- Setiap kalimat membawa informasi baru — dilarang basa-basi pengisi.\n'
+            '- Jangan sebut portal/media sumber, awali dengan dateline lokasi, '
+            'salin utuh semua angka, isi deskripsi_gambar dengan kata kunci visual.')
     return ai_write(user)
 
 def ai_rewrite_multi(items):
     k = konteks_waktu()
+    tgl = None
+    for it in items:
+        if it.get('tgl_pub'):
+            tgl = it['tgl_pub']
+            break
+    if tgl:
+        baris_tgl = ('TANGGAL PUBLIKASI SUMBER: ' + tgl + ' — sumber terverifikasi segar.\n'
+                     'WAJIB: tulis kejadian dengan tanggal itu di dalam berita.\n')
+    else:
+        baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia — sistem sudah memverifikasi '
+                     'umur sumber maksimal 30 jam. Tulis kejadian sebagai peristiwa TERKINI '
+                     '(' + k['hari_ini'] + ' / ' + k['kemarin'] + ') dengan tanggal konkret.\n')
+    total_ringkasan = sum(len(it.get('summary', '')) for it in items[:4])
     parts = []
     for i, it in enumerate(items[:4], 1):
         parts.append('[MATERI ' + str(i) + ']\n'
                      'Judul: ' + it['title'] + '\nIsi: ' + it['summary'][:1500])
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
-            'UMUR SUMBER: sudah diverifikasi sistem, tidak lebih dari 30 jam — AMAN DIPROSES.\n\n'
+            + baris_tgl +
+            'TARGET PANJANG: ' + target_kata('x' * total_ringkasan) + '\n\n'
             'Berikut beberapa materi tentang topik yang SAMA:\n\n'
             + '\n\n'.join(parts) +
-            '\n\nGabungkan menjadi SATU berita KramaNews (350-500 kata) sesuai SEMUA aturan. '
-            'INGAT ATURAN PENOLAKAN: tolak HANYA jika ada tanggal peristiwa TERTULIS '
-            'EKSPLISIT di materi yang jelas lebih lama dari kemarin. Jika tanggal tidak '
-            'disebutkan, JANGAN tolak — tulis beritanya dengan keterangan '
-            '"belum dikonfirmasi waktu pasti kejadian".\n\n'
-            'Jika melanjutkan: sebutkan NAMA LENGKAP tokoh, jangan sebut media sumber, '
-            'awali dengan dateline, salin utuh angka, isi deskripsi_gambar dengan kata '
-            'kunci visual.')
+            '\n\nGabungkan menjadi SATU berita KramaNews sesuai SEMUA aturan:\n'
+            '- TANGGAL KONKRET di isi berita — dilarang frasa "belum dikonfirmasi waktu '
+            'pasti kejadian".\n'
+            '- Nama tokoh wajib dikutip dengan jabatan; tanpa nama = fakta langsung tanpa '
+            'atribusi kosong ("dilaporkan", "menurut informasi") — dilarang mengarang nama.\n'
+            '- Setiap kalimat membawa informasi baru — dilarang basa-basi pengisi.\n'
+            '- Jangan sebut media sumber, awali dengan dateline, salin utuh angka, '
+            'isi deskripsi_gambar dengan kata kunci visual.')
     return ai_write(user, timeout=180)
 
 # ═══ SKOR BREAKING (anti dominasi gempa) ═══
@@ -928,7 +1003,7 @@ def run_session():
     return total
 
 def main_sekali():
-    print('🐝 AI WARTAWAN V6.4 — MODE SEKALI JALAN (' + datetime.now(WITA).strftime('%H:%M WITA') + ')')
+    print('🐝 AI WARTAWAN V6.3 — MODE SEKALI JALAN (' + datetime.now(WITA).strftime('%H:%M WITA') + ')')
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
         print('❌ Kunci belum diisi!')
         return
@@ -940,7 +1015,7 @@ def main_sekali():
 
 def main():
     print('=' * 60)
-    print(' 🐝 AI WARTAWAN KRAMANEWS V6.4 — LOOP TIAP 30 MENIT (WITA)')
+    print(' 🐝 AI WARTAWAN KRAMANEWS V6.3 — LOOP TIAP 30 MENIT (WITA)')
     print(' ⏰ Breaking: patroli 24 jam | Kategori: sesuai JADWAL_JAM (06–20 WITA)')
     print(' ✍️  Penulis: ' + AUTHOR_NAME)
     print(' 💡 Stop: Ctrl+C')
