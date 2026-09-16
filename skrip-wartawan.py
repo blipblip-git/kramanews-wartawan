@@ -1,24 +1,25 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.3.3 (SINDROM PENYANGKALAN DIHABISI)
-#  Baru V6.3.3 (audit pemilik: 3 berita berbeda = 3 kalimat
-#  penyangkalan narasumber yang sama — tidak profesional):
-#   • HAPUS aturan "tulis eksplisit identitas tidak disebutkan"
-#     (V6.3.2) — ternyata menciptakan kebiasaan baru: AI menggembung
-#     penyangkalan jadi 2 kalimat pengisi di tengah berita.
-#   • ATURAN BARU: jika sumber tidak menyebut nama narasumber →
-#     cukup laporkan fakta langsung, TANPA kalimat APA PUN tentang
-#     ketiadaan narasumber/identitas/laporan — berita profesional
-#     tidak pernah membahas ketiadaan narasumbernya.
-#   • POLA_LARANG DIPERKUAT (polisi otomatis ai_write): frasa baru
-#     diblokir — "identitas narasumber", "tidak disebutkan dalam
-#     laporan", "tanpa menyebut nama", "dalam laporan yang beredar",
-#     "dalam laporan yang dihimpun", "materi yang tersedia".
-#   • Larangan mengarang nama TETAP MUTLAK.
-#   • Semua fitur V6.3.2 tetap: scraping 3 lapis (Direct → Resolver
+#  AI WARTAWAN KRAMANEWS — V6.3.4 (NAMA RESMI + GAMBAR BERSIH + PERLUASAN)
+#  Baru V6.3.4 (3 misi sekaligus — permintaan pemilik):
+#   • NAMA PUBLIK INSTANSI RESMI (fix berita KPK 8 tersangka):
+#     Nama yang diumumkan instansi resmi (KPK, Kejaksaan, Polri,
+#     Pengadilan, BMKG, dll) = informasi publik hukum → WAJIB
+#     disebut LENGKAP & BERANI (nama semua tersangka/terpidana).
+#     DILARANG kabur ke "seorang pengusaha"/"bos properti" jika
+#     nama aslinya ada di sumber. Larangan mengarang nama tetap.
+#   • FILTER GAMBAR SAMPAH (Level 1): URL gambar yang mengandung
+#     pola logo/ikon/banner/iklan/dimensi kecil (<400px) dibuang
+#     → otomatis jatuh ke Wikimedia via deskripsi_gambar AI.
+#   • PERLUASAN GOOGLE NEWS +10 PROVINSI: Kalbar, Kalsel, Kalteng,
+#     Bali, NTB, NTT, Papua, Maluku, Gorontalo, Kepri/Batam
+#     (kualitas seleksi naik — kuota tetap sama).
+#   • Log scraping gagal diringkas untuk pemantauan.
+#   • Semua fitur V6.3.3 tetap: scraping 3 lapis (Direct → Resolver
 #     Google News → Jina Reader → RSS), aturan spesifisitas lokasi,
-#     jadwal & acara, anti-plagiat, anti dobel, anti lama, fix V6.2,
-#     breaking 3 slot, expire 30 menit, kuota per jam WITA, Kaltara.
-#   • Marker verifikasi: cari kata "KRAMAV633MARKER"
+#     narasumber lembaga jujur, polisi frasa V6.3.3, jadwal & acara,
+#     anti-plagiat, anti dobel, anti lama, fix V6.2, breaking 3 slot,
+#     expire 30 menit, kuota per jam WITA, Kaltara prioritas.
+#   • Marker verifikasi: cari kata "KRAMAV634MARKER"
 #  Mode 1 (loop 30 menit) : python3 skrip-wartawan.py
 #  Mode 2 (GitHub Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -58,6 +59,7 @@ AMBANG_MIRIP        = 0.50   # judul dianggap DOBEL jika kemiripan >= ini (0-1)
 SCRAPER_TIMEOUT     = 12     # detik maksimal scraping 1 halaman
 SCRAPE_MIN_KARAKTER = 600    # hasil scraping dianggap "kaya" jika >= ini
 JINA_READER         = 'https://r.jina.ai/'  # tenaga kedua anti-blokir (gratis)
+GAMBAR_MIN_LEBAR    = 400    # gambar lebih kecil dari ini = sampah (logo/thumbnail)
 
 HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
@@ -92,6 +94,15 @@ UA_LIST = [
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
 ]
 
+# ═══ V6.3.4: POLA GAMBAR SAMPAH (logo/iklan/thumbnail kecil) ═══
+GAMBAR_SAMPAH_POLA = [
+    'logo', 'icon', 'icon_', 'banner', 'ads', 'advert', 'sponsor',
+    'placeholder', 'default', 'no-image', 'noimage', 'avatar',
+    'thumb_100', 'thumb_150', 'thumb_200', '/100x', '/150x', '/200x',
+    '100x100', '150x150', '200x200', '100-', '150-', '200-',
+    'profile', 'favicon', 'sprite', 'watermark', 'blank', 'pixel',
+]
+
 def GN(q, lang='id', label=None):
     # when:1d → HANYA berita 1 hari terakhir (anti berita lama)
     if lang == 'en':
@@ -116,22 +127,49 @@ HUNT = {
         GN('Gibran Rakabuming', 'id', 'Google News Wapres Gibran'),
     ],
     'daerah': [
+        # ── Kaltara/Kaltim (prioritas pemilik) ──
         RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
         RSSF('https://kaltim.tribunnews.com/rss', 'Tribun Kaltim'),
+        GN('Tarakan', 'id', 'Google News Tarakan'),
+        GN('Kaltara', 'id', 'Google News Kaltara'),
+        # ── Jawa ──
         RSSF('https://jatim.tribunnews.com/rss', 'Tribun Jatim'),
         RSSF('https://jateng.tribunnews.com/rss', 'Tribun Jateng'),
         RSSF('https://jabar.tribunnews.com/rss', 'Tribun Jabar'),
         RSSF('https://dki.tribunnews.com/rss', 'Tribun DKI Jakarta'),
-        RSSF('https://sumut.tribunnews.com/rss', 'Tribun Sumut'),
-        RSSF('https://sumsel.tribunnews.com/rss', 'Tribun Sumsel'),
-        RSSF('https://sulsel.tribunnews.com/rss', 'Tribun Sulsel'),
-        GN('Tarakan', 'id', 'Google News Tarakan'),
-        GN('Kaltara', 'id', 'Google News Kaltara'),
         GN('Surabaya', 'id', 'Google News Surabaya'),
         GN('Semarang', 'id', 'Google News Semarang'),
         GN('Bandung', 'id', 'Google News Bandung'),
+        # ── Sumatera ──
+        RSSF('https://sumut.tribunnews.com/rss', 'Tribun Sumut'),
+        RSSF('https://sumsel.tribunnews.com/rss', 'Tribun Sumsel'),
         GN('Medan', 'id', 'Google News Medan'),
+        GN('Palembang', 'id', 'Google News Palembang'),
+        GN('Pekanbaru', 'id', 'Google News Pekanbaru'),
+        GN('Padang', 'id', 'Google News Padang'),
+        # ── Sulawesi ──
+        RSSF('https://sulsel.tribunnews.com/rss', 'Tribun Sulsel'),
         GN('Makassar', 'id', 'Google News Makassar'),
+        GN('Manado', 'id', 'Google News Manado'),
+        # ── V6.3.4: PERLUASAN +10 PROVINSI ──
+        GN('Kalimantan Barat', 'id', 'Google News Kalbar'),
+        GN('Pontianak', 'id', 'Google News Pontianak'),
+        GN('Kalimantan Selatan', 'id', 'Google News Kalsel'),
+        GN('Banjarmasin', 'id', 'Google News Banjarmasin'),
+        GN('Kalimantan Tengah', 'id', 'Google News Kalteng'),
+        GN('Palangka Raya', 'id', 'Google News Palangka Raya'),
+        GN('Bali', 'id', 'Google News Bali'),
+        GN('Denpasar', 'id', 'Google News Denpasar'),
+        GN('Nusa Tenggara Barat', 'id', 'Google News NTB'),
+        GN('Mataram', 'id', 'Google News Mataram'),
+        GN('Nusa Tenggara Timur', 'id', 'Google News NTT'),
+        GN('Kupang', 'id', 'Google News Kupang'),
+        GN('Papua', 'id', 'Google News Papua'),
+        GN('Jayapura', 'id', 'Google News Jayapura'),
+        GN('Maluku', 'id', 'Google News Maluku'),
+        GN('Ambon', 'id', 'Google News Ambon'),
+        GN('Gorontalo', 'id', 'Google News Gorontalo'),
+        GN('Batam', 'id', 'Google News Batam'),
     ],
     'internasional': [
         RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
@@ -240,7 +278,9 @@ INDO_GEO = ['indonesia', 'bmkg', 'aceh', 'sumatera', 'sumatra', 'jawa', 'kaliman
             'bandung', 'surabaya', 'yogyakarta', 'jayapura', 'bengkulu', 'lampung',
             'palu', 'mamuju', 'cilacap', 'garut', 'cianjur', 'tasikmalaya',
             'jember', 'lumajang', 'semarang', 'banggai', 'tarakan', 'kaltara',
-            'nunukan', 'bulungan', 'malinau']
+            'nunukan', 'bulungan', 'malinau', 'pontianak', 'kalbar', 'banjarmasin',
+            'kalsel', 'kalteng', 'palangka raya', 'denpasar', 'mataram', 'kupang',
+            'gorontalo', 'batam', 'pekanbaru', 'palembang']
 
 DOM_KRITIS = [
     'tsunami', 'erupsi', 'gunung meletus', 'banjir bandang', 'banjir besar',
@@ -355,7 +395,7 @@ def _bersihkan_html_artikel(html):
     return re.sub(r'\s+', ' ', ' '.join(baris_ok)).strip()[:6000]
 
 def scrape_artikel(url):
-    """RANTAI 3 LAPIS (V6.3.2):
+    """RANTAI 3 LAPIS:
     1. Direct fetch artikel asli (dengan resolver Google News)
     2. Jina Reader (lolos WAF/anti-bot)
     3. Gagal semua → '' (caller fallback ke ringkasan RSS)
@@ -393,8 +433,10 @@ def ambil_materi_kaya(c):
     """Scraping artikel asli; gagal → fallback ringkasan RSS. Return (materi, kaya_bool)."""
     scraped = scrape_artikel(c.get('link', ''))
     if scraped and len(scraped) >= SCRAPE_MIN_KARAKTER:
+        STAT_SCRAPE['ok'] += 1
         print('       📥 Scraping artikel asli: ' + str(len(scraped)) + ' karakter')
         return scraped, True
+    STAT_SCRAPE['gagal'] += 1
     print('       ↩️ Scraping gagal/pendek — pakai ringkasan RSS')
     return c.get('summary', ''), False
 
@@ -473,7 +515,7 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV633MARKER — V6.3.3: berita bersih, spesifik, tanpa kalimat penyangkalan.
+KRAMAV634MARKER — V6.3.4: nama publik instansi resmi disebut berani, gambar tidak dibahas.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -509,33 +551,51 @@ ATURAN SPESIFISITAS LOKASI (WAJIB):
      jika sumber menyebut nama daerahnya)
 - Jika sumber menyebut nama provinsi/kota yang terdampak → WAJIB
   dituliskan semua (atau minimal 3 yang terpenting) di dalam berita.
-- Frasa kabur seperti "sejumlah daerah", "beberapa wilayah", "berbagai
-  tempat" DILARANG digunakan sebagai pengganti nama daerah yang ada
-  di materi sumber.
+- Frasa kabur seperti "sejumlah daerah", "beberapa wilayah" DILARANG
+  sebagai pengganti nama daerah yang ada di materi sumber.
 - Jika sumber MEMANG tidak menyebut daerah spesifik → boleh gunakan
   frasa umum, jangan mengarang nama daerah.
 
-ATURAN NARASUMBER (WAJIB — DIREVISI TOTAL V6.3.3):
+ATURAN NAMA PUBLIK INSTANSI RESMI (WAJIB — BARU V6.3.4, PALING PENTING):
+- Nama orang yang DIUMUMKAN RESMI oleh instansi pemerintah/hukum
+  (KPK, Kejaksaan, Polri, Bareskrim, Pengadilan, BMKG, BNPB,
+  kementerian, pemda) = INFORMASI PUBLIK HUKUM.
+- Jika materi sumber menyebut nama-nama tersebut → WAJIB SEBUTKAN
+  SEMUA secara LENGKAP dan BERANI, satu per satu dengan jabatannya:
+  ✅ "Kedelapan tersangka yang ditetapkan KPK antara lain [Nama Lengkap 1]
+     selaku Dirjen ATR/BPN, [Nama Lengkap 2], serta [Nama Lengkap 3],
+     pemilik grup properti..."
+  ❌ "Di antaranya adalah Dirjen ATR/BPN, orang kepercayaan Menteri,
+     serta bos properti..." (menyembunyikan nama yang jelas ada di
+     sumber — DILARANG KERAS)
+- Berlaku untuk: tersangka, terpidana, buron, pejabat yang ditetapkan,
+  penerima penghargaan/sanksi, atlet yang diumumkan resmi.
+- KEBERANIAN menyebut nama resmi = keberanian redaksi kredibel.
+- Tetap DILARANG MENGARANG nama yang TIDAK ada di materi sumber:
+  jika sumber hanya menulis jabatan tanpa nama (dan memang tidak ada
+  namanya) → salin apa adanya.
+
+ATURAN NARASUMBER (WAJIB — ATURAN EMAS):
 - Jika materi menyebut NAMA ORANG → WAJIB kutip dengan jabatan lengkap:
   ✅ "Ketua DPRD Kaltara, [Nama], menyatakan..."
   ❌ "DPRD Kaltara menyatakan..." (tanpa nama, padahal nama ada — DILARANG)
 - Jika materi TIDAK menyebut nama orang → CUKUP LAPORKAN FAKTA
   LANGSUNG: apa, di mana, kapan, bagaimana. SELESAI.
-- ═══ ATURAN EMAS V6.3.3 ═══
-  DILARANG KERAS menulis KALIMAT APA PUN yang membahas KETIADAAN
+- DILARANG KERAS menulis KALIMAT APA PUN yang membahas KETIADAAN
   narasumber/identitas/sumber — berita profesional TIDAK PERNAH
   mengumumkan kekurangan narasumbernya di tengah berita:
   ❌ "identitas narasumber tidak disebutkan dalam laporan"
-  ❌ "identitas narasumber tidak disebutkan secara eksplisit"
   ❌ "tidak disebutkan nama pejabat maupun petugas yang berwenang"
   ❌ "rincian tidak dapat dipastikan dari materi yang tersedia"
-  ❌ "keterangan disampaikan tanpa menyebut nama pejabat"
-  Kalimat-kalimat semacam itu = KALIMAT SAMPAH pengisi, dan akan
-  MENYEBABKAN BERITA DITOLAK SISTEM.
+  Kalimat semacam itu = KALIMAT SAMPAH, akan MENYEBABKAN BERITA
+  DITOLAK SISTEM.
 - DILARANG KERAS frasa atribusi kosong: "dilaporkan bahwa...",
   "menurut informasi yang diterima...", "diduga kuat...", "kabarnya...",
   "dikabarkan...".
-- DILARANG MENGARANG nama tokoh yang tidak ada di materi sumber.
+- DILARANG menggunakan deskripsi kabur pengganti nama orang:
+  ❌ "seorang pengusaha...", "seorang pengamat...", "seorang tokoh...",
+     "seorang pejabat tinggi...", "seorang bos..." — JIKA NAMA ASLINYA
+     ADA di materi (melanggar aturan nama publik di atas).
 
 ATURAN ANTI-PLAGIAT (WAJIB — MATERI KAYA):
 - Materi sumber hanyalah FAKTA mentah — tulis ulang dengan kalimatmu sendiri.
@@ -578,6 +638,7 @@ ATURAN JUDUL (WAJIB):
 
 ATURAN ETIKA FAKTA (WAJIB):
 - HANYA fakta dari materi sumber. DILARANG mengarang fakta, nama, atau angka.
+- KECUALI: nama publik instansi resmi (aturan di atas) WAJIB ditulis lengkap.
 
 ATURAN GAMBAR (WAJIB - deskripsi_gambar):
 - Isi "deskripsi_gambar" dengan 3-6 kata kunci bahasa Inggris yang menggambarkan
@@ -589,8 +650,9 @@ FORMAT JAWABAN — HANYA JSON valid tanpa teks lain:
 {"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "...",
  "deskripsi_gambar": "visual keywords",
  "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """)"}
-INGAT: frasa tentang ketiadaan narasumber DILARANG — cukup laporkan
-fakta langsung. Tanpa bukti tertulis peristiwa lama = TULIS BERITA."""
+INGAT: nama publik instansi resmi WAJIB disebut lengkap. Frasa tentang
+ketiadaan narasumber DILARANG. Tanpa bukti tertulis peristiwa lama =
+TULIS BERITA."""
 
 # ═════════ FUNGSI BANTU ═════════
 
@@ -660,15 +722,42 @@ def expire_breaking(menit):
             print('   ⚠️ expire:', str(e)[:60])
     return n
 
+# ═══ V6.3.4: GAMBAR BERSIH — FILTER SAMPAH ═══
+
+def gambar_sampah(url):
+    """True jika URL gambar terindikasi logo/iklan/thumbnail kecil (V6.3.4)."""
+    if not url:
+        return True
+    low = url.lower()
+    if any(p in low for p in GAMBAR_SAMPAH_POLA):
+        return True
+    # Cari dimensi di URL (mis: -300x200.jpg, 320x240.png)
+    m = re.search(r'(\d{2,4})x(\d{2,4})', low)
+    if m:
+        try:
+            if int(m.group(1)) < GAMBAR_MIN_LEBAR:
+                return True
+        except Exception:
+            pass
+    return False
+
 def get_image(entry):
+    """V6.3.4: kembalikan URL gambar yang BERSIH saja.
+    Gambar sampah (logo/iklan/thumbnail kecil) → '' → otomatis
+    jatuh ke Wikimedia via deskripsi_gambar AI."""
+    kandidat = []
     mc = entry.get('media_content')
     if mc and mc[0].get('url'):
-        return mc[0]['url']
+        kandidat.append(mc[0]['url'])
     mt = entry.get('media_thumbnail')
     if mt and mt[0].get('url'):
-        return mt[0]['url']
+        kandidat.append(mt[0]['url'])
     if entry.get('enclosures'):
-        return entry['enclosures'][0].get('href', '')
+        kandidat.append(entry['enclosures'][0].get('href', ''))
+    for u in kandidat:
+        u = (u or '').strip()
+        if u and not gambar_sampah(u):
+            return u
     return ''
 
 def clean(text, limit=2000):
@@ -784,7 +873,7 @@ def ai_write(user_content, timeout=150):
     ringkasan = obj.get('ringkasan', '').strip()
     waktu = (obj.get('waktu_kejadian') or '').strip()
     gambar = (obj.get('deskripsi_gambar') or '').strip()
-    # ═══ PEMERIKSA KUALITAS V6.3.3 — DIPERKUAT ═══
+    # ═══ PEMERIKSA KUALITAS V6.3.4 — DIPERLUAS ═══
     pola_larang = [
         # frasa waktu yang dilarang (warisan V6.3)
         'belum dikonfirmasi waktu', 'waktu kejadian belum',
@@ -792,7 +881,7 @@ def ai_write(user_content, timeout=150):
         # frasa atribusi kosong
         'menurut informasi yang diterima', 'diduga kuat',
         'kabarnya', 'dikabarkan',
-        # ═══ V6.3.3: sindrom penyangkalan narasumber ═══
+        # sindrom penyangkalan narasumber (V6.3.3)
         'identitas narasumber',
         'tidak disebutkan dalam laporan',
         'tidak disebutkan secara eksplisit',
@@ -803,11 +892,14 @@ def ai_write(user_content, timeout=150):
         'materi yang tersedia',
         'tidak dapat dipastikan',
         'keterangan disampaikan tanpa',
+        # ═══ V6.3.4: kabur padahal nama publik ada ═══
+        'seorang pengusaha', 'seorang pengamat', 'seorang pejabat tinggi',
+        'seorang tokoh', 'seorang bos', 'seorang pejabat',
     ]
     isi_lower = isi.lower()
     tertangkap = [p for p in pola_larang if p in isi_lower]
     if tertangkap:
-        raise Exception('diblokir pemeriksa V6.3.3: ' + str(tertangkap[0])[:50])
+        raise Exception('diblokir pemeriksa V6.3.4: ' + str(tertangkap[0])[:50])
     # URUTAN KONSISTEN: judul, isi, ringkasan, WAKTU, GAMBAR
     return judul, isi, ringkasan, waktu, gambar
 
@@ -841,14 +933,15 @@ def ai_rewrite_single(c):
             'Tulis ulang sesuai SEMUA aturan:\n'
             '- TANGGAL KONKRET di isi berita — dilarang frasa "belum dikonfirmasi '
             'waktu pasti kejadian".\n'
-            '- SPESIFIK: peristiwa wilayah terdampak WAJIB menyebut nama daerah yang '
-            'tertulis di materi (dilarang "sejumlah daerah" jika nama daerah ada).\n'
-            '- Kutipan lembaga (DPRD/BMKG/dll): sebut NAMA orangnya jika ada di materi. '
-            'Jika tidak ada nama: cukup laporkan fakta langsung — DILARANG menulis '
-            'kalimat apa pun tentang ketiadaan narasumber/identitas (berita akan '
-            'DITOLAK sistem).\n'
+            '- NAMA PUBLIK INSTANSI RESMI (tersangka/terpidana/pejabat yang '
+            'diumumkan KPK/Kejaksaan/Polri/dll): sebut SEMUA namanya lengkap dan '
+            'BERANI — dilarang menyembunyikan dengan jabatan/keterangan kabur.\n'
+            '- SPESIFIK: wilayah terdampak WAJIB menyebut nama daerah yang tertulis '
+            'di materi (dilarang "sejumlah daerah" jika nama daerah ada).\n'
+            '- Kutipan lembaga (DPRD/BMKG/dll): sebut NAMA orangnya jika ada di '
+            'materi; jika tidak ada, cukup laporkan fakta langsung — DILARANG '
+            'menulis kalimat tentang ketiadaan narasumber (berita DITOLAK sistem).\n'
             '- ACARA/LAGA lain: tulis tanggalnya jika tertulis; frasa relatif salin apa adanya.\n'
-            '- Nama tokoh wajib dikutip dengan jabatan; tanpa nama = fakta langsung.\n'
             '- Tulis ulang dengan kalimatmu sendiri — dilarang menjiplak kalimat sumber.\n'
             '- Jangan sebut portal/media sumber, awali dengan dateline lokasi, '
             'salin utuh semua angka, isi deskripsi_gambar dengan kata kunci visual.')
@@ -884,10 +977,10 @@ def ai_rewrite_multi(items):
             '\n\nGabungkan menjadi SATU berita KramaNews sesuai SEMUA aturan:\n'
             '- TANGGAL KONKRET di isi berita — dilarang frasa "belum dikonfirmasi '
             'waktu pasti kejadian".\n'
+            '- NAMA PUBLIK INSTANSI RESMI: sebut semua namanya lengkap dan berani.\n'
             '- SPESIFIK: wilayah terdampak wajib menyebut nama daerah dari materi.\n'
             '- Kutipan lembaga: sebut nama orangnya jika ada; jika tidak, cukup '
-            'laporkan fakta langsung — DILARANG menulis kalimat tentang ketiadaan '
-            'narasumber/identitas (berita akan DITOLAK sistem).\n'
+            'laporkan fakta langsung — dilarang kalimat tentang ketiadaan narasumber.\n'
             '- ACARA/LAGA: tanggal jika tertulis; frasa relatif salin apa adanya.\n'
             '- Tulis ulang dengan kalimatmu sendiri — dilarang menjiplak kalimat sumber.\n'
             '- Jangan sebut media sumber, awali dengan dateline, salin utuh angka, '
@@ -1133,6 +1226,8 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
 
 # ═════════ SESI UTAMA ═════════
 
+STAT_SCRAPE = {'ok': 0, 'gagal': 0}
+
 def run_session():
     now = datetime.now(WITA)
     print('\n' + '=' * 60)
@@ -1146,6 +1241,9 @@ def run_session():
     JUDUL_TERPAKAI.clear()
     JUDUL_TERPAKAI.extend(muat_judul_hari_ini())
     print('   🧹 Anti-dobel: memuat ' + str(len(JUDUL_TERPAKAI)) + ' judul hari ini dari DB')
+
+    STAT_SCRAPE['ok'] = 0
+    STAT_SCRAPE['gagal'] = 0
 
     today_urls = get_today_state()
     seen = set()
@@ -1166,10 +1264,13 @@ def run_session():
                 print('   ❌ Kategori ' + cat + ' error: ' + str(e)[:80])
     else:
         print('\n   (Di luar jadwal kategori 06–20 WITA — hanya patroli breaking)')
+
+    print('\n 📥 Statistik scraping sesi ini: ' + str(STAT_SCRAPE['ok'])
+          + ' sukses / ' + str(STAT_SCRAPE['gagal']) + ' gagal (fallback RSS)')
     return total
 
 def main_sekali():
-    print('🐝 AI WARTAWAN V6.3.3 — MODE SEKALI JALAN (' + datetime.now(WITA).strftime('%H:%M WITA') + ')')
+    print('🐝 AI WARTAWAN V6.3.4 — MODE SEKALI JALAN (' + datetime.now(WITA).strftime('%H:%M WITA') + ')')
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
         print('❌ Kunci belum diisi!')
         return
@@ -1181,10 +1282,10 @@ def main_sekali():
 
 def main():
     print('=' * 60)
-    print(' 🐝 AI WARTAWAN KRAMANEWS V6.3.3 — LOOP TIAP 30 MENIT (WITA)')
-    print(' 📥 Scraping: Direct → Google News Resolver → Jina Reader → RSS')
-    print(' ✂️  Polisi frasa: waktu + penyangkalan narasumber (DIPERKUAT)')
-    print(' ⏰ Breaking: patroli 24 jam | Kategori: sesuai JADWAL_JAM (06–20 WITA)')
+    print(' 🐝 AI WARTAWAN KRAMANEWS V6.3.4 — LOOP TIAP 30 MENIT (WITA)')
+    print(' 📥 Scraping: Direct → Resolver → Jina → RSS | Gambar: filter sampah')
+    print(' 🏛️ Nama publik instansi resmi: WAJIB disebut lengkap & berani')
+    print(' ⏰ Breaking: patroli 24 jam | Kategori: JADWAL_JAM (06–20 WITA)')
     print(' ✍️  Penulis: ' + AUTHOR_NAME)
     print(' 💡 Stop: Ctrl+C')
     print('=' * 60)
