@@ -1,129 +1,98 @@
-STATUS KRAMANEWS — TERAKHIR DIUPDATE: 16 SEPTEMBER 2026
-══════════════════════════════════════════════════════
-AI WARTAWAN KRAMANEWS — V6.3.1 (SCRAPING ARTIKEL ASLI)
-Baru V6.3.1 (UPGRADE TERBESAR — permintaan pemilik):
-• SCRAPING ARTIKEL ASLI: sebelum AI menulis, sistem membuka
-halaman artikel sumber (link RSS), mengambil ISI PENUH artikel
-(bukan cuma ringkasan RSS 2-3 kalimat).
-• AI kini membaca MATERI KAYA: jadwal laga/acara, kutipan
-narasumber, angka lengkap — semua terangkat ke berita.
-• ATURAN JADWAL & ACARA: tanggal event di dalam berita (laga,
-acara mendatang) wajib konkret jika tertulis di sumber;
-frasa relatif sumber ("pekan ini") disalin apa adanya.
-• ATURAN ANTI-PLAGIAT: tulis ulang dengan kalimat sendiri,
-dilarang menyalin verbatim lebih dari 5 kata berurutan.
-• FALLBACK AMAN: scraping gagal (portal blokir/lambat) →
-otomatis kembali ke ringkasan RSS — sistem tidak pernah mati.
-V6.3 (sebelumnya): TANGGAL PUBLIKASI RSS disuntik ke prompt;
-frasa "belum dikonfirmasi waktu pasti kejadian" DILARANG +
-dipolisikan ai_write (berita diblokir jika lolos); narasumber:
-nama ada = wajib dikutip, tidak ada = fakta langsung tanpa
-atribusi kosong; PANJANG MENGIKUTI MATERI (target_kata).
-V6.2: fix AI menolak breaking valid ("tidak ada tanggal").
-Marker verifikasi: cari kata "KRAMAV631MARKER"
-Mode 1 (loop 30 menit) : python3 skrip-wartawan.py
-Mode 2 (GitHub Actions): python3 skrip-wartawan.py --sekali
-══════════════════════════════════════════════════════
-══════════════════════════════════════════════════════
-ZONA WAKTU: WITA (UTC+8) — KALIBRASI V6.4
-• Seluruh sistem berjalan dalam waktu TARAKAN (WITA)
-• skrip-wartawan.py: WITA = timezone(timedelta(hours=8))
-• JADWAL_JAM: kuota kategori jatuh tepat jam WITA
-• wartawan.yml: cron dikalibrasi WITA (menit 7 & 37)
-• app.js: tanggal header + jam berita label WITA
-══════════════════════════════════════════════════════
-══════════════════════════════════════════════════════
-WEB — APP.JS V5.6 (KURSI HERO SETARA + TEMBOK UMUR)
-Baru V5.6 (perbaikan nasi basi):
-• TEMBOK UMUR 8 JAM: hanya berita umur <=8 jam boleh masuk
-slot 1/2/3 hero. Berita lebih tua (termasuk eks-breaking,
-kasus nyata: Musik Daul Pamekasan umur 24 jam) GUGUR permanen
-dari panggung utama — anti nasi basi.
-• EKS-BREAKING = RAKYAT BIASA: setelah 30 menit di tahta,
-breaking jatuh jadi rakyat, masuk EKOR antrean (paling
-belakang) — praktis tak pernah kebagian lagi. Sistem blokir
-3 jam versi V5.5 DIBUANG (malah menciptakan izin kembali).
-• ROUND-ROBIN 8 kategori: pengisi slot = terbaru tiap kategori
-bergantian (N→D→I→E→O→T→H→K) — semua kategori kebagian.
-• DARURAT rapi: jika tak ada berita <=8 jam, hero menampilkan
-terbaru tersedia urut terbaru, tanpa keistimewaan.
-V5.5: breaking VIP 30 menit; V5.4: crowd-cleaner (browser
-pengunjung mencabut flag breaking >35 mnt langsung ke DB —
-terbukti jalan: 🧹 flag #958 dicabut umur 55 mnt);
-V5.3: SBANON kebal dua nama kunci (fix crash SUPABASE_ANON).
-Falsafah pemilik: "manusia kebanyakan hanya melihat ke
-permukaan" — hero adalah etalase, harus selalu segar.
-══════════════════════════════════════════════════════
-══════════════════════════════════════════════════════
-WEB — INDEX.HTML V6.2 (style.css?v=74, app.js?v=610)
-• TANGGAL pindah dari header ke bar hitam Breaking News
-(struktur: tl-top = lampu + teks; tl-date = tanggal)
-• HP: Breaking News tengah baris 1, tanggal tengah baris 2
-• Desktop: Breaking News + tanggal sejajar tengah
-• BREAKING NEWS: font Playfair Display 16px, merah #E11D2E
-tepi putih 8 arah, lampu kedip cincin PUTIH
-• Header: logo KN 38px + KramaNews 24px KIRI, menu kategori
-TENGAH (grid auto|1fr|auto), 3 ikon KANAN
-• Footer gaya CNN: logo circle gaya header 44px + KramaNews
-30px; TELUSURI center (8 kategori, 4x2); IKUTI KAMI kanan
-(tombol Facebook teks); kolom Perusahaan & Legal DIHAPUS
-• Footer dirampingkan; Masuk Admin HANYA di localhost
-(script deteksi hostname → body.is-publik → CSS sembunyikan)
-• Tombol KN melayang HP bottom 160px; Back bottom 36px
-• Popup share 6 pilihan (WA/FB/IG/Threads/X/Copy Link)
-══════════════════════════════════════════════════════
-══════════════════════════════════════════════════════
-TELEGRAM COMMAND CENTER — V1.0 (LIVE & TERUJI)
-Flow: Laporan + Foto → AI rapikan → Draft + Tombol
-[🚨 Terbit BREAKING] [📰 Terbit Biasa] [✏️ Revisi] [❌ Batal]
-• Keamanan: hanya OWNER_CHAT_ID yang dilayani
-• Foto → Supabase Storage bucket "gambar" (public)
-• Revisi: instruksi chat berikutnya diproses AI
-• Slot breaking penuh → bot tawarkan ganti terlama
-• Terbukti: lapor → tayang < 1 menit di slot breaking
-• Token bot: SUDah DIREVOKE & diganti (keamanan)
-• Webhook: kramanews-telegram.denytriono-btm.workers.dev
-• KV: KRAMANEWS_DRAFTS (binding DRAFTS)
-══════════════════════════════════════════════════════
-✅ FB AUTO-POST: AKTIF & TERVERIFIKASI (15/08/2026)!
-══════════════════════════════════════════════════════
-KRAMANEWS — SKRIP SOSMED V1.7 (PRIORITAS KALTARA/TARAKAN)
-• Berita KALIMANTAN UTARA (Tarakan, Nunukan, Bulungan, Malinau)
-selalu DIPRIORITASKAN paling depan antrean FB
-→ berita daerah terdepan update-nya di Facebook Page
-• Tetap: maks 3 post per run (anti spam FB), anti-dobel posted_fb,
-retry 504, link ?baca=ID, caption optimal
-• Cron: tiap 20 mnt jam sibuk / tiap 30 mnt jam tenang (UTC)
-══════════════════════════════════════════════════════
-══════════════════════════════════════════════════════
-JADWAL & INFRASTRUKTUR
-• GitHub Actions: repo blipblip-git/kramanews-wartawan (PUBLIC)
-• Wartawan: cron menit 7 & 37 (BUKAN 0/30 — menit padat global,
-run sering dibuang GitHub); ramai tiap 30 mnt, malam tiap 60 mnt
-• Sosmed: tiap 20 mnt jam sibuk / 30 mnt jam tenang
-• Hosting: Cloudflare Pages kramanews.my.id (Rumahweb domain)
-• Database: Supabase articles (Edge Function admin-ops)
-• DeepSeek: saldo ~$2 — hemat, scraper menambah pemakaian sedikit
-══════════════════════════════════════════════════════
-══════════════════════════════════════════════════════
-ANTRIAN / TUGAS BELUM SELESAI
-1. PERBAIKAN GAMBAR (Level 1): filter URL gambar sampah
-(logo/icon/banner/ads/ukuran kecil) di get_image/insert_news
-→ langsung pakai Wikimedia via deskripsi_gambar AI.
-Level 2 (opsional): verifikasi AI Vision skor relevansi.
-2. Pantau run Scheduled menit 7/37 tetap rutin
-3. Evaluasi 1-2 hari: jadwal laga/tanggal event sudah konkret?
-4. Update dokumen serah terima (V3 sudah ada di tangan pemilik)
-══════════════════════════════════════════════════════
-══════════════════════════════════════════════════════
-PELAJARAN BERHARGA (jangan diulang!)
-1. File revisi = SELALU FILE UTUH (kasus v=511 web crash)
-2. CSS berubah → WAJIB naikkan versi di index.html
-(kasus: HP tidak berubah sama sekali)
-3. Token = copy-paste, jangan ketik (kasus 401 Unauthorized)
-4. Cron jangan menit 0/30 (padat global — run dibuang)
-5. Drag file terkait BERSAMAAN (index+app.js)
-6. Cloudflare Pages tersambung GitHub — deploy bisa menimpa drag
-7. Jangan klaim "tidak berpengaruh" tanpa cek kode
-(kasus: blokir 3 jam ternyata menciptakan izin kembali)
-8. Kerjakan di localhost → verifikasi → sekali drag online
+🐝 STATUS KRAMANEWS — TERAKHIR DIUPDATE: 16 SEPTEMBER 2026 (V2)
+Portal berita AI otomatis: kramanews.my.id — dijalankan 1 manusia + AIdari Tarakan, Kalimantan Utara (WITA). Dokumen ini = papan status repo.Untuk konteks lengkap: lihat Dokumen Serah Terima V3 di laptop pemilik.
+
+⚡ SISTEM AKTIF
+Komponen	Lokasi	Status
+AI Wartawan (skrip-wartawan.py)	GitHub Actions	✅ V6.3.4 — Scheduled LIVE (menit 7/37 WITA)
+Sosmed FB (skrip-sosmed.py)	GitHub Actions	✅ V1.7 — Scheduled LIVE (kalibrasi WITA)
+Web (index.html, app.js, style.css)	Cloudflare Pages	✅ index v=610 / app.js V5.6 / css v=74
+Telegram Command Center	Cloudflare Worker	✅ V1.0 LIVE (bot @kramanews_bot)
+Database	Supabase	✅ articles + Storage gambar + admin-ops
+🤖 AI WARTAWAN — V6.3.4 (TERBARU)
+V6.3.4 (terbaru):
+NAMA PUBLIK INSTANSI RESMI: nama yang diumumkan KPK/Kejaksaan/Polri/Pengadilan = informasi publik → WAJIB disebut LENGKAP & BERANI semua(dilarang kabur ke "orang kepercayaan"/"bos properti" jika nama ada di sumber)
+FILTER GAMBAR SAMPAH: URL gambar logo/ikon/banner/iklan/thumbnailkecil (<400px) dibuang → otomatis jatuh ke Wikimedia via deskripsi_gambar AI
+PERLUASAN GOOGLE NEWS +10 PROVINSI: Kalbar, Kalsel, Kalteng, Bali,NTB, NTT, Papua, Maluku, Gorontalo, Batam (kandidat daerah naik 4x lipat)
+Statistik scraping dicetak di akhir run (sukses/gagal)
+V6.3.3:
+SINDROM PENYANGKALAN DIHABISI: dilarang kalimat "identitas narasumbertidak disebutkan dalam laporan" dst (6+ pola) — cukup laporkan fakta langsung
+Pola_larang diperkuat (11+ pola), pelanggaran = berita diblokir sistem
+V6.3.2:
+RESOLVER GOOGLE NEWS: link perantara news.google.com → artikel asli
+JINA READER (r.jina.ai): tenaga kedua saat fetch diblokir WAF portal
+SPESIFISITAS LOKASI: wilayah terdampak wajib menyebut nama daerah(dilarang "sejumlah daerah" jika sumber menyebut namanya)
+NARASUMBER LEMBAGA: kutipan DPRD/BMKG/dll wajib nama orang jika ada
+V6.3.1:
+SCRAPING ARTIKEL ASLI: AI membaca isi penuh artikel (bukan ringkasanRSS 2-3 kalimat) → jadwal laga, kutipan, angka lengkap terangkat
+Fallback aman: scraping gagal → ringkasan RSS (sistem tidak pernah mati)
+V6.3:
+Tanggal publikasi RSS disuntik ke prompt → tanggal konkret wajib;frasa "belum dikonfirmasi waktu pasti kejadian" DILARANG + dipolisikan
+Narasumber: nama ada = wajib dikutip; panjang mengikuti materi
+V6.2:
+Fix AI menolak breaking valid ("tidak ada tanggal") — umur sumbersudah diverifikasi sistem
+Zona waktu: WITA (UTC+8) — seluruh skrip + cron + app.js (V6.4)
+Sistem lama yang tetap:
+Anti-dobel 2 lapis • Anti berita lama 3 lapis • Breaking 3 slot(domestik/dunia/fleksibel) • Anti dominasi gempa (M≥5.5 dom / M≥6.5 dunia) •Kuota kategori per jam 06-20 WITA • Kaltara min 2/hari • Polisi frasa• Wikimedia fallback gambar
+
+🖥️ KURSI HERO — APP.JS V5.6
+BREAKING segar (≤30 mnt) = VIP: duduk slot 1/2/3 dengan badge merah
+Setelah 30 mnt: jatuh jadi RAKYAT BIASA → masuk EKOR antrean(tanpa blokir berbasis waktu yang kadaluarsa — pelajaran V5.5)
+TEMBOK UMUR 8 JAM: hanya berita ≤8 jam boleh masuk hero(kasus nyata yang diobati: Musik Daul Pamekasan umur 24 jam)
+ROUND-ROBIN 8 kategori: N→D→I→E→O→T→H→K bergantian duduk
+Crowd-cleaner: browser pengunjung mencabut flag breaking >35 mntlangsung ke DB (terbukti: #958 dicabut umur 55 mnt)
+Auto-refresh 3 menit; SBANON kebal dua nama kunci
+ATURAN EMAS pemilik: "siapapun yang duduk, 30 menit harus turun"
+📘 SOSMED FB — V1.7 (KALIBRASI WITA)
+PRIORITAS KALTARA/TARAKAN: selalu depan antrean (terbukti berkali-kali)
+Maks 3 post per run; anti-dobel posted_fb; retry 504; caption optimal
+Jadwal baru WITA: tiap 20 mnt jam 09:00-22:00; tiap 30 mnt malam
+Token FB: masih hidup (terverifikasi 16 Sep)
+📱 TELEGRAM COMMAND CENTER — V1.0 (LIVE & TERUJI)
+Lapor teks+foto → AI rapikan → draft + tombol [🚨Breaking][📰Biasa][✏️Revisi][❌Batal]
+Terbukti: lapor → tayang < 1 menit di slot breaking
+Foto → Supabase Storage "gambar"; token bot SUDAH DIREVOKE & diganti
+Worker: kramanews-telegram.denytriono-btm.workers.dev | KV: DRAFTS
+🎨 TAMPILAN WEB (index v=610 + css v=74)
+Header: logo 38px + KramaNews 24px KIRI, menu TENGAH, 3 ikon KANAN
+Bar Breaking: Playfair merah tepi putih + lampu cincin putih;HP: Breaking tengah baris 1, tanggal tengah baris 2
+Footer CNN ramping: logo 44px + 30px; TELUSURI center (4x2);IKUTI KAMI kanan (Facebook); Perusahaan & Legal DIHAPUS
+"Masuk Admin" HANYA localhost (deteksi hostname otomatis)
+Kursi hero: breaking & reguler SAMA 30 menit lalu berganti
+Tombol KN melayang HP bottom 160px; Back bottom 36px
+Share popup 6 pilihan di header
+⏰ JADWAL (SEMUA WITA)
+Komponen	Jadwal
+Wartawan kategori	06:00-20:00 sesuai JADWAL_JAM (±50-60 berita/hari)
+Wartawan breaking	Patroli 24 jam tiap 30 mnt (run menit 7/37)
+Sosmed FB	Tiap 20 mnt (09-22) / 30 mnt (malam)
+Kaltara	Min 2 berita per sesi daerah
+Breaking hidup	30-35 mnt di hero lalu turun jadi rakyat
+Hero	Selalu berita umur ≤8 jam, berganti tiap 30 mnt
+🐛 DIAGNOSA CEPAT
+Breaking stuck: cek run Scheduled ada? Manual run? (hero web sudah mandiri — yang gagal biasanya produksi)
+Web polos tanpa warna: CSS gagal dimuat — cek versi style.css?v= di index & isi file online
+Semua klik mati: F12 Console; historis: SUPABASE_ANON not defined (fix: SBANON V5.3)
+Bot diam: getWebhookInfo; log Worker; 401 = token salah
+Dobel/penyangkalan/frasa buruk: pastikan V6.3.3 (KRAMAV633MARKER)
+Nasi basi di hero: pastikan app.js V5.6 (TEMBOK_UMUR_JAM)
+FB tidak posting: run sosmed merah? token kedaluwarsa? antrean kosong (normal)?
+Scraping 0%: link Google News perlu resolver + Jina (V6.3.2)
+📋 ANTREAN TUGAS
+Evaluasi V6.3.4: nama KPK dkk disebut berani? gambar lebih bersih?
+Gambar Level 2 (opsional): verifikasi AI Vision skor relevansi gambar
+Sosmed kalibrasi penuh: sudah WITA (selesai 16 Sep) — pantau
+Update README ini setiap revisi besar
+⚠️ PELAJARAN BERHARGA (jangan diulang!)
+Revisi = FILE UTUH selalu (kasus v=511 crash)
+CSS berubah → naikkan versi style.css?v= di index (kasus HP tidak berubah)
+Token = copy-paste, jangan ketik (kasus 401)
+Cron jangan menit 0/30 (padat global — pakai 7/37)
+File terkait drag BERSAMAAN (index+app.js)
+Cloudflare Pages tersambung GitHub — cek deployment benar-benar masuk (kasus drag tidak tayang)
+Jangan klaim tanpa cek kode (kasus blokir 3 jam ternyata bolong)
+Localhost dulu → verifikasi → drag online
+Scraping: portal besar Indonesia ber-WAF → butuh resolver + Jina
+AI "takut" aturan ketat → perlu aturan penyeimbang yang eksplisit(kasus: menolak semua breaking, lalu menyembunyikan nama KPK)
+🗺️ CATATAN CAKUPAN SUMBER
+RSS langsung: CNN, Kompas, Antara, CNBC, Tribun (9 wilayah), Bola.net,Yahoo, TechCrunch, Verge, BBC (world/tech/health), Al Jazeera, Guardian,Detik, Kompas Health/Hype + Google News ±40 query (nasional, 20+ kota/provinsi, 14 negara internasional). Tribun = WAF tebal (scraping seringfallback RSS — normal).
+
