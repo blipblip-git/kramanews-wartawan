@@ -1104,208 +1104,189 @@ def sesi_breaking(today_urls, seen):
     if sisa:
         pilihan.append(('SLOT 3 (FLEKSIBEL)', sisa[0][0], sisa[0][2]))
 
-    for label, c, asal in pilihan:
-        if slots <= 0:
+    for label, c, tip in pilihan:
+        if made >= slots:
             break
+        # anti dobel lapis 1 — sebelum AI menulis
         if sudah_serupa(c['title']):
-            print('   🗑️ ' + label + ' — sumber dobel dengan berita yang sudah tayang, dilewati')
+            print('   ⏭️ Skip (dobel dengan judul hari ini): ' + c['title'][:50])
+            continue
+        print('\n   🚨 ' + label + ': ' + c['title'][:70])
+        try:
+            judul, isi, ringkasan, waktu, gambar = ai_rewrite_single(c)
+        except BeritaLama as bl:
+            print('   ⏳ Ditolak AI: ' + str(bl)[:60])
+            continue
+        except Exception as e:
+            print('   ⛔ ' + str(e)[:90])
+            continue
+        # anti dobel lapis 2 — sesudah AI menulis
+        if sudah_serupa(judul):
+            print('   ⏭️ Hasil AI mirip judul yang sudah ada — skip.')
             continue
         try:
-            judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(c)
-            if sudah_serupa(judul):
-                print('   🗑️ ' + label + ' — hasil AI dobel, dilewati: ' + judul[:50])
-                continue
-            blob = (judul + ' ' + isi).lower()
-            if asal == 'dun':
-                cat = 'internasional'
-            elif any(w in blob for w in KALTARA_WORDS):
-                cat = 'daerah'
-            elif any(w in blob for w in LUAR_NEGERI_WORDS) and 'indonesia' not in blob:
-                cat = 'internasional'
-            else:
-                cat = 'nasional'
-            insert_news(judul, isi, ringkasan, cat, get_image(c['entry']),
-                        c['link'], c['source'], status='published', breaking=True,
-                        deskripsi_gambar=desc_gambar)
-            slots -= 1
+            img_url = get_image(c.get('entry'))
+            insert_news(judul, isi, ringkasan, kategori_breaking(c, tip),
+                        img_url, c.get('link', ''), c.get('source', 'Breaking'),
+                        'published', breaking=True, deskripsi_gambar=gambar)
             made += 1
-            today_urls.add(c['link'])
-            print('   🚨 ' + label + ': ' + judul)
-        except BeritaLama as e:
-            print('   🗑️ ' + label + ' — materi TERTULIS jelas lama, ditolak AI: ' + str(e)[:60])
+            print('   ✅ BREAKING TERBIT: ' + judul[:60])
         except Exception as e:
-            print('   ⚠️ ' + label + ' gagal:', str(e)[:70])
-        time.sleep(2)
-
-    print('   → Breaking tayang: ' + str(made))
+            print('   ⚠️ Insert gagal: ' + str(e)[:80])
     return made
 
-# ═════════ SESI KATEGORI ═════════
+def kategori_breaking(c, tip):
+    """Slot dunia = internasional. Slot domestik: kalau isinya jelas
+    topik luar negeri → internasional, selain itu nasional."""
+    if tip == 'dun':
+        return 'internasional'
+    t = (c.get('title', '') + ' ' + c.get('summary', '')).lower()
+    if any(w in t for w in LUAR_NEGERI_WORDS):
+        return 'internasional'
+    return 'nasional'
 
-def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
-    print('\n📰 ' + cat.upper() + ' — target ' + str(need))
-    sources = list(HUNT.get(cat, []))
-    if cat in ('internasional', 'ekonomi', 'olahraga', 'teknologi'):
-        random.shuffle(sources)
-    cands = collect_candidates(sources, today_urls, seen)
-    print('   Kandidat segar (≤' + str(MAX_UMUR_BERITA_JAM) + ' jam): ' + str(len(cands)))
-    if not cands:
-        print('   ⚠️ Tidak ada kandidat segar — tidak menulis apa-apa (anti berita lama).')
-        return 0
+# ═════════ SESI KATEGORI — KUOTA PER JAM WITA ═════════
 
-    groups = match_articles(cands)
-    groups.sort(key=lambda g: len(g['items']), reverse=True)
-
-    made = 0
-    kaltara_made = 0
-
-    if kaltara_min > 0:
-        kc = [c for c in cands
-              if any(w in (c['title'] + ' ' + c['summary']).lower() for w in KALTARA_WORDS)]
-        for c in kc:
-            if kaltara_made >= kaltara_min or made >= need:
-                break
-            if sudah_serupa(c['title']):
-                print('   🗑️ Kaltara sumber dobel, dilewati: ' + c['title'][:50])
-                continue
+def hitung_kaltara_hari_ini():
+    """Berita Kaltara/Tarakan yang sudah tayang hari ini (WITA).
+    Dipakai untuk menjamin kuota minimal 2 berita daerah Kaltara."""
+    n = 0
+    try:
+        rows = rest_get('?select=title,dateline,created_at&order=created_at.desc&limit=300')
+        today = datetime.now(WITA).date()
+        for row in rows:
             try:
-                judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(c)
-                if sudah_serupa(judul):
-                    print('   🗑️ Kaltara hasil AI dobel, dilewati: ' + judul[:50])
+                d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00')).astimezone(WITA).date()
+                if d != today:
                     continue
-                insert_news(judul, isi, ringkasan, cat, get_image(c['entry']),
-                            c['link'], c['source'], status='published',
-                            deskripsi_gambar=desc_gambar)
-                made += 1
-                kaltara_made += 1
-                today_urls.add(c['link'])
-                print('   🏝️ KALTARA [' + str(kaltara_made) + '/' + str(kaltara_min) + ']: ' + judul)
-            except BeritaLama as e:
-                print('   🗑️ Kaltara materi TERTULIS jelas lama, ditolak: ' + str(e)[:50])
-            except Exception as e:
-                print('   ⚠️ Gagal 1 kaltara:', str(e)[:60])
-            time.sleep(2)
-        print('   → Kaltara: ' + str(kaltara_made) + '/' + str(kaltara_min))
+                teks = ((row.get('title') or '') + ' ' + (row.get('dateline') or '')).lower()
+                if any(w in teks for w in KALTARA_WORDS):
+                    n += 1
+            except Exception:
+                pass
+    except Exception as e:
+        print('   ⚠️ Gagal hitung Kaltara: ' + str(e)[:60])
+    return n
 
+def kelompok_kaltara(items):
+    teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '')
+                    for it in items).lower()
+    return any(w in teks for w in KALTARA_WORDS)
+
+def produksi_satu(cat, today_urls, seen, utamakan_kaltara):
+    """Tulis SATU berita untuk kategori `cat`. Return True jika terbit.
+    Kandidat ditulis bergilir sampai ada yang lolos semua pemeriksaan
+    (maks 3 percobaan) — gagal satu, pindah kandidat berikutnya."""
+    cand = collect_candidates(HUNT.get(cat, []), today_urls, seen)
+    if not cand:
+        print('   (' + cat + ') Tidak ada kandidat segar.')
+        return False
+    groups = match_articles(cand)
+    # Kaltara didahulukan bila kuota daerah belum terpenuhi
+    if utamakan_kaltara:
+        groups.sort(key=lambda g: 0 if kelompok_kaltara(g['items']) else 1)
+    percobaan = 0
     for g in groups:
-        if made >= need:
+        if percobaan >= 3:
             break
         items = g['items']
-        if any(it['link'] in today_urls for it in items):
-            continue
         top = items[0]
+        # anti dobel lapis 1 — sebelum AI menulis
         if sudah_serupa(top['title']):
-            print('   🗑️ Sumber dobel dengan berita yang sudah tayang, dilewati: ' + top['title'][:50])
             continue
+        percobaan += 1
+        print('\n   ✍️ [' + cat + '] menulis: ' + top['title'][:70])
         try:
             if len(items) > 1:
-                judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_multi(items)
-                print('       🔗 topik dari ' + str(len(items)) + ' portal')
+                judul, isi, ringkasan, waktu, gambar = ai_rewrite_multi(items)
             else:
-                judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(top)
-            if sudah_serupa(judul):
-                print('   🗑️ Hasil AI dobel, dilewati: ' + judul[:50])
-                continue
-            insert_news(judul, isi, ringkasan, cat, get_image(top['entry']),
-                        top['link'], top['source'], status='published',
-                        deskripsi_gambar=desc_gambar)
-            made += 1
-            for it in items:
-                today_urls.add(it['link'])
-            print('   ✅ [' + str(made) + '/' + str(need) + '] TAYANG: ' + judul)
-        except BeritaLama as e:
-            print('   🗑️ Materi TERTULIS jelas lama, ditolak AI: ' + str(e)[:60])
+                judul, isi, ringkasan, waktu, gambar = ai_rewrite_single(top)
+        except BeritaLama as bl:
+            print('   ⏳ Ditolak AI: ' + str(bl)[:60])
             continue
         except Exception as e:
-            print('   ⚠️ Gagal proses 1 kelompok:', str(e)[:80])
+            print('   ⛔ ' + str(e)[:90])
             continue
-        time.sleep(2)
+        # anti dobel lapis 2 — sesudah AI menulis
+        if sudah_serupa(judul):
+            print('   ⏭️ Hasil AI dobel dengan judul yang sudah ada — skip.')
+            continue
+        try:
+            img_url = get_image(top.get('entry'))
+            insert_news(judul, isi, ringkasan, cat, img_url,
+                        top.get('link', ''), top.get('source', ''),
+                        'published', deskripsi_gambar=gambar)
+            print('   ✅ Terbit: ' + judul[:60])
+            return True
+        except Exception as e:
+            print('   ⚠️ Insert gagal: ' + str(e)[:80])
+            continue
+    return False
 
-    print('   → Hasil: ' + str(made) + ' TAYANG')
-    return made
+def sesi_kategori(today_urls, seen):
+    jam = datetime.now(WITA).hour
+    kuota = JADWAL_JAM.get(jam)
+    if not kuota:
+        print('\n📰 KATEGORI — jam ' + str(jam) + ':00 WITA di luar jadwal produksi. Lewat.')
+        return 0
+    print('\n📰 KATEGORI — jam ' + str(jam) + ':00 WITA — kuota: ' +
+          ', '.join(k + '=' + str(v) for k, v in kuota.items()))
+    utamakan_kaltara = False
+    if kuota.get('daerah'):
+        utamakan_kaltara = hitung_kaltara_hari_ini() < 2
+        if utamakan_kaltara:
+            print('   🏝️ Kuota Kaltara hari ini belum capai 2 — kandidat Kaltara didahulukan.')
+    total = 0
+    for cat, n in kuota.items():
+        for _ in range(n):
+            if produksi_satu(cat, today_urls, seen, utamakan_kaltara and cat == 'daerah'):
+                total += 1
+    return total
 
-# ═════════ SESI UTAMA ═════════
-
+# ═══ STATISTIK SCRAPING + SATU SESI PENUH ═══
 STAT_SCRAPE = {'ok': 0, 'gagal': 0}
 
 def run_session():
     now = datetime.now(WITA)
-    print('\n' + '=' * 60)
-    print(' ⏰ SESI ' + now.strftime('%H:%M') + ' WITA — ' + tanggal_panjang(now.date()))
-    print('=' * 60)
-
-    tercabut = expire_breaking(BREAKING_UMUR_MENIT)
-    if tercabut:
-        print('   (Slot breaking yang kosong otomatis diisi berita biasa N/I/D oleh web)')
-
+    print('\n══════════════════════════════════════════')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA')
+    print('══════════════════════════════════════════')
+    dicabut = expire_breaking(BREAKING_UMUR_MENIT)
+    if dicabut:
+        print('   (' + str(dicabut) + ' breaking tua dicabut otomatis)')
+    today_urls = get_today_state()
     JUDUL_TERPAKAI.clear()
     JUDUL_TERPAKAI.extend(muat_judul_hari_ini())
-    print('   🧹 Anti-dobel: memuat ' + str(len(JUDUL_TERPAKAI)) + ' judul hari ini dari DB')
-
-    STAT_SCRAPE['ok'] = 0
-    STAT_SCRAPE['gagal'] = 0
-
-    today_urls = get_today_state()
+    print('   🧠 ' + str(len(JUDUL_TERPAKAI)) + ' judul hari ini dimuat (anti-dobel).')
     seen = set()
-
-    total = sesi_breaking(today_urls, seen)
-
-    quota = JADWAL_JAM.get(now.hour)
-    if quota:
-        print('\n📊 Kuota jam ' + str(now.hour).zfill(2) + ':00 WITA → '
-              + ', '.join(k.upper() + '=' + str(v) for k, v in quota.items()))
-        for cat, need in quota.items():
-            try:
-                if cat == 'daerah':
-                    total += sesi_kategori(cat, need, today_urls, seen, kaltara_min=2)
-                else:
-                    total += sesi_kategori(cat, need, today_urls, seen)
-            except Exception as e:
-                print('   ❌ Kategori ' + cat + ' error: ' + str(e)[:80])
+    n_brk = sesi_breaking(today_urls, seen)
+    n_kat = sesi_kategori(today_urls, seen)
+    # ═══ V6.3.4: statistik scraping dicetak di akhir run ═══
+    total_scrape = STAT_SCRAPE['ok'] + STAT_SCRAPE['gagal']
+    if total_scrape:
+        persen = int(STAT_SCRAPE['ok'] * 100 / total_scrape)
+        print('\n📊 Statistik scraping: ' + str(STAT_SCRAPE['ok']) + ' sukses / '
+              + str(total_scrape) + ' artikel (' + str(persen) + '%) — gagal '
+              + str(STAT_SCRAPE['gagal']))
     else:
-        print('\n   (Di luar jadwal kategori 06–20 WITA — hanya patroli breaking)')
-
-    print('\n 📥 Statistik scraping sesi ini: ' + str(STAT_SCRAPE['ok'])
-          + ' sukses / ' + str(STAT_SCRAPE['gagal']) + ' gagal (fallback RSS)')
-    return total
+        print('\n📊 Statistik scraping: tidak ada percobaan scraping sesi ini.')
+    print('🏁 Sesi selesai — breaking: ' + str(n_brk) + ' • kategori: ' + str(n_kat))
+    return n_brk + n_kat
 
 def main_sekali():
-    print('🐝 AI WARTAWAN V6.3.4 — MODE SEKALI JALAN (' + datetime.now(WITA).strftime('%H:%M WITA') + ')')
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
-        print('❌ Kunci belum diisi!')
+        print('❌ Kunci belum lengkap! Cek Secrets GitHub: DEEPSEEK_KEY, SUPABASE_PUBLISHABLE')
         return
-    try:
-        total = run_session()
-        print(' 🏁 Selesai — total ' + str(total) + ' berita TAYANG.')
-    except Exception as e:
-        print(' ❌ Gagal: ' + str(e)[:100])
+    run_session()
 
 def main():
-    print('=' * 60)
-    print(' 🐝 AI WARTAWAN KRAMANEWS V6.3.4 — LOOP TIAP 30 MENIT (WITA)')
-    print(' 📥 Scraping: Direct → Resolver → Jina → RSS | Gambar: filter sampah')
-    print(' 🏛️ Nama publik instansi resmi: WAJIB disebut lengkap & berani')
-    print(' ⏰ Breaking: patroli 24 jam | Kategori: JADWAL_JAM (06–20 WITA)')
-    print(' ✍️  Penulis: ' + AUTHOR_NAME)
-    print(' 💡 Stop: Ctrl+C')
-    print('=' * 60)
-
-    if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
-        print('❌ DEEPSEEK_KEY / SUPABASE_PUBLISHABLE belum diisi!')
-        return
-
+    print('🤖 AI WARTAWAN KRAMANEWS V6.3.4 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
-            total = run_session()
-            print('\n 🏁 Sesi selesai — total ' + str(total) + ' berita TAYANG.')
-            print(' ⏳ Menunggu 30 menit...')
-            time.sleep(1800)
-        except KeyboardInterrupt:
-            print('\n👋 Wartawan AI berhenti. Sampai jumpa!')
-            break
+            main_sekali()
         except Exception as e:
-            print(' ⚠️ Loop error: ' + str(e)[:80])
-            time.sleep(120)
+            print('⚠️ Sesi gagal total: ' + str(e)[:100])
+        time.sleep(1800)
 
 if __name__ == '__main__':
     if '--sekali' in sys.argv:
