@@ -1,5 +1,6 @@
 name: AI Wartawan KramaNews
 
+# RE-REGISTER SCHEDULE — 16 September 2026 (V6.4 WITA)
 on:
   schedule:
     # ═══ SEMUA CRON DALAM UTC — DIKALIBRASI KE WITA (UTC+8) ═══
