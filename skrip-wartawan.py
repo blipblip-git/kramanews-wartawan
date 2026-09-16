@@ -1,26 +1,24 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.3.2 (SCRAPING TANGGUH + SPESIFISITAS)
-#  Baru V6.3.2 (permintaan pemilik setelah audit berita):
-#   • RESOLVER GOOGLE NEWS: link news.google.com (halaman perantara)
-#     otomatis dibuka → alamat artikel ASLI diekstrak → scraping
-#     diarahkan ke artikel asli, bukan halaman perantara JS.
-#   • JINA READER (r.jina.ai) sebagai tenaga kedua: jika fetch
-#     langsung diblokir WAF/anti-bot portal, request lewat Jina
-#     (gratis, tanpa API key) → lolos tembok → teks artikel bersih.
-#     Rantai: Direct → Jina → Ringkasan RSS (tidak pernah mati).
-#   • ATURAN SPESIFISITAS LOKASI: peristiwa wilayah terdampak
-#     (karhutla/asap/banjir/gempa/krisis) WAJIB menyebut daerah
-#     spesifik yang tertulis di sumber — DILARANG "sejumlah daerah"
-#     jika sumber menyebut nama daerahnya.
-#   • ATURAN NARASUMBER LEMBAGA: kutipan DPRD/DPR/BMKG/dll via
-#     pejabat/anggota → wajib nama jika tertulis di sumber; jika
-#     tidak ada → WAJIB tulis eksplisit "identitas narasumber tidak
-#     disebutkan dalam laporan" — DILARANG menyamarkan subjek.
-#   • Semua fitur V6.3.1 tetap: scraping artikel asli, anti-plagiat,
-#     aturan jadwal & acara, tanggal publikasi RSS, polisi frasa,
-#     fix V6.2, anti dobel, anti lama, breaking 3 slot, expire 30
-#     menit, kuota per jam WITA, Kaltara prioritas.
-#   • Marker verifikasi: cari kata "KRAMAV632MARKER"
+#  AI WARTAWAN KRAMANEWS — V6.3.3 (SINDROM PENYANGKALAN DIHABISI)
+#  Baru V6.3.3 (audit pemilik: 3 berita berbeda = 3 kalimat
+#  penyangkalan narasumber yang sama — tidak profesional):
+#   • HAPUS aturan "tulis eksplisit identitas tidak disebutkan"
+#     (V6.3.2) — ternyata menciptakan kebiasaan baru: AI menggembung
+#     penyangkalan jadi 2 kalimat pengisi di tengah berita.
+#   • ATURAN BARU: jika sumber tidak menyebut nama narasumber →
+#     cukup laporkan fakta langsung, TANPA kalimat APA PUN tentang
+#     ketiadaan narasumber/identitas/laporan — berita profesional
+#     tidak pernah membahas ketiadaan narasumbernya.
+#   • POLA_LARANG DIPERKUAT (polisi otomatis ai_write): frasa baru
+#     diblokir — "identitas narasumber", "tidak disebutkan dalam
+#     laporan", "tanpa menyebut nama", "dalam laporan yang beredar",
+#     "dalam laporan yang dihimpun", "materi yang tersedia".
+#   • Larangan mengarang nama TETAP MUTLAK.
+#   • Semua fitur V6.3.2 tetap: scraping 3 lapis (Direct → Resolver
+#     Google News → Jina Reader → RSS), aturan spesifisitas lokasi,
+#     jadwal & acara, anti-plagiat, anti dobel, anti lama, fix V6.2,
+#     breaking 3 slot, expire 30 menit, kuota per jam WITA, Kaltara.
+#   • Marker verifikasi: cari kata "KRAMAV633MARKER"
 #  Mode 1 (loop 30 menit) : python3 skrip-wartawan.py
 #  Mode 2 (GitHub Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -269,6 +267,7 @@ DUNIA_KRITIS = [
     'plane crash', 'ferry sinks', 'train derailment', 'derailed',
     'resignation', 'overthrown', 'state of emergency', 'killed',
 ]
+
 class BeritaLama(Exception):
     pass
 
@@ -474,7 +473,7 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV632MARKER — V6.3.2: materi kaya artikel asli, spesifik lokasi, narasumber jujur.
+KRAMAV633MARKER — V6.3.3: berita bersih, spesifik, tanpa kalimat penyangkalan.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -502,7 +501,7 @@ ATURAN JADWAL & ACARA (WAJIB):
      APA ADUNA — dilarang mengarang tanggal dari frasa relatif.
 - DILARANG menyisakan kejadian penting tanpa keterangan waktu sama sekali.
 
-ATURAN SPESIFISITAS LOKASI (WAJIB — BARU V6.3.2):
+ATURAN SPESIFISITAS LOKASI (WAJIB):
 - Peristiwa dengan WILAYAH TERDAMPAK (karhutla/asap, banjir, gempa,
   kekeringan, krisis, erupsi, dsb) WAJIB menyebut daerah SPESIFIK:
   ✅ "asap menyelimuti Palangka Raya, Pontianak, dan Pangkalan Bun..."
@@ -516,20 +515,23 @@ ATURAN SPESIFISITAS LOKASI (WAJIB — BARU V6.3.2):
 - Jika sumber MEMANG tidak menyebut daerah spesifik → boleh gunakan
   frasa umum, jangan mengarang nama daerah.
 
-ATURAN NARASUMBER (WAJIB — DIPERKUAT V6.3.2):
+ATURAN NARASUMBER (WAJIB — DIREVISI TOTAL V6.3.3):
 - Jika materi menyebut NAMA ORANG → WAJIB kutip dengan jabatan lengkap:
   ✅ "Ketua DPRD Kaltara, [Nama], menyatakan..."
-  ❌ "DPRD Kaltara menyatakan..." (tanpa nama orang — DILARANG jika
-     nama ada di materi)
-- ATURAN NARASUMBER LEMBAGA (BARU): kutipan yang disandangkan ke
-  lembaga (DPRD, DPR, BMKG, Polri, Pemkot, dll) berasal dari ORANG.
-  Jika artikel sumber menyebut nama orangnya → WAJIB kutip:
-  ✅ "Anggota DPRD Kaltara, [Nama], mengatakan..."
-- Jika artikel sumber MEMANG tidak menyebut nama orangnya → tulis
-  JUJUR dan EKSPLISIT di dalam berita:
-  ✅ "...namun identitas narasumber dari DPRD Kaltara tidak disebutkan
-     dalam laporan."
-  ❌ DILARANG menyamarkan seolah ada sumber resmi tanpa nama.
+  ❌ "DPRD Kaltara menyatakan..." (tanpa nama, padahal nama ada — DILARANG)
+- Jika materi TIDAK menyebut nama orang → CUKUP LAPORKAN FAKTA
+  LANGSUNG: apa, di mana, kapan, bagaimana. SELESAI.
+- ═══ ATURAN EMAS V6.3.3 ═══
+  DILARANG KERAS menulis KALIMAT APA PUN yang membahas KETIADAAN
+  narasumber/identitas/sumber — berita profesional TIDAK PERNAH
+  mengumumkan kekurangan narasumbernya di tengah berita:
+  ❌ "identitas narasumber tidak disebutkan dalam laporan"
+  ❌ "identitas narasumber tidak disebutkan secara eksplisit"
+  ❌ "tidak disebutkan nama pejabat maupun petugas yang berwenang"
+  ❌ "rincian tidak dapat dipastikan dari materi yang tersedia"
+  ❌ "keterangan disampaikan tanpa menyebut nama pejabat"
+  Kalimat-kalimat semacam itu = KALIMAT SAMPAH pengisi, dan akan
+  MENYEBABKAN BERITA DITOLAK SISTEM.
 - DILARANG KERAS frasa atribusi kosong: "dilaporkan bahwa...",
   "menurut informasi yang diterima...", "diduga kuat...", "kabarnya...",
   "dikabarkan...".
@@ -544,7 +546,8 @@ ATURAN ANTI-PLAGIAT (WAJIB — MATERI KAYA):
 
 ATURAN PANJANG (WAJIB):
 - Target jumlah kata DIBERIKAN di pesan user — IKUTI target itu.
-- DILARANG menggembung berita dengan kalimat kosong atau pengulangan.
+- DILARANG menggembung berita dengan kalimat kosong, penyangkalan,
+  atau pengulangan demi mencapai target kata.
 - Setiap kalimat WAJIB membawa informasi baru dari sumber.
 - Jika isi berita menjanjikan data (jadwal, daftar, angka) yang TIDAK
   ada di materi sumber → UBAH JUDUL agar tidak menjanjikan data itu.
@@ -586,8 +589,8 @@ FORMAT JAWABAN — HANYA JSON valid tanpa teks lain:
 {"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "...",
  "deskripsi_gambar": "visual keywords",
  "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """)"}
-INGAT: frasa "belum dikonfirmasi waktu pasti kejadian" DILARANG — tulis
-tanggalnya. Tanpa bukti tertulis peristiwa lama = TULIS BERITA."""
+INGAT: frasa tentang ketiadaan narasumber DILARANG — cukup laporkan
+fakta langsung. Tanpa bukti tertulis peristiwa lama = TULIS BERITA."""
 
 # ═════════ FUNGSI BANTU ═════════
 
@@ -781,13 +784,30 @@ def ai_write(user_content, timeout=150):
     ringkasan = obj.get('ringkasan', '').strip()
     waktu = (obj.get('waktu_kejadian') or '').strip()
     gambar = (obj.get('deskripsi_gambar') or '').strip()
-    # ═══ PEMERIKSA KUALITAS — blok kalimat pengisi ═══
-    pola_larang = ['belum dikonfirmasi waktu', 'waktu kejadian belum',
-                   'belum dikonfirmasi kapan', 'menurut informasi yang diterima',
-                   'diduga kuat', 'kabarnya', 'dikabarkan']
+    # ═══ PEMERIKSA KUALITAS V6.3.3 — DIPERKUAT ═══
+    pola_larang = [
+        # frasa waktu yang dilarang (warisan V6.3)
+        'belum dikonfirmasi waktu', 'waktu kejadian belum',
+        'belum dikonfirmasi kapan',
+        # frasa atribusi kosong
+        'menurut informasi yang diterima', 'diduga kuat',
+        'kabarnya', 'dikabarkan',
+        # ═══ V6.3.3: sindrom penyangkalan narasumber ═══
+        'identitas narasumber',
+        'tidak disebutkan dalam laporan',
+        'tidak disebutkan secara eksplisit',
+        'tanpa menyebut nama',
+        'tanpa menyebut nama pejabat',
+        'dalam laporan yang beredar',
+        'dalam laporan yang dihimpun',
+        'materi yang tersedia',
+        'tidak dapat dipastikan',
+        'keterangan disampaikan tanpa',
+    ]
     isi_lower = isi.lower()
-    if any(p in isi_lower for p in pola_larang):
-        raise Exception('diblokir pemeriksa V6.3: frasa larangan muncul di isi berita')
+    tertangkap = [p for p in pola_larang if p in isi_lower]
+    if tertangkap:
+        raise Exception('diblokir pemeriksa V6.3.3: ' + str(tertangkap[0])[:50])
     # URUTAN KONSISTEN: judul, isi, ringkasan, WAKTU, GAMBAR
     return judul, isi, ringkasan, waktu, gambar
 
@@ -823,9 +843,10 @@ def ai_rewrite_single(c):
             'waktu pasti kejadian".\n'
             '- SPESIFIK: peristiwa wilayah terdampak WAJIB menyebut nama daerah yang '
             'tertulis di materi (dilarang "sejumlah daerah" jika nama daerah ada).\n'
-            '- Kutipan lembaga (DPRD/BMKG/dll): sebut NAMA orangnya jika ada di materi; '
-            'jika tidak ada, tulis eksplisit bahwa identitas narasumber tidak '
-            'disebutkan dalam laporan.\n'
+            '- Kutipan lembaga (DPRD/BMKG/dll): sebut NAMA orangnya jika ada di materi. '
+            'Jika tidak ada nama: cukup laporkan fakta langsung — DILARANG menulis '
+            'kalimat apa pun tentang ketiadaan narasumber/identitas (berita akan '
+            'DITOLAK sistem).\n'
             '- ACARA/LAGA lain: tulis tanggalnya jika tertulis; frasa relatif salin apa adanya.\n'
             '- Nama tokoh wajib dikutip dengan jabatan; tanpa nama = fakta langsung.\n'
             '- Tulis ulang dengan kalimatmu sendiri — dilarang menjiplak kalimat sumber.\n'
@@ -864,8 +885,9 @@ def ai_rewrite_multi(items):
             '- TANGGAL KONKRET di isi berita — dilarang frasa "belum dikonfirmasi '
             'waktu pasti kejadian".\n'
             '- SPESIFIK: wilayah terdampak wajib menyebut nama daerah dari materi.\n'
-            '- Kutipan lembaga: sebut nama orangnya jika ada; jika tidak, nyatakan '
-            'eksplisit identitas tidak disebutkan dalam laporan.\n'
+            '- Kutipan lembaga: sebut nama orangnya jika ada; jika tidak, cukup '
+            'laporkan fakta langsung — DILARANG menulis kalimat tentang ketiadaan '
+            'narasumber/identitas (berita akan DITOLAK sistem).\n'
             '- ACARA/LAGA: tanggal jika tertulis; frasa relatif salin apa adanya.\n'
             '- Tulis ulang dengan kalimatmu sendiri — dilarang menjiplak kalimat sumber.\n'
             '- Jangan sebut media sumber, awali dengan dateline, salin utuh angka, '
@@ -1147,7 +1169,7 @@ def run_session():
     return total
 
 def main_sekali():
-    print('🐝 AI WARTAWAN V6.3.2 — MODE SEKALI JALAN (' + datetime.now(WITA).strftime('%H:%M WITA') + ')')
+    print('🐝 AI WARTAWAN V6.3.3 — MODE SEKALI JALAN (' + datetime.now(WITA).strftime('%H:%M WITA') + ')')
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
         print('❌ Kunci belum diisi!')
         return
@@ -1159,8 +1181,9 @@ def main_sekali():
 
 def main():
     print('=' * 60)
-    print(' 🐝 AI WARTAWAN KRAMANEWS V6.3.2 — LOOP TIAP 30 MENIT (WITA)')
+    print(' 🐝 AI WARTAWAN KRAMANEWS V6.3.3 — LOOP TIAP 30 MENIT (WITA)')
     print(' 📥 Scraping: Direct → Google News Resolver → Jina Reader → RSS')
+    print(' ✂️  Polisi frasa: waktu + penyangkalan narasumber (DIPERKUAT)')
     print(' ⏰ Breaking: patroli 24 jam | Kategori: sesuai JADWAL_JAM (06–20 WITA)')
     print(' ✍️  Penulis: ' + AUTHOR_NAME)
     print(' 💡 Stop: Ctrl+C')
