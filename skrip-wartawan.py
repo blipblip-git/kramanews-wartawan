@@ -1,25 +1,18 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.3.4 (NAMA RESMI + GAMBAR BERSIH + PERLUASAN)
-#  Baru V6.3.4 (3 misi sekaligus — permintaan pemilik):
-#   • NAMA PUBLIK INSTANSI RESMI (fix berita KPK 8 tersangka):
-#     Nama yang diumumkan instansi resmi (KPK, Kejaksaan, Polri,
-#     Pengadilan, BMKG, dll) = informasi publik hukum → WAJIB
-#     disebut LENGKAP & BERANI (nama semua tersangka/terpidana).
-#     DILARANG kabur ke "seorang pengusaha"/"bos properti" jika
-#     nama aslinya ada di sumber. Larangan mengarang nama tetap.
-#   • FILTER GAMBAR SAMPAH (Level 1): URL gambar yang mengandung
-#     pola logo/ikon/banner/iklan/dimensi kecil (<400px) dibuang
-#     → otomatis jatuh ke Wikimedia via deskripsi_gambar AI.
-#   • PERLUASAN GOOGLE NEWS +10 PROVINSI: Kalbar, Kalsel, Kalteng,
-#     Bali, NTB, NTT, Papua, Maluku, Gorontalo, Kepri/Batam
-#     (kualitas seleksi naik — kuota tetap sama).
-#   • Log scraping gagal diringkas untuk pemantauan.
-#   • Semua fitur V6.3.3 tetap: scraping 3 lapis (Direct → Resolver
-#     Google News → Jina Reader → RSS), aturan spesifisitas lokasi,
-#     narasumber lembaga jujur, polisi frasa V6.3.3, jadwal & acara,
-#     anti-plagiat, anti dobel, anti lama, fix V6.2, breaking 3 slot,
-#     expire 30 menit, kuota per jam WITA, Kaltara prioritas.
-#   • Marker verifikasi: cari kata "KRAMAV634MARKER"
+#  AI WARTAWAN KRAMANEWS — V6.3.5 (ANTI-OPINI DI BREAKING)
+#  Baru V6.3.5 (keputusan pemilik — Opsi A):
+#   • BREAKING ANTI-OPINI: judul/materi yang mengandung kata
+#     analisis/soroti/opini/tinjauan (ID) atau analysis/opinion/
+#     editorial (EN) → skor breaking = 0 → TIDAK PERNAH jadi breaking.
+#     (Kasus nyata: "Pakar Ekonomi UB Soroti Tantangan APBN ...
+#     Pergantian Menteri" sempat duduk SLOT 1 padahal berita analisis.)
+#     Berita seperti ini tetap boleh tayang sebagai KATEGORI biasa.
+#   • Marker verifikasi: cari kata "KRAMAV635MARKER"
+#   • Semua fitur V6.3.4 tetap: nama publik instansi resmi berani,
+#     filter gambar sampah, perluasan +10 provinsi, scraping 4 lapis
+#     (Direct → Resolver GN → Jina → RSS), polisi frasa, jadwal & acara,
+#     anti-plagiat, anti dobel 2 lapis, anti lama 3 lapis, breaking
+#     3 slot + skor, expire 30 menit, kuota per jam WITA, Kaltara min 2.
 #  Mode 1 (loop 30 menit) : python3 skrip-wartawan.py
 #  Mode 2 (GitHub Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -102,6 +95,12 @@ GAMBAR_SAMPAH_POLA = [
     '100x100', '150x150', '200x200', '100-', '150-', '200-',
     'profile', 'favicon', 'sprite', 'watermark', 'blank', 'pixel',
 ]
+
+# ═══ V6.3.5: KATA ANALISIS/OPINI — BUKAN BREAKING ═══
+# Jika judul+materi mengandung salah satu kata ini → skor breaking 0.
+# Berita tetap bisa tayang lewat jalur kategori biasa (HUNT).
+KATA_ANALISIS = ['analisis', 'soroti', 'opini', 'tinjauan',
+                 'analysis', 'opinion', 'editorial']
 
 def GN(q, lang='id', label=None):
     # when:1d → HANYA berita 1 hari terakhir (anti berita lama)
@@ -515,7 +514,7 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV634MARKER — V6.3.4: nama publik instansi resmi disebut berani, gambar tidak dibahas.
+KRAMAV635MARKER — V6.3.5: nama publik instansi resmi disebut berani, gambar tidak dibahas.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -1004,6 +1003,9 @@ def ambil_magnitude(teks):
 
 def skor_domestik(title, summary):
     t = (title + ' ' + summary).lower()
+    # ═══ V6.3.5: BERITA ANALISIS/OPINI BUKAN BREAKING ═══
+    if any(w in t for w in KATA_ANALISIS):
+        return 0
     skor = 0
     if 'gempa' in t:
         if not any(w in t for w in INDO_GEO):
@@ -1019,6 +1021,9 @@ def skor_domestik(title, summary):
 
 def skor_dunia(title, summary):
     t = (title + ' ' + summary).lower()
+    # ═══ V6.3.5: BERITA ANALISIS/OPINI BUKAN BREAKING ═══
+    if any(w in t for w in KATA_ANALISIS):
+        return 0
     skor = 0
     if 'earthquake' in t or 'gempa' in t:
         mag = ambil_magnitude(t)
@@ -1280,7 +1285,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.3.4 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.3.5 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
