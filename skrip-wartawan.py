@@ -1,30 +1,31 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.3.6 (PROMISE-CHECK JUDUL)
-#  Baru V6.3.6 (kasus nyata: judul "Jadwal Premier League 2026-27 dan
-#  Klasemen Power Rankings Pekan Ini" padahal isi TIDAK memuat jadwal
-#  maupun klasemen):
-#   • PROMISE-CHECK: judul yang menjanjikan data (jadwal, schedule,
-#     klasemen, standings, ranking, peringkat, hasil, skor, result)
-#     WAJIB dibuktikan di isi berita:
-#       - janji JADWAL    → isi harus memuat pasangan laga ("vs",
-#         "dijadwalkan", "menghadapi"), nama hari, atau tanggal.
-#       - janji KLASEMEN/RANKING → isi harus memuat angka + kata
-#         peringkat/posisi/poin/klasemen/puncak.
-#       - janji HASIL/SKOR → isi harus memuat angka.
-#     Gagal bukti = berita DIBLOKIR (log: diblokir promise-check
-#     V6.3.6) → kategori pindah ke kandidat berikutnya — mekanisme
-#     sama dengan pola_larang yang sudah teruji.
-#   • Prompt AI diperkuat: ATURAN JUDUL kini menyebut eksplisit
-#     bahwa sistem memblokir judul penjanji data kosong
-#     (pelajaran V6.2: AI perlu aturan penyeimbang eksplisit).
-#   • Semua fitur V6.3.5 tetap: breaking anti-opini (KATA_ANALISIS),
-#     nama publik instansi resmi berani, filter gambar sampah,
-#     perluasan +10 provinsi, scraping 4 lapis (Direct → Resolver
-#     GN → Jina → RSS), polisi frasa, jadwal & acara, anti-plagiat,
-#     anti dobel 2 lapis, anti lama 3 lapis, breaking 3 slot + skor,
-#     expire 30 menit, kuota per jam WITA, Kaltara min 2,
-#     statistik scraping.
-#   • Marker verifikasi: cari kata "KRAMAV636MARKER"
+#  AI WARTAWAN KRAMANEWS — V6.3.7 (ANTI-DOBEL 36 JAM + IDX TERJADWAL + MBG/KDMP + OKEZONE)
+#  Baru V6.3.7 (permintaan pemilik):
+#   • ANTI-DOBEL 36 JAM: jendela judul & source_url diperluas dari
+#     "hari ini" (bocor di tengah malam — kasus Kebakaran Bambel 2x:
+#     22:51 & 03:13) menjadi 36 jam terakhir. Kuota HARIAN (Kaltara
+#     min 2, topik wajib nasional) tetap berbasis tanggal WITA.
+#   • BERITA IDX/KURS TERJADWAL jam 11:00, 14:00, 17:00 WITA:
+#     Data angka diambil LANGSUNG dari Yahoo Finance (IHSG ^JKSE,
+#     kurs USD/IDR, 10 emiten likuid) → disuntik ke AI → AI WAJIB
+#     menyalin angka persis, DILARANG menebak penyebab pergerakan.
+#     - Sabtu/Minggu/LIBUR NASIONAL: IHSG tidak punya candle hari ini
+#       → otomatis SKIP (tidak perlu kalender libur).
+#     - OPSI B: jika 3 slot breaking penuh, slot ke-4 DIBUKA untuk
+#       berita IDX (sementara 4 breaking aktif; yang tertua dicabut
+#       otomatis 30 menit — web sudah terbukti sanggup).
+#     - Maks 1 berita IDX per jendela 3 jam (anti ganda 11:07/11:37).
+#     - Data tidak tersedia/API gagal → skip aman, sistem tidak crash.
+#   • TOPIK WAJIB HARIAN NASIONAL: MBG (Makan Bergizi Gratis) & KDMP
+#     (Koperasi Desa Merah Putih) — feed Google News baru + prioritas:
+#     jika hari itu belum ada beritanya, kandidat MBG/KDMP didahulukan.
+#   • OKEZONE masuk sumber: nasional + ekonomi.
+#   • Semua fitur V6.3.6 tetap: promise-check judul, breaking
+#     anti-opini, nama publik instansi resmi, filter gambar sampah,
+#     perluasan +10 provinsi, scraping 4 lapis, polisi frasa,
+#     anti-plagiat, breaking 3 slot + skor, expire 30 menit,
+#     kuota per jam WITA, Kaltara min 2, statistik scraping.
+#   • Marker verifikasi: cari kata "KRAMAV637MARKER"
 #  Mode 1 (loop 30 menit) : python3 skrip-wartawan.py
 #  Mode 2 (GitHub Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -54,9 +55,10 @@ AUTHOR_NAME  = 'DT'
 WITA = timezone(timedelta(hours=8))
 
 # ═══ PENGATURAN ═══
-BREAKING_MAX_SLOT   = 3      # slot breaking di hero
+BREAKING_MAX_SLOT   = 3      # slot breaking di hero (IDX opsional slot ke-4)
 BREAKING_UMUR_MENIT = 30     # breaking dicabut otomatis setelah 30 menit
 MAX_UMUR_BERITA_JAM = 30     # tolak materi RSS lebih tua dari 30 jam
+JENDELA_DOBEL_JAM   = 36     # V6.3.7: anti-dobel memakai jendela 36 jam
 GEMPA_DOM_MIN       = 5.5    # gempa Indonesia: breaking jika M >= ini (tertulis jelas)
 GEMPA_DUNIA_MIN     = 6.5    # gempa luar negeri: breaking jika M >= ini (tertulis jelas)
 SKOR_BREAKING_MIN   = 30     # skor minimal kandidat breaking
@@ -69,6 +71,22 @@ GAMBAR_MIN_LEBAR    = 400    # gambar lebih kecil dari ini = sampah (logo/thumbn
 HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
             'Agustus', 'September', 'Oktober', 'November', 'Desember']
+
+# ═══ V6.3.7: BERITA IDX TERJADWAL (WITA) ═══
+IDX_JAM = [11, 14, 17]   # jam WITA saat berita IDX/kurs wajib terbit
+IDX_Sumber = 'Yahoo Finance'
+IDX_EMITEN = [
+    ('BBCA.JK', 'BCA'), ('BBRI.JK', 'BRI'), ('BMRI.JK', 'Mandiri'),
+    ('BBNI.JK', 'BNI'), ('TLKM.JK', 'Telkom'), ('ASII.JK', 'Astra International'),
+    ('GOTO.JK', 'GoTo Gojek Tokopedia'), ('ANTM.JK', 'Aneka Tambang'),
+    ('ICBP.JK', 'Indofood CBP'), ('UNVR.JK', 'Unilever Indonesia'),
+]
+
+# ═══ V6.3.7: TOPIK WAJIB HARIAN NASIONAL (MBG & KDMP) ═══
+TOPIK_NASIONAL_WAJIB = [
+    ['makan bergizi gratis', 'mbg'],          # MBG
+    ['koperasi desa merah putih', 'kdmp'],    # KDMP
+]
 
 # ═══ JADWAL KUOTA PER JAM (WITA — waktu Tarakan) ═══
 JADWAL_JAM = {
@@ -109,14 +127,10 @@ GAMBAR_SAMPAH_POLA = [
 ]
 
 # ═══ V6.3.5: KATA ANALISIS/OPINI — BUKAN BREAKING ═══
-# Jika judul+materi mengandung salah satu kata ini → skor breaking 0.
-# Berita tetap bisa tayang lewat jalur kategori biasa (HUNT).
 KATA_ANALISIS = ['analisis', 'soroti', 'opini', 'tinjauan',
                  'analysis', 'opinion', 'editorial']
 
 # ═══ V6.3.6: KATA JANJI JUDUL (PROMISE-CHECK) ═══
-# Judul yang mengandung kata-kata ini MENJANJIKAN data ke pembaca.
-# Isi berita WAJIB membuktikan janjinya — cek fungsi cek_janji_judul().
 JANJI_JADWAL  = ['jadwal', 'schedule']
 JANJI_TABEL   = ['klasemen', 'standing', 'ranking', 'peringkat']
 JANJI_ANGKA   = ['hasil', 'skor', 'result']
@@ -139,10 +153,13 @@ HUNT = {
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
         RSSF('https://nasional.kompas.com/rss', 'Kompas Nasional'),
         RSSF('https://www.antaranews.com/rss/nasional', 'Antara'),
+        RSSF('https://news.okezone.com/rss', 'Okezone'),
         GN('pemerintah indonesia', 'id', 'Google News Nasional'),
         GN('dpr indonesia', 'id', 'Google News Nasional'),
         GN('Prabowo Subianto', 'id', 'Google News Presiden Prabowo'),
         GN('Gibran Rakabuming', 'id', 'Google News Wapres Gibran'),
+        GN('Makan Bergizi Gratis MBG', 'id', 'Google News MBG'),
+        GN('Koperasi Desa Merah Putih', 'id', 'Google News KDMP'),
     ],
     'daerah': [
         # ── Kaltara/Kaltim (prioritas pemilik) ──
@@ -214,6 +231,7 @@ HUNT = {
         RSSF('https://www.cnnindonesia.com/ekonomi/rss', 'CNN Indonesia'),
         RSSF('https://www.cnbcindonesia.com/market/rss', 'CNBC Indonesia'),
         RSSF('https://www.antaranews.com/rss/ekonomi', 'Antara'),
+        RSSF('https://economy.okezone.com/rss', 'Okezone Economy'),
         GN('china economy', 'en', 'Google News Ekonomi China'),
         GN('japan economy', 'en', 'Google News Ekonomi Jepang'),
         GN('south korea economy', 'en', 'Google News Ekonomi Korea Selatan'),
@@ -458,7 +476,7 @@ def ambil_materi_kaya(c):
     print('       ↩️ Scraping gagal/pendek — pakai ringkasan RSS')
     return c.get('summary', ''), False
 
-# ═══ ANTI BERITA DOBEL ═══
+# ═══ ANTI BERITA DOBEL (V6.3.7: JENDELA 36 JAM) ═══
 
 KATA_STOP_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
                       'sudah oleh sebagai ada adalah kata ujar bilang menurut the and '
@@ -493,20 +511,27 @@ def sudah_serupa(judul):
                 return True
     return False
 
+def _dalam_jendela(row, jam):
+    """V6.3.7: True jika created_at row berumur <= `jam` jam terakhir."""
+    try:
+        d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00'))
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - d).total_seconds() <= jam * 3600
+    except Exception:
+        return False
+
 def muat_judul_hari_ini():
+    """V6.3.7: memuat judul 36 JAM TERAKHIR (bukan hanya hari ini) —
+    menutup bocor anti-dobel di tengah malam (kasus Kebakaran Bambel 2x)."""
     out = []
     try:
         rows = rest_get('?select=title,created_at&order=created_at.desc&limit=300')
-        today = datetime.now(WITA).date()
         for row in rows:
-            try:
-                d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00')).astimezone(WITA).date()
-                if d == today and row.get('title'):
-                    out.append(normalisasi_judul(row['title']))
-            except Exception:
-                pass
+            if row.get('title') and _dalam_jendela(row, JENDELA_DOBEL_JAM):
+                out.append(normalisasi_judul(row['title']))
     except Exception as e:
-        print('   ⚠️ Gagal memuat judul hari ini:', str(e)[:60])
+        print('   ⚠️ Gagal memuat judul 36 jam:', str(e)[:60])
     return out
 
 # ═══ KONTEKS WAKTU DINAMIS (WITA) ═══
@@ -533,7 +558,7 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV636MARKER — V6.3.6: nama publik instansi resmi disebut berani, gambar tidak dibahas.
+KRAMAV637MARKER — V6.3.7: nama publik instansi resmi disebut berani, gambar tidak dibahas.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -653,7 +678,7 @@ ATURAN DATA & ANGKA (WAJIB):
 ATURAN JUDUL (WAJIB):
 - Judul ORISINAL maksimal 10 kata.
 - Judul HARUS mencerminkan isi berita — tidak menjanjikan data yang tidak ditulis.
-- ═══ V6.3.6 PROMISE-CHECK ═══
+- ═══ PROMISE-CHECK ═══
   Judul DILARANG menjanjikan JADWAL/KLASEMEN/RANKING/HASIL/SKOR jika
   isi berita TIDAK benar-benar memuat datanya (daftar laga, angka
   peringkat, skor, tanggal). Sistem MEMBLOKIR berita yang judulnya
@@ -705,16 +730,13 @@ def rest_get(query):
     return r.json() or []
 
 def get_today_state():
+    """V6.3.7: source_url 36 JAM TERAKHIR (bukan hanya hari ini) —
+    anti-dobel link tidak lagi bocor di tengah malam."""
     rows = rest_get('?select=source_url,created_at&order=created_at.desc&limit=300')
-    today = datetime.now(WITA).date()
     urls = set()
     for row in rows:
-        try:
-            d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00')).astimezone(WITA).date()
-            if d == today and row.get('source_url'):
-                urls.add(row['source_url'])
-        except Exception:
-            pass
+        if row.get('source_url') and _dalam_jendela(row, JENDELA_DOBEL_JAM):
+            urls.add(row['source_url'])
     return urls
 
 def get_breaking_list():
@@ -885,7 +907,7 @@ def parse_ai_json(text):
 def cek_janji_judul(judul, isi):
     """Judul yang menjanjikan data (jadwal/klasemen/ranking/hasil/skor)
     WAJIB dibuktikan di isi. Return None jika aman, atau string alasan
-    blokir — dipakai ai_write untuk menolak berita (V6.3.6)."""
+    blokir — dipakai ai_write untuk menolak berita."""
     j = (judul or '').lower()
     b = (isi or '').lower()
     if not j or not b:
@@ -931,7 +953,7 @@ def ai_write(user_content, timeout=150):
     ringkasan = obj.get('ringkasan', '').strip()
     waktu = (obj.get('waktu_kejadian') or '').strip()
     gambar = (obj.get('deskripsi_gambar') or '').strip()
-    # ═══ PEMERIKSA KUALITAS V6.3.6 ═══
+    # ═══ PEMERIKSA KUALITAS V6.3.7 ═══
     pola_larang = [
         # frasa waktu yang dilarang (warisan V6.3)
         'belum dikonfirmasi waktu', 'waktu kejadian belum',
@@ -1217,11 +1239,164 @@ def kategori_breaking(c, tip):
         return 'internasional'
     return 'nasional'
 
+# ═════════ V6.3.7: BERITA IDX/KURS TERJADWAL (11/14/17 WITA) ═════════
+
+def angka_id(n):
+    """Format angka gaya Indonesia: 7.412,55 (titik ribuan, koma desimal)."""
+    s = '{:,.2f}'.format(float(n))
+    s = s.replace(',', '@').replace('.', ',').replace('@', '.')
+    if s.endswith(',00'):
+        s = s[:-3]
+    return s
+
+def persen_id(p):
+    tanda = '+' if p >= 0 else '-'
+    return tanda + angka_id(abs(p)) + '%'
+
+def yahoo_quote(symbol):
+    """Ambil harga sesi terakhir & sebelumnya dari Yahoo Finance (API
+    publik tak resmi). Return dict atau None. SKIP otomatis bila tidak
+    ada candle HARI INI (akhir pekan / libur nasional / libur bursa)."""
+    try:
+        headers = {'User-Agent': random.choice(UA_LIST)}
+        url = ('https://query1.finance.yahoo.com/v8/finance/chart/' + symbol
+               + '?interval=1d&range=7d')
+        r = requests.get(url, headers=headers, timeout=12)
+        if not r.ok:
+            return None
+        res = r.json().get('chart', {}).get('result')
+        if not res:
+            return None
+        ts = res[0].get('timestamp') or []
+        quote = res[0].get('indicators', {}).get('quote', [{}])[0]
+        closes = quote.get('close') or []
+        hari_ini = datetime.now(WITA).date()
+        pasangan = []
+        for t, c in zip(ts, closes):
+            if c is None:
+                continue
+            d = datetime.fromtimestamp(t, tz=timezone.utc).astimezone(WITA).date()
+            pasangan.append((d, c))
+        if len(pasangan) < 2:
+            return None
+        if pasangan[-1][0] != hari_ini:
+            return None  # tidak ada sesi hari ini → pasar libur → skip
+        harga = pasangan[-1][1]
+        prev = pasangan[-2][1]
+        if not prev:
+            return None
+        return {'harga': harga, 'prev': prev,
+                'pct': (harga - prev) / prev * 100.0}
+    except Exception:
+        return None
+
+def buat_data_idx():
+    """Kumpulkan data pasar. Return string materi untuk AI, atau None
+    jika pasar libur / data tidak tersedia."""
+    ihsg = yahoo_quote('^JKSE')
+    if ihsg is None:
+        return None
+    baris = ['IHSG: ' + angka_id(ihsg['harga'])
+             + ' (perubahan ' + persen_id(ihsg['pct']) + ' dari penutupan sebelumnya)']
+    kurs = yahoo_quote('IDR=X')
+    if kurs:
+        baris.append('Kurs USD/IDR: Rp' + angka_id(kurs['harga'])
+                     + ' (perubahan ' + persen_id(kurs['pct']) + ')')
+    emiten = []
+    for sym, nama in IDX_EMITEN:
+        q = yahoo_quote(sym)
+        if q:
+            emiten.append((nama, sym, q['pct']))
+    naik = sorted([e for e in emiten if e[2] > 0], key=lambda x: -x[2])[:3]
+    turun = sorted([e for e in emiten if e[2] < 0], key=lambda x: x[2])[:3]
+    if naik:
+        baris.append('Saham penguat teratas: '
+                     + '; '.join(n + ' (' + s + ') ' + persen_id(p) for n, s, p in naik))
+    if turun:
+        baris.append('Saham pelemah teratas: '
+                     + '; '.join(n + ' (' + s + ') ' + persen_id(p) for n, s, p in turun))
+    return '\n'.join(baris)
+
+def idx_sudah_terbit(jam=3):
+    """Cegah berita ganda dalam 1 jam terjadwal (run 11:07 & 11:37)."""
+    try:
+        batas = (datetime.now(timezone.utc) - timedelta(hours=jam)).isoformat()
+        rows = rest_get('?select=id&source_name=eq.' + quote_plus(IDX_Sumber)
+                        + '&created_at=gte.' + batas)
+        return len(rows) > 0
+    except Exception:
+        return False
+
+def sesi_idx(today_urls, seen):
+    """Berita pasar modal terjadwal. OPSI B: selalu breaking — slot
+    ke-4 dibuka bila 3 slot penuh. Anti-dobel judul DILEWATI untuk
+    berita ini (angka berubah tiap sesi; judul wajar mirip antar-sesi)
+    — pemeriksa pola_larang tetap berlaku via ai_write."""
+    jam = datetime.now(WITA).hour
+    if jam not in IDX_JAM:
+        return 0
+    print('\n📈 IDX TERJADWAL — jam ' + str(jam) + ':00 WITA')
+    if idx_sudah_terbit():
+        print('   ⏭️ Berita IDX sudah terbit dalam 3 jam terakhir — skip.')
+        return 0
+    data = buat_data_idx()
+    if not data:
+        print('   🏖️ Pasar libur / data tidak tersedia — skip aman.')
+        return 0
+    k = konteks_waktu()
+    user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
+            'TUGAS KHUSUS: BERITA PASAR MODAL INDONESIA TERJADWAL.\n\n'
+            'DATA RESMI DARI SISTEM PASAR (SALIN ANGKA UTUH & PERSIS —\n'
+            'DILARANG mengubah, membulatkan, atau menambah angka lain):\n'
+            + data + '\n\n'
+            'ATURAN TAMBAHAN:\n'
+            '- Dateline: "JAKARTA, DKI JAKARTA - ".\n'
+            '- Panjang: 150-250 kata (4-6 paragraf).\n'
+            '- Sebut pergerakan dengan tanggal hari ini (konteks di atas).\n'
+            '- DILARANG menebak atau menuliskan PENYEBAB/faktor pergerakan\n'
+            '  pasar — data penyebab tidak tersedia. Cukup laporkan angka,\n'
+            '  arah pergerakan, dan saham yang penguat/pelemah.\n'
+            '- DILARANG menambah saham, kurs, atau angka di luar data.\n'
+            '- Judul maksimal 10 kata, sebut IHSG dan arah pergerakannya.\n'
+            '- Jangan sebut sumber data. Tulis berita.')
+    print('   ✍️ AI menulis berita IDX dari data pasar...')
+    try:
+        judul, isi, ringkasan, waktu, gambar = ai_write(user)
+    except BeritaLama as bl:
+        print('   ⏳ Ditolak AI: ' + str(bl)[:60])
+        return 0
+    except Exception as e:
+        print('   ⛔ ' + str(e)[:90])
+        return 0
+    try:
+        link_unik = ('https://finance.yahoo.com/quote/%5EJKSE?sesi='
+                     + str(int(time.time())))
+        insert_news(judul, isi, ringkasan, 'ekonomi', '',
+                    link_unik, IDX_Sumber, 'published',
+                    breaking=True, deskripsi_gambar=gambar)
+        print('   ✅ IDX BREAKING TERBIT: ' + judul[:60])
+        return 1
+    except Exception as e:
+        print('   ⚠️ Insert IDX gagal: ' + str(e)[:80])
+        return 0
+
 # ═════════ SESI KATEGORI — KUOTA PER JAM WITA ═════════
 
+def teks_mengandung(teks, kata_list):
+    """Cocokkan kata kunci: token pendek (<=4 huruf, mis. mbg/kdmp)
+    pakai batas kata, sisanya substring."""
+    t = (teks or '').lower()
+    for k in kata_list:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', t):
+                return True
+        elif k in t:
+            return True
+    return False
+
 def hitung_kaltara_hari_ini():
-    """Berita Kaltara/Tarakan yang sudah tayang hari ini (WITA).
-    Dipakai untuk menjamin kuota minimal 2 berita daerah Kaltara."""
+    """Berita Kaltara/Tarakan yang sudah tayang HARI INI (WITA) —
+    tetap basis harian karena ini kuota harian (bukan anti-dobel)."""
     n = 0
     try:
         rows = rest_get('?select=title,dateline,created_at&order=created_at.desc&limit=300')
@@ -1240,15 +1415,37 @@ def hitung_kaltara_hari_ini():
         print('   ⚠️ Gagal hitung Kaltara: ' + str(e)[:60])
     return n
 
+def hitung_topik_hari_ini(kata_list):
+    """V6.3.7: hitung berita HARI INI (WITA) yang judulnya memuat topik
+    wajib (MBG/KDMP) — dipakai untuk prioritas harian."""
+    n = 0
+    try:
+        rows = rest_get('?select=title,created_at&order=created_at.desc&limit=300')
+        today = datetime.now(WITA).date()
+        for row in rows:
+            try:
+                d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00')).astimezone(WITA).date()
+                if d != today:
+                    continue
+                if teks_mengandung(row.get('title') or '', kata_list):
+                    n += 1
+            except Exception:
+                pass
+    except Exception as e:
+        print('   ⚠️ Gagal hitung topik wajib: ' + str(e)[:60])
+    return n
+
 def kelompok_kaltara(items):
     teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '')
                     for it in items).lower()
     return any(w in teks for w in KALTARA_WORDS)
 
-def produksi_satu(cat, today_urls, seen, utamakan_kaltara):
+def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None):
     """Tulis SATU berita untuk kategori `cat`. Return True jika terbit.
     Kandidat ditulis bergilir sampai ada yang lolos semua pemeriksaan
-    (maks 3 percobaan) — gagal satu, pindah kandidat berikutnya."""
+    (maks 3 percobaan) — gagal satu, pindah kandidat berikutnya.
+    utamakan_topik = daftar kata-kunci topik wajib yang belum terpenuhi
+    hari ini (V6.3.7: MBG/KDMP di nasional)."""
     cand = collect_candidates(HUNT.get(cat, []), today_urls, seen)
     if not cand:
         print('   (' + cat + ') Tidak ada kandidat segar.')
@@ -1257,6 +1454,15 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara):
     # Kaltara didahulukan bila kuota daerah belum terpenuhi
     if utamakan_kaltara:
         groups.sort(key=lambda g: 0 if kelompok_kaltara(g['items']) else 1)
+    # V6.3.7: topik wajib nasional didahulukan bila belum terpenuhi
+    if utamakan_topik:
+        def topik_prio(g):
+            for kl in utamakan_topik:
+                for it in g['items']:
+                    if teks_mengandung((it.get('title') or '') + ' ' + (it.get('summary') or ''), kl):
+                        return 0
+            return 1
+        groups.sort(key=topik_prio)
     percobaan = 0
     for g in groups:
         if percobaan >= 3:
@@ -1308,10 +1514,23 @@ def sesi_kategori(today_urls, seen):
         utamakan_kaltara = hitung_kaltara_hari_ini() < 2
         if utamakan_kaltara:
             print('   🏝️ Kuota Kaltara hari ini belum capai 2 — kandidat Kaltara didahulukan.')
+    # V6.3.7: topik wajib nasional (MBG/KDMP) yang belum terpenuhi hari ini
+    utamakan_topik = None
+    if kuota.get('nasional'):
+        utamakan_topik = []
+        for kl in TOPIK_NASIONAL_WAJIB:
+            if hitung_topik_hari_ini(kl) == 0:
+                utamakan_topik.append(kl)
+        if utamakan_topik:
+            nama = ' & '.join('MBG' if 'mbg' in kl else 'KDMP' for kl in utamakan_topik)
+            print('   🎯 Topik wajib nasional belum terpenuhi hari ini: ' + nama
+                  + ' — kandidatnya didahulukan.')
     total = 0
     for cat, n in kuota.items():
         for _ in range(n):
-            if produksi_satu(cat, today_urls, seen, utamakan_kaltara and cat == 'daerah'):
+            if produksi_satu(cat, today_urls, seen,
+                             utamakan_kaltara and cat == 'daerah',
+                             utamakan_topik if cat == 'nasional' else None):
                 total += 1
     return total
 
@@ -1321,7 +1540,7 @@ STAT_SCRAPE = {'ok': 0, 'gagal': 0}
 def run_session():
     now = datetime.now(WITA)
     print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.3.7)')
     print('══════════════════════════════════════════')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -1329,10 +1548,11 @@ def run_session():
     today_urls = get_today_state()
     JUDUL_TERPAKAI.clear()
     JUDUL_TERPAKAI.extend(muat_judul_hari_ini())
-    print('   🧠 ' + str(len(JUDUL_TERPAKAI)) + ' judul hari ini dimuat (anti-dobel).')
+    print('   🧠 ' + str(len(JUDUL_TERPAKAI)) + ' judul 36 jam terakhir dimuat (anti-dobel).')
     seen = set()
     n_brk = sesi_breaking(today_urls, seen)
     n_kat = sesi_kategori(today_urls, seen)
+    n_idx = sesi_idx(today_urls, seen)
     # ═══ V6.3.4: statistik scraping dicetak di akhir run ═══
     total_scrape = STAT_SCRAPE['ok'] + STAT_SCRAPE['gagal']
     if total_scrape:
@@ -1342,8 +1562,9 @@ def run_session():
               + str(STAT_SCRAPE['gagal']))
     else:
         print('\n📊 Statistik scraping: tidak ada percobaan scraping sesi ini.')
-    print('🏁 Sesi selesai — breaking: ' + str(n_brk) + ' • kategori: ' + str(n_kat))
-    return n_brk + n_kat
+    print('🏁 Sesi selesai — breaking: ' + str(n_brk) + ' • kategori: ' + str(n_kat)
+          + ' • IDX: ' + str(n_idx))
+    return n_brk + n_kat + n_idx
 
 def main_sekali():
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
@@ -1352,7 +1573,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.3.6 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.3.7 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
