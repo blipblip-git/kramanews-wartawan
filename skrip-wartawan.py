@@ -1,18 +1,30 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.3.5 (ANTI-OPINI DI BREAKING)
-#  Baru V6.3.5 (keputusan pemilik — Opsi A):
-#   • BREAKING ANTI-OPINI: judul/materi yang mengandung kata
-#     analisis/soroti/opini/tinjauan (ID) atau analysis/opinion/
-#     editorial (EN) → skor breaking = 0 → TIDAK PERNAH jadi breaking.
-#     (Kasus nyata: "Pakar Ekonomi UB Soroti Tantangan APBN ...
-#     Pergantian Menteri" sempat duduk SLOT 1 padahal berita analisis.)
-#     Berita seperti ini tetap boleh tayang sebagai KATEGORI biasa.
-#   • Marker verifikasi: cari kata "KRAMAV635MARKER"
-#   • Semua fitur V6.3.4 tetap: nama publik instansi resmi berani,
-#     filter gambar sampah, perluasan +10 provinsi, scraping 4 lapis
-#     (Direct → Resolver GN → Jina → RSS), polisi frasa, jadwal & acara,
-#     anti-plagiat, anti dobel 2 lapis, anti lama 3 lapis, breaking
-#     3 slot + skor, expire 30 menit, kuota per jam WITA, Kaltara min 2.
+#  AI WARTAWAN KRAMANEWS — V6.3.6 (PROMISE-CHECK JUDUL)
+#  Baru V6.3.6 (kasus nyata: judul "Jadwal Premier League 2026-27 dan
+#  Klasemen Power Rankings Pekan Ini" padahal isi TIDAK memuat jadwal
+#  maupun klasemen):
+#   • PROMISE-CHECK: judul yang menjanjikan data (jadwal, schedule,
+#     klasemen, standings, ranking, peringkat, hasil, skor, result)
+#     WAJIB dibuktikan di isi berita:
+#       - janji JADWAL    → isi harus memuat pasangan laga ("vs",
+#         "dijadwalkan", "menghadapi"), nama hari, atau tanggal.
+#       - janji KLASEMEN/RANKING → isi harus memuat angka + kata
+#         peringkat/posisi/poin/klasemen/puncak.
+#       - janji HASIL/SKOR → isi harus memuat angka.
+#     Gagal bukti = berita DIBLOKIR (log: diblokir promise-check
+#     V6.3.6) → kategori pindah ke kandidat berikutnya — mekanisme
+#     sama dengan pola_larang yang sudah teruji.
+#   • Prompt AI diperkuat: ATURAN JUDUL kini menyebut eksplisit
+#     bahwa sistem memblokir judul penjanji data kosong
+#     (pelajaran V6.2: AI perlu aturan penyeimbang eksplisit).
+#   • Semua fitur V6.3.5 tetap: breaking anti-opini (KATA_ANALISIS),
+#     nama publik instansi resmi berani, filter gambar sampah,
+#     perluasan +10 provinsi, scraping 4 lapis (Direct → Resolver
+#     GN → Jina → RSS), polisi frasa, jadwal & acara, anti-plagiat,
+#     anti dobel 2 lapis, anti lama 3 lapis, breaking 3 slot + skor,
+#     expire 30 menit, kuota per jam WITA, Kaltara min 2,
+#     statistik scraping.
+#   • Marker verifikasi: cari kata "KRAMAV636MARKER"
 #  Mode 1 (loop 30 menit) : python3 skrip-wartawan.py
 #  Mode 2 (GitHub Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -101,6 +113,13 @@ GAMBAR_SAMPAH_POLA = [
 # Berita tetap bisa tayang lewat jalur kategori biasa (HUNT).
 KATA_ANALISIS = ['analisis', 'soroti', 'opini', 'tinjauan',
                  'analysis', 'opinion', 'editorial']
+
+# ═══ V6.3.6: KATA JANJI JUDUL (PROMISE-CHECK) ═══
+# Judul yang mengandung kata-kata ini MENJANJIKAN data ke pembaca.
+# Isi berita WAJIB membuktikan janjinya — cek fungsi cek_janji_judul().
+JANJI_JADWAL  = ['jadwal', 'schedule']
+JANJI_TABEL   = ['klasemen', 'standing', 'ranking', 'peringkat']
+JANJI_ANGKA   = ['hasil', 'skor', 'result']
 
 def GN(q, lang='id', label=None):
     # when:1d → HANYA berita 1 hari terakhir (anti berita lama)
@@ -514,7 +533,7 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV635MARKER — V6.3.5: nama publik instansi resmi disebut berani, gambar tidak dibahas.
+KRAMAV636MARKER — V6.3.6: nama publik instansi resmi disebut berani, gambar tidak dibahas.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -555,7 +574,7 @@ ATURAN SPESIFISITAS LOKASI (WAJIB):
 - Jika sumber MEMANG tidak menyebut daerah spesifik → boleh gunakan
   frasa umum, jangan mengarang nama daerah.
 
-ATURAN NAMA PUBLIK INSTANSI RESMI (WAJIB — BARU V6.3.4, PALING PENTING):
+ATURAN NAMA PUBLIK INSTANSI RESMI (WAJIB — PALING PENTING):
 - Nama orang yang DIUMUMKAN RESMI oleh instansi pemerintah/hukum
   (KPK, Kejaksaan, Polri, Bareskrim, Pengadilan, BMKG, BNPB,
   kementerian, pemda) = INFORMASI PUBLIK HUKUM.
@@ -634,6 +653,13 @@ ATURAN DATA & ANGKA (WAJIB):
 ATURAN JUDUL (WAJIB):
 - Judul ORISINAL maksimal 10 kata.
 - Judul HARUS mencerminkan isi berita — tidak menjanjikan data yang tidak ditulis.
+- ═══ V6.3.6 PROMISE-CHECK ═══
+  Judul DILARANG menjanjikan JADWAL/KLASEMEN/RANKING/HASIL/SKOR jika
+  isi berita TIDAK benar-benar memuat datanya (daftar laga, angka
+  peringkat, skor, tanggal). Sistem MEMBLOKIR berita yang judulnya
+  menjanjikan "jadwal", "klasemen", "ranking", "hasil", atau "skor"
+  tapi isi kosong dari data itu — pastikan isi membuktikan judul,
+  atau ubah judul agar sesuai isi.
 
 ATURAN ETIKA FAKTA (WAJIB):
 - HANYA fakta dari materi sumber. DILARANG mengarang fakta, nama, atau angka.
@@ -854,6 +880,39 @@ def parse_ai_json(text):
         t = re.sub(r'\s*```$', '', t)
     return json.loads(t)
 
+# ═══ V6.3.6: PROMISE-CHECK — JUDUL WAJIB DIBUKTIKAN ISI ═══
+
+def cek_janji_judul(judul, isi):
+    """Judul yang menjanjikan data (jadwal/klasemen/ranking/hasil/skor)
+    WAJIB dibuktikan di isi. Return None jika aman, atau string alasan
+    blokir — dipakai ai_write untuk menolak berita (V6.3.6)."""
+    j = (judul or '').lower()
+    b = (isi or '').lower()
+    if not j or not b:
+        return None
+    hari_kecil = [h.lower() for h in HARI_ID]
+    bulan_kecil = [x.lower() for x in BULAN_ID[1:]]
+    # ── 1) Janji JADWAL: isi harus memuat pasangan laga, hari, atau tanggal ──
+    if any(w in j for w in JANJI_JADWAL):
+        ada = any(w in b for w in ('vs', 'dijadwalkan', 'menghadapi',
+                                   'kick off', 'kick-off', 'tanding', 'laga'))
+        ada = ada or any(h in b for h in hari_kecil)
+        ada = ada or any(re.search(r'\b\d{1,2}\s+' + re.escape(bn), b) for bn in bulan_kecil)
+        if not ada:
+            return 'judul menjanjikan JADWAL tapi isi tidak memuat jadwal'
+    # ── 2) Janji KLASEMEN/RANKING: isi harus ada angka + konteks peringkat ──
+    if any(w in j for w in JANJI_TABEL):
+        ada_angka = bool(re.search(r'\d', b))
+        ada_konteks = any(w in b for w in ('peringkat', 'posisi', 'poin',
+                                           'klasemen', 'puncak', 'memimpin'))
+        if not (ada_angka and ada_konteks):
+            return 'judul menjanjikan KLASEMEN/RANKING tapi isi tidak memuatnya'
+    # ── 3) Janji HASIL/SKOR: isi minimal harus memuat angka ──
+    if any(w in j for w in JANJI_ANGKA):
+        if not re.search(r'\d', b):
+            return 'judul menjanjikan HASIL/SKOR tapi isi tidak memuat angka'
+    return None
+
 def ai_write(user_content, timeout=150):
     r = requests.post('https://api.deepseek.com/chat/completions',
         headers={'Authorization': 'Bearer ' + DEEPSEEK_KEY,
@@ -872,7 +931,7 @@ def ai_write(user_content, timeout=150):
     ringkasan = obj.get('ringkasan', '').strip()
     waktu = (obj.get('waktu_kejadian') or '').strip()
     gambar = (obj.get('deskripsi_gambar') or '').strip()
-    # ═══ PEMERIKSA KUALITAS V6.3.4 — DIPERLUAS ═══
+    # ═══ PEMERIKSA KUALITAS V6.3.6 ═══
     pola_larang = [
         # frasa waktu yang dilarang (warisan V6.3)
         'belum dikonfirmasi waktu', 'waktu kejadian belum',
@@ -899,6 +958,10 @@ def ai_write(user_content, timeout=150):
     tertangkap = [p for p in pola_larang if p in isi_lower]
     if tertangkap:
         raise Exception('diblokir pemeriksa V6.3.4: ' + str(tertangkap[0])[:50])
+    # ═══ V6.3.6: PROMISE-CHECK — judul wajib dibuktikan isi ═══
+    alasan_janji = cek_janji_judul(judul, isi)
+    if alasan_janji:
+        raise Exception('diblokir promise-check V6.3.6: ' + alasan_janji)
     # URUTAN KONSISTEN: judul, isi, ringkasan, WAKTU, GAMBAR
     return judul, isi, ringkasan, waktu, gambar
 
@@ -941,6 +1004,8 @@ def ai_rewrite_single(c):
             'materi; jika tidak ada, cukup laporkan fakta langsung — DILARANG '
             'menulis kalimat tentang ketiadaan narasumber (berita DITOLAK sistem).\n'
             '- ACARA/LAGA lain: tulis tanggalnya jika tertulis; frasa relatif salin apa adanya.\n'
+            '- JUDUL: dilarang menjanjikan jadwal/klasemen/hasil/skor/ranking jika '
+            'isi tidak benar-benar memuat datanya (sistem memblokir berita demikian).\n'
             '- Tulis ulang dengan kalimatmu sendiri — dilarang menjiplak kalimat sumber.\n'
             '- Jangan sebut portal/media sumber, awali dengan dateline lokasi, '
             'salin utuh semua angka, isi deskripsi_gambar dengan kata kunci visual.')
@@ -981,6 +1046,8 @@ def ai_rewrite_multi(items):
             '- Kutipan lembaga: sebut nama orangnya jika ada; jika tidak, cukup '
             'laporkan fakta langsung — dilarang kalimat tentang ketiadaan narasumber.\n'
             '- ACARA/LAGA: tanggal jika tertulis; frasa relatif salin apa adanya.\n'
+            '- JUDUL: dilarang menjanjikan jadwal/klasemen/hasil/skor/ranking jika '
+            'isi tidak benar-benar memuat datanya (sistem memblokir berita demikian).\n'
             '- Tulis ulang dengan kalimatmu sendiri — dilarang menjiplak kalimat sumber.\n'
             '- Jangan sebut media sumber, awali dengan dateline, salin utuh angka, '
             'isi deskripsi_gambar dengan kata kunci visual.')
@@ -1285,7 +1352,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.3.5 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.3.6 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
