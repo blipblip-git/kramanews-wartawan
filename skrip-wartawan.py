@@ -1,20 +1,26 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.3.1 (SCRAPING ARTIKEL ASLI)
-#  Baru V6.3.1 (upgrade terbesar — permintaan pemilik):
-#   • SCRAPING ARTIKEL ASLI: sebelum AI menulis, sistem membuka
-#     halaman artikel sumber (link RSS), mengambil ISI PENUH artikel
-#     (bukan cuma ringkasan RSS 2-3 kalimat).
-#   • AI kini membaca MATERI KAYA: jadwal laga/acara, kutipan
-#     narasumber, angka lengkap — semua terangkat ke berita.
-#   • ATURAN JADWAL & ACARA: tanggal event di dalam berita (laga,
-#     acara mendatang) wajib konkret jika tertulis di sumber;
-#     frasa relatif sumber ("pekan ini") boleh disalin apa adanya.
-#   • FALLBACK AMAN: jika scraping gagal (portal blokir/lambat),
-#     otomatis kembali ke ringkasan RSS — sistem tidak pernah mati.
-#   • Semua fitur tetap: anti dobel, anti lama, polisi frasa V6.3,
-#     fix V6.2, breaking 3 slot, expire 30 menit, kuota per jam,
-#     Kaltara prioritas, zona WITA.
-#   • Marker verifikasi: cari kata "KRAMAV631MARKER"
+#  AI WARTAWAN KRAMANEWS — V6.3.2 (SCRAPING TANGGUH + SPESIFISITAS)
+#  Baru V6.3.2 (permintaan pemilik setelah audit berita):
+#   • RESOLVER GOOGLE NEWS: link news.google.com (halaman perantara)
+#     otomatis dibuka → alamat artikel ASLI diekstrak → scraping
+#     diarahkan ke artikel asli, bukan halaman perantara JS.
+#   • JINA READER (r.jina.ai) sebagai tenaga kedua: jika fetch
+#     langsung diblokir WAF/anti-bot portal, request lewat Jina
+#     (gratis, tanpa API key) → lolos tembok → teks artikel bersih.
+#     Rantai: Direct → Jina → Ringkasan RSS (tidak pernah mati).
+#   • ATURAN SPESIFISITAS LOKASI: peristiwa wilayah terdampak
+#     (karhutla/asap/banjir/gempa/krisis) WAJIB menyebut daerah
+#     spesifik yang tertulis di sumber — DILARANG "sejumlah daerah"
+#     jika sumber menyebut nama daerahnya.
+#   • ATURAN NARASUMBER LEMBAGA: kutipan DPRD/DPR/BMKG/dll via
+#     pejabat/anggota → wajib nama jika tertulis di sumber; jika
+#     tidak ada → WAJIB tulis eksplisit "identitas narasumber tidak
+#     disebutkan dalam laporan" — DILARANG menyamarkan subjek.
+#   • Semua fitur V6.3.1 tetap: scraping artikel asli, anti-plagiat,
+#     aturan jadwal & acara, tanggal publikasi RSS, polisi frasa,
+#     fix V6.2, anti dobel, anti lama, breaking 3 slot, expire 30
+#     menit, kuota per jam WITA, Kaltara prioritas.
+#   • Marker verifikasi: cari kata "KRAMAV632MARKER"
 #  Mode 1 (loop 30 menit) : python3 skrip-wartawan.py
 #  Mode 2 (GitHub Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -53,6 +59,7 @@ SKOR_BREAKING_MIN   = 30     # skor minimal kandidat breaking
 AMBANG_MIRIP        = 0.50   # judul dianggap DOBEL jika kemiripan >= ini (0-1)
 SCRAPER_TIMEOUT     = 12     # detik maksimal scraping 1 halaman
 SCRAPE_MIN_KARAKTER = 600    # hasil scraping dianggap "kaya" jika >= ini
+JINA_READER         = 'https://r.jina.ai/'  # tenaga kedua anti-blokir (gratis)
 
 HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
@@ -262,69 +269,129 @@ DUNIA_KRITIS = [
     'plane crash', 'ferry sinks', 'train derailment', 'derailed',
     'resignation', 'overthrown', 'state of emergency', 'killed',
 ]
-
 class BeritaLama(Exception):
     pass
 
-# ═══ SCRAPING ARTIKEL ASLI (V6.3.1 — JANTUNG UPGRADE INI) ═══
+# ═══ V6.3.2: RESOLVER GOOGLE NEWS ═══
+
+def resolusi_link_google(url):
+    """Link news.google.com = halaman perantara. Buka halaman itu,
+    ekstrak URL artikel ASLI dari dalam HTML-nya. Return url asli
+    (atau url semula jika bukan link Google / gagal resolve)."""
+    try:
+        if 'news.google.com' not in url:
+            return url
+        headers = {'User-Agent': random.choice(UA_LIST)}
+        r = requests.get(url, headers=headers, timeout=SCRAPER_TIMEOUT, allow_redirects=True)
+        if not r.ok:
+            return url
+        html = r.text or ''
+        # Pola 1: link asli tertanam sebagai href
+        m = re.search(r'href="(https?://(?!news\.google|www\.google)[^"]+)"', html)
+        if m:
+            kandidat = m.group(1)
+            if 'google' not in kandidat:
+                return kandidat
+        # Pola 2: URL asli di dalam data (encoded articles)
+        m = re.search(r'https?://(?!news\.google|www\.google)[A-Za-z0-9\.\-]+(?:/[^\s"\'<>\\]+)+', html)
+        if m:
+            kandidat = m.group(0)
+            if 'google' not in kandidat and any(d in kandidat for d in ('.com', '.id', '.net', '.co', '.org')):
+                return kandidat
+        return url
+    except Exception:
+        return url
+
+def scrape_via_jina(url):
+    """Tenaga kedua: minta Jina Reader merender halaman (lolos anti-bot).
+    Return teks bersih atau ''."""
+    try:
+        headers = {'User-Agent': random.choice(UA_LIST)}
+        r = requests.get(JINA_READER + url, headers=headers,
+                         timeout=SCRAPER_TIMEOUT + 8, allow_redirects=True)
+        if not r.ok:
+            return ''
+        teks = r.text or ''
+        # Jina mengembalikan markdown — bersihkan sintaks markdown ringan
+        teks = re.sub(r'!\[[^\]]*\]\([^)]*\)', ' ', teks)   # gambar
+        teks = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', teks)  # link → teks
+        teks = re.sub(r'[#*_`>]{1,3}', ' ', teks)
+        teks = re.sub(r'\s+', ' ', teks).strip()
+        return teks if len(teks) >= SCRAPE_MIN_KARAKTER else ''
+    except Exception:
+        return ''
+
+def _bersihkan_html_artikel(html):
+    """Buang bagian non-artikel dari HTML mentah → teks bersih."""
+    html = re.sub(r'<script[^>]*>.*?</script>', ' ', html, flags=re.S | re.I)
+    html = re.sub(r'<style[^>]*>.*?</style>', ' ', html, flags=re.S | re.I)
+    html = re.sub(r'<nav[^>]*>.*?</nav>', ' ', html, flags=re.S | re.I)
+    html = re.sub(r'<footer[^>]*>.*?</footer>', ' ', html, flags=re.S | re.I)
+    html = re.sub(r'<header[^>]*>.*?</header>', ' ', html, flags=re.S | re.I)
+    html = re.sub(r'<aside[^>]*>.*?</aside>', ' ', html, flags=re.S | re.I)
+    html = re.sub(r'<form[^>]*>.*?</form>', ' ', html, flags=re.S | re.I)
+    html = re.sub(r'<!--.*?-->', ' ', html, flags=re.S)
+    html = re.sub(r'</(p|div|h[1-6]|li|tr)>', '\n', html, flags=re.I)
+    html = re.sub(r'<br[^>]*>', '\n', html, flags=re.I)
+    teks = re.sub(r'<[^>]+>', ' ', html)
+    teks = (teks.replace('&nbsp;', ' ').replace('&amp;', '&')
+                .replace('&quot;', '"').replace('&#39;', "'")
+                .replace('&ldquo;', '"').replace('&rdquo;', '"')
+                .replace('&lsquo;', "'").replace('&rsquo;', "'")
+                .replace('&mdash;', '—').replace('&ndash;', '–'))
+    baris_ok = []
+    for b in teks.split('\n'):
+        b = re.sub(r'\s+', ' ', b).strip()
+        if len(b) < 60:
+            continue
+        low = b.lower()
+        if any(x in low for x in ('baca juga', 'simak juga', 'ikuti kami',
+                                  'copyright', 'hak cipta', 'cookie',
+                                  'subscribe', 'newsletter', 'berlangganan',
+                                  'dapatkan update', 'baca selengkapnya')):
+            continue
+        baris_ok.append(b)
+    if not baris_ok:
+        return ''
+    return re.sub(r'\s+', ' ', ' '.join(baris_ok)).strip()[:6000]
 
 def scrape_artikel(url):
-    """Buka halaman artikel ASLI, ambil isi penuh (teks bersih). '' jika gagal."""
+    """RANTAI 3 LAPIS (V6.3.2):
+    1. Direct fetch artikel asli (dengan resolver Google News)
+    2. Jina Reader (lolos WAF/anti-bot)
+    3. Gagal semua → '' (caller fallback ke ringkasan RSS)
+    """
     if not url:
         return ''
+    # ── Lapis 0: resolve link Google News ke artikel asli ──
+    url_asli = resolusi_link_google(url)
+    # ── Lapis 1: direct fetch ──
     try:
         headers = {
             'User-Agent': random.choice(UA_LIST),
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
         }
-        r = requests.get(url, headers=headers, timeout=SCRAPER_TIMEOUT, allow_redirects=True)
-        if not r.ok:
-            return ''
-        html = r.text or ''
-        if len(html) < 500:
-            return ''
-        # Buang bagian non-artikel
-        html = re.sub(r'<script[^>]*>.*?</script>', ' ', html, flags=re.S | re.I)
-        html = re.sub(r'<style[^>]*>.*?</style>', ' ', html, flags=re.S | re.I)
-        html = re.sub(r'<nav[^>]*>.*?</nav>', ' ', html, flags=re.S | re.I)
-        html = re.sub(r'<footer[^>]*>.*?</footer>', ' ', html, flags=re.S | re.I)
-        html = re.sub(r'<header[^>]*>.*?</header>', ' ', html, flags=re.S | re.I)
-        html = re.sub(r'<aside[^>]*>.*?</aside>', ' ', html, flags=re.S | re.I)
-        html = re.sub(r'<form[^>]*>.*?</form>', ' ', html, flags=re.S | re.I)
-        html = re.sub(r'<!--.*?-->', ' ', html, flags=re.S)
-        # Pecah baris pada pemisah paragraf
-        html = re.sub(r'</(p|div|h[1-6]|li|tr)>', '\n', html, flags=re.I)
-        html = re.sub(r'<br[^>]*>', '\n', html, flags=re.I)
-        teks = re.sub(r'<[^>]+>', ' ', html)
-        # Bersihkan entitas umum
-        teks = (teks.replace('&nbsp;', ' ').replace('&amp;', '&')
-                    .replace('&quot;', '"').replace('&#39;', "'")
-                    .replace('&ldquo;', '"').replace('&rdquo;', '"')
-                    .replace('&lsquo;', "'").replace('&rsquo;', "'")
-                    .replace('&mdash;', '—').replace('&ndash;', '–'))
-        # Susun baris, buang baris sampah (nav, menu, widget)
-        baris_ok = []
-        for b in teks.split('\n'):
-            b = re.sub(r'\s+', ' ', b).strip()
-            if len(b) < 60:
-                continue
-            low = b.lower()
-            if any(x in low for x in ('baca juga', 'simak juga', 'ikuti kami',
-                                      'copyright', 'hak cipta', 'cookie',
-                                      'subscribe', 'newsletter', 'berlangganan',
-                                      'dapatkan update', 'baca selengkapnya')):
-                continue
-            baris_ok.append(b)
-        if not baris_ok:
-            return ''
-        hasil = re.sub(r'\s+', ' ', ' '.join(baris_ok)).strip()
-        return hasil[:6000]
+        r = requests.get(url_asli, headers=headers, timeout=SCRAPER_TIMEOUT, allow_redirects=True)
+        if r.ok:
+            hasil = _bersihkan_html_artikel(r.text or '')
+            if len(hasil) >= SCRAPE_MIN_KARAKTER:
+                return hasil
     except Exception:
-        return ''
+        pass
+    # ── Lapis 2: Jina Reader (anti anti-bot) ──
+    hasil = scrape_via_jina(url_asli)
+    if hasil:
+        return hasil
+    # ── Lapis 3: coba Jina pada url semula (kalau resolusi gagal tadi) ──
+    if url_asli != url:
+        hasil = scrape_via_jina(url)
+        if hasil:
+            return hasil
+    return ''
 
 def ambil_materi_kaya(c):
-    """Coba scraping artikel asli; gagal → fallback ringkasan RSS. Return (materi, kaya_bool)."""
+    """Scraping artikel asli; gagal → fallback ringkasan RSS. Return (materi, kaya_bool)."""
     scraped = scrape_artikel(c.get('link', ''))
     if scraped and len(scraped) >= SCRAPE_MIN_KARAKTER:
         print('       📥 Scraping artikel asli: ' + str(len(scraped)) + ' karakter')
@@ -348,10 +415,9 @@ def kata_inti(judul):
     return set(k for k in normalisasi_judul(judul).split()
                if len(k) > 3 and k not in KATA_STOP_DOBEL)
 
-JUDUL_TERPAKAI = []  # judul berita hari ini (dari DB + sesi berjalan), sudah dinormalisasi
+JUDUL_TERPAKAI = []
 
 def sudah_serupa(judul):
-    """True jika judul mirip dengan berita yang sudah tayang hari ini (anti dobel)."""
     j = normalisasi_judul(judul)
     if not j:
         return False
@@ -359,10 +425,8 @@ def sudah_serupa(judul):
     for t in JUDUL_TERPAKAI:
         if not t:
             continue
-        # Cek 1: kemiripan urutan huruf
         if SequenceMatcher(None, j, t).ratio() >= AMBANG_MIRIP:
             return True
-        # Cek 2: tumpang tindih kata inti (>=3 kata sama & >=70% dari set kecil)
         kt = kata_inti(t)
         if ki and kt:
             sama = ki & kt
@@ -371,7 +435,6 @@ def sudah_serupa(judul):
     return False
 
 def muat_judul_hari_ini():
-    """Ambil semua judul berita yang tayang hari ini (WITA) dari database."""
     out = []
     try:
         rows = rest_get('?select=title,created_at&order=created_at.desc&limit=300')
@@ -398,9 +461,7 @@ def konteks_waktu():
             'kemarin': tanggal_panjang(kemarin),
             'tahun': str(now.year)}
 
-# ═══ TANGGAL PUBLIKASI RSS → FORMAT INDONESIA ═══
 def tanggal_publikasi_str(entry):
-    """Tanggal publikasi entry → 'Hari (Tanggal Bulan Tahun)' zona WITA. None jika tidak ada."""
     t = entry.get('published_parsed') or entry.get('updated_parsed')
     if not t:
         return None
@@ -413,7 +474,7 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV631MARKER — V6.3.1: materi kaya dari artikel asli, tanggal konkret, narasumber jujur.
+KRAMAV632MARKER — V6.3.2: materi kaya artikel asli, spesifik lokasi, narasumber jujur.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -432,39 +493,61 @@ TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 - TOLAK ({"tolak": ...}) HANYA jika ada tanggal peristiwa TERTULIS
   EKSPLISIT di materi yang jelas lebih lama dari kemarin.
 
-ATURAN JADWAL & ACARA (WAJIB — BARU V6.3.1):
+ATURAN JADWAL & ACARA (WAJIB):
 - Jika berita menyebut ACARA/LAGA/KEJADIAN LAINNYA (jadwal pertandingan,
-  peresmian, kunjungan, agenda berikutnya, laga lanjutan):
-  ✅ Jika tanggalnya TERTULIS di materi → WAJIB salin lengkap:
+  peresmian, kunjungan, agenda berikutnya):
+  ✅ Tanggal TERTULIS di materi → WAJIB salin lengkap:
      "...dijadwalkan menghadapi Union Berlin pada Sabtu (20 September 2026)..."
-  ✅ Jika sumber hanya menyebut frasa relatif ("pekan ini", "akhir pekan",
-     "minggu depan", "bulan depan") → salin frasa sumber APA ADUNA
-     (itu bukan karangan) — TETAP DILARANG mengarang tanggal dari frasa relatif.
+  ✅ Sumber hanya frasa relatif ("pekan ini", "akhir pekan") → salin
+     APA ADUNA — dilarang mengarang tanggal dari frasa relatif.
 - DILARANG menyisakan kejadian penting tanpa keterangan waktu sama sekali.
 
-ATURAN NARASUMBER (WAJIB):
+ATURAN SPESIFISITAS LOKASI (WAJIB — BARU V6.3.2):
+- Peristiwa dengan WILAYAH TERDAMPAK (karhutla/asap, banjir, gempa,
+  kekeringan, krisis, erupsi, dsb) WAJIB menyebut daerah SPESIFIK:
+  ✅ "asap menyelimuti Palangka Raya, Pontianak, dan Pangkalan Bun..."
+  ❌ "menyelimuti sejumlah daerah di Indonesia..." (KABUR — DILARANG
+     jika sumber menyebut nama daerahnya)
+- Jika sumber menyebut nama provinsi/kota yang terdampak → WAJIB
+  dituliskan semua (atau minimal 3 yang terpenting) di dalam berita.
+- Frasa kabur seperti "sejumlah daerah", "beberapa wilayah", "berbagai
+  tempat" DILARANG digunakan sebagai pengganti nama daerah yang ada
+  di materi sumber.
+- Jika sumber MEMANG tidak menyebut daerah spesifik → boleh gunakan
+  frasa umum, jangan mengarang nama daerah.
+
+ATURAN NARASUMBER (WAJIB — DIPERKUAT V6.3.2):
 - Jika materi menyebut NAMA ORANG → WAJIB kutip dengan jabatan lengkap:
-  ✅ "Kepala BMKG, Dwikorita Karnawati, menjelaskan..."
-  ❌ "pihak BMKG menjelaskan..." (tanpa nama — DILARANG)
-- Jika materi TIDAK menyebut nama orang → LAPORKAN FAKTA LANGSUNG,
-  tanpa kalimat atribusi kosong.
-- DILARANG KERAS frasa atribusi kosong: "dilaporkan bahwa...", "menurut
-  informasi yang diterima...", "diduga kuat...", "kabarnya...", "dikabarkan...".
+  ✅ "Ketua DPRD Kaltara, [Nama], menyatakan..."
+  ❌ "DPRD Kaltara menyatakan..." (tanpa nama orang — DILARANG jika
+     nama ada di materi)
+- ATURAN NARASUMBER LEMBAGA (BARU): kutipan yang disandangkan ke
+  lembaga (DPRD, DPR, BMKG, Polri, Pemkot, dll) berasal dari ORANG.
+  Jika artikel sumber menyebut nama orangnya → WAJIB kutip:
+  ✅ "Anggota DPRD Kaltara, [Nama], mengatakan..."
+- Jika artikel sumber MEMANG tidak menyebut nama orangnya → tulis
+  JUJUR dan EKSPLISIT di dalam berita:
+  ✅ "...namun identitas narasumber dari DPRD Kaltara tidak disebutkan
+     dalam laporan."
+  ❌ DILARANG menyamarkan seolah ada sumber resmi tanpa nama.
+- DILARANG KERAS frasa atribusi kosong: "dilaporkan bahwa...",
+  "menurut informasi yang diterima...", "diduga kuat...", "kabarnya...",
+  "dikabarkan...".
 - DILARANG MENGARANG nama tokoh yang tidak ada di materi sumber.
 
-ATURAN ANTI-PLAGIAT (WAJIB — PENTING KARENA MATERI KAYA):
+ATURAN ANTI-PLAGIAT (WAJIB — MATERI KAYA):
 - Materi sumber hanyalah FAKTA mentah — tulis ulang dengan kalimatmu sendiri.
 - DILARANG menyalin kalimat sumber secara verbatim lebih dari 5 kata berurutan.
 - Yang boleh disalin persis: nama, jabatan, angka, dan kutipan langsung
-  yang berada di dalam tanda kutip.
+  di dalam tanda kutip.
 - Hasil akhir harus terasa KRAMANEWS, bukan salinan portal sumber.
 
 ATURAN PANJANG (WAJIB):
 - Target jumlah kata DIBERIKAN di pesan user — IKUTI target itu.
 - DILARANG menggembung berita dengan kalimat kosong atau pengulangan.
 - Setiap kalimat WAJIB membawa informasi baru dari sumber.
-- Jika isi berita menjanjikan data (jadwal, daftar, angka) yang TIDAK ada
-  di materi sumber → UBAH JUDUL agar tidak menjanjikan data itu.
+- Jika isi berita menjanjikan data (jadwal, daftar, angka) yang TIDAK
+  ada di materi sumber → UBAH JUDUL agar tidak menjanjikan data itu.
 
 ATURAN GAYA PENULISAN (WAJIB):
 - Tulis seperti wartawan portal besar Indonesia. LAPOR BERITA LANGSUNG.
@@ -605,7 +688,6 @@ def get_material(entry):
     return s
 
 def umur_jam(entry):
-    """Umur berita dalam jam. None jika feed tidak menyediakan tanggal."""
     t = entry.get('published_parsed') or entry.get('updated_parsed')
     if not t:
         return None
@@ -633,7 +715,6 @@ def collect_candidates(sources, today_urls, seen):
             link = entry.get('link', '')
             if not link or link in seen or link in today_urls:
                 continue
-            # ═══ ANTI BERITA LAMA: buang entri lebih tua dari batas ═══
             u = umur_jam(entry)
             if u is not None and u > MAX_UMUR_BERITA_JAM:
                 continue
@@ -648,7 +729,6 @@ def collect_candidates(sources, today_urls, seen):
                 title = t2
                 if portal and portal != 'Google News':
                     sname = portal
-            # ═══ V6.3: tangkap tanggal publikasi untuk disuntik ke AI ═══
             out.append({'title': title, 'summary': summary, 'link': link,
                         'source': sname, 'entry': entry,
                         'tgl_pub': tanggal_publikasi_str(entry)})
@@ -712,7 +792,6 @@ def ai_write(user_content, timeout=150):
     return judul, isi, ringkasan, waktu, gambar
 
 def target_kata(materi_len):
-    """V6.3: panjang berita mengikuti kekayaan materi sumber."""
     if materi_len < 500:
         return ('200-300 kata (3-5 paragraf) — sumber ringkas, tulis PADAT, '
                 'dilarang menggembung dengan kalimat pengisi.')
@@ -720,7 +799,6 @@ def target_kata(materi_len):
 
 def ai_rewrite_single(c):
     k = konteks_waktu()
-    # ═══ V6.3.1: SCRAPING ARTIKEL ASLI ═══
     materi, kaya = ambil_materi_kaya(c)
     label_materi = 'ISI PENUH ARTIKEL SUMBER (scraping)' if kaya else 'RINGKASAN SUMBER'
     tgl = c.get('tgl_pub')
@@ -743,10 +821,13 @@ def ai_rewrite_single(c):
             'Tulis ulang sesuai SEMUA aturan:\n'
             '- TANGGAL KONKRET di isi berita — dilarang frasa "belum dikonfirmasi '
             'waktu pasti kejadian".\n'
-            '- Jika ada ACARA/LAGA/AGENDA lain di materi: tulis tanggalnya jika '
-            'tertulis; jika sumber hanya bilang "pekan ini" dst, salin apa adanya.\n'
-            '- Nama tokoh di materi WAJIB dikutip dengan jabatan; jika tidak ada nama, '
-            'laporkan fakta langsung tanpa atribusi kosong — dilarang mengarang nama.\n'
+            '- SPESIFIK: peristiwa wilayah terdampak WAJIB menyebut nama daerah yang '
+            'tertulis di materi (dilarang "sejumlah daerah" jika nama daerah ada).\n'
+            '- Kutipan lembaga (DPRD/BMKG/dll): sebut NAMA orangnya jika ada di materi; '
+            'jika tidak ada, tulis eksplisit bahwa identitas narasumber tidak '
+            'disebutkan dalam laporan.\n'
+            '- ACARA/LAGA lain: tulis tanggalnya jika tertulis; frasa relatif salin apa adanya.\n'
+            '- Nama tokoh wajib dikutip dengan jabatan; tanpa nama = fakta langsung.\n'
             '- Tulis ulang dengan kalimatmu sendiri — dilarang menjiplak kalimat sumber.\n'
             '- Jangan sebut portal/media sumber, awali dengan dateline lokasi, '
             'salin utuh semua angka, isi deskripsi_gambar dengan kata kunci visual.')
@@ -754,7 +835,6 @@ def ai_rewrite_single(c):
 
 def ai_rewrite_multi(items):
     k = konteks_waktu()
-    # ═══ V6.3.1: SCRAPING setiap materi (maks 4), pilih yang terkaya ═══
     bagian = []
     total_len = 0
     tgl = None
@@ -783,10 +863,10 @@ def ai_rewrite_multi(items):
             '\n\nGabungkan menjadi SATU berita KramaNews sesuai SEMUA aturan:\n'
             '- TANGGAL KONKRET di isi berita — dilarang frasa "belum dikonfirmasi '
             'waktu pasti kejadian".\n'
-            '- Jika ada ACARA/LAGA/AGENDA di materi: tulis tanggalnya jika tertulis; '
-            'frasa relatif sumber salin apa adanya.\n'
-            '- Nama tokoh wajib dikutip dengan jabatan; tanpa nama = fakta langsung '
-            'tanpa atribusi kosong — dilarang mengarang nama.\n'
+            '- SPESIFIK: wilayah terdampak wajib menyebut nama daerah dari materi.\n'
+            '- Kutipan lembaga: sebut nama orangnya jika ada; jika tidak, nyatakan '
+            'eksplisit identitas tidak disebutkan dalam laporan.\n'
+            '- ACARA/LAGA: tanggal jika tertulis; frasa relatif salin apa adanya.\n'
             '- Tulis ulang dengan kalimatmu sendiri — dilarang menjiplak kalimat sumber.\n'
             '- Jangan sebut media sumber, awali dengan dateline, salin utuh angka, '
             'isi deskripsi_gambar dengan kata kunci visual.')
@@ -795,7 +875,6 @@ def ai_rewrite_multi(items):
 # ═══ SKOR BREAKING (anti dominasi gempa) ═══
 
 def ambil_magnitude(teks):
-    """Ambil angka magnitude dari teks. None jika tidak tertulis jelas."""
     m = re.search(r'(?:magnitudo|magnitude)\s*(?:m)?\s*[:=]?\s*(\d{1,2}[.,]\d{1,2})', teks)
     if not m:
         m = re.search(r'\bm\s*[:=]?\s*(\d{1,2}[.,]\d{1,2})\b', teks)
@@ -809,11 +888,9 @@ def ambil_magnitude(teks):
     return None
 
 def skor_domestik(title, summary):
-    """Skor breaking SLOT 1. Gempa luar negeri & gempa mikro = 0."""
     t = (title + ' ' + summary).lower()
     skor = 0
     if 'gempa' in t:
-        # Gempa hanya breaking jika di Indonesia + magnitude jelas & cukup besar
         if not any(w in t for w in INDO_GEO):
             return 0
         mag = ambil_magnitude(t)
@@ -826,7 +903,6 @@ def skor_domestik(title, summary):
     return skor
 
 def skor_dunia(title, summary):
-    """Skor breaking SLOT 2. Gempa luar negeri harus M >= GEMPA_DUNIA_MIN jelas."""
     t = (title + ' ' + summary).lower()
     skor = 0
     if 'earthquake' in t or 'gempa' in t:
@@ -840,7 +916,6 @@ def skor_dunia(title, summary):
     return skor
 
 def cari_gambar_wikimedia(deskripsi):
-    """Cari gambar bebas hak cipta di Wikimedia sesuai deskripsi dari AI."""
     if not deskripsi:
         return ''
     try:
@@ -866,7 +941,6 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
     m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+(.*)$', isi, re.DOTALL)
     dateline = m.group(1).strip() if m else ''
     isi_bersih = m.group(2).strip() if m else isi
-    # ═══ FALLBACK GAMBAR WIKIMEDIA ═══
     if not img and deskripsi_gambar:
         img = cari_gambar_wikimedia(deskripsi_gambar)
         if img:
@@ -882,7 +956,6 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
     if breaking:
         payload['breaking'] = True
     edge_call({'action': 'insert', 'payload': payload})
-    # Daftarkan judul ke daftar anti-dobel
     JUDUL_TERPAKAI.append(normalisasi_judul(judul))
 
 # ═════════ SESI BREAKING — 3 SLOT ═════════
@@ -894,7 +967,6 @@ def sesi_breaking(today_urls, seen):
     if slots <= 0:
         return 0
 
-    # Kumpulkan kandidat domestik & dunia sekaligus, beri skor
     cand_dom = collect_candidates(BREAKING_DOMESTIK_FEEDS, today_urls, seen)
     skor_dom = sorted([(c, skor_domestik(c['title'], c['summary'])) for c in cand_dom],
                       key=lambda x: -x[1])
@@ -907,8 +979,6 @@ def sesi_breaking(today_urls, seen):
     skor_dun = [x for x in skor_dun if x[1] >= SKOR_BREAKING_MIN]
     print('   🌍 Kandidat breaking dunia layak: ' + str(len(skor_dun)))
 
-    # Susun prioritas: slot1 = domestik terkuat, slot2 = dunia terkuat,
-    # slot3 = fleksibel (sisa terkuat)
     sisa = ([(c, s, 'dom') for c, s in skor_dom[1:]]
             + [(c, s, 'dun') for c, s in skor_dun[1:]])
     pilihan = []
@@ -922,13 +992,11 @@ def sesi_breaking(today_urls, seen):
     for label, c, asal in pilihan:
         if slots <= 0:
             break
-        # ANTI DOBEL: cek judul sumber sebelum panggil AI (hemat biaya)
         if sudah_serupa(c['title']):
             print('   🗑️ ' + label + ' — sumber dobel dengan berita yang sudah tayang, dilewati')
             continue
         try:
             judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(c)
-            # ANTI DOBEL: cek judul hasil AI
             if sudah_serupa(judul):
                 print('   🗑️ ' + label + ' — hasil AI dobel, dilewati: ' + judul[:50])
                 continue
@@ -1008,11 +1076,9 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
         if made >= need:
             break
         items = g['items']
-        # ANTI DOBEL: jika topik ini sudah ditulis lewat jalur lain (mis. kaltara), skip
         if any(it['link'] in today_urls for it in items):
             continue
         top = items[0]
-        # ANTI DOBEL: cek judul sumber sebelum panggil AI (hemat biaya)
         if sudah_serupa(top['title']):
             print('   🗑️ Sumber dobel dengan berita yang sudah tayang, dilewati: ' + top['title'][:50])
             continue
@@ -1022,7 +1088,6 @@ def sesi_kategori(cat, need, today_urls, seen, kaltara_min=0):
                 print('       🔗 topik dari ' + str(len(items)) + ' portal')
             else:
                 judul, isi, ringkasan, waktu, desc_gambar = ai_rewrite_single(top)
-            # ANTI DOBEL: cek judul hasil AI
             if sudah_serupa(judul):
                 print('   🗑️ Hasil AI dobel, dilewati: ' + judul[:50])
                 continue
@@ -1052,12 +1117,10 @@ def run_session():
     print(' ⏰ SESI ' + now.strftime('%H:%M') + ' WITA — ' + tanggal_panjang(now.date()))
     print('=' * 60)
 
-    # 1) Cabut breaking yang sudah > 30 menit
     tercabut = expire_breaking(BREAKING_UMUR_MENIT)
     if tercabut:
         print('   (Slot breaking yang kosong otomatis diisi berita biasa N/I/D oleh web)')
 
-    # 2) Muat judul hari ini untuk mesin anti-dobel
     JUDUL_TERPAKAI.clear()
     JUDUL_TERPAKAI.extend(muat_judul_hari_ini())
     print('   🧹 Anti-dobel: memuat ' + str(len(JUDUL_TERPAKAI)) + ' judul hari ini dari DB')
@@ -1065,10 +1128,8 @@ def run_session():
     today_urls = get_today_state()
     seen = set()
 
-    # 3) Patroli breaking — SELALU, 24 jam
     total = sesi_breaking(today_urls, seen)
 
-    # 4) Kuota kategori — HANYA jika jam ini ada di jadwal (jam WITA)
     quota = JADWAL_JAM.get(now.hour)
     if quota:
         print('\n📊 Kuota jam ' + str(now.hour).zfill(2) + ':00 WITA → '
@@ -1086,7 +1147,7 @@ def run_session():
     return total
 
 def main_sekali():
-    print('🐝 AI WARTAWAN V6.3.1 — MODE SEKALI JALAN (' + datetime.now(WITA).strftime('%H:%M WITA') + ')')
+    print('🐝 AI WARTAWAN V6.3.2 — MODE SEKALI JALAN (' + datetime.now(WITA).strftime('%H:%M WITA') + ')')
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
         print('❌ Kunci belum diisi!')
         return
@@ -1098,8 +1159,8 @@ def main_sekali():
 
 def main():
     print('=' * 60)
-    print(' 🐝 AI WARTAWAN KRAMANEWS V6.3.1 — LOOP TIAP 30 MENIT (WITA)')
-    print(' 📥 Scraping artikel asli: AKTIF')
+    print(' 🐝 AI WARTAWAN KRAMANEWS V6.3.2 — LOOP TIAP 30 MENIT (WITA)')
+    print(' 📥 Scraping: Direct → Google News Resolver → Jina Reader → RSS')
     print(' ⏰ Breaking: patroli 24 jam | Kategori: sesuai JADWAL_JAM (06–20 WITA)')
     print(' ✍️  Penulis: ' + AUTHOR_NAME)
     print(' 💡 Stop: Ctrl+C')
