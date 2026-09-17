@@ -1,17 +1,16 @@
 # ══════════════════════════════════════════════════════
-#  KRAMANEWS — SKRIP SOSMED V1.8 (FB + INSTAGRAM)
-#  Baru V1.8:
-#   • INSTAGRAM AUTO-POST (@krama.news):
-#     - Foto berita + caption (judul, teaser, arahan kramanews.my.id,
-#       hashtag per kategori + hashtag Kaltara otomatis)
-#     - IG WAJIB bergambar → berita tanpa gambar dilewati IG (FB tetap)
-#     - Maks 2 post IG per run + maks 6 per hari (sopan utk akun muda)
-#     - Anti-dobel kolom posted_ig (WAJIB ditambah dulu di Supabase!)
-#     - Prioritas Kaltara sama seperti FB
+#  KRAMANEWS — SKRIP SOSMED V1.8.1 (FB + INSTAGRAM)
+#  Baru V1.8.1 (fix antrean IG selalu kosong):
+#   • PENYEBAB: kolom posted_ig baris lama berisi NULL (bukan false),
+#     sehingga filter posted_ig=eq.false tidak pernah cocok → antrean
+#     IG selalu kosong walau ada berita segar bergambar.
+#   • SOLUSI: ambil 15 berita terbaru TANPA filter posted_ig, lalu
+#     saring di Python: posted_ig kosong/NULL/false = BELUM diposting.
+#     Kekbal NULL — tidak tergantung kondisi data Supabase.
 #   • FB tetap V1.7: prioritas Kaltara, maks 3 post/run, anti-dobel
 #     posted_fb, retry 504, link ?baca=ID
-#   • Token IG (IG_PAGE_TOKEN) berlaku ±60 hari; kalau expired, log
-#     menulis instruksi ulang generate (5 menit).
+#   • IG: foto wajib, maks 2/run, maks 6/hari, hashtag kategori+
+#     Kaltara, token ±60 hari (expired → log memberi instruksi).
 #   • Marker: cari kata "KRAMASOSMEDV18MARKER"
 # ══════════════════════════════════════════════════════
 
@@ -216,11 +215,15 @@ def mode_fb():
 
     print('🏁 Mode FB selesai — ' + str(ok) + ' post terkirim.')
 
-# ═══ INSTAGRAM (BARU V1.8) ═══
+# ═══ INSTAGRAM (V1.8.1 — ANTREAN KEBAL NULL) ═══
 
 def ada_img(n):
     u = (n.get('img') or '').strip()
     return bool(u) and not u.lower().endswith('.svg')
+
+def belum_post_ig(n):
+    """V1.8.1: NULL/kosong/false = belum diposting (kebal data lama)."""
+    return not n.get('posted_ig')
 
 def ig_post_photo(image_url, caption):
     r = requests.post(
@@ -296,25 +299,29 @@ def mode_ig():
               + ') — akun muda harus sopan. Selesai.')
         return
 
+    # V1.8.1: ambil 15 terbaru TANPA filter posted_ig (NULL-aman),
+    # saring di Python: kosong/NULL/false = belum diposting
     try:
         rows = supabase_get_safe(
             'articles?select=id,title,excerpt,content,category,img,dateline,posted_ig,breaking'
-            '&status=eq.published&posted_ig=eq.false'
+            '&status=eq.published'
             '&order=created_at.desc&limit=15')
     except Exception as e:
-        print('❌ Gagal ambil antrean IG — kemungkinan kolom posted_ig belum ada!')
-        print('   Solusi: Supabase → Table Editor → articles → Add column →')
-        print('   nama: posted_ig | tipe: bool | default: false → Save')
-        print('   Detail: ' + str(e)[:120])
+        print('❌ Gagal ambil antrean IG: ' + str(e)[:120])
         return
 
     if not rows:
-        print('✅ Tidak ada berita baru untuk IG. Selesai.')
+        print('✅ Tidak ada berita sama sekali. Selesai.')
         return
 
-    prio = [n for n in rows if is_kaltara(n) and ada_img(n)]
-    lain = [n for n in rows if (not is_kaltara(n)) and ada_img(n)]
-    tanpa_img = [n for n in rows if not ada_img(n)]
+    kandidat = [n for n in rows if belum_post_ig(n)]
+    if not kandidat:
+        print('✅ Semua 15 berita terbaru sudah diposting ke IG. Selesai.')
+        return
+
+    prio = [n for n in kandidat if is_kaltara(n) and ada_img(n)]
+    lain = [n for n in kandidat if (not is_kaltara(n)) and ada_img(n)]
+    tanpa_img = [n for n in kandidat if not ada_img(n)]
     urutan = prio + lain
 
     if prio:
@@ -368,7 +375,7 @@ def mode_web():
     print('🏁 Mode Web selesai — ' + str(total) + ' berita ditandai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.8 (KRAMASOSMEDV18MARKER) — FB + INSTAGRAM')
+    print('📣 KRAMANEWS SOSMED V1.8.1 (KRAMASOSMEDV18MARKER) — FB + INSTAGRAM')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
