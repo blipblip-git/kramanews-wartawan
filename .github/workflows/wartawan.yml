@@ -1,20 +1,22 @@
 name: AI Wartawan KramaNews
 
-# RE-REGISTER SCHEDULE — 16 September 2026 (V6.4 WITA)
+# V6.4-KAWAL (17 Sep 2026): cron ganda — setiap slot dijalankan di
+# dua menit berbeda (7/37 + 22/52). Kalau satu run dibbuang GitHub
+# (antrean global padat — terjadi 17 Sep: 5 jam kosong), kawalnya
+# menyelamatkan. Run kedua yang lolos dobel AMAN: anti-dobel 36 jam +
+# kuota + IDX/liga anti-ganda membuat run kosong tanpa biaya.
 on:
   schedule:
     # ═══ SEMUA CRON DALAM UTC — DIKALIBRASI KE WITA (UTC+8) ═══
-    # Kuota kategori berjalan pada jam 06:00-20:00 WITA (waktu Tarakan).
-    # WITA 06:00 = UTC 22:00 (hari sebelumnya)
-    # ═══ JAM RAMAI (05:00-21:59 WITA): tiap 30 MENIT ═══
-    # 21-22 UTC = 05:00-06:59 WITA (mencakup kuota jam 06:00 WITA)
-    - cron: '7,37 21-22 * * *'
-    # 23 UTC + 0-13 UTC = 07:00-21:59 WITA (mencakup semua kuota 07-20 WITA)
-    - cron: '7,37 23 * * *'
-    - cron: '7,37 0-13 * * *'
-    # ═══ JAM TENANG (21:00-04:59 WITA): tiap 60 MENIT — hemat menit ═══
+    # ═══ JAM RAMAI: tiap 30 menit + KAWAL di menit 22/52 ═══
+    # 21-22 UTC = 05:00-06:59 WITA
+    - cron: '7,22,37,52 21-22 * * *'
+    # 23 UTC + 0-13 UTC = 07:00-21:59 WITA
+    - cron: '7,22,37,52 23 * * *'
+    - cron: '7,22,37,52 0-13 * * *'
+    # ═══ JAM TENANG (21:00-04:59 WITA): tiap 60 menit + kawal ═══
     # 14-20 UTC = 22:00-04:59 WITA
-    - cron: '7 14-20 * * *'
+    - cron: '7,52 14-20 * * *'
   workflow_dispatch:
 
 jobs:
