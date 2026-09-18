@@ -1,22 +1,20 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.4.0 (AI VISION BLUR-GATE + UEFA RENTANG TANGGAL + KLASMEN FIX)
-#  Baru V6.4.0:
-#   • AI VISION BLUR-GATE: setiap gambar kandidat dinilai DeepSeek
-#     (kualitas visual & relevansi, skor 1-10). Skor < 7 → gambar
-#     DIBUANG → otomatis jatuh ke Wikimedia via deskripsi_gambar.
-#     (Keluhan pemilik: gambar blur/buruk masih lolos filter Level 1.)
-#   • UEFA/CHAMPIONS RENTANG TANGGAL: scoreboard ESPN diminta
-#     rentang ±3 hari (dates=YYYYMMDD-YYYYMMDD) — laga Kamis malam
-#     WITA tidak lagi terlewat (kasus: run Jumat pagi kosong padahal
-#     malam Kamis penuh laga Liga Champions).
-#   • KLASMEN ENDPOINT FIX: endpoint site-standings ternyata
-#     mengembalikan {} kosong (terbukti tes browser) → diganti
-#     endpoint core standings yang menyediakan data klasemen.
-#   • Marker verifikasi: cari kata "KRAMAV640MARKER"
-#   • Semua fitur V6.3.8 tetap: promise-check, breaking anti-opini,
-#     nama publik resmi, filter gambar sampah, perluasan provinsi,
-#     scraping 4 lapis, IDX 11/14/17, anti-dobel 36 jam, MBG/KDMP/
-#     kegiatan menteri, Okezone, kuota per jam WITA, Kaltara min 2.
+#  AI WARTAWAN KRAMANEWS — V6.4.1 (ANTI-JUDUL FRANKENSTEIN)
+#  Baru V6.4.1:
+#   • MATCH_ARTICLES DIPERKETAT: dulu cukup 2 kata kunci sama → dua
+#     berita beda topik dirangkul jadi SATU berita → judul campur
+#     2 topik ("Ferry Kebut ... Koperasi ..."). Kini: minimal 3 kata
+#     inti sama + rasio ≥60% dari kelompok yang lebih kecil + maks
+#     4 item per kelompok. Kandidat yang tidak benar-benar satu topik
+#     → ditulis TERPISAH (lebih banyak berita, tidak ada campur).
+#   • PROMPT + ATURAN SATU TOPIK: AI dilarang mencampur dua peristiwa
+#     berbeda dalam satu judul/berita.
+#   • Marker verifikasi: cari kata "KRAMAV641MARKER"
+#   • Semua fitur V6.4.0 tetap: vision blur-gate (model deepseek-chat
+#     — terbukti benar), UEFA rentang ±4 hari, klasemen endpoint CORE,
+#     promise-check, breaking anti-opini, nama publik resmi, filter
+#     gambar sampah, scraping 4 lapis, IDX 11/14/17, anti-dobel 36 jam,
+#     MBG/KDMP/kegiatan menteri, Okezone, kuota per jam WITA, Kaltara 2.
 #  Mode 1 (loop 30 menit) : python3 skrip-wartawan.py
 #  Mode 2 (GitHub Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -63,6 +61,10 @@ GAMBAR_MIN_LEBAR    = 400
 # ═══ V6.4.0: AI VISION BLUR-GATE ═══
 BLUR_SKOR_MINIMUM  = 7     # skor < 7 → gambar dibuang
 VISION_TIMEOUT     = 30
+
+# ═══ V6.4.1: PENGELOMPOKAN TOPIK (ANTI-FRANKENSTEIN) ═══
+MATCH_MIN_KATA     = 3     # minimal 3 kata inti sama (dulu 2)
+MATCH_MIN_RASIO    = 0.60  # kata sama ≥ 60% dari kelompok yang lebih kecil
 
 HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
@@ -539,7 +541,7 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV640MARKER — V6.4.0: nama publik instansi resmi disebut berani, angka mesin disalin persis.
+KRAMAV641MARKER — V6.4.1: gabungan multi-materi WAJIB satu topik sejati; angka mesin disalin persis.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -632,6 +634,10 @@ ATURAN JUDUL (WAJIB):
 - ═══ PROMISE-CHECK ═══
   Judul DILARANG menjanjikan JADWAL/KLASEMEN/RANKING/HASIL/SKOR jika
   isi tidak memuat datanya. Sistem MEMBLOKIR berita demikian.
+- ═══ SATU TOPIK (V6.4.1) ═══
+  Jika materi yang diberikan berisi DUA peristiwa yang tidak berkaitan
+  langsung, DILARANG mencampurnya dalam satu judul/berita — pilih
+  peristiwa yang paling utama dan tulis ITU saja.
 
 ATURAN ETIKA FAKTA (WAJIB):
 - HANYA fakta dari materi sumber & data mesin. DILARANG mengarang.
@@ -647,7 +653,6 @@ FORMAT JAWABAN — HANYA JSON valid tanpa teks lain:
 INGAT: nama publik resmi WAJIB lengkap. Frasa ketiadaan narasumber DILARANG.
 Blok [KLASMEN] disalin apa aduna bila diberikan. Tanpa bukti tertulis
 peristiwa lama = TULIS BERITA."""
-
 # ═════════ FUNGSI BANTU ═════════
 
 def edge_call(payload_json):
@@ -807,6 +812,12 @@ def collect_candidates(sources, today_urls, seen):
                         'tgl_pub': tanggal_publikasi_str(entry)})
     return out
 
+# ═══ V6.4.1: MATCH_ARTICLES DIPERKETAT (ANTI-FRANKENSTEIN) ═══
+# Dulu: 2 kata inti sama → gabung. Akibatnya dua berita beda topik
+# dirangkul jadi satu (judul campur, isi muter). Kini: minimal 3 kata
+# inti sama DAN rasio ≥60% dari kelompok kecil DAN maks 4 item.
+# Gagal syarat = dibiarkan jadi kelompok sendiri → ditulis terpisah.
+
 def match_articles(candidates):
     STOP = set('di ke dari yang dan atau dengan untuk pada dalam akan telah '
                'sudah karena jika agar itu ini para kami mereka ada tidak bisa '
@@ -820,7 +831,14 @@ def match_articles(candidates):
         k = kw(c['title'])
         placed = False
         for g in groups:
-            if len(k & g['kw']) >= 2:
+            if len(g['items']) >= 4:
+                continue
+            sama = k & g['kw']
+            kecil = min(len(k), len(g['kw']))
+            if kecil == 0:
+                continue
+            rasio = len(sama) / kecil
+            if len(sama) >= MATCH_MIN_KATA and rasio >= MATCH_MIN_RASIO:
                 g['items'].append(c)
                 g['kw'] |= k
                 placed = True
@@ -973,9 +991,13 @@ def ai_rewrite_multi(items):
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
             + baris_tgl +
             'TARGET PANJANG: ' + target_kata(total_len) + '\n\n'
-            'Berikut beberapa materi tentang topik yang SAMA:\n\n'
+            'Berikut beberapa materi tentang SATU peristiwa yang sama '
+            '(dilaporkan banyak media — BUKAN peristiwa berbeda):\n\n'
             + '\n\n'.join(bagian) +
-            '\n\nGabungkan menjadi SATU berita KramaNews sesuai SEMUA aturan:\n'
+            '\n\nGabungkan menjadi SATU berita KramaNews tentang SATU peristiwa '
+            'tersebut sesuai SEMUA aturan:\n'
+            '- Jika ternyata materinya berisi DUA peristiwa berbeda, tulis HANYA '
+            'peristiwa yang paling utama — dilarang mencampur dua topik.\n'
             '- TANGGAL KONKRET di isi berita.\n'
             '- NAMA PUBLIK INSTANSI RESMI: sebut semua namanya lengkap dan berani.\n'
             '- SPESIFIK: wilayah terdampak wajib menyebut nama daerah dari materi.\n'
@@ -1076,6 +1098,8 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
     JUDUL_TERPAKAI.append(normalisasi_judul(judul))
 
 # ═════════ V6.4.0: AI VISION BLUR-GATE ═════════
+# Model: deepseek-chat (bukan deepseek-vision — nama itu tidak ada di
+# DeepSeek; deepseek-chat sendiri membaca gambar via image_url base64).
 
 def vision_nilai_gambar(img_url, judul_berita):
     """Nilai gambar via DeepSeek Vision: kualitas visual & relevansi.
@@ -1090,7 +1114,7 @@ def vision_nilai_gambar(img_url, judul_berita):
             headers={'Authorization': 'Bearer ' + DEEPSEEK_KEY,
                      'Content-Type': 'application/json'},
             json={
-                'model': 'deepseek-vision',
+                'model': 'deepseek-chat',
                 'messages': [
                     {'role': 'user', 'content': [
                         {'type': 'text',
@@ -1752,13 +1776,14 @@ def sesi_kategori(today_urls, seen):
                 total += 1
     return total
 
+
 # ═══ STATISTIK SCRAPING + SATU SESI PENUH ═══
 STAT_SCRAPE = {'ok': 0, 'gagal': 0}
 
 def run_session():
     now = datetime.now(WITA)
     print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.0)')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.1)')
     print('══════════════════════════════════════════')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -1793,7 +1818,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.4.0 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.4.1 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -1806,57 +1831,3 @@ if __name__ == '__main__':
         main_sekali()
     else:
         main()
-# ═══ STATISTIK SCRAPING + SATU SESI PENUH ═══
-STAT_SCRAPE = {'ok': 0, 'gagal': 0}
-
-def run_session():
-    now = datetime.now(WITA)
-    print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.0)')
-    print('══════════════════════════════════════════')
-    dicabut = expire_breaking(BREAKING_UMUR_MENIT)
-    if dicabut:
-        print('   (' + str(dicabut) + ' breaking tua dicabut otomatis)')
-    today_urls = get_today_state()
-    JUDUL_TERPAKAI.clear()
-    JUDUL_TERPAKAI.extend(muat_judul_hari_ini())
-    print('   🧠 ' + str(len(JUDUL_TERPAKAI)) + ' judul 36 jam terakhir dimuat (anti-dobel).')
-    seen = set()
-    n_brk = sesi_breaking(today_urls, seen)
-    n_kat = sesi_kategori(today_urls, seen)
-    n_idx = sesi_idx(today_urls, seen)
-    n_liga = sesi_olahraga_api('eropa')
-    n_nba = sesi_olahraga_api('nba')
-    total_scrape = STAT_SCRAPE['ok'] + STAT_SCRAPE['gagal']
-    if total_scrape:
-        persen = int(STAT_SCRAPE['ok'] * 100 / total_scrape)
-        print('\n📊 Statistik scraping: ' + str(STAT_SCRAPE['ok']) + ' sukses / '
-              + str(total_scrape) + ' artikel (' + str(persen) + '%) — gagal '
-              + str(STAT_SCRAPE['gagal']))
-    else:
-        print('\n📊 Statistik scraping: tidak ada percobaan scraping sesi ini.')
-    print('🏁 Sesi selesai — breaking: ' + str(n_brk) + ' • kategori: ' + str(n_kat)
-          + ' • IDX: ' + str(n_idx) + ' • LigaEropa: ' + str(n_liga)
-          + ' • NBA: ' + str(n_nba))
-    return n_brk + n_kat + n_idx + n_liga + n_nba
-
-def main_sekali():
-    if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
-        print('❌ Kunci belum lengkap! Cek Secrets GitHub: DEEPSEEK_KEY, SUPABASE_PUBLISHABLE')
-        return
-    run_session()
-
-def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.4.0 — mode loop 30 menit (Ctrl+C untuk berhenti)')
-    while True:
-        try:
-            main_sekali()
-        except Exception as e:
-            print('⚠️ Sesi gagal total: ' + str(e)[:100])
-        time.sleep(1800)
-
-if __name__ == '__main__':
-    if '--sekali' in sys.argv:
-        main_sekali()
-    else:
-        main()        
