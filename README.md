@@ -1,4 +1,4 @@
-🐝 STATUS KRAMANEWSTERAKHIR DIUPDATE: 18 SEPTEMBER 2026 (V5)
+🐝 STATUS KRAMANEWSTERAKHIR DIUPDATE: 19 SEPTEMBER 2026 (V6)
 
 Portal berita AI otomatis: kramanews.my.idDijalankan 1 manusia + AI dari Tarakan, Kalimantan Utara (WITA).
 
@@ -6,53 +6,72 @@ Dokumen ini = papan status repo.Untuk konteks lengkap: lihat Dokumen Serah Terim
 
 ⚡ SISTEM AKTIF
 
-🤖 AI Wartawan — skrip-wartawan.py — GitHub Actions✅ V6.3.8 — Scheduled LIVE (cron KAWAL GANDA menit 7/22/37/52 WITA)
+🤖 AI Wartawan — skrip-wartawan.py — GitHub Actions✅ V6.4.0 — Scheduled LIVE (cron KAWAL GANDA menit 7/22/37/52 WITA)
 
-📘 Sosmed — skrip-sosmed.py — GitHub Actions✅ V1.8.1 — FB + INSTAGRAM — Scheduled LIVE (kalibrasi WITA)
+📘 Sosmed — skrip-sosmed.py — GitHub Actions✅ V1.8.1 — FB + INSTAGRAM — Scheduled LIVE
 
-🌐 Web — index.html + app.js + style.css — Cloudflare Pages✅ index v=626 (GA4 G-D8ZGH4Q3E8) / app.js V5.8.2 / css v=85
+🌐 Web — index.html + app.js + style.css — Cloudflare Pages✅ index v=628 (GA4 G-D8ZGH4Q3E8) / app.js V5.8.4 / css V10 FINAL (dirapikan)
 
 📱 Telegram Command Center — Cloudflare Worker✅ V1.0 LIVE — bot @kramanews_bot
 
-🗄️ Database — Supabase✅ articles (+ kolom baru posted_ig) + Storage gambar + admin-ops
+🗄️ Database — Supabase✅ articles (+ posted_ig) + Storage "gambar" (dibuat 18 Sep!) + admin-ops
 
-📊 Analytics & SEO✅ GA4 aktif — pengunjung manusia bersih tanpa bot✅ Search Console terverifikasi + sitemap submitted
+📊 Analytics & SEO✅ GA4 aktif • Search Console terverifikasi + sitemap submitted⚠️ Indeks Google baru 1 halaman (beranda) — program request indexing 10 URL/hari berjalan (18 Sep kuota habis = tanda bekerja)
 
-🤖 AI WARTAWAN — V6.3.8RANGKUMAN LIGA EROPA: 06:00 WITA = 1 berita breaking (skor+klasemen 7 liga via ESPN, tanpa kunci) — slot olahraga jam 07 dihapus.NBA TERJADWAL: 13:00 WITA (hasil semalam + klasemen).IDX/KURS TERJADWAL: 11:00/14:00/17:00 WITA (Yahoo Finance; IHSG+USD/IDR+10 emiten; angka dari mesin — AI dilarang menebak penyebab; sabtu/minggu/ libur = skip otomatis; slot breaking ke-4 dibuka bila 3 penuh). ✅ TERBUKTI: "IHSG Ditutup Menguat ke 6.462,43" — IDX pertama 17 Sep.TABEL KLASMEN: blok [KLASMEN] di isi → app.js render tabel HTML.TOPIK WAJIB NASIONAL (prioritas bergilir): MBG, KDMP, kegiatan menteri.ANTI-DOBEL 36 JAM (fix bocor tengah malam — Kebakaran Bambel 2x).OKEZONE masuk sumber. PROMISE-CHECK judul. BREAKING ANTI-OPINI.NAMA PUBLIK INSTANSI RESMI WAJIB LENGKAP. FILTER GAMBAR SAMPAH (<400px).SCRAPING 4 LAPIS: Direct → Resolver GN → Jina → RSS (fallback aman).
+🤖 AI WARTAWAN — V6.4.0 (TERBARU 18 SEP)
 
-🛡️ CRON KAWAL GANDA (BARU 17 SEP — pelajaran penting!)KEJADIAN: run Scheduled GitHub DIBUANG DIAM-DIAM ±5 jam (12:44 lompat ke 17:10 — 9 run hilang tanpa jejak, tanpa error) saat antrean global GitHub padat.SOLUSI: setiap slot dijalankan 2 menit: 7/37 + kawal 22/52. Kalau satu dibuang → kawalnya menyelamatkan (maks telat 15 mnt). Run yang lolos dobel AMAN & nyaris tanpa biaya (anti-dobel menolak).Cron sekarang: '7,22,37,52 21-22', '7,22,37,52 23', '7,22,37,52 0-13', '7,52 14-20' (semua UTC).
+✨ V6.4.0 (terbaru)AI VISION BLUR-GATE: setiap gambar dinilai DeepSeek (1-10, kualitas & relevansi). Skor < 7 → DIBUANG → Wikimedia via deskripsi_gambar. Log penanda: "👁️ Vision skor: X/10 → LOLOS/DIBUANG".UEFA/CHAMPIONS RENTANG TANGGAL: scoreboard ESPN diminta rentang ±4 hari (dates=YYYYMMDD-YYYYMMDD) — laga malam Kamis WITA tidak terlewat lagi di run Jumat pagi.KLASMEN ENDPOINT FIX: site-standings ESPN ternyata mengembalikan {} kosong (terbukti tes browser 18 Sep) → diganti endpoint CORE (sports.core.api.espn.com). Jika core juga kosong → klasemen menyusul, skor tetap jalan.⚠️ VISION: model dipakai "deepseek-vision" — run pertama GAGAL menilai ("Vision gagal menilai — dipertahankan"). PERLU DICEK: ganti model ke "deepseek-chat" (dengan format image_url) atau cek nama model vision yang tersedia di akun. Sampai diperbaiki: gambar selalu dipertahankan (aman, hanya blur-gate belum aktif).
 
-📘 SOSMED — V1.8.1 (FB + INSTAGRAM)
+✨ V6.3.8RANGKUMAN LIGA EROPA 06:00 WITA (breaking) • NBA 13:00 •IDX/KURS 11/14/17 (Yahoo Finance — TERBUKTI 2x: 6.462,43 & 6.453,21) •MBG/KDMP/KEGIATAN MENTERI prioritas bergilir • OKEZONE masuk •TOPIK WAJIB dengan parsing aman (token ≤4 huruf pakai batas kata).
 
-FACEBOOK (LIVE, V1.7 tetap)Prioritas KALTARA/TARAKAN depan antrean • maks 3 post/run • anti-dobelposted_fb • retry 504 • link ?baca=ID.
+✨ V6.3.7ANTI-DOBEL 36 JAM (fix bocor tengah malam — Kebakaran Bambel 2x).✨ V6.3.6 PROMISE-CHECK judul • ✨ V6.3.5 BREAKING ANTI-OPINI •✨ V6.3.4 NAMA PUBLIK RESMI WAJIB + FILTER GAMBAR SAMPAH + +10 PROVINSI •✨ V6.3.1-V6.3.3 SCRAPING 4 LAPIS + POLISI FRASA.
 
-INSTAGRAM @krama.news (LIVE — TERBUKTI 17 SEP ✅)Foto berita + caption (judul bold, teaser, "link di bio", hashtagkategori + Kaltara otomatis) • IG WAJIB bergambar — berita gunduldilewati IG (FB tetap) • maks 2 post/run • maks 6/hari (akun mudasopan) • anti-dobel kolom posted_ig • fallback logo KN: TIDAK (IGskip berita tanpa gambar).⚠️ FIX V1.8.1: kolom posted_ig baris lama berisi NULL (bukan false) → filter posted_ig=eq.false tidak pernah cocok → antrean selalu kosong. Sekarang: ambil 15 terbaru tanpa filter, saring di Python (NULL/false = belum diposting) — KEBAL NULL.⚠️ TOKEN IG (IG_PAGE_TOKEN di Secrets): berlaku ±60 HARI. Skrip TIDAK bisa auto-renew (Meta melarang + log publik). Saat expired: log otomatis menulis instruksi → ulangi generate (5 mnt, jalur sudah dikuasai: use case IG → Tambahkan akun → Buat token → Secrets).LINK DI CAPTION IG TIDAK AKTIF (aturan Meta) — pintu = link di BIO (kramanews.my.id sudah/akan dipasang di bio krama.news).
+🛡️ CRON KAWAL GANDA (17 SEP)Run Scheduled GitHub BISA DIBUANG DIAM-DIAM ±5 jam saat antrean global padat (kasus 17 Sep: 12:44 lompat ke 17:10).Solusi: setiap slot 2 menit — 7/37 + KAWAL 22/52. Run yang lolos dobel AMAN (anti-dobel menolak, biaya nol). Cron: '7,22,37,52 21-22' • '7,22,37,52 23' • '7,22,37,52 0-13' • '7,52 14-20' (semua UTC).⚠️ 18 Sep pagi: run 06:07/06:22 TETAP tidak muncul (hanya 05:48). GitHub masih belum stabil membaca jadwal baru — PANTAU; jika berulang → TINGKAT 2: pemicu eksternal (cron-job.org gratis) mengetuk Worker tiap slot.
 
-🧵 THREADS @krama.newsAkun lahir dari IG, logo terpasang. BELUM API (butuh verifikasibisnis Meta) — untuk sekarang: cross-post MANUAL (bagikan postinganIG ke Threads, 1 ketukan). Threads API menyusul nanti.
+🖥️ WEB — V10 FINAL (18 SEP: CSS DIRAPIKAN 1600→1200 BARIS)Mode Terang: header BIRU ES TIPIS #EAF1FB • menu 8 kategori 8 WARNA (Nasional merah, Daerah biru Krama, Internasional biru laut, Ekonomi hijau, Olahraga oranye, Teknologi ungu, Hiburan pink, Kesehatan teal) • ikon cari/share/mode TRANSPARAN biru Krama (hover biru tua) • KramaNews 26px Krama biru + News merah + kilau biru (brandGlowHeader) • footer HITAM + Instagram + email center + KramaNews kilau putih (brandGlowFooter) • kapsul filter 8 warna • Jelajahi 8 warna • Paling(biru)Buzz(merah) • lokasi merah News.SEMUA: tanggal di SEMUA tempat (kartu "17 Sep 2026", halaman baca "Kamis, 17 September 2026 • 17:50 WITA") • tabel klasmen • roket 🚀 • sticky header • header tanpa logo KN.DIRAPIKAN: netlify/nav-date/duplikat V6.x DIBUANG. Hasil tes pemilik: tampilan identik sebelum-sesudah ✅.
 
-🪪 IDENTITAS MEDSOS (RESMI 17 SEP)IG/Threads username: krama.news (bukan kramanews!) • email bisnis:kramanews.official@yahoo.com • FB Page: milik akun pribadi DaniLesmono (dibiarkan — token live tak disentuh) • Meta App "KramaNewsAuto Post" App ID 1941627346507232 (produk Instagram aktif; webhooksterpasang tapi TIDAK dipakai — URL callback kosong = benar).
+📘 SOSMED — V1.8.1 (FB + INSTAGRAM)FB: prioritas KALTARA, maks 3/run, anti-dobel posted_fb ✅ LIVE.IG @krama.news: TERBUKTI posting otomatis 18 Sep ✅ (foto+caption+hashtag, maks 2/run, 6/hari, posted_ig). Token IG_PAGE_TOKEN ±60 hari (expired → log memberi instruksi).THREADS: cross-post MANUAL dari IG (API menyusul).
 
-🖥️ KURSI HERO — APP.JS V5.8.2BREAKING segar (≤30 mnt) VIP slot 1/2/3 → 30 mnt turun jadi rakyat •TEMBOK UMUR 6 JAM • round-robin 8 kategori • crowd-cleaner •auto-refresh 3 mnt • SBANON • URL ?baca=ID & ?kategori=X aktif •TABEL KLASMEN render [KLASMEN] → .klasmen-table (4 teratas sorot) •BARU V8.4: TOMBOL KN MELAYANG = ROKET — diklik: seluruh tombolmeluncur ke atas dengan api 🔥 (animasi knRocketFly ke TOMBOL UTUH,bukan lingkaran dalam — pelajaran: animasi jangan ditempel ke elemenyang sudah punya animasi lain = bentrok mutar-mutar), 0.9-1.05 detik,lalu resetHome + tombol kembali normal.
+📱 TELEGRAM COMMAND CENTER⚠️ V1.2.4 siap (terima PNG/File + foto-terpisah-diingat-KV-1-jam + WITA + prompt tanpa frasa terlarang) — BELUM DIDEPLOY (masalah foto tunda). V1.0 masih live. Marker V1.2.4: KRAMATELEGRAMV12MARKER. MASALAH AKAR 18 Sep: bucket "gambar" TIDAK PERNAH ADA sejak dulu → dibuat 18 Sep (public) → upload masih 403 "Invalid Compact JWS" (kunci service: sudah diganti 2x, tetap 400) → LANJUT: cek policy bucket "gambar" (Storage → Policies) — kemungkinan policy INSERT untuk service/anon hilang saat bucket dibuat ulang!
 
-🎨 TAMPILAN WEB (V8.2–V8.4)Header TANPA logo KN (hanya tulisan KramaNews — Krama BIRU, NewsMERAH) — logo tetap hidup di FOOTER (metalik 44px) & tombol melayang.Header sticky. Menu tengah, 3 ikon kanan seragam. Bar BreakingPlayfair merah + tanggal. Footer CNN: TELUSURI center, kolom IKUTIKAMI VERTIKAL (Facebook atas, Instagram bawah), BARIS EMAIL CENTER(kramanews.official@yahoo.com, mailto:) antara grid & ©. Tulisanberjalan ramping. Share popup 6 pilihan. Admin hanya localhost.
+🗄️ SUPABASEarticles: kolom LENGKAP terverifikasi SQL 18 Sep (id, title, content, category, image_url ⚠️ NAMA BEDA: skrip/app.js memanggil "img"!, author, published_at, created_at ✅ ADA, status, breaking, posted_fb, posted_ig, views, views_count, dll).⚠️ PENTING: tabel pakai image_url (bukan img), views (bukan views_count sendiri), published_at (+ created_at ada). Kolom posted_ig ditambah 17 Sep (baris lama NULL — skrip V1.8.1 kebal NULL ✅).Storage: bucket "gambar" public DIBUAT 18 Sep (sebelumnya TIDAK ADA — akar masalah foto wartawan gagal 400/403).
 
-🗄️ SUPABASETabel articles — kolom: ... + posted_ig (bool, ditambah 17 Sep;BARIS LAMA = NULL — skrip V1.8.1 sudah kebal NULL).
+🚨🚨 MASALAH BESAR TERBUKA 18/09 — WEB BEKU SEJAM 9:15 🚨🚨GEJALA: Web kramanews.my.id TIDAK menampilkan berita baru sejak ±09:15 (berita Telegram 11:15 + IHSG 2x + kategori jam 10-11 tidak muncul), TAPI: (a) datanya ADA di Supabase (SQL membuktikan id 1113-1117 published ✅), (b) FB MENAMPILKAN semuanya (termasuk Tes Manual), (c) F12 Console web live BERSIH (hanya img-cache yang belum dibuat).SUDAH DICoba: RLS policy dibuat 18 Sep (public_read_published + public_update_views) → Success → TETAP tidak berubah (menunggu verifikasi pemilik).DUGAAN TERSISA (urutan):
 
-📱 TELEGRAM COMMAND CENTER — V1.0 (LIVE)Lapor teks+foto → draft + tombol terbit → tayang < 1 mnt. Token botyang baru di Worker secrets.
+LOCALSTORAGE browser terjebak data 9:15 → TES: buka web dimode INCOGNITO / HP lain → jika muncul = localStorage → obat:hapus kramanews-news-override / perbaiki refreshNews (V6.4.1:Supabase sumber utama, localStorage hanya cadangan).
+Cek console web live: F12 di kramanews.my.id (BUKAN dashboardSupabase!) → screenshot semua error MERAH.
+Query app.js: order=created_at.desc — verifikasi created_atterisi semua (SQL: SELECT id, created_at IS NULL FROM articles).DIAGNOSA YANG SUDAH GUGUR (jangan diulang): error isCloud (sudah fix, app.js live = V5.8.4 ✅), bucket tidak ada (sudah dibuat ✅), kunci service (sudah diganti 2x ✅ — namun tetap 403 JWS saat upload foto → cek policy bucket!), RLS (sudah dibuat policy ✅).PELAJARAN: FB menampilkan tapi WEB tidak = data aman, masalah 100% di sisi tampilan web. JANGAN menebak — buktikan per lapisan: Supabase (SQL) → fetch manual → console web → localStorage.
+📱 TELEGRAM COMMAND CENTERV1.0 LIVE: lapor → tayang < 1 mnt ✅ TERBUKTI (18 Sep: #10xx BREAKING dengan foto wartawan!).⚠️ MASALAH FOTO: PNG via File/Dokumen DITOLAK V1.0 (hanya gallery). V1.2.4 sudah dibuat (terima File + foto-terpisah-diingat 1 jam) — BELUM DIDEPLOY. Deploy saat diperlukan (kode ada di chat 18 Sep).Upload foto → Supabase Storage masih 403 (lihat masalah besar di atas).
 
-⏰ JADWAL (WITA) — SEMUA DENGAN KAWAL GANDA06:00 Rangkuman Liga Eropa (breaking) • 06-20 kuota kategori •11/14/17 IDX breaking • 13:00 NBA • breaking patroli 24 jam •FB+IG tiap 20/30 mnt (IG maks 2/run, 6/hari) • breaking hidup 30-35mnt • DeepSeek ±$0.04-0.07/hari.
+🎨 TAMPILAN WEB — Lihat seksi WEB di atas (V10 FINAL).
 
-🐛 DIAGNOSA CEPATIG tidak posting → log sosmed: "semua sudah diposting" (normal), "tanpa gambar dilewati" (normal — cek berita bergambar), error token 190 → ulangi generate (5 mnt), atau kolom posted_ig issue → pastikan pakai V1.8.1 (kebal NULL).Wartawan lompat berjam-jam → cek Actions: run hilang tanpa jejak = GitHub buang jadwal (cron kawal sudah menangani); run MERAH = klik baca error. JANGAN langsung Run manual kecuali darurat.IDX/liga tidak terbit → log "🏖️ skip aman" = data kosong (libur) — aman; berhari-hari di hari kerja = cek API.Dobel → pastikan V6.3.7 (log "36 jam") • Promise-check → V6.3.6 • breaking opini → V6.3.5 • web polos → cek ?v= • klik mati → F12 • syntax error app.js → baca nomor baris • tabel klasmen tak muncul → app.js v=626 parseKlasmenBlok + css v=85 klasmen-box + blok [KLASMEN] di isi • bot diam → getWebhookInfo • FB gagal → token/ antrean kosong (normal).
+⏰ JADWAL (WITA) — KAWAL GANDA06:00 Rangkuman Liga Eropa • 06-20 kuota • 11/14/17 IDX • 13:00 NBA •breaking patroli 24 jam • FB+IG tiap 20/30 mnt • breaking hidup 30-35 mnt.DeepSeek ±$0.04-0.07/hari + vision ±1 panggilan ekstra/berita.
 
-📋 ANTREAN TUGAS
+🐛 DIAGNOSA CEPATWEB BEKU, FB JALAN → lihat 🚨 MASALAH BESAR di atas (localStorage → console → RLS — urutan ceknya).IG/FB ganda → anti-dobel posted_ig/posted_fb; cek kolom NULL.Run hilang → cek Actions: ada/hilang/merah; kawalan 22/52 sudah menangani — kalau berulang → Tingkat 2 (pemicu eksternal).Rangkuman Eropa "skip aman" di hari laga → cek ESPN scoreboard URL di browser (tes 18 Sep: hidup ✅); UEFA butuh rentang tanggal (sudah di V6.4.0).Vision gagal menilai → cek nama model deepseek di akun.
 
-MASA BAYI IG (berjalan): posting manual sesekali + API jalansopan (2/run, 6/hari) — awasi 1-2 minggu.
-Pasang link bio IG (kramanews.my.id) — jika belum.
-Threads: cross-post manual dari IG; API menyusul (butuhverifikasi bisnis).
-Favicon masih logo lama — ganti SVG metalik (logo-kn.svg ada difolder proyek).
-Evaluasi: rangkuman Eropa 06:00 + NBA 13:00 + tabel klasmen;scraping masih rendah (5-33%)? nasi basi tetap hilang? cronkawal menghilangkan jam kosong?
-Arsipkan kode Worker Telegram ke laptop (warisan).
-Update README ini tiap revisi besar.
-⚠️ PELAJARAN BERHARGA (jangan diulang!)FILE UTUH SELALU — tanpa part 1/2, tanpa tempel-bawah JS (kasus syntax error 195; pemilik: "jangan bilang 'cukup ganti 2 angka'").CSS berubah → naikkan versi ?v= di index.Token = copy-paste; TIDAK PERNAH dikirim ke chat (bahkan chatbot).Cron 7/37 + KAWAL 22/52 (run Scheduled bisa dibuang GitHub diam- diam sampai 5 jam saat antrean padat — terjadi nyata 17 Sep).File terkait drag BERSAMAAN • Cloudflare tersambung GitHub — cek deployment • Jangan klaim tanpa cek • Localhost dulu • Portal besar ber-WAF → resolver+Jina • AI takut aturan ketat → perlu penyeimbang eksplisit • Hapus aturan bisa lahirkan kebiasaan baru.Data angka (IDX/klasemen/skor) DARI MESIN disuntik — AI dilarang mengarang.Kolom bool baru Supabase: baris lama = NULL → skrip WAJIB kebal NULL (kasus antrean IG kosong).Animasi CSS: jangan ditempel ke elemen yang sudah punya animasi (bentrok) — tempel ke elemen induk (kasus roket mutar-mutar).Mengajar pemilik: SATU LANGKAH PER PESAN, minta screenshot dulu, jangan menebak nama menu (Meta sering berubah), berhenti saat pemilik lelah ("kau ngawur" = alarm mundur dan jelaskan ulang).GitHub = mesin waktu: commit lama tidak hilang — Commits (⏰) di atas daftar file menyimpan semua versi; pulih bencana = pilih versi sehat di History. Pemilik BARU di GitHub — pandu dari halaman depan, jangan pakai istilah telanjang.Link di caption IG tidak aktif — pintu: bio.
+📋 ANTREAN TUGAS (URUT PRIORITAS)
 
-🗺️ SUMBERRSS: CNN • Kompas • Antara • CNBC • Okezone • Tribun (9 wilayah) •Bola.net • Yahoo • TechCrunch • Verge • BBC (3) • Al Jazeera •Guardian • Detik • Kompas Health/HypeGoogle News: ±55 query (nasional+MBG+KDMP+menteri, 20+ kota, 14 negara)API: Yahoo Finance (IDX/kurs) • ESPN (skor/klasemen/jadwal bola+NBA)Scraping 5-33% normal (WAF — fallback RSS jalan terus).
+🚨 WEB BEKU — selesaikan (lihat 🚨 MASALAH BESAR): incognito tes →localStorage → console → RLS verify. (18 Sep malam: berhenti,pemilik lelah — lanjut pagi dengan kepala dingin.)
+Fix Vision model (1 baris: deepseek-vision → deepseek-chat /cek nama model yang tersedia).
+ROTASI KUNCI SERVICE Supabase (ter-ekspose di chat 18 Sep!) —Settings → API Keys → rotate → update Cloudflare secretSUPABASE_SERVICE (copy-paste!).
+Deploy Worker Telegram V1.2.4 (kode siap di chat 18 Sep) —terima PNG/File + foto-terpisah.
+Cek policy bucket "gambar" (Storage → Policies): INSERT untukservice role — akar 403 upload foto.
+Peredam lonjakan: Worker img-cache (error kuning img-cache hilang).
+Berita dobel 13:42 — tunggu bukti pemilik (judul+link) → V6.3.xlapisan tambahan.
+README/Dokumen V5: masukkan Aturan 8-14 + pelajaran 18 Sep.
+favicon (masih lama) • Threads manual • V1.3 klasemen menyusuldata core • arsip Worker ke laptop.
+⚠️ PELAJARAN BERHARGA (AKUMULASI — JANGAN DIULANGI!)FILE UTUH SELALU — tanpa part tanpa selipan (isCloud hilang, syntax error 195) — pemilik: "jangan suruh selip 1 huruf!"TANYA DULU SEBELUM KODE — pemilik bertanya ≠ izin gas (3x pelanggaran 18 Sep: "kau ini ribuan kali aku katakan...")SATU LANGKAH PER PESAN — jangan tumpuk instruksi klik-klik Meta dsb.FULL-PATH RULE: GitHub → repo → Actions → workflow → Run (jangan cuma "buka Actions"). Pemilik BARU di tiap layanan.LOCALHOST ≠ WEB LIVE — tes di live dulu (hard refresh) sebelum menyalahkan kode; sinkronkan folder VS Code dengan live.FB = DETEKTOR: FB tampil + web tidak = data aman, masalah di tampilan web (jangan tuduh produksi/database).Menambah kolom/tabel Supabase bisa mengubah perilaku RLS/policy → cek policy setelah struktur berubah.Kolom bool baru = baris lama NULL → skrip WAJIB kebal NULL.Token = copy-paste via tombol, verifikasi panjang di notepad.Run Scheduled bisa dibuang GitHub ±5 jam → cron kawal 22/52.CSS animasi jangan ditempel ke elemen ber-animasi lain (bentrok).GitHub = mesin waktu: commit lama tersimpan, bisa dipulihkan.DeepSeek Vision: cek dulu nama model tersedia di akun SEBELUM dipakai di produksi (tes 1 panggilan).
+
+🆕 PELAJARAN 18 SEPTEMBER (hari penuh tragedi-komedi 😅):
+
+Kunci service ter-paste ke CHAT → WAJIB rotasi besok (sudahdiantrekan). Aturan: verifikasi dulu LAYAR sebelum paste apa pun.
+"Success" insert ≠ data ada → selalu verifikasi via SQL SELECT.
+Bucket Supabase bisa TIDAK ADA walau dokumen bilang ada →verifikasi Storage langsung, jangan percaya catatan lama.
+Edit struktur tabel (add column) bisa mengubah RLS → cek policysetelahnya (dugaan kuat penyebab web beku — BELUM terbukti).
+Pemilik lelah = STOP. Ringkas posisi, tawarkan jeda, besoklanjut satu langkah. (Kesehatan sesi = kualitas jawaban.)
+🗺️ SUMBERRSS: CNN • Kompas • Antara • CNBC • Okezone • Tribun (9) • Bola.net •Yahoo • TechCrunch • Verge • BBC (3) • Al Jazeera • Guardian • Detik •Kompas Health/Hype • Google News ±55 query • API: Yahoo Finance • ESPN(scoreboard ✅ / standings site-API kosong / core-standings V6.4.0)
+
+📍 CARA COMMIT (dari awal — full-path sesuai aturan barumu):
+Buka github.com/blipblip-git/kramanews-wartawan
+Klik README.md → ikon pensil ✏️
+Ctrl+A → Ctrl+V (paste ganti total) → Commit changes → konfirmasi
