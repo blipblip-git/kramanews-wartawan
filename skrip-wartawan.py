@@ -1,20 +1,23 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.4.3.1 (REVISI PEMERIKSA DATELINE)
-#  Baru V6.4.3.1 (19 Sep):
-#   • cek_dateline diperbaiki: KOTA tetap kunci (wajib ada di materi),
-#     wilayah generik tidak lagi memblokir (kasus "MIAMI, FLORIDA —
-#     florida tak tertulis di materi padahal fakta benar"),
-#     penjaga Kaltara tetap (Benuanta dsb tetap diblokir).
-#  Warisan V6.4.3 (utuh):
-#   • FILTER GAMBAR +MANUSIA: list + prompt + VISION skor ≤3
-#   • GAMBAR WIKIMEDIA ikut vision gate
-#   • ANTI-DOBEL-6JAM: 2 kata inti sama dalam 6 jam = tolak
-#   • OLAHRAGA 5 SLOT/hari: 07, 13, 15, 17, 20
+#  AI WARTAWAN KRAMANEWS — V6.4.3.2 (FIX PROMPT NARASUMBER)
+#  Baru V6.4.3.2 (19 Sep):
+#   • Prompt ATURAN NARASUMBER diperketat: atribusi kabur ke orang
+#     ("seorang pejabat/pengusaha/...") SELALU dilarang — TANPA syarat.
+#     Jika tak ada nama di materi: atribusi hanya ke INSTITUSI
+#     ("Kementerian Kesehatan Gaza mengatakan...") atau lapor fakta
+#     langsung. Alasan: AI menyalahgunakan celah "jika nama ADA di
+#     materi" → menulis "seorang pejabat" → ditembak pemeriksa
+#     V6.3.4 → 1 panggilan API terbuang per run (kasus nyata: berita
+#     Gaza gagal 2x berturut 21:21 & 21:28 WITA).
+#  Warisan utuh: V6.4.3.1 (cek_dateline kota-kunci) + V6.4.3
+#  (anti-manusia gambar, Wikimedia vision gate, anti-dobel-6jam,
+#   5 slot olahraga: 07/13/15/17/20).
 #  Marker verifikasi:
 #   "KRAMAV642MARKER" (2x: header + prompt)
 #   "KRAMAV643MARKER" (5x: header, list gambar, sudah_serupa,
 #                      cek_dateline, prompt vision)
-#   "KRAMAV6431MARKER" (1x: cek_dateline revisi)
+#   "KRAMAV6431MARKER" (2x: header + komentar cek_dateline)
+#   "KRAMAV6432MARKER" (2x: header + prompt narasumber)
 #  Mode 1 (loop) : python3 skrip-wartawan.py
 #  Mode 2 (Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -658,14 +661,22 @@ ATURAN NAMA PUBLIK INSTANSI RESMI (WAJIB — PALING PENTING):
   LENGKAP dan BERANI dengan jabatannya.
 - Tetap DILARANG MENGARANG nama yang TIDAK ada di materi sumber.
 
-ATURAN NARASUMBER (WAJIB — ATURAN EMAS):
+ATURAN NARASUMBER (WAJIB — V6.4.3.2 KRAMAV6432MARKER — TANPA PENGECEKAN):
+- Deskripsi kabur pengganti nama orang SELALU DILARANG, TANPA SYARAT,
+  APA PUN kondisi materinya. DILARANG KERAS menulis:
+  ❌ "seorang pejabat", "seorang pengusaha", "seorang pengamat",
+     "seorang tokoh", "seorang pejabat tinggi", "seorang bos",
+     "sumber yang tidak disebutkan namanya", atau varian lainnya.
+  Pemeriksa sistem MEMBLOKIR otomatis — berita GAGAL total.
 - Jika materi menyebut NAMA ORANG → WAJIB kutip dengan jabatan lengkap.
-- Jika materi TIDAK menyebut nama orang → CUKUP LAPORKAN FAKTA LANGSUNG.
+- Jika materi TIDAK menyebut nama orang → atribusi HANYA boleh ke
+  INSTITUSI/LEMBAGA yang tertulis di materi, contoh benar:
+  ✅ "Kementerian Kesehatan Gaza mengatakan..."
+  ✅ "Polisi dalam keterangan resminya menyatakan..."
+  ATAU cukup LAPORKAN FAKTA LANGSUNG tanpa atribusi siapa pun.
 - DILARANG KERAS menulis kalimat tentang KETIADAAN narasumber.
-- DILARANG KERAS frasa atribusi kosong: "dilaporkan bahwa...", "kabarnya...",
-  "diduga kuat...", "menurut informasi yang diterima...".
-- DILARANG deskripsi kabur pengganti nama ("seorang pengusaha...", dst)
-  jika nama aslinya ADA di materi.
+- DILARANG KERAS frasa atribusi kosong: "dilaporkan bahwa...",
+  "kabarnya...", "diduga kuat...", "menurut informasi yang diterima...".
 
 ATURAN ANTI-PLAGIAT (WAJIB — MATERI KAYA):
 - Tulis ulang dengan kalimatmu sendiri. DILARANG verbatim >5 kata berurutan.
@@ -738,7 +749,8 @@ FORMAT JAWABAN — HANYA JSON valid tanpa teks lain:
 {"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "...",
  "deskripsi_gambar": "visual keywords",
  "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """)"}
-INGAT: nama publik resmi WAJIB lengkap. Frasa ketiadaan narasumber DILARANG.
+INGAT: nama publik resmi WAJIB lengkap. Frasa "seorang pejabat/pengusaha/dll"
+SELALU DILARANG — atribusi hanya ke institusi atau lapor fakta langsung.
 Blok [KLASMEN] disalin apa aduna bila diberikan. Tanpa bukti tertulis
 peristiwa lama = TULIS BERITA."""
 def edge_call(payload_json):
@@ -1125,8 +1137,9 @@ def ai_rewrite_single(c):
             'di materi (dilarang "sejumlah daerah" jika nama daerah ada).\n'
             '- DATELINE: HANYA dari tempat yang tertulis di materi — dilarang '
             'mengarang nama kota (sistem memverifikasi & memblokir).\n'
-            '- Kutipan lembaga: sebut NAMA orangnya jika ada; dilarang kalimat '
-            'tentang ketiadaan narasumber (berita DITOLAK sistem).\n'
+            '- NARASUMBER: "seorang pejabat/pengusaha/dll" SELALU DILARANG — '
+            'atribusi hanya ke institusi tertulis di materi atau lapor fakta '
+            'langsung (pemeriksa sistem memblokir).\n'
             '- ACARA/LAGA: tanggal jika tertulis; frasa relatif salin apa adanya.\n'
             '- JUDUL: dilarang menjanjikan jadwal/klasemen/hasil/skor/ranking jika '
             'isi tidak memuat datanya (sistem memblokir).\n'
@@ -1172,7 +1185,8 @@ def ai_rewrite_multi(items):
             '- NAMA PUBLIK INSTANSI RESMI: sebut semua namanya lengkap dan berani.\n'
             '- SPESIFIK: wilayah terdampak wajib menyebut nama daerah dari materi.\n'
             '- DATELINE: HANYA dari tempat yang tertulis di materi — dilarang mengarang.\n'
-            '- Kutipan lembaga: nama orangnya jika ada; dilarang kalimat ketiadaan narasumber.\n'
+            '- NARASUMBER: "seorang pejabat/pengusaha/dll" SELALU DILARANG — '
+            'atribusi hanya ke institusi tertulis di materi atau lapor fakta langsung.\n'
             '- ACARA/LAGA: tanggal jika tertulis; frasa relatif salin apa adanya.\n'
             '- JUDUL: dilarang menjanjikan data yang tidak ada di isi.\n'
             '- deskripsi_gambar: WAJIB tema alam/kota/kereta/buah/bintang — '
@@ -2034,7 +2048,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.3.1)')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.3.2)')
     print('══════════════════════════════════════════')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -2071,7 +2085,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.4.3.1 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.4.3.2 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
