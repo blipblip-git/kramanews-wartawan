@@ -1,21 +1,19 @@
 name: AI Wartawan KramaNews
 
-# V6.4-KAWAL (17 Sep 2026): cron ganda — setiap slot dijalankan di
-# dua menit berbeda (7/37 + 22/52). Kalau satu run dibbuang GitHub
-# (antrean global padat — terjadi 17 Sep: 5 jam kosong), kawalnya
-# menyelamatkan. Run kedua yang lolos dobel AMAN: anti-dobel 36 jam +
-# kuota + IDX/liga anti-ganda membuat run kosong tanpa biaya.
+# V6.4.2-KAWAL (19 Sep 2026): cron ganda + JAM MULAI 07:00 WITA.
+# Jendela 05:00-06:59 WITA DIHAPUS (keputusan pemilik: tidak ada lagi
+# berita jam 5-6 pagi). Run pertama tiap hari = 07:07 WITA — pas dengan
+# jendela RANGKUMAN LIGA EROPA yang kini berjalan jam 07:00.
+# Kalau satu run dibuang GitHub (antrean global padat), kawal
+# menit 22/52 menyelamatkan. Run dobel AMAN (anti-dobel menolak, biaya nol).
 on:
   schedule:
     # ═══ SEMUA CRON DALAM UTC — DIKALIBRASI KE WITA (UTC+8) ═══
-    # ═══ JAM RAMAI: tiap 30 menit + KAWAL di menit 22/52 ═══
-    # 21-22 UTC = 05:00-06:59 WITA
-    - cron: '7,22,37,52 21-22 * * *'
-    # 23 UTC + 0-13 UTC = 07:00-21:59 WITA
+    # 23 UTC + 0-13 UTC = 07:00-21:59 WITA (jam ramai: 4x/jam + kawal)
     - cron: '7,22,37,52 23 * * *'
     - cron: '7,22,37,52 0-13 * * *'
-    # ═══ JAM TENANG (21:00-04:59 WITA): tiap 60 menit + kawal ═══
-    # 14-20 UTC = 22:00-04:59 WITA
+    # ═══ JAM TENANG (22:00-06:59 WITA): tiap 60 menit + kawal ═══
+    # 14-20 UTC = 22:00-06:59 WITA
     - cron: '7,52 14-20 * * *'
   workflow_dispatch:
 
