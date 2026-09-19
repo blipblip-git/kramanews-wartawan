@@ -1,19 +1,20 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.4.3 (ANTI-MANUSIA + DATELINE + ANTI-DOBEL-6JAM + 5 SLOT OLGA)
-#  Baru V6.4.3 (19 Sep — semua keputusan pemilik):
-#   • FILTER GAMBAR +MANUSIA: human/people/crowd/portrait dilarang
-#     (list kata + prompt + VISION memberi skor ≤3 utk foto manusia)
-#   • GAMBAR WIKIMEDIA kini ikut melewati vision gate (celah ditutup)
-#   • PEMERIKSA DATELINE: kota/provinsi wajib ada di materi sumber —
-#     kota karangan (kasus "Benuanta, KALTARA") DIBLOKIR
+#  AI WARTAWAN KRAMANEWS — V6.4.3.1 (REVISI PEMERIKSA DATELINE)
+#  Baru V6.4.3.1 (19 Sep):
+#   • cek_dateline diperbaiki: KOTA tetap kunci (wajib ada di materi),
+#     wilayah generik tidak lagi memblokir (kasus "MIAMI, FLORIDA —
+#     florida tak tertulis di materi padahal fakta benar"),
+#     penjaga Kaltara tetap (Benuanta dsb tetap diblokir).
+#  Warisan V6.4.3 (utuh):
+#   • FILTER GAMBAR +MANUSIA: list + prompt + VISION skor ≤3
+#   • GAMBAR WIKIMEDIA ikut vision gate
 #   • ANTI-DOBEL-6JAM: 2 kata inti sama dalam 6 jam = tolak
-#     (kasus Iran eksekusi dobel beda 1 jam)
-#   • OLAHRAGA 5 SLOT/hari: 07, 13(BARU), 15(BARU), 17, 20
-#   • Warisan V6.4.2 utuh: ASEAN+TT, ESPN, IDX, anti-dobel 36 jam, dst.
+#   • OLAHRAGA 5 SLOT/hari: 07, 13, 15, 17, 20
 #  Marker verifikasi:
 #   "KRAMAV642MARKER" (2x: header + prompt)
-#   "KRAMAV643MARKER" (5x: header, list gambar, anti-dobel-6jam,
-#                      pemeriksa dateline, prompt vision)
+#   "KRAMAV643MARKER" (5x: header, list gambar, sudah_serupa,
+#                      cek_dateline, prompt vision)
+#   "KRAMAV6431MARKER" (1x: cek_dateline revisi)
 #  Mode 1 (loop) : python3 skrip-wartawan.py
 #  Mode 2 (Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -645,7 +646,7 @@ ATURAN SPESIFISITAS LOKASI (WAJIB):
 ATURAN DATELINE DARI SUMBER (WAJIB — V6.4.3):
 - Dateline HANYA boleh diambil dari nama tempat yang TERTULIS di materi.
 - DILARANG KERAS mengarang nama kota/wilayah yang tidak ada di materi.
-- Sistem MEMVERIFIKASI: kota/provinsi yang tidak ada di materi = berita
+- Sistem MEMVERIFIKASI: kota yang tidak ada di materi = berita
   DIBLOKIR otomatis. Lebih baik "INDONESIA - " daripada mengarang.
 - Wilayah Kalimantan Utara (Kaltara) hanya untuk: Tarakan, Nunukan,
   Bulungan, Malinau, Tana Tidung, Sebatik, Tanjung Selor.
@@ -969,22 +970,12 @@ def deteksi_dua_topik(judul, isi):
         pass
     return None
 
-# ═══ V6.4.3 — KRAMAV643MARKER: PEMERIKSA DATELINE ═══
-# Kota/provinsi di dateline wajib ada di materi sumber.
-# Menutup kasus kota karangan ("Benuanta, KALIMANTAN UTARA").
-DAFTAR_PROVINSI_ID = [
-    'aceh', 'sumatera utara', 'sumatera barat', 'riau', 'kepulauan riau',
-    'jambi', 'sumatera selatan', 'kepulauan bangka belitung', 'bengkulu',
-    'lampung', 'banten', 'dki jakarta', 'jawa barat', 'jawa tengah',
-    'di yogyakarta', 'yogyakarta', 'jawa timur', 'bali',
-    'nusa tenggara barat', 'nusa tenggara timur', 'kalimantan barat',
-    'kalimantan tengah', 'kalimantan selatan', 'kalimantan timur',
-    'kalimantan utara', 'sulawesi utara', 'gorontalo', 'sulawesi tengah',
-    'sulawesi barat', 'sulawesi selatan', 'sulawesi tenggara', 'maluku',
-    'maluku utara', 'papua', 'papua barat', 'papua barat daya',
-    'papua tengah', 'papua selatan', 'papua pegunungan',
-]
-
+# ═══ V6.4.3.1 — KRAMAV6431MARKER: PEMERIKSA DATELINE (REVISI) ═══
+# KOTA = kunci: wajib ada di materi sumber (kasus "Benuanta" tetap diblokir).
+# Wilayah generik (provinsi/negara) TIDAK lagi memblokir — menutup kasus
+# "MIAMI, FLORIDA" yang ditolak padahal fakta benar (florida tak tertulis
+# di materi). Penjaga Kaltara tetap: klaim KALIMANTAN UTARA hanya boleh
+# untuk kota Kaltara sebenarnya.
 def cek_dateline(isi, user_content):
     m = re.match(r'^([A-Z][^\n\-–—]{1,60}?)\s+[-–—]\s+', (isi or '').strip())
     if not m:
@@ -998,8 +989,6 @@ def cek_dateline(isi, user_content):
     sumber = re.sub(r'\s+', ' ', (user_content or '')).lower()
     if kota and kota not in sumber:
         return 'kota dateline "' + kota + '" tidak ada di materi sumber'
-    if wilayah and wilayah not in DAFTAR_PROVINSI_ID and wilayah not in sumber:
-        return 'provinsi/negara "' + wilayah + '" tidak dikenal & tidak ada di materi'
     if 'kalimantan utara' in wilayah:
         daftar = KALTARA_WORDS + ['sebatik', 'tanjung selor', 'tana tidung']
         if kota and not any(k in kota for k in daftar):
@@ -2045,7 +2034,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.3)')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.3.1)')
     print('══════════════════════════════════════════')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -2082,7 +2071,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.4.3 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.4.3.1 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
