@@ -1,26 +1,31 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.4.3.3 (KOREKSI MANDIRI FRASA TERLARANG)
-#  Baru V6.4.3.3 (19 Sep):
-#   • ai_write kini punya SELF-CORRECTION: jika hasil AI tertangkap
-#     frasa terlarang ("seorang pejabat" dll), JANGAN langsung dibuang —
-#     AI dikirim ulang SEKALI dengan pesan koreksi yang menyebut frasa
-#     pelanggar + instruksi atribusi institusi (temperature 0.3 agar
-#     patuh). Kena lagi = baru dibuang.
-#     Alasan: kasus Gaza gagal 3x berturut (21:21/21:28/21:37) — prompt
-#     saja tidak cukup, AI tetap menerjemahkan "an official said"
-#     menjadi "seorang pejabat".
-#   • Tembok lain (dateline, dobel-6jam, gambar) TETAP tanpa retry —
-#     kesalahan sistemik, bukan soal redaksi.
-#  Warisan utuh: V6.4.3.2 (prompt narasumber tanpa pengecualian) +
-#  V6.4.3.1 (cek_dateline kota-kunci) + V6.4.3 (anti-manusia gambar,
-#  Wikimedia vision gate, anti-dobel-6jam, olahraga 5 slot: 07/13/15/17/20).
-#  Marker verifikasi:
-#   "KRAMAV642MARKER" (2x: header + prompt)
-#   "KRAMAV643MARKER" (5x: header, list gambar, sudah_serupa,
-#                      cek_dateline, prompt vision)
-#   "KRAMAV6431MARKER" (2x: header + komentar cek_dateline)
-#   "KRAMAV6432MARKER" (2x: header + prompt narasumber)
-#   "KRAMAV6433MARKER" (2x: header + kode retry ai_write)
+#  PART 1
+#  AI WARTAWAN KRAMANEWS — V6.4.3.4 (FIX CEK DATELINE SAAT RETRY)
+#  (cakupan: header versi, import, konstanta, sumber HUNT —
+#   berakhir di penutup dict HUNT)
+#  Baru V6.4.3.4 (19 Sep):
+#   • BUGFIX koreksi mandiri: saat retry, user_content sudah menjadi
+#     pesan koreksi (bukan materi) → cek_dateline membandingkan kota
+#     dengan string kosong → SEMUA hasil retry terblok (kasus nyata:
+#     "gaza tidak ada di materi" padahal materi penuh kata Gaza).
+#     OBAT: materi asli disimpan di variabel terpisah (materi_asli)
+#     sebelum loop; cek_dateline SELALU memakai materi asli,
+#     percobaan 1 maupun 2. (di PART 3)
+#  Warisan utuh:
+#   • V6.4.3.3 — koreksi mandiri frasa terlarang (retry 1x, temp 0.3)
+#   • V6.4.3.2 — prompt narasumber tanpa pengecualian (KRAMAV6432)
+#   • V6.4.3.1 — cek_dateline kota-kunci, wilayah bebas (KRAMAV6431)
+#   • V6.4.3   — anti-manusia gambar (list+prompt+vision), Wikimedia
+#                ikut vision gate, anti-dobel-6jam, OLAHRAGA 5 SLOT
+#                (07/13/15/17/20)
+#  Marker verifikasi seluruh file:
+#   "KRAMAV642MARKER" (2x: header prompt + prompt) — PART 2
+#   "KRAMAV643MARKER" (5x: list gambar [PART 1], sudah_serupa [PART 2],
+#      cek_dateline [PART 3], prompt vision [PART 3], header prompt [PART 2])
+#   "KRAMAV6431MARKER" (2x: header file + komentar cek_dateline [PART 3])
+#   "KRAMAV6432MARKER" (2x: header file + prompt narasumber [PART 2])
+#   "KRAMAV6433MARKER" (2x: header file + kode retry ai_write [PART 3])
+#   "KRAMAV6434MARKER" (2x: header file + materi_asli di ai_write [PART 3])
 #  Mode 1 (loop) : python3 skrip-wartawan.py
 #  Mode 2 (Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -338,6 +343,8 @@ HUNT = {
         GN('kesehatan', 'id', 'Google News Kesehatan'),
     ],
 }
+# AKHIR PART 1
+
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
     RSSF('https://www.detik.com/feed', 'Detik'),
@@ -756,6 +763,8 @@ INGAT: nama publik resmi WAJIB lengkap. Frasa "seorang pejabat/pengusaha/dll"
 SELALU DILARANG — atribusi hanya ke institusi atau lapor fakta langsung.
 Blok [KLASMEN] disalin apa aduna bila diberikan. Tanpa bukti tertulis
 peristiwa lama = TULIS BERITA."""
+# AKHIR PART 2
+
 def edge_call(payload_json):
     r = requests.post(EDGE_URL,
         headers={'apikey': SUPABASE_PUBLISHABLE,
@@ -1096,7 +1105,11 @@ def ai_write(user_content, timeout=150):
     #   (temperature 0.3 agar patuh). Kena lagi = baru dibuang.
     # Tembok lain (dateline, dobel-6jam, gambar, janji judul, 2-topik)
     # TETAP tanpa retry — kesalahan sistemik, bukan soal redaksi.
+    # V6.4.3.4 — KRAMAV6434MARKER: materi asli disimpan terpisah —
+    # cek_dateline SELALU memakai materi asli (user_content berubah
+    # jadi pesan koreksi saat retry — itu bukan materi sumber).
     obj = None
+    materi_asli = user_content
     for percobaan in (1, 2):
         try:
             obj = _panggil_deepseek(user_content, 0.8 if percobaan == 1 else 0.3)
@@ -1141,7 +1154,7 @@ def ai_write(user_content, timeout=150):
     dua_topik = deteksi_dua_topik(judul, isi)
     if dua_topik:
         raise Exception('diblokir tembok anti-2-topik V6.4.2: ' + dua_topik[:60])
-    cek_dl = cek_dateline(isi, user_content if 'TULISANMU SEBELUMNYA' not in user_content else '')
+    cek_dl = cek_dateline(isi, materi_asli)
     if cek_dl:
         raise Exception('diblokir pemeriksa dateline V6.4.3: ' + cek_dl[:70])
     for t in JUDUL_6JAM:
@@ -1592,6 +1605,8 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
     except Exception:
         pass
     return out
+# AKHIR PART 3
+
 def buat_materi_rangkuman_eropa():
     skor_semua = []
     klasemen_blok = []
@@ -2097,7 +2112,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.3.3)')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.3.4)')
     print('══════════════════════════════════════════')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -2134,7 +2149,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.4.3.3 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.4.3.4 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -2147,3 +2162,4 @@ if __name__ == '__main__':
         main_sekali()
     else:
         main()
+# AKHIR PART 4
