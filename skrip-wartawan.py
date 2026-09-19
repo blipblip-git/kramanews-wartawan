@@ -1,29 +1,21 @@
 # ══════════════════════════════════════════════════════
 #  AI WARTAWAN KRAMANEWS — V6.4.2 (ASEAN + TIMUR TENGAH + FIX NBA + FILTER GAMBAR)
 #  Baru V6.4.2 (19 Sep — semua keputusan pemilik):
-#   • CRON: run pertama 06:07 WITA (jendela 05:00-06:59 DIHAPUS — tidak ada
-#     lagi berita jam 5 pagi). Diwartawan.yml, bukan file ini.
-#   • RANGKUMAN LIGA EROPA: 06:00 → 07:00 WITA.
-#   • ESPN_LIGA + Liga Europa & Conference League (akar "laga Kamis tak terlewat").
-#   • FIX NBA: url scoreboard/klasemen basketball tidak lagi dirouting ke
-#     endpoint soccer (klasemen NBA kini benar-benar muncul).
-#   • JADWAL INTERNASIONAL BARU: ASEAN 8x (07,08,09,13,14,15,16,18) +
-#     TIMUR TENGAH 2x (10,17) — barat (USA/Rusia/Eropa) MAKS 1 masing-masing/hari.
+#   • CRON: run pertama 06:07 WITA (jendela 05:00-06:59 DIHAPUS, di wartawan.yml)
+#   • RANGKUMAN LIGA EROPA: 06:00 → 07:00 WITA
+#   • ESPN_LIGA + Liga Europa & Conference League
+#   • FIX NBA: klasemen/skor basketball tidak lagi dirouting ke endpoint soccer
+#   • INTERNASIONAL BARU: ASEAN 8x (07,08,09,13,14,15,16,18) +
+#     TIMUR TENGAH 2x (10,17) — barat (USA/Rusia/Eropa) MAKS 1 masing-masing/hari
 #   • SUMBER BARU: The Star, Bangkok Post, Vietnam News, Straits Times,
-#     Inquirer, Borneo Post + query TT (al jazeera sudah ada).
-#   • HIBURAN: kuota 2x → 4x (09,13,16,20) + sumber baru, arah industri.
-#   • FILTER GAMBAR: deskripsi_gambar WAJIB tema alam/kota/kereta/buah/bintang;
-#     DILARANG hewan & tempat ibadah (kata larangan blokir + prompt mengarahkan).
-#   • ANTI-DOBEL GAMBAR 36 JAM: gambar yang sudah tayang tidak dipakai lagi
-#     (cek Supabase sebelum Wikimedia/pakai gambar).
-#   • TEMBOK ANTI-2-TOPIK: isi berita yang memuat 2 peristiwa tak berkaitan
-#     → diblokir (deteksi sederhana: 2 dateline/kota berbeda tanpa kaitan).
-#   • ANTI-DOBEL INSERT-MOMEN: cek ulang judul ke database TEPAT SEBELUM
-#     insert (bukti kasus Kris Dayanti 09:08/09:09 — dua run menit sama).
-#   • Marker verifikasi: cari kata "KRAMAV642MARKER"
-#  Semua fitur V6.4.1 tetap: match_articles ketat, promise-check, pola
-#  larangan, nama publik resmi, scraping 4 lapis, anti-dobel 36 jam,
-#  IDX 11/14/17, NBA 13:00, kuota per jam WITA, Kaltara min 2.
+#     Inquirer, Borneo Post + query Timur Tengah
+#   • HIBURAN: 4x/hari (09,13,16,20) + sumber baru, arah industri
+#   • FILTER GAMBAR: larang hewan & tempat ibadah; tema alam/kota/kereta/
+#     buah/bintang wajib (blokir kata terlarang + prompt mengarahkan)
+#   • ANTI-DOBEL GAMBAR 36 JAM lintas kategori
+#   • TEMBOK ANTI-2-TOPIK (pemeriksa isi post-AI)
+#   • ANTI-DOBEL INSERT-MOMEN (cek ulang DB <10 menit sebelum insert)
+#  Marker verifikasi: cari kata "KRAMAV642MARKER" (2x: header + prompt)
 #  Mode 1 (loop) : python3 skrip-wartawan.py
 #  Mode 2 (Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -50,10 +42,8 @@ REST_URL     = SUPABASE_URL + '/rest/v1/articles'
 EDGE_URL     = SUPABASE_URL + '/functions/v1/admin-ops'
 AUTHOR_NAME  = 'DT'
 
-# ═══ ZONA WAKTU WITA (UTC+8) — WAKTU TARAKAN/KALTARA ═══
 WITA = timezone(timedelta(hours=8))
 
-# ═══ PENGATURAN ═══
 BREAKING_MAX_SLOT   = 3
 BREAKING_UMUR_MENIT = 30
 MAX_UMUR_BERITA_JAM = 30
@@ -67,20 +57,17 @@ SCRAPE_MIN_KARAKTER = 600
 JINA_READER         = 'https://r.jina.ai/'
 GAMBAR_MIN_LEBAR    = 400
 
-# ═══ AI VISION BLUR-GATE ═══
 BLUR_SKOR_MINIMUM  = 7
 VISION_TIMEOUT     = 30
 
-# ═══ V6.4.1: PENGELOMPOKAN TOPIK (ANTI-FRANKENSTEIN) ═══
 MATCH_MIN_KATA     = 3
 MATCH_MIN_RASIO    = 0.60
 
-# ═══ V6.4.2: KUOTA BARAT & JAM ═══
-BARAT_MAX_HARI     = 1     # USA/Rusia/Eropa: maks 1 berita per kelompok per hari
-KATA_BARAT_USA     = ['amerika', 'as ', 'u.s', 'washington', 'trump', 'biden', 'new york', 'california', 'texas']
+BARAT_MAX_HARI     = 1
+KATA_BARAT_USA     = ['amerika', 'u.s', 'washington', 'trump', 'biden', 'new york', 'california', 'texas']
 KATA_BARAT_RUSIA   = ['rusia', 'russia', 'moskow', 'moscow', 'putin', 'ukraina', 'ukraine']
 KATA_BARAT_EROPA   = ['eropa', 'europe', 'jerman', 'germany', 'perancis', 'france', 'inggris',
-                      'britain', 'uk ', 'italia', 'italy', 'spanyol', 'spain', 'paris', 'berlin', 'london']
+                      'britain', 'italia', 'italy', 'spanyol', 'spain', 'paris', 'berlin', 'london']
 KATA_TT            = ['timur tengah', 'middle east', 'gaza', 'israel', 'palestina', 'iran',
                       'iraq', 'suriah', 'syria', 'saudi', 'yaman', 'yemen', 'uni emirat',
                       'emirates', 'qatar', 'kuwait', 'libanon', 'jordan', 'turki']
@@ -93,7 +80,6 @@ HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
             'Agustus', 'September', 'Oktober', 'November', 'Desember']
 
-# ═══ IDX TERJADWAL (WITA) ═══
 IDX_JAM = [11, 14, 17]
 IDX_Sumber = 'Yahoo Finance'
 IDX_EMITEN = [
@@ -103,7 +89,6 @@ IDX_EMITEN = [
     ('ICBP.JK', 'Indofood CBP'), ('UNVR.JK', 'Unilever Indonesia'),
 ]
 
-# ═══ ESPN — V6.4.2: + LIGA EUROPA & CONFERENCE ═══
 ESPN_LIGA = [
     ('eng.1',        'Premier League (Inggris)'),
     ('esp.1',        'La Liga (Spanyol)'),
@@ -119,17 +104,14 @@ ESPN_NBA = ('basketball/nba', 'NBA')
 ESPN_SITE = 'https://site.api.espn.com/apis/site/v2/sports/'
 ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/soccer/leagues/'
 
-# ═══ V6.4.2: JADWAL KUOTA PER JAM (WITA) — INTERNASIONAL RESTRUKTUR ═══
-# Slot internasional: 07,08,09,10(TT),13,14,15,16,17(TT),18 — ASEAN 8 + TT 2
-# Olahraga reguler 2x (17 & 20). Hiburan 4x (09,13,16,20). Kesehatan 2x (10,15).
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1},
     8:  {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'teknologi': 1},
     9:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'hiburan': 1},
     10: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'kesehatan': 1},
-    11: {'nasional': 1, 'daerah': 2, 'internasional_asean': 0, 'ekonomi': 1},
-    12: {'nasional': 1, 'daerah': 2, 'internasional_asean': 0},
+    11: {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
+    12: {'nasional': 1, 'daerah': 2},
     13: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1},
     14: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1},
     15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1},
@@ -137,14 +119,9 @@ JADWAL_JAM = {
     17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1},
     18: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1},
     19: {'nasional': 1},
-    20: {'internasional_asean': 0, 'hiburan': 1, 'olahraga': 1},
+    20: {'hiburan': 1, 'olahraga': 1},
 }
-# CATATAN: 'internasional_asean' = 0 di beberapa jam = slot cadangan (boleh diisi
-# ASEAN bila kandidat melimpah); kunci tanpa angka 0 akan memicu produksi normal.
-# Slot internasional lama ('internasional') TIDAK ADA lagi di jadwal reguler —
-# barat & umum hanya lewat BREAKING atau cadangan.
 
-# ═══ TOPIK WAJIB HARIAN NASIONAL ═══
 TOPIK_NASIONAL_WAJIB = [
     ['makan bergizi gratis', 'mbg'],
     ['koperasi desa merah putih', 'kdmp'],
@@ -170,10 +147,7 @@ GAMBAR_SAMPAH_POLA = [
     'profile', 'favicon', 'sprite', 'watermark', 'blank', 'pixel',
 ]
 
-# ═══ V6.4.2: LARANGAN GAMBAR (hewan & tempat ibadah) ═══
-# Dicek pada DESKRIPSI (kata kunci pencarian) & URL hasil — dua lapis.
 GAMBAR_LARANG_KATA = [
-    # hewan
     'animal', 'dog', 'cat', 'bird', 'monkey', 'elephant', 'tiger', 'lion',
     'snake', 'crocodile', 'lizard', 'frog', 'fish', 'shark', 'whale',
     'insect', 'butterfly', 'bee', 'spider', 'rat', 'mouse', 'horse',
@@ -182,16 +156,10 @@ GAMBAR_LARANG_KATA = [
     'kucing', 'anjing', 'burung', 'ular', 'kuda', 'sapi', 'ayam', 'bebek',
     'kambing', 'harimau', 'singa', 'gajah', 'monyet', 'buaya', 'ikan',
     'pet', 'wildlife', 'fauna', 'orangutan', 'komodo',
-    # tempat ibadah
     'mosque', 'masjid', 'church', 'gereja', 'cathedral', 'temple',
     'pura', 'vihara', 'pagoda', 'synagogue', 'shrine', 'monastery',
     'worship', 'ibadah',
 ]
-
-# ═══ V6.4.2: TEMA GAMBAR DIPREFERENSIKAN (diarahkan di prompt AI) ═══
-GAMBAR_TEMA_OK = ('mountain landscape, rainforest, ocean sea view, grass field, '
-                  'flower garden, high speed train, old vintage train, city skyline '
-                  'skyscrapers, desert dunes, fresh fruits, starry night sky, galaxy space')
 
 KATA_ANALISIS = ['analisis', 'soroti', 'opini', 'tinjauan',
                  'analysis', 'opinion', 'editorial']
@@ -212,7 +180,6 @@ def GN(q, lang='id', label=None):
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
-# ═══ HUNT — V6.4.2: INTERNASIONAL DIBAGI ASEAN/TT + HIBURAN DIPERKUAT ═══
 HUNT = {
     'nasional': [
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -269,7 +236,6 @@ HUNT = {
         GN('Gorontalo', 'id', 'Google News Gorontalo'),
         GN('Batam', 'id', 'Google News Batam'),
     ],
-    # V6.4.2: internasional displit ASEAN (utama) & TT (ditonjolkan)
     'internasional_asean': [
         RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
         RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
@@ -295,8 +261,6 @@ HUNT = {
         GN('west asia conflict', 'en', 'Google News Asia Barat'),
     ],
     'internasional': [
-        # Sisa umum — hanya dipakai untuk BREAKING dunia & slot cadangan.
-        # Barat dibatasi BARAT_MAX_HARI oleh kategori_barat().
         RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
         RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
         RSSF('https://www.cnnindonesia.com/internasional/rss', 'CNN Indonesia'),
@@ -341,7 +305,6 @@ HUNT = {
         GN('new laptop release', 'en', 'Google News Laptop'),
         GN('tablet launch', 'en', 'Google News Tablet'),
     ],
-    # V6.4.2: HIBURAN diperkuat — arah INDUSTRI (musik/film/konser/serial)
     'hiburan': [
         RSSF('https://www.cnnindonesia.com/hiburan/rss', 'CNN Indonesia'),
         RSSF('https://hot.detik.com/rss', 'DetikHot'),
@@ -427,7 +390,10 @@ DUNIA_KRITIS = [
 class BeritaLama(Exception):
     pass
 
-# ═══ V6.3.2: RESOLVER GOOGLE NEWS ═══
+STAT_SCRAPE = {'ok': 0, 'gagal': 0}
+
+JUDUL_TERPAKAI = []
+_GAMBAR_TERPAKAI_CACHE = None
 
 def resolusi_link_google(url):
     try:
@@ -537,8 +503,6 @@ def ambil_materi_kaya(c):
     print('       ↩️ Scraping gagal/pendek — pakai ringkasan RSS')
     return c.get('summary', ''), False
 
-# ═══ ANTI BERITA DOBEL (JENDELA 36 JAM) ═══
-
 KATA_STOP_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
                       'sudah oleh sebagai ada adalah kata ujar bilang menurut the and '
                       'for with from that this have will been are was were their they '
@@ -552,8 +516,6 @@ def normalisasi_judul(s):
 def kata_inti(judul):
     return set(k for k in normalisasi_judul(judul).split()
                if len(k) > 3 and k not in KATA_STOP_DOBEL)
-
-JUDUL_TERPAKAI = []
 
 def sudah_serupa(judul):
     j = normalisasi_judul(judul)
@@ -592,11 +554,6 @@ def muat_judul_hari_ini():
         print('   ⚠️ Gagal memuat judul 36 jam:', str(e)[:60])
     return out
 
-# ═══ V6.4.2: ANTI-DOBEL INSERT-MOMEN ═══
-# Kasus Kris Dayanti (09:08 & 09:09): dua run menit sama, keduanya memuat
-# judul SEBELUM lawannya insert → lolos anti-dobel awal. Obat: cek ulang
-# database TEPAT SEBELUM insert (jendela sempit 10 menit).
-
 def masih_barusan_terbit(judul):
     try:
         q = ('?select=id&title=ilike.' + quote_plus('%' + judul[:40] + '%')
@@ -626,10 +583,9 @@ def tanggal_publikasi_str(entry):
         return tanggal_panjang(pub.date())
     except Exception:
         return None
-    def build_system_prompt():
-      k = konteks_waktu()
-      return """
-    Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
+def build_system_prompt():
+    k = konteks_waktu()
+    return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
 KRAMAV642MARKER — V6.4.2: fokus ASEAN & Timur Tengah; gambar tema alam/kota;
 satu topik per berita; angka mesin disalin persis.
 
@@ -705,7 +661,7 @@ ATURAN DATA & ANGKA (WAJIB):
 - Angka dari materi sumber WAJIB SALIN UTUH & PERSIS (contoh: "5,02 persen").
 - DILARANG menambah angka yang tidak ada di materi sumber.
 
-ATURAN DATA OLAH RAGA DARI MESIN (WAJIB — V6.4.0):
+ATURAN DATA OLAH RAGA DARI MESIN (WAJIB):
 - Bagian "DATA ESPN" di pesan user = angka resmi dari mesin (skor,
   klasemen, jadwal). SALIN PERSIS, DILARANG mengubah/membulatkan/menambah.
 - WAJIB: setiap tim yang kamu sebut, sebutkan POSISI KLASEMENNYA
@@ -749,8 +705,6 @@ FORMAT JAWABAN — HANYA JSON valid tanpa teks lain:
 INGAT: nama publik resmi WAJIB lengkap. Frasa ketiadaan narasumber DILARANG.
 Blok [KLASMEN] disalin apa aduna bila diberikan. Tanpa bukti tertulis
 peristiwa lama = TULIS BERITA."""
-
-# ═════════ FUNGSI BANTU ═════════
 
 def edge_call(payload_json):
     r = requests.post(EDGE_URL,
@@ -911,8 +865,6 @@ def collect_candidates(sources, today_urls, seen):
                         'tgl_pub': tanggal_publikasi_str(entry)})
     return out
 
-# ═══ V6.4.1: MATCH_ARTICLES DIPERKETAT (ANTI-FRANKENSTEIN) ═══
-
 def match_articles(candidates):
     STOP = set('di ke dari yang dan atau dengan untuk pada dalam akan telah '
                'sudah karena jika agar itu ini para kami mereka ada tidak bisa '
@@ -942,8 +894,6 @@ def match_articles(candidates):
             groups.append({'kw': k, 'items': [c]})
     return groups
 
-# ═══ V6.4.2: KATEGORI BARAT & TEMBOK ANTI-2-TOPIK ═══
-
 def kategori_barat(title, summary):
     t = ((title or '') + ' ' + (summary or '')).lower()
     if any(k in t for k in KATA_BARAT_USA):
@@ -955,7 +905,6 @@ def kategori_barat(title, summary):
     return None
 
 def barat_sudah_terbit(kelompok):
-    """V6.4.2: barat maks 1 berita per kelompok per hari (kalender WITA)."""
     try:
         rows = rest_get('?select=title,created_at&order=created_at.desc&limit=300')
         today = datetime.now(WITA).date()
@@ -978,10 +927,6 @@ def barat_sudah_terbit(kelompok):
     return False
 
 def deteksi_dua_topik(judul, isi):
-    """V6.4.2 tembok kedua: isi memuat 2 kota-dateline berbeda dalam berita
-    yang judulnya menyebut kota pertama saja → indikasi campuran dua peristiwa.
-    Sederhana & aman: hitung kemunculan pola 'NAMA, NAMA' (kota, provinsi)
-    yang BERBEDA di isi berita. 2+ lokasi berbeda = curiga → blokir."""
     try:
         lokasi = set(re.findall(r'(?:^|\n)([A-Z][A-Z\s\.,\'\-]{2,40}?)\s+[-–—]\s+', isi or ''))
         if len(lokasi) >= 2:
@@ -1023,8 +968,6 @@ def cek_janji_judul(judul, isi):
     return None
 
 def cek_deskripsi_gambar(deskripsi):
-    """V6.4.2: deskripsi_gambar DILARANG menyebut hewan/tempat ibadah.
-    Return alasan jika terlarang, None jika aman."""
     d = (deskripsi or '').lower()
     for k in GAMBAR_LARANG_KATA:
         if k in d:
@@ -1214,7 +1157,6 @@ def skor_dunia(title, summary):
         skor += 30 + (hit - 1) * 8
     return skor
 
-# ═══ V6.4.2: ANTI-DOBEL GAMBAR 36 JAM ═══
 _GAMBAR_TERPAKAI_CACHE = None
 
 def muat_gambar_terpakai():
@@ -1245,8 +1187,6 @@ def catat_gambar_terpakai(url):
         muat_gambar_terpakai().add(url)
 
 def cari_gambar_wikimedia(deskripsi):
-    """V6.4.2: cari + lompati gambar yang sudah dipakai 36 jam terakhir.
-    Deskripsi terlarang (hewan/ibadah) sudah diblokir di ai_write."""
     if not deskripsi:
         return ''
     try:
@@ -1278,7 +1218,6 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
     m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+(.*)$', isi, re.DOTALL)
     dateline = m.group(1).strip() if m else ''
     isi_bersih = m.group(2).strip() if m else isi
-    # V6.4.2: ANTI-DOBEL INSERT-MOMEN — cek ulang database TEPAT sebelum insert
     if masih_barusan_terbit(judul):
         raise Exception('diblokir anti-dobel insert-momen V6.4.2: judul sama baru terbit <10 mnt')
     if not img and deskripsi_gambar:
@@ -1299,13 +1238,7 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
     catat_gambar_terpakai(img or '')
     JUDUL_TERPAKAI.append(normalisasi_judul(judul))
 
-# ═════════ AI VISION BLUR-GATE ═════════
-# Model: deepseek-chat (bukan deepseek-vision — nama itu tidak ada di DeepSeek;
-# deepseek-chat sendiri membaca gambar via image_url base64).
-
 def vision_nilai_gambar(img_url, judul_berita):
-    """Nilai gambar via DeepSeek Vision: kualitas visual & relevansi.
-    Return skor 1-10, atau None jika gagal (gagal = gambar dipertahankan)."""
     try:
         img_r = requests.get(img_url, headers={'User-Agent': random.choice(UA_LIST)},
                              timeout=20)
@@ -1344,7 +1277,6 @@ def vision_nilai_gambar(img_url, judul_berita):
         return None
 
 def gambar_lolos_blur_gate(img_url, judul_berita):
-    """True jika gambar layak (atau vision gagal → dipertahankan)."""
     if not img_url:
         return False
     skor = vision_nilai_gambar(img_url, judul_berita)
@@ -1353,10 +1285,8 @@ def gambar_lolos_blur_gate(img_url, judul_berita):
         return True
     print('       👁️ Vision skor: ' + str(skor) + '/10 → ' +
           ('LOLOS' if skor >= BLUR_SKOR_MINIMUM else 'DIBUANG (blur/buruk)'))
-    return skor >= BLUR_SKOR_MINIMUM
-# ═════════ V6.3.8/V6.4.2: ESPN — FIX NBA ROUTING ═════════
-# FIX V6.4.2: klasemen & skor-rentang basketball tidak lagi dirouting ke
-# endpoint soccer (dulu: soccer/leagues/basketball/nba → selalu kosong).
+    return skor >= BLUR_SKOR_MINIMUM    
+# ═════════ V6.4.2: ESPN — FIX NBA ROUTING ═════════
 
 def _espn_get(path):
     try:
@@ -1369,8 +1299,6 @@ def _espn_get(path):
         return None
 
 def espn_klasemen(liga_code, nama_liga):
-    """V6.4.2 FIX: basketball pakai site-API standings (endpoint core soccer
-    kosong untuk soccer & tidak berlaku untuk NBA)."""
     try:
         if liga_code.startswith('basketball'):
             r = requests.get(ESPN_SITE + 'basketball/nba/standings',
@@ -1486,10 +1414,7 @@ def espn_jadwal_berikutnya(liga_code, nama_liga, maks=3):
         pass
     return out
 
-# ═══ V6.4.2: SKOR RENTANG ±3 HARI — DENGAN FIX BASKETBALL ═══
-
 def espn_skor_rentang(liga_code, hari_mundur=4):
-    """V6.4.2: basketball dirouting ke scoreboard NBA yang benar."""
     out = []
     try:
         t0 = datetime.now(timezone.utc) - timedelta(days=hari_mundur)
@@ -1587,8 +1512,6 @@ def olahraga_sudah_terbit_dengan_data():
         return len(rows) > 0
     except Exception:
         return False
-
-# ═══ V6.4.2: LIGA EROPA PINDAH 06:00 → 07:00 ═══
 
 def sesi_olahraga_api(jenis):
     jam = datetime.now(WITA).hour
@@ -1711,7 +1634,7 @@ def kategori_breaking(c, tip):
         return 'internasional'
     return 'nasional'
 
-# ═════════ V6.3.7: IDX TERJADWAL (11/14/17 WITA) ═════════
+# ═════════ IDX TERJADWAL (11/14/17 WITA) ═════════
 
 def angka_id(n):
     s = '{:,.2f}'.format(float(n))
@@ -1842,8 +1765,8 @@ def sesi_idx(today_urls, seen):
         print('   ⚠️ Insert IDX gagal: ' + str(e)[:80])
         return 0
 
-# ═════════ SESI KATEGORI — V6.4.2: DUKUNG ASEAN/TT + BARAT MAKS 1 ═════════
-# Kunci jadwal → kategori database:
+# ═════════ SESI KATEGORI — V6.4.2 ═════════
+
 KATEGORI_DB = {
     'nasional': 'nasional', 'daerah': 'daerah',
     'internasional_asean': 'internasional', 'internasional_tt': 'internasional',
@@ -1915,7 +1838,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None):
         print('   (' + cat + ') Tidak ada kandidat segar.')
         return False
 
-    # V6.4.2: internasional_tt → hanya kandidat bertema TT
     if cat == 'internasional_tt':
         cand = [c for c in cand
                 if teks_mengandung(c['title'] + ' ' + c['summary'], KATA_TT)]
@@ -1933,7 +1855,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None):
                     return 0
             return 1
         groups.sort(key=topik_prio)
-    # V6.4.2: internasional_asean → kelompok ASEAN didahulukan; barat dicek kuota
     if cat == 'internasional_asean':
         def asean_prio(g):
             if kelompok_topik(g['items'], KATA_ASEAN):
@@ -1950,7 +1871,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None):
             break
         items = g['items']
         top = items[0]
-        # V6.4.2: barat → cek kuota harian sebelum menulis
         if cat in ('internasional_asean', 'internasional_tt', 'internasional'):
             b = kategori_barat(top['title'], top.get('summary', ''))
             if b and barat_sudah_terbit(b):
@@ -2021,22 +1941,15 @@ def sesi_kategori(today_urls, seen):
                   + ' — kandidatnya didahulukan.')
     total = 0
     for cat, n in kuota.items():
-        if cat == 'nasional':
-            prio = utamakan_topik
-        elif cat == 'daerah':
-            prio = None
-        else:
-            prio = None
+        prio = utamakan_topik if cat == 'nasional' else None
         for _ in range(n):
             if produksi_satu(cat, today_urls, seen,
                              utamakan_kaltara and cat == 'daerah',
-                             prio if cat == 'nasional' else None):
+                             prio):
                 total += 1
     return total
 
-
-# ═══ STATISTIK SCRAPING + SATU SESI PENUH ═══
-STAT_SCRAPE = {'ok': 0, 'gagal': 0}
+# ═══ STATISTIK + SATU SESI PENUH ═══
 
 def run_session():
     now = datetime.now(WITA)
