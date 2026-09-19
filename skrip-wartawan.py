@@ -1,23 +1,26 @@
 # ══════════════════════════════════════════════════════
-#  AI WARTAWAN KRAMANEWS — V6.4.3.2 (FIX PROMPT NARASUMBER)
-#  Baru V6.4.3.2 (19 Sep):
-#   • Prompt ATURAN NARASUMBER diperketat: atribusi kabur ke orang
-#     ("seorang pejabat/pengusaha/...") SELALU dilarang — TANPA syarat.
-#     Jika tak ada nama di materi: atribusi hanya ke INSTITUSI
-#     ("Kementerian Kesehatan Gaza mengatakan...") atau lapor fakta
-#     langsung. Alasan: AI menyalahgunakan celah "jika nama ADA di
-#     materi" → menulis "seorang pejabat" → ditembak pemeriksa
-#     V6.3.4 → 1 panggilan API terbuang per run (kasus nyata: berita
-#     Gaza gagal 2x berturut 21:21 & 21:28 WITA).
-#  Warisan utuh: V6.4.3.1 (cek_dateline kota-kunci) + V6.4.3
-#  (anti-manusia gambar, Wikimedia vision gate, anti-dobel-6jam,
-#   5 slot olahraga: 07/13/15/17/20).
+#  AI WARTAWAN KRAMANEWS — V6.4.3.3 (KOREKSI MANDIRI FRASA TERLARANG)
+#  Baru V6.4.3.3 (19 Sep):
+#   • ai_write kini punya SELF-CORRECTION: jika hasil AI tertangkap
+#     frasa terlarang ("seorang pejabat" dll), JANGAN langsung dibuang —
+#     AI dikirim ulang SEKALI dengan pesan koreksi yang menyebut frasa
+#     pelanggar + instruksi atribusi institusi (temperature 0.3 agar
+#     patuh). Kena lagi = baru dibuang.
+#     Alasan: kasus Gaza gagal 3x berturut (21:21/21:28/21:37) — prompt
+#     saja tidak cukup, AI tetap menerjemahkan "an official said"
+#     menjadi "seorang pejabat".
+#   • Tembok lain (dateline, dobel-6jam, gambar) TETAP tanpa retry —
+#     kesalahan sistemik, bukan soal redaksi.
+#  Warisan utuh: V6.4.3.2 (prompt narasumber tanpa pengecualian) +
+#  V6.4.3.1 (cek_dateline kota-kunci) + V6.4.3 (anti-manusia gambar,
+#  Wikimedia vision gate, anti-dobel-6jam, olahraga 5 slot: 07/13/15/17/20).
 #  Marker verifikasi:
 #   "KRAMAV642MARKER" (2x: header + prompt)
 #   "KRAMAV643MARKER" (5x: header, list gambar, sudah_serupa,
 #                      cek_dateline, prompt vision)
 #   "KRAMAV6431MARKER" (2x: header + komentar cek_dateline)
 #   "KRAMAV6432MARKER" (2x: header + prompt narasumber)
+#   "KRAMAV6433MARKER" (2x: header + kode retry ai_write)
 #  Mode 1 (loop) : python3 skrip-wartawan.py
 #  Mode 2 (Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -1046,53 +1049,99 @@ def cek_deskripsi_gambar(deskripsi):
             return 'deskripsi gambar memuat kata terlarang: ' + k
     return None
 
-def ai_write(user_content, timeout=150):
+POLA_LARANG = [
+    'belum dikonfirmasi waktu', 'waktu kejadian belum',
+    'belum dikonfirmasi kapan',
+    'menurut informasi yang diterima', 'diduga kuat',
+    'kabarnya', 'dikabarkan',
+    'identitas narasumber',
+    'tidak disebutkan dalam laporan',
+    'tidak disebutkan secara eksplisit',
+    'tanpa menyebut nama',
+    'tanpa menyebut nama pejabat',
+    'dalam laporan yang beredar',
+    'dalam laporan yang dihimpun',
+    'materi yang tersedia',
+    'tidak dapat dipastikan',
+    'keterangan disampaikan tanpa',
+    'seorang pengusaha', 'seorang pengamat', 'seorang pejabat tinggi',
+    'seorang tokoh', 'seorang bos', 'seorang pejabat',
+]
+
+def _frasa_tertangkap(isi):
+    isi_lower = (isi or '').lower()
+    for p in POLA_LARANG:
+        if p in isi_lower:
+            return p
+    return None
+
+def _panggil_deepseek(user_content, temperature):
     r = requests.post('https://api.deepseek.com/chat/completions',
         headers={'Authorization': 'Bearer ' + DEEPSEEK_KEY,
                  'Content-Type': 'application/json'},
         json={'model': 'deepseek-chat',
               'messages': [{'role': 'system', 'content': build_system_prompt()},
                            {'role': 'user', 'content': user_content}],
-              'temperature': 0.8},
-        timeout=timeout)
+              'temperature': temperature},
+        timeout=150)
     r.raise_for_status()
-    obj = parse_ai_json(r.json()['choices'][0]['message']['content'])
-    if str(obj.get('tolak', '')).strip():
-        raise BeritaLama(str(obj.get('tolak'))[:100])
+    return parse_ai_json(r.json()['choices'][0]['message']['content'])
+
+def ai_write(user_content, timeout=150):
+    # V6.4.3.3 — KRAMAV6433MARKER: KOREKSI MANDIRI
+    # Percobaan 1: normal (temperature 0.8).
+    # Jika tertangkap FRASA TERLARANG ("seorang pejabat" dll):
+    #   JANGAN dibuang — AI dikirim ulang SEKALI dengan pesan koreksi
+    #   yang menyebut frasa pelanggar + instruksi atribusi institusi
+    #   (temperature 0.3 agar patuh). Kena lagi = baru dibuang.
+    # Tembok lain (dateline, dobel-6jam, gambar, janji judul, 2-topik)
+    # TETAP tanpa retry — kesalahan sistemik, bukan soal redaksi.
+    obj = None
+    for percobaan in (1, 2):
+        try:
+            obj = _panggil_deepseek(user_content, 0.8 if percobaan == 1 else 0.3)
+        except BeritaLama:
+            raise
+        except Exception as e:
+            if percobaan == 2:
+                raise
+            print('       ⚠️ Panggilan AI gagal (' + str(e)[:60] + ') — coba sekali lagi.')
+            continue
+        if str(obj.get('tolak', '')).strip():
+            raise BeritaLama(str(obj.get('tolak'))[:100])
+        isi_c = obj.get('isi', '').strip()
+        frasa = _frasa_tertangkap(isi_c)
+        if frasa and percobaan == 1:
+            print('       🔁 Koreksi mandiri: frasa "' + frasa + '" — minta AI tulis ulang...')
+            user_content = (
+                'TULISANMU SEBELUMNYA DITOLAK SISTEM karena memuat frasa '
+                'terlarang: "' + frasa + '".\n\n'
+                'TULIS ULANG berita yang sama dengan ATURAN KETAT:\n'
+                '- HAPUS total frasa itu dan semua variannya.\n'
+                '- DILARANG deskripsi kabur pengganti nama orang ("seorang '
+                'pejabat", "seorang pengusaha", dst) — APA PUN kondisinya.\n'
+                '- Atribusi HANYA ke institusi/lembaga yang tertulis di materi '
+                '(contoh: "Kementerian Kesehatan Gaza mengatakan...") ATAU '
+                'laporkan fakta langsung TANPA atribusi siapa pun.\n'
+                '- Jangan mengubah fakta, angka, tanggal, dan struktur lain.\n'
+                '- Jawab HANYA JSON valid dengan format yang sama.')
+            continue
+        break
     judul = obj.get('judul', '').strip()
     isi = obj.get('isi', '').strip()
     ringkasan = obj.get('ringkasan', '').strip()
     waktu = (obj.get('waktu_kejadian') or '').strip()
     gambar = (obj.get('deskripsi_gambar') or '').strip()
-    pola_larang = [
-        'belum dikonfirmasi waktu', 'waktu kejadian belum',
-        'belum dikonfirmasi kapan',
-        'menurut informasi yang diterima', 'diduga kuat',
-        'kabarnya', 'dikabarkan',
-        'identitas narasumber',
-        'tidak disebutkan dalam laporan',
-        'tidak disebutkan secara eksplisit',
-        'tanpa menyebut nama',
-        'tanpa menyebut nama pejabat',
-        'dalam laporan yang beredar',
-        'dalam laporan yang dihimpun',
-        'materi yang tersedia',
-        'tidak dapat dipastikan',
-        'keterangan disampaikan tanpa',
-        'seorang pengusaha', 'seorang pengamat', 'seorang pejabat tinggi',
-        'seorang tokoh', 'seorang bos', 'seorang pejabat',
-    ]
-    isi_lower = isi.lower()
-    tertangkap = [p for p in pola_larang if p in isi_lower]
-    if tertangkap:
-        raise Exception('diblokir pemeriksa V6.3.4: ' + str(tertangkap[0])[:50])
+    frasa_akhir = _frasa_tertangkap(isi)
+    if frasa_akhir:
+        raise Exception('diblokir pemeriksa V6.3.4: ' + str(frasa_akhir)[:50])
     alasan_janji = cek_janji_judul(judul, isi)
     if alasan_janji:
         raise Exception('diblokir promise-check V6.3.6: ' + alasan_janji)
     dua_topik = deteksi_dua_topik(judul, isi)
     if dua_topik:
         raise Exception('diblokir tembok anti-2-topik V6.4.2: ' + dua_topik[:60])
-    cek_dl = cek_dateline(isi, user_content)
+    cek_dl = cek_dateline(isi, user_content if 'TULISANMU SEBELUMNYA' not in user_content else '')
     if cek_dl:
         raise Exception('diblokir pemeriksa dateline V6.4.3: ' + cek_dl[:70])
     for t in JUDUL_6JAM:
@@ -2048,7 +2097,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.3.2)')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.3.3)')
     print('══════════════════════════════════════════')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -2085,7 +2134,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.4.3.2 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.4.3.3 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
