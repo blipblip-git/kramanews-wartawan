@@ -627,8 +627,8 @@ def tanggal_publikasi_str(entry):
     except Exception:
         return None
     def build_system_prompt():
-    k = konteks_waktu()
-    return """
+      k = konteks_waktu()
+      return """
     Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
 KRAMAV642MARKER — V6.4.2: fokus ASEAN & Timur Tengah; gambar tema alam/kota;
 satu topik per berita; angka mesin disalin persis.
