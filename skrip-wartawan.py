@@ -457,9 +457,10 @@ HUNT = {
 # ══════════════════════════════════════════════════════
 #  PART 2
 #  (cakupan: feeds breaking, kata-kunci, anti-dobel 36jam & 6jam,
-#   scraper, build_system_prompt — DENGAN ATURAN TEKNOLOGI BARU
-#   V6.5: kedalaman per domain + ATURAN KESEHATAN + ATURAN
-#   RANGKUMAN OLAHRAGA dari V6.4.4 tetap utuh)
+#   scraper, build_system_prompt — V6.5.1: ATURAN GAMBAR
+#   DIPERKETAT ANTI-HEWAN (contoh salah + wildlife/wolf eksplisit).
+#   Perubahan lain V6.5 tetap: ATURAN TEKNOLOGI per domain,
+#   ATURAN KESEHATAN, ATURAN RANGKUMAN OLAHRAGA)
 # ══════════════════════════════════════════════════════
 
 BREAKING_DOMESTIK_FEEDS = [
@@ -737,9 +738,9 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV642MARKER — V6.5: fokus ASEAN & Timur Tengah; gambar tema alam/kota
-TANPA manusia; satu topik per berita; angka mesin disalin persis;
-dateline wajib dari materi sumber; kesehatan = edukasi pakar;
+KRAMAV642MARKER — V6.5.1: fokus ASEAN & Timur Tengah; gambar tema alam/kota
+TANPA manusia & TANPA hewan; satu topik per berita; angka mesin disalin
+persis; dateline wajib dari materi sumber; kesehatan = edukasi pakar;
 teknologi = kedalaman per domain harian.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
@@ -901,21 +902,25 @@ ATURAN ETIKA FAKTA (WAJIB):
 - HANYA fakta dari materi sumber & data mesin. DILARANG mengarang.
 - KECUALI: nama publik instansi resmi WAJIB ditulis lengkap.
 
-ATURAN GAMBAR (WAJIB — V6.4.3):
+ATURAN GAMBAR (WAJIB — V6.5.1 ANTI-HEWAN): ═════════════════════
 - "deskripsi_gambar" = 3-6 kata kunci visual BAHASA INGGRIS, tanpa nama orang.
 - WAJIB memilih tema dari daftar ini saja (atau persis serupa):
   ✅ mountain landscape / rainforest / ocean sea view / grass field /
      flower garden / high speed train / old vintage train /
      city skyline skyscrapers / desert dunes / fresh fruits /
      starry night sky / galaxy space
-- ❌ DILARANG KERAS: hewan apa pun (animal, dog, cat, bird, fish, dll).
+- ❌ DILARANG KERAS: hewan apa pun (animal, dog, cat, bird, wolf,
+  wildlife, animals in forest, zoo, pet, insect, fish, dll) —
+  termasuk hewan sebagai LATAR belakang pemandangan. Sistem vision
+  MEMBLOKIR otomatis skor maksimal untuk gambar ber-hewan.
 - ❌ DILARANG KERAS: tempat ibadah apa pun (mosque, church, temple, pura, dll).
 - ❌ DILARANG KERAS: MANUSIA apa pun — orang, wajah, kerumunan, potret,
   tangan, siluet (human, person, people, crowd, portrait).
 - ❌ DILARANG: foto suasana insiden (kebakaran, kecelakaan, korban, polisi).
 - Contoh benar: "mountain landscape morning fog", "city skyline sunset",
   "fresh fruits market", "starry night sky galaxy".
-- Contoh salah: "crowd of people", "firefighters at scene", "portrait".
+- Contoh salah: "crowd of people", "firefighters at scene", "portrait",
+  "wildlife photography", "wolf in forest", "birds on beach".
 
 FORMAT JAWABAN — HANYA JSON valid tanpa teks lain:
 {"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "...",
@@ -932,11 +937,12 @@ peristiwa lama = TULIS BERITA."""
 #  (cakupan: edge_call, rest_get, breaking helpers, gambar helpers,
 #   scraper kandidat, match, barat, dua-topik, cek_dateline,
 #   pemeriksa, sumber_kesehatan_hari_ini [KRAMAV644MARKER],
-#   sumber_teknologi_hari_ini BARU [KRAMAV65MARKER — perputaran
-#   6 domain, 2 domain/hari], ai_write DENGAN koreksi mandiri
-#   [KRAMAV6433MARKER] + materi_asli [KRAMAV6434MARKER],
-#   rewrite single/multi, gempa skor, gambar terpakai, wikimedia,
-#   insert_news, vision anti-manusia [KRAMAV643MARKER], 4 fungsi ESPN)
+#   sumber_teknologi_hari_ini [KRAMAV65MARKER], ai_write DENGAN
+#   koreksi mandiri [KRAMAV6433MARKER] + materi_asli [KRAMAV6434MARKER],
+#   rewrite single/multi, gempa skor, gambar terpakai,
+#   cari_gambar_wikimedia +FILTER ANTI-HEWAN [KRAMAV651MARKER],
+#   insert_news, vision ANTI-MANUSIA + ANTI-HEWAN [KRAMAV643MARKER +
+#   KRAMAV651MARKER], 4 fungsi ESPN)
 # ══════════════════════════════════════════════════════
 
 def edge_call(payload_json):
@@ -1235,7 +1241,7 @@ def sumber_kesehatan_hari_ini(jam):
         return None, None
     try:
         dasar = datetime(2026, 1, 1).date()
-        indeks = (datetime.now(WITA).date() - dasar) % len(DOMAIN_KESEHATAN)
+        indeks = (datetime.now(WITA).date() - dasar).days % len(DOMAIN_KESEHATAN)
     except Exception:
         indeks = 0
     idx_domain = (indeks + JAM_KESEHATAN[jam]) % len(DOMAIN_KESEHATAN)
@@ -1243,17 +1249,12 @@ def sumber_kesehatan_hari_ini(jam):
     sumber = []
     for q, lang in dom['query']:
         sumber.append(GN(q, lang, 'GN Kesehatan: ' + dom['nama']))
-    # Kompas Health & BBC Health ikut sebagai tambahan domain apa pun
     sumber.append(RSSF('https://health.kompas.com/rss', 'Kompas Health'))
     sumber.append(RSSF('https://feeds.bbci.co.uk/news/health/rss.xml', 'BBC Health'))
     print('   🏥 KESEHATAN hari ini (jam ' + str(jam) + '): ' + dom['nama'])
     return dom, sumber
 
 # ═══ V6.5 — KRAMAV65MARKER: SUMBER TEKNOLOGI PERPUTARAN DOMAIN ═══
-# 6 domain, 2 domain/hari: slot 08=+0, 13=+1, 18=+2, geser 2 tiap hari.
-# Berlaku SEMUA hari termasuk weekend/libur (perhitungan tanggal murni).
-# Mengembalikan (dom, sumber) — dom['aturan'] disuntikkan ke pesan user
-# oleh sesi_kategori (PART 4) sebagai ATURAN KEDALAMAN domain.
 JAM_TEKNOLOGI = {8: 0, 13: 1, 18: 2}
 
 def sumber_teknologi_hari_ini(jam):
@@ -1269,8 +1270,6 @@ def sumber_teknologi_hari_ini(jam):
     sumber = []
     for q, lang in dom['query']:
         sumber.append(GN(q, lang, 'GN Teknologi: ' + dom['nama']))
-    # CNN Teknologi & BBC Tech ikut sebagai tambahan (sama pola kesehatan);
-    # prioritas tetap materi domain — aturan kedalaman dikirim di pesan user.
     sumber.append(RSSF('https://www.cnnindonesia.com/teknologi/rss', 'CNN Teknologi'))
     sumber.append(RSSF('https://feeds.bbci.co.uk/news/technology/rss.xml', 'BBC Tech'))
     print('   💻 TEKNOLOGI hari ini (jam ' + str(jam) + '): ' + dom['nama'])
@@ -1347,9 +1346,10 @@ def ai_write(user_content, timeout=150):
                 '- DILARANG deskripsi kabur pengganti nama orang ("seorang '
                 'pejabat", "seorang pengusaha", dst) — APA PUN kondisinya.\n'
                 '- Atribusi HANYA ke institusi/lembaga yang tertulis di materi '
-                '(contoh: "Kementerian Kesehatan Gaza mengatakan...") ATAU '
+                '(contoh: "Kementerian Kesehatan setempat mengatakan...") ATAU '
                 'laporkan fakta langsung TANPA atribusi siapa pun.\n'
                 '- Jangan mengubah fakta, angka, tanggal, dan struktur lain.\n'
+                '- Jangan menambah topik/wilayah baru yang tidak ada di materi.\n'
                 '- Jawab HANYA JSON valid dengan format yang sama.')
             continue
         break
@@ -1544,10 +1544,37 @@ def catat_gambar_terpakai(url):
     if url:
         muat_gambar_terpakai().add(url)
 
+# ═══ V6.5.1 — KRAMAV651MARKER: WIKIMEDIA ANTI-HEWAN ═══
+# Nama file di Wikimedia Commons sangat jujur: foto serigala hampir
+# selalu bernama "wolf...", foto burung "bird.../egret..." dst.
+# Kita blokir file berbau hewan SEBELUM vision menilai → hemat panggilan
+# + menutup celah "hewan sebagai latar" yang lolos vision.
+KATA_HEWAN_FILE = [
+    'wolf', 'serigala', 'dog', 'anjing', 'cat_', '-cat-', 'kucing',
+    'bird', 'burung', 'egret', 'heron', 'eagle', 'hawk', 'owl',
+    'monkey', 'monyet', 'orangutan', 'komodo', 'tiger', 'harimau',
+    'lion', 'singa', 'elephant', 'gajah', 'bear', 'beruang', 'deer',
+    'rusa', 'fox', 'rubah', 'snake', 'ular', 'crocodile', 'buaya',
+    'lizard', 'kadal', 'frog', 'katak', 'fish', 'ikan', 'shark',
+    'hiu', 'whale', 'paus', 'dolphin', 'lumba', 'insect', 'serangga',
+    'butterfly', 'kupu', 'spider', 'labah', 'rat', 'tikus', 'mouse-',
+    'horse', 'kuda', 'cow', 'sapi', 'goat', 'kambing', 'sheep',
+    'chicken', 'ayam', 'duck', 'bebek', 'goose', 'rabbit', 'kelinci',
+    'zoo', 'safari', 'wildlife', 'fauna',
+]
+
+def _url_berbau_hewan(url):
+    low = (url or '').lower()
+    return any(k in low for k in KATA_HEWAN_FILE)
+
 def cari_gambar_wikimedia(deskripsi):
     if not deskripsi:
         return ''
     try:
+        # V6.5.1 — deskripsi berbau fauna DIBLOKIR masuk pencarian
+        if cek_deskripsi_gambar(deskripsi):
+            print('       🚫 Deskripsi gambar berbau hewan/terlarang — Wikimedia dilewati.')
+            return ''
         q = quote_plus(deskripsi)
         url = ('https://commons.wikimedia.org/w/api.php?action=query&generator=search'
                '&gsrsearch=' + q + '&gsrnamespace=6&gsrlimit=10&prop=imageinfo'
@@ -1563,10 +1590,11 @@ def cari_gambar_wikimedia(deskripsi):
             if u and u.lower().endswith(('.jpg', '.jpeg', '.png')):
                 kandidat.append(u)
         for u in kandidat:
-            if not gambar_sampah(u) and not gambar_sudah_dipakai(u):
+            if not gambar_sampah(u) and not gambar_sudah_dipakai(u) \
+               and not _url_berbau_hewan(u):
                 return u
         if kandidat:
-            print('       ⚠️ Semua kandidat Wikimedia terpakai/terlarang — tanpa gambar.')
+            print('       ⚠️ Kandidat Wikimedia tak layak (terpakai/terlarang/hewan) — tanpa gambar.')
     except Exception:
         pass
     return ''
@@ -1620,10 +1648,18 @@ def vision_nilai_gambar(img_url, judul_berita):
                                   'subjek utama (wajah, orang, kerumunan, potret, '
                                   'siluet) beri skor MAKSIMAL 3 — portal ini '
                                   'melarang foto manusia. '
-                                  '(2) Blur, rusak, iklan, placeholder, logo, '
+                                  '(2) V6.5.1 KRAMAV651MARKER: Jika gambar '
+                                  'menampilkan HEWAN APAPUN — serigala/wolf, '
+                                  'anjing, kucing, burung, monyet, hewan liar, '
+                                  'hewan peliharaan, ikan, serangga — BAHKAN '
+                                  'hanya sebagai LATAR belakang pemandangan, '
+                                  'beri skor MAKSIMAL 3 — portal ini melarang '
+                                  'foto hewan dengan ketat. '
+                                  '(3) Blur, rusak, iklan, placeholder, logo, '
                                   'atau tidak nyambung dengan judul = skor 1-4. '
-                                  '(3) Pemandangan, kota, kereta, buah, langit '
-                                  'malam yang tajam dan relevan = skor 8-10. '
+                                  '(4) Pemandangan, kota, kereta, buah, langit '
+                                  'malam yang tajam, relevan, dan BEBAS dari '
+                                  'manusia serta hewan = skor 8-10. '
                                   'Jawab HANYA JSON: {"skor": <angka>} '
                                   'KRAMAV643MARKER')},
                         {'type': 'image_url',
@@ -1651,7 +1687,7 @@ def gambar_lolos_blur_gate(img_url, judul_berita):
         print('       👁️ Vision gagal menilai — gambar dipertahankan.')
         return True
     print('       👁️ Vision skor: ' + str(skor) + '/10 → ' +
-          ('LOLOS' if skor >= BLUR_SKOR_MINIMUM else 'DIBUANG (blur/buruk/manusia)'))
+          ('LOLOS' if skor >= BLUR_SKOR_MINIMUM else 'DIBUANG (blur/buruk/manusia/hewan)'))
     return skor >= BLUR_SKOR_MINIMUM
 
 # ═════════ V6.4.2: ESPN — FIX NBA ROUTING ═════════
