@@ -1,31 +1,35 @@
 # ══════════════════════════════════════════════════════
 #  PART 1
-#  AI WARTAWAN KRAMANEWS — V6.4.3.4 (FIX CEK DATELINE SAAT RETRY)
-#  (cakupan: header versi, import, konstanta, sumber HUNT —
-#   berakhir di penutup dict HUNT)
-#  Baru V6.4.3.4 (19 Sep):
-#   • BUGFIX koreksi mandiri: saat retry, user_content sudah menjadi
-#     pesan koreksi (bukan materi) → cek_dateline membandingkan kota
-#     dengan string kosong → SEMUA hasil retry terblok (kasus nyata:
-#     "gaza tidak ada di materi" padahal materi penuh kata Gaza).
-#     OBAT: materi asli disimpan di variabel terpisah (materi_asli)
-#     sebelum loop; cek_dateline SELALU memakai materi asli,
-#     percobaan 1 maupun 2. (di PART 3)
-#  Warisan utuh:
-#   • V6.4.3.3 — koreksi mandiri frasa terlarang (retry 1x, temp 0.3)
-#   • V6.4.3.2 — prompt narasumber tanpa pengecualian (KRAMAV6432)
-#   • V6.4.3.1 — cek_dateline kota-kunci, wilayah bebas (KRAMAV6431)
-#   • V6.4.3   — anti-manusia gambar (list+prompt+vision), Wikimedia
-#                ikut vision gate, anti-dobel-6jam, OLAHRAGA 5 SLOT
-#                (07/13/15/17/20)
+#  AI WARTAWAN KRAMANEWS — V6.4.4 (KESEHATAN PERPUTARAN DOMAIN + OLAHRAGA RANGKUMAN MALAM)
+#  (cakupan: header versi, import, konstanta, ESPN_LIGA, JADWAL_JAM,
+#   DOMAIN_KESEHATAN, HUNT — berakhir di penutup dict HUNT)
+#  Baru V6.4.4 (20 Sep — semua keputusan pemilik):
+#   • KESEHATAN PERPUTARAN DOMAIN: 8 domain (Nutrisi, Tidur-Mental,
+#     Gerak Tubuh, Anak-Keluarga, Pencegahan, Bahaya Kebiasaan,
+#     Musiman Tropis, Lansia) berputar otomatis dari tanggal.
+#     Slot 10:00 = indeks+0, 15:00 = +1, 20:00 = +2. Esok geser 3.
+#     AI kesehatan hanya berburu query domain hari itu → terarah,
+#     tidak kacau asal turun berita. (fungsi di PART 3, pakai di PART 4)
+#   • KESEHATAN +slot jam 20 → 3 slot/hari (10, 15, 20)
+#   • OLAHRAGA RANGKUMAN MALAM jam 00:00 WITA: 1 judul tumpuk semua
+#     laga malam (5 liga Eropa termasuk BARU: Eredivisie Belanda)
+#     + berita non-bola. Sumber insert terpisah "ESPN Data Malam"
+#     (fungsi di PART 3-4)
+#   • HUNT olahraga +4 sumber non-bola (badminton, voli, IBL, tenis)
+#   • HUNT['kesehatan'] lama DIHAPUS — diganti sumber domain harian
+#  Warisan utuh: V6.4.3.4 (koreksi mandiri + materi_asli), V6.4.3.2
+#  (narasumber), V6.4.3.1 (dateline kota-kunci), V6.4.3 (anti-manusia
+#  gambar, Wikimedia vision gate, anti-dobel-6jam, olahraga 5 slot).
 #  Marker verifikasi seluruh file:
-#   "KRAMAV642MARKER" (2x: header prompt + prompt) — PART 2
-#   "KRAMAV643MARKER" (5x: list gambar [PART 1], sudah_serupa [PART 2],
-#      cek_dateline [PART 3], prompt vision [PART 3], header prompt [PART 2])
-#   "KRAMAV6431MARKER" (2x: header file + komentar cek_dateline [PART 3])
-#   "KRAMAV6432MARKER" (2x: header file + prompt narasumber [PART 2])
-#   "KRAMAV6433MARKER" (2x: header file + kode retry ai_write [PART 3])
-#   "KRAMAV6434MARKER" (2x: header file + materi_asli di ai_write [PART 3])
+#   "KRAMAV642MARKER" (2x: prompt header + prompt — PART 2)
+#   "KRAMAV643MARKER" (5x: list gambar P1, header prompt P2,
+#      sudah_serupa P2, cek_dateline P3, prompt vision P3)
+#   "KRAMAV6431MARKER" (2x: header file + komentar cek_dateline P3)
+#   "KRAMAV6432MARKER" (2x: header file + prompt narasumber P2)
+#   "KRAMAV6433MARKER" (2x: header file + kode retry P3)
+#   "KRAMAV6434MARKER" (2x: header file + materi_asli P3)
+#   "KRAMAV644MARKER" (4x: header file + blok DOMAIN_KESEHATAN P1
+#      + fungsi sumber_kesehatan_hari_ini P3 + sesi_kategori P4)
 #  Mode 1 (loop) : python3 skrip-wartawan.py
 #  Mode 2 (Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -105,6 +109,7 @@ ESPN_LIGA = [
     ('ita.1',        'Serie A (Italia)'),
     ('ger.1',        'Bundesliga (Jerman)'),
     ('fra.1',        'Ligue 1 (Prancis)'),
+    ('ned.1',        'Eredivisie (Belanda)'),
     ('uefa.champions', 'Liga Champions'),
     ('uefa.europa',  'Liga Europa'),
     ('uefa.europa.conf', 'Liga Conference'),
@@ -114,7 +119,8 @@ ESPN_NBA = ('basketball/nba', 'NBA')
 ESPN_SITE = 'https://site.api.espn.com/apis/site/v2/sports/'
 ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/soccer/leagues/'
 
-# V6.4.3 — OLAHRAGA 5 SLOT (07/13/15/17/20 — 13 & 15 baru)
+# V6.4.3 — OLAHRAGA 5 SLOT (07/13/15/17/20) + rangkuman malam 00:00 (di sesi)
+# V6.4.4 — KESEHATAN 3 SLOT (10/15/20) dengan domain perputaran
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1},
@@ -130,7 +136,7 @@ JADWAL_JAM = {
     17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1},
     18: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1},
     19: {'nasional': 1},
-    20: {'hiburan': 1, 'olahraga': 1},
+    20: {'hiburan': 1, 'olahraga': 1, 'kesehatan': 1},
 }
 
 TOPIK_NASIONAL_WAJIB = [
@@ -185,6 +191,49 @@ KATA_ANALISIS = ['analisis', 'soroti', 'opini', 'tinjauan',
 JANJI_JADWAL  = ['jadwal', 'schedule']
 JANJI_TABEL   = ['klasemen', 'standing', 'ranking', 'peringkat']
 JANJI_ANGKA   = ['hasil', 'skor', 'result']
+
+# ═══ V6.4.4 — KRAMAV644MARKER: KESEHATAN PERPUTARAN DOMAIN ═══
+# 8 domain berputar otomatis dari tanggal (fungsi penghitung di PART 3).
+# Slot 10:00 = indeks+0 • 15:00 = +1 • 20:00 = +2 → esok geser 3.
+# 'query' = daftar Google News query (lang 'id'/'en'); run kesehatan
+# HANYA berburu query domain hari itu → fokus & terarah.
+DOMAIN_KESEHATAN = [
+    {'nama': 'Nutrisi & Makanan Sehat', 'query': [
+        ('makanan sehat nutrisi pakar gizi', 'id'),
+        ('makanan tidak sehat bahaya', 'id'),
+        ('manfaat buah sayur', 'id'),
+    ]},
+    {'nama': 'Tidur & Kesehatan Mental', 'query': [
+        ('pola tidur sehat bahaya begadang', 'id'),
+        ('kelola stres kecemasan psikolog', 'id'),
+        ('sleep health expert tips', 'en'),
+    ]},
+    {'nama': 'Gerak Tubuh & Kebugaran', 'query': [
+        ('manfaat jalan kaki olahraga ringan', 'id'),
+        ('olahraga kebugaran tips ahli', 'id'),
+    ]},
+    {'nama': 'Anak & Keluarga', 'query': [
+        ('kesehatan anak imunisasi dokter', 'id'),
+        ('kesehatan gigi anak', 'id'),
+        ('gizi anak MPASI', 'id'),
+    ]},
+    {'nama': 'Pencegahan Penyakit', 'query': [
+        ('cegah diabetes hipertensi gaya hidup', 'id'),
+        ('tanda awal stroke serangan jantung', 'id'),
+    ]},
+    {'nama': 'Bahaya Kebiasaan', 'query': [
+        ('bahaya rokok vape tubuh', 'id'),
+        ('mitos fakta suplemen', 'id'),
+    ]},
+    {'nama': 'Kesehatan Musiman Tropis', 'query': [
+        ('mencegah demam berdarah DBD', 'id'),
+        ('penyakit musim hujan', 'id'),
+    ]},
+    {'nama': 'Kesehatan Lansia', 'query': [
+        ('jaga kesehatan lansia', 'id'),
+        ('senior health tips doctor', 'en'),
+    ]},
+]
 
 def GN(q, lang='id', label=None):
     if lang == 'en':
@@ -300,6 +349,8 @@ HUNT = {
         GN('us economy', 'en', 'Google News Ekonomi USA'),
         GN('latin america economy', 'en', 'Google News Ekonomi Amerika Latin'),
     ],
+    # V6.4.4 — OLAHRAGA +4 sumber non-bola; catatan: 'kesehatan' dihapus
+    # dari HUNT — kini berburu lewat DOMAIN_KESEHATAN harian (PART 3-4).
     'olahraga': [
         RSSF('https://www.cnnindonesia.com/olahraga/rss', 'CNN Indonesia'),
         RSSF('https://www.bola.net/feed', 'Bola.net'),
@@ -311,6 +362,12 @@ HUNT = {
         GN('ligue 1', 'en', 'Google News Ligue 1'),
         GN('nba basketball', 'en', 'Google News NBA'),
         GN('mls soccer', 'en', 'Google News MLS'),
+        GN('badminton indonesia turnamen', 'id', 'Google News Badminton'),
+        GN('badminton tournament', 'en', 'Google News Badminton Dunia'),
+        GN('voli nasional timnas', 'id', 'Google News Voli'),
+        GN('volleyball nations league', 'en', 'Google News Voli Dunia'),
+        GN('IBL basket indonesia', 'id', 'Google News Basket IBL'),
+        GN('tenis turnamen grand slam', 'id', 'Google News Tenis'),
     ],
     'teknologi': [
         RSSF('https://www.cnnindonesia.com/teknologi/rss', 'CNN Indonesia'),
@@ -335,15 +392,16 @@ HUNT = {
         GN('festival film indonesia', 'id', 'Google News Festival Film'),
         GN('asian pop music', 'en', 'Google News Musik Asia'),
     ],
-    'kesehatan': [
-        RSSF('https://health.kompas.com/rss', 'Kompas Health'),
-        RSSF('https://health.detik.com/feed', 'Detik Health'),
-        RSSF('https://feeds.bbci.co.uk/news/health/rss.xml', 'BBC Health'),
-        RSSF('https://www.antaranews.com/rss/kesehatan', 'Antara Kesehatan'),
-        GN('kesehatan', 'id', 'Google News Kesehatan'),
-    ],
 }
 # AKHIR PART 1
+
+# ══════════════════════════════════════════════════════
+#  PART 2
+#  (cakupan: feeds breaking, kata-kunci, anti-dobel 36jam & 6jam,
+#   scraper, build_system_prompt — dengan ATURAN KESEHATAN
+#   (edukasi pakar > kegiatan) + ATURAN RANGKUMAN OLAHRAGA
+#   (1 judul banyak laporan) — V6.4.4)
+# ══════════════════════════════════════════════════════
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -622,9 +680,9 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV642MARKER — V6.4.3: fokus ASEAN & Timur Tengah; gambar tema alam/kota
+KRAMAV642MARKER — V6.4.4: fokus ASEAN & Timur Tengah; gambar tema alam/kota
 TANPA manusia; satu topik per berita; angka mesin disalin persis;
-dateline wajib dari materi sumber.
+dateline wajib dari materi sumber; kesehatan = edukasi pakar.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -688,6 +746,26 @@ ATURAN NARASUMBER (WAJIB — V6.4.3.2 KRAMAV6432MARKER — TANPA PENGECEKAN):
 - DILARANG KERAS frasa atribusi kosong: "dilaporkan bahwa...",
   "kabarnya...", "diduga kuat...", "menurut informasi yang diterima...".
 
+ATURAN KESEHATAN (WAJIB — V6.4.4): ═══════════════════════════
+- Berita kategori kesehatan WAJIB mengutamakan EDUKASI untuk pembaca:
+  saran, panduan, penjelasan PAKAR (dokter, ahli gizi, psikolog,
+  peneliti) yang tertulis di materi sumber.
+- WAJIB menonjolkan PESAN PRAKTIS untuk pembaca: apa yang harus
+  dilakukan/dihindari, berapa batas aman, kapan harus waspada.
+- Materi "kegiatan/seremoni dinas" (peluncuran program, sosialisasi,
+  kunjungan pejabat kesehatan) = PILIHAN TERAKHIR. Jika terpaksa
+  menulisnya, WAJIB menonjolkan SARAN PAKAR di dalamnya, bukan
+  protokol acaranya.
+- DILARANG menulis nasihat medis yang tidak ada di materi sumber.
+
+ATURAN RANGKUMAN OLAHRAGA (WAJIB — V6.4.4): ═══════════════════
+- BERITA OLAHRAGA BOLEH dan DIANJURKAN berbentuk RANGKUMAN:
+  SATU judul berisi BANYAK laporan (hasil banyak laga, klasemen
+  banyak liga, beberapa cabang olahraga sekaligus).
+- IKUTI struktur data yang diberikan: jika pesan user berisi banyak
+  liga/cabang, WAJIB membahas SEMUA yang diberikan, tidak memilih satu.
+- Tetap dilarang mengarang angka/laga di luar data mesin.
+
 ATURAN ANTI-PLAGIAT (WAJIB — MATERI KAYA):
 - Tulis ulang dengan kalimatmu sendiri. DILARANG verbatim >5 kata berurutan.
 - Boleh disalin persis: nama, jabatan, angka, kutipan dalam tanda kutip.
@@ -734,6 +812,8 @@ ATURAN JUDUL (WAJIB):
   Jika materi yang diberikan berisi DUA peristiwa yang tidak berkaitan
   langsung, DILARANG mencampurnya dalam satu judul/berita — pilih
   peristiwa yang paling utama dan tulis ITU saja.
+- PENGECUALIAN RANGKUMAN OLAHRAGA: banyak laga/liga dalam satu rangkuman
+  = SATU topik (bukan pelanggaran aturan satu-topik).
 
 ATURAN ETIKA FAKTA (WAJIB):
 - HANYA fakta dari materi sumber & data mesin. DILARANG mengarang.
@@ -764,6 +844,17 @@ SELALU DILARANG — atribusi hanya ke institusi atau lapor fakta langsung.
 Blok [KLASMEN] disalin apa aduna bila diberikan. Tanpa bukti tertulis
 peristiwa lama = TULIS BERITA."""
 # AKHIR PART 2
+
+# ══════════════════════════════════════════════════════
+#  PART 3
+#  (cakupan: edge_call, rest_get, breaking helpers, gambar helpers,
+#   scraper kandidat, match, barat, dua-topik, cek_dateline,
+#   pemeriksa, sumber_kesehatan_hari_ini [KRAMAV644MARKER — perputaran
+#   8 domain dari tanggal], ai_write DENGAN koreksi mandiri
+#   [KRAMAV6433MARKER] + materi_asli [KRAMAV6434MARKER],
+#   rewrite single/multi, gempa skor, gambar terpakai, wikimedia,
+#   insert_news, vision anti-manusia [KRAMAV643MARKER], 4 fungsi ESPN)
+# ══════════════════════════════════════════════════════
 
 def edge_call(payload_json):
     r = requests.post(EDGE_URL,
@@ -997,9 +1088,7 @@ def deteksi_dua_topik(judul, isi):
 # ═══ V6.4.3.1 — KRAMAV6431MARKER: PEMERIKSA DATELINE (REVISI) ═══
 # KOTA = kunci: wajib ada di materi sumber (kasus "Benuanta" tetap diblokir).
 # Wilayah generik (provinsi/negara) TIDAK lagi memblokir — menutup kasus
-# "MIAMI, FLORIDA" yang ditolak padahal fakta benar (florida tak tertulis
-# di materi). Penjaga Kaltara tetap: klaim KALIMANTAN UTARA hanya boleh
-# untuk kota Kaltara sebenarnya.
+# "MIAMI, FLORIDA" yang ditolak padahal fakta benar. Penjaga Kaltara tetap.
 def cek_dateline(isi, user_content):
     m = re.match(r'^([A-Z][^\n\-–—]{1,60}?)\s+[-–—]\s+', (isi or '').strip())
     if not m:
@@ -1058,6 +1147,31 @@ def cek_deskripsi_gambar(deskripsi):
             return 'deskripsi gambar memuat kata terlarang: ' + k
     return None
 
+# ═══ V6.4.4 — KRAMAV644MARKER: SUMBER KESEHATAN PERPUTARAN DOMAIN ═══
+# Indeks domain = (hari sejak 2026-01-01) mod 8 → hari ini domain ke-N,
+# esok +3 slot (10/15/20 = +0/+1/+2), lusa +3 lagi... berputar selamanya
+# tanpa database. Run kesehatan HANYA berburu query domain hari itu.
+JAM_KESEHATAN = {10: 0, 15: 1, 20: 2}
+
+def sumber_kesehatan_hari_ini(jam):
+    if jam not in JAM_KESEHATAN:
+        return None, None
+    try:
+        dasar = datetime(2026, 1, 1).date()
+        indeks = (datetime.now(WITA).date() - dasar).days % len(DOMAIN_KESEHATAN)
+    except Exception:
+        indeks = 0
+    idx_domain = (indeks + JAM_KESEHATAN[jam]) % len(DOMAIN_KESEHATAN)
+    dom = DOMAIN_KESEHATAN[idx_domain]
+    sumber = []
+    for q, lang in dom['query']:
+        sumber.append(GN(q, lang, 'GN Kesehatan: ' + dom['nama']))
+    # Kompas Health & BBC Health ikut sebagai tambahan domain apa pun
+    sumber.append(RSSF('https://health.kompas.com/rss', 'Kompas Health'))
+    sumber.append(RSSF('https://feeds.bbci.co.uk/news/health/rss.xml', 'BBC Health'))
+    print('   🏥 KESEHATAN hari ini (jam ' + str(jam) + '): ' + dom['nama'])
+    return dom, sumber
+
 POLA_LARANG = [
     'belum dikonfirmasi waktu', 'waktu kejadian belum',
     'belum dikonfirmasi kapan',
@@ -1098,16 +1212,11 @@ def _panggil_deepseek(user_content, temperature):
 
 def ai_write(user_content, timeout=150):
     # V6.4.3.3 — KRAMAV6433MARKER: KOREKSI MANDIRI
-    # Percobaan 1: normal (temperature 0.8).
-    # Jika tertangkap FRASA TERLARANG ("seorang pejabat" dll):
-    #   JANGAN dibuang — AI dikirim ulang SEKALI dengan pesan koreksi
-    #   yang menyebut frasa pelanggar + instruksi atribusi institusi
-    #   (temperature 0.3 agar patuh). Kena lagi = baru dibuang.
-    # Tembok lain (dateline, dobel-6jam, gambar, janji judul, 2-topik)
-    # TETAP tanpa retry — kesalahan sistemik, bukan soal redaksi.
+    # Percobaan 1: normal (temperature 0.8). Jika tertangkap FRASA
+    # TERLARANG → kirim ulang SEKALI dengan pesan koreksi (temp 0.3).
+    # Kena lagi = baru dibuang. Tembok lain TETAP tanpa retry.
     # V6.4.3.4 — KRAMAV6434MARKER: materi asli disimpan terpisah —
-    # cek_dateline SELALU memakai materi asli (user_content berubah
-    # jadi pesan koreksi saat retry — itu bukan materi sumber).
+    # cek_dateline SELALU memakai materi asli.
     obj = None
     materi_asli = user_content
     for percobaan in (1, 2):
@@ -1607,6 +1716,16 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
     return out
 # AKHIR PART 3
 
+# ══════════════════════════════════════════════════════
+#  PART 4
+#  (cakupan: buat_materi_rangkuman_eropa [+Belanda otomatis],
+#   buat_materi_malam BARU [skor malam 5 liga + non-bola,
+#   KRAMAV644MARKER], sesi_olahraga_api handle 'malam' jam 00:00,
+#   sesi_breaking 3 slot, kategori_breaking, IDX terjadwal,
+#   sesi_kategori PAKAI DOMAIN KESEHATAN HARIAN [KRAMAV644MARKER],
+#   run_session V6.4.4, main_sekali, main)
+# ══════════════════════════════════════════════════════
+
 def buat_materi_rangkuman_eropa():
     skor_semua = []
     klasemen_blok = []
@@ -1640,30 +1759,59 @@ def buat_materi_rangkuman_eropa():
                       + '\n\n'.join(klasemen_blok[:4]))
     return '\n\n'.join(bagian)
 
-def buat_materi_nba():
-    skor = espn_skor_rentang('basketball/nba') or espn_skor_semalam(*ESPN_NBA)
-    blok, teks_klas = espn_klasemen(*ESPN_NBA)
-    jadwal = espn_jadwal_berikutnya(*ESPN_NBA, maks=3)
-    if not skor and not teks_klas:
+# ═══ V6.4.4 — KRAMAV644MARKER: RANGKUMAN MALAM (jam 00:00 WITA) ═══
+# 1 judul menumpuk: skor malam SEMUA liga ESPN (Inggris, Spanyol,
+# Italia, Jerman, Prancis, Belanda, UEFA) + berita non-bola
+# (badminton, voli, basket IBL, tenis) dari Google News.
+SUMBER_NONBOLA = [
+    GN('badminton indonesia turnamen hasil', 'id', 'GN Nonbola Badminton'),
+    GN('badminton tournament result', 'en', 'GN Nonbola Badminton Dunia'),
+    GN('voli nasional timnas hasil', 'id', 'GN Nonbola Voli'),
+    GN('volleyball nations league result', 'en', 'GN Nonbola Voli Dunia'),
+    GN('IBL basket indonesia hasil', 'id', 'GN Nonbola IBL'),
+    GN('tenis turnamen hasil', 'id', 'GN Nonbola Tenis'),
+]
+
+def buat_materi_malam():
+    skor_semua = []
+    klasemen_teks = []
+    for code, nama in ESPN_LIGA:
+        for s in espn_skor_rentang(code, hari_mundur=1):
+            skor_semua.append(nama.split(' (')[0] + ': ' + s)
+    if not skor_semua:
         return None
+    # Klasemen ringkas 3 liga teratas (biar berita tak terlalu panjang)
+    for code, nama in ESPN_LIGA[:3]:
+        blok, teks = espn_klasemen(code, nama)
+        if teks:
+            klasemen_teks.append(teks[:400])
+    # Non-bola: kumpulkan kandidat segar (maks 6)
+    nonbola = []
+    try:
+        today_urls = get_today_state()
+        seen = set()
+        cand = collect_candidates(SUMBER_NONBOLA, today_urls, seen)
+        for c in cand[:6]:
+            nonbola.append('- ' + c['title'] + ': ' + (c['summary'] or '')[:300])
+    except Exception:
+        nonbola = []
     bagian = []
-    if skor:
-        bagian.append('HASIL PERTANDINGAN SEMALAM (ANGKA RESMI MESIN — SALIN PERSIS):\n'
-                      + '\n'.join(skor[:12]))
-    if teks_klas:
-        bagian.append('KLASMEN NBA (ANGKA RESMI MESIN — WAJIB sebut posisi tim yang dibahas):\n'
-                      + teks_klas[:1500])
-    if jadwal:
-        bagian.append('LAGA BERIKUTNYA (WAJIB sebut di paragraf akhir):\n' + '; '.join(jadwal))
-    if blok:
-        bagian.append('BLOK KLASMEN SIAP-RENDER (WAJIB disalin APA ADUNA di akhir isi '
-                      'berita, jangan diubah):\n' + blok)
+    bagian.append('HASIL LAGA MALAM INI (ANGKA RESMI MESIN — SALIN PERSIS):\n'
+                  + '\n'.join(skor_semua))
+    if klasemen_teks:
+        bagian.append('KLASMEN RINGKAS (ANGKA RESMI MESIN — WAJIB sebut posisi '
+                      'tim yang dibahas):\n' + '\n'.join(klasemen_teks))
+    if nonbola:
+        bagian.append('MATERI OLAHRAGA NON-BOLA (WAJIB rangkum SEMUA yang '
+                      'diberikan dalam paragraf tersendiri):\n' + '\n'.join(nonbola))
+    bagian.append('WAJIB: judul rangkuman (bukan satu laga), dan SEMUA liga '
+                  'serta SEMUA materi non-bola di atas dibahas dalam satu berita.')
     return '\n\n'.join(bagian)
 
-def olahraga_sudah_terbit_dengan_data():
+def olahraga_sudah_terbit_dengan_data(sumber='ESPN Data'):
     try:
         batas = (datetime.now(timezone.utc) - timedelta(hours=20)).isoformat()
-        rows = rest_get('?select=id&source_name=eq.' + quote_plus('ESPN Data')
+        rows = rest_get('?select=id&source_name=eq.' + quote_plus(sumber)
                         + '&created_at=gte.' + batas)
         return len(rows) > 0
     except Exception:
@@ -1675,26 +1823,38 @@ def sesi_olahraga_api(jenis):
         return 0
     if jenis == 'nba' and jam != 13:
         return 0
-    nama = 'Rangkuman Liga Eropa' if jenis == 'eropa' else 'NBA'
-    print('\n⚽ ' + nama.upper() + ' TERJADWAL — jam ' + str(jam) + ':00 WITA')
-    if olahraga_sudah_terbit_dengan_data():
-        print('   ⏭️ Berita data-olahraga sudah terbit 20 jam terakhir — skip.')
+    if jenis == 'malam' and jam != 0:
         return 0
-    materi = buat_materi_rangkuman_eropa() if jenis == 'eropa' else buat_materi_nba()
+    nama = {'eropa': 'Rangkuman Liga Eropa',
+            'nba': 'NBA',
+            'malam': 'Rangkuman Olahraga Malam'}[jenis]
+    print('\n⚽ ' + nama.upper() + ' TERJADWAL — jam ' + str(jam) + ':00 WITA')
+    if jenis == 'malam':
+        if olahraga_sudah_terbit_dengan_data('ESPN Data Malam'):
+            print('   ⏭️ Rangkuman malam sudah terbit 20 jam terakhir — skip.')
+            return 0
+        materi = buat_materi_malam()
+        sumber_data = 'ESPN Data Malam'
+    else:
+        if olahraga_sudah_terbit_dengan_data():
+            print('   ⏭️ Berita data-olahraga sudah terbit 20 jam terakhir — skip.')
+            return 0
+        materi = buat_materi_rangkuman_eropa() if jenis == 'eropa' else buat_materi_nba()
+        sumber_data = 'ESPN Data'
     if not materi:
         print('   🏖️ Tidak ada laga selesai/klasemen dari ESPN — skip aman.')
         return 0
     k = konteks_waktu()
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
-            'TUGAS KHUSUS: BERITA ' + ('RANGKUMAN HASIL LIGA EROPA' if jenis == 'eropa' else 'NBA SEMALAM')
-            + '.\n\n' + materi + '\n\n'
+            'TUGAS KHUSUS: BERITA ' + nama.upper() + ' (RANGKUMAN — SATU judul, '
+            'BANYAK laporan).\n\n' + materi + '\n\n'
             'ATURAN TAMBAHAN:\n'
             '- Dateline: "JAKARTA, DKI JAKARTA - ".\n'
-            '- Panjang: 250-450 kata.\n'
+            '- Panjang: 300-500 kata.\n'
+            '- WAJIB membahas SEMUA liga dan SEMUA materi yang diberikan.\n'
             '- WAJIB menyebut POSISI + POIN setiap tim yang kamu sebut.\n'
-            '- WAJIB menyalin blok [KLASMEN]...[/KLASMEN] yang diberikan APA ADUNA '
-            'di paragraf terakhir isi (setelah paragraf terakhir, baris baru).\n'
-            '- WAJIB menyebut jadwal laga berikutnya yang diberikan.\n'
+            '- Jika ada blok [KLASMEN], WAJIB menyalinnya APA ADUNA di paragraf '
+            'terakhir isi (setelah paragraf terakhir, baris baru).\n'
             '- DILARANG menebak penyebab hasil laga; DILARANG menambah angka/laga.\n'
             '- Judul maks 10 kata: sebut kompetisi + kata kunci hasil.\n'
             '- deskripsi_gambar: tema stadion/liga TANPA hewan, tanpa tempat ibadah, '
@@ -1712,7 +1872,7 @@ def sesi_olahraga_api(jenis):
     try:
         insert_news(judul, isi, ringkasan, 'olahraga', '',
                     'https://www.espn.com/soccer/ (data mesin ' + jenis + ')',
-                    'ESPN Data', 'published', breaking=True, deskripsi_gambar=gambar)
+                    sumber_data, 'published', breaking=True, deskripsi_gambar=gambar)
         print('   ✅ ' + nama + ' BREAKING TERBIT: ' + judul[:60])
         return 1
     except Exception as e:
@@ -1923,7 +2083,7 @@ def sesi_idx(today_urls, seen):
         print('   ⚠️ Insert IDX gagal: ' + str(e)[:80])
         return 0
 
-# ═════════ SESI KATEGORI — V6.4.2 ═════════
+# ═════════ SESI KATEGORI — V6.4.4 ═════════
 
 KATEGORI_DB = {
     'nasional': 'nasional', 'daerah': 'daerah',
@@ -1990,8 +2150,10 @@ def kelompok_topik(items, kata_list):
                     for it in items).lower()
     return teks_mengandung(teks, kata_list)
 
-def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None):
-    cand = collect_candidates(HUNT.get(cat, []), today_urls, seen)
+def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
+                  sumber_custom=None):
+    cand = collect_candidates(sumber_custom if sumber_custom else HUNT.get(cat, []),
+                              today_urls, seen)
     if not cand:
         print('   (' + cat + ') Tidak ada kandidat segar.')
         return False
@@ -2097,13 +2259,22 @@ def sesi_kategori(today_urls, seen):
                     nama.append('Kegiatan Menteri')
             print('   🎯 Topik wajib nasional belum terpenuhi: ' + ' & '.join(nama)
                   + ' — kandidatnya didahulukan.')
+    # ═══ V6.4.4 — KRAMAV644MARKER: kesehatan = DOMAIN HARI INI ═══
+    # Slot kesehatan (10/15/20) tidak pakai HUNT umum — berburu HANYA
+    # query domain hari ini (perputaran 8 domain dari tanggal).
+    sumber_kesehatan = None
+    if kuota.get('kesehatan'):
+        dom, sumber_kesehatan = sumber_kesehatan_hari_ini(jam)
+        if not dom:
+            sumber_kesehatan = None
     total = 0
     for cat, n in kuota.items():
         prio = utamakan_topik if cat == 'nasional' else None
+        sumber = sumber_kesehatan if cat == 'kesehatan' else None
         for _ in range(n):
             if produksi_satu(cat, today_urls, seen,
                              utamakan_kaltara and cat == 'daerah',
-                             prio):
+                             prio, sumber):
                 total += 1
     return total
 
@@ -2112,7 +2283,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.3.4)')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.4)')
     print('══════════════════════════════════════════')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -2129,6 +2300,7 @@ def run_session():
     n_idx = sesi_idx(today_urls, seen)
     n_liga = sesi_olahraga_api('eropa')
     n_nba = sesi_olahraga_api('nba')
+    n_malam = sesi_olahraga_api('malam')
     total_scrape = STAT_SCRAPE['ok'] + STAT_SCRAPE['gagal']
     if total_scrape:
         persen = int(STAT_SCRAPE['ok'] * 100 / total_scrape)
@@ -2139,8 +2311,8 @@ def run_session():
         print('\n📊 Statistik scraping: tidak ada percobaan scraping sesi ini.')
     print('🏁 Sesi selesai — breaking: ' + str(n_brk) + ' • kategori: ' + str(n_kat)
           + ' • IDX: ' + str(n_idx) + ' • LigaEropa: ' + str(n_liga)
-          + ' • NBA: ' + str(n_nba))
-    return n_brk + n_kat + n_idx + n_liga + n_nba
+          + ' • NBA: ' + str(n_nba) + ' • Malam: ' + str(n_malam))
+    return n_brk + n_kat + n_idx + n_liga + n_nba + n_malam
 
 def main_sekali():
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
@@ -2149,7 +2321,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.4.3.4 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.4.4 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
