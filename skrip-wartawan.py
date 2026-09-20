@@ -1,35 +1,40 @@
 # ══════════════════════════════════════════════════════
 #  PART 1
-#  AI WARTAWAN KRAMANEWS — V6.4.4 (KESEHATAN PERPUTARAN DOMAIN + OLAHRAGA RANGKUMAN MALAM)
-#  (cakupan: header versi, import, konstanta, ESPN_LIGA, JADWAL_JAM,
-#   DOMAIN_KESEHATAN, HUNT — berakhir di penutup dict HUNT)
-#  Baru V6.4.4 (20 Sep — semua keputusan pemilik):
-#   • KESEHATAN PERPUTARAN DOMAIN: 8 domain (Nutrisi, Tidur-Mental,
-#     Gerak Tubuh, Anak-Keluarga, Pencegahan, Bahaya Kebiasaan,
-#     Musiman Tropis, Lansia) berputar otomatis dari tanggal.
-#     Slot 10:00 = indeks+0, 15:00 = +1, 20:00 = +2. Esok geser 3.
-#     AI kesehatan hanya berburu query domain hari itu → terarah,
-#     tidak kacau asal turun berita. (fungsi di PART 3, pakai di PART 4)
-#   • KESEHATAN +slot jam 20 → 3 slot/hari (10, 15, 20)
-#   • OLAHRAGA RANGKUMAN MALAM jam 00:00 WITA: 1 judul tumpuk semua
-#     laga malam (5 liga Eropa termasuk BARU: Eredivisie Belanda)
-#     + berita non-bola. Sumber insert terpisah "ESPN Data Malam"
-#     (fungsi di PART 3-4)
-#   • HUNT olahraga +4 sumber non-bola (badminton, voli, IBL, tenis)
-#   • HUNT['kesehatan'] lama DIHAPUS — diganti sumber domain harian
-#  Warisan utuh: V6.4.3.4 (koreksi mandiri + materi_asli), V6.4.3.2
-#  (narasumber), V6.4.3.1 (dateline kota-kunci), V6.4.3 (anti-manusia
-#  gambar, Wikimedia vision gate, anti-dobel-6jam, olahraga 5 slot).
+#  AI WARTAWAN KRAMANEWS — V6.5 (TEKNOLOGI PERPUTARAN DOMAIN)
+#  (cakupan: header versi, import, konstanta, ESPN_LIGA,
+#   JADWAL_JAM, DOMAIN_KESEHATAN, DOMAIN_TEKNOLOGI BARU,
+#   HUNT — berakhir di penutup dict HUNT)
+#  Baru V6.5 (20 Sep — keputusan pemilik):
+#   • TEKNOLOGI PERPUTARAN DOMAIN (KRAMAV65MARKER): 6 domain
+#     (Gadget&Smartphone, AI, Aplikasi&Internet, Startup&Ekonomi
+#     Digital, Keamanan Digital, Inovasi&Sains) — 2 domain/hari,
+#     slot 08=+0, 13=+1, 18=+2, geser 2 tiap hari, berlaku SEMUA
+#     hari termasuk weekend/libur. AI teknologi hanya berburu
+#     query domain hari itu.
+#   • ATURAN KEDALAMAN per domain (di prompt PART 2):
+#     Gadget = berita banyak boleh 2 halaman + spesifikasi WAJIB
+#     lengkap + estimasi harga kalau ada;
+#     AI = panjang hingga 2 halaman, perkembangan AI dunia;
+#     Aplikasi&Internet/Startup = lengkap & banyak;
+#     Keamanan Digital = boleh diisi silang teknologi lain jika
+#     materi kurang;
+#     Inovasi&Sains = lengkap & banyak.
+#   • JADWAL: teknologi 08/13/18 (3x — naik dari 2x);
+#     OLAHRAGA slot 15 DIHAPUS (permintaan pemilik) → olahraga
+#     5x: 00, 07, 13, 17, 20.
+#   • HUNT['teknologi'] DIHAPUS — teknologi kini berburu lewat
+#     domain harian (sama pola dengan kesehatan V6.4.4).
+#  Warisan utuh: V6.4.4 (kesehatan perputaran 8 domain + rangkuman
+#  olahraga malam 00:00 + Belanda + non-bola), V6.4.3.x (koreksi
+#  mandiri + materi_asli + dateline kota-kunci + narasumber +
+#  anti-manusia gambar + anti-dobel-6jam + 5 slot olahraga dasar).
 #  Marker verifikasi seluruh file:
-#   "KRAMAV642MARKER" (2x: prompt header + prompt — PART 2)
-#   "KRAMAV643MARKER" (5x: list gambar P1, header prompt P2,
-#      sudah_serupa P2, cek_dateline P3, prompt vision P3)
-#   "KRAMAV6431MARKER" (2x: header file + komentar cek_dateline P3)
-#   "KRAMAV6432MARKER" (2x: header file + prompt narasumber P2)
-#   "KRAMAV6433MARKER" (2x: header file + kode retry P3)
-#   "KRAMAV6434MARKER" (2x: header file + materi_asli P3)
-#   "KRAMAV644MARKER" (4x: header file + blok DOMAIN_KESEHATAN P1
-#      + fungsi sumber_kesehatan_hari_ini P3 + sesi_kategori P4)
+#   "KRAMAV642MARKER" (2x) • "KRAMAV643MARKER" (5x)
+#   "KRAMAV6431MARKER" (2x) • "KRAMAV6432MARKER" (2x)
+#   "KRAMAV6433MARKER" (2x) • "KRAMAV6434MARKER" (2x)
+#   "KRAMAV644MARKER" (4x) • "KRAMAV65MARKER" (4x: header file +
+#   DOMAIN_TEKNOLOGI P1 + sumber_teknologi_hari_ini P3 +
+#   sesi_kategori P4)
 #  Mode 1 (loop) : python3 skrip-wartawan.py
 #  Mode 2 (Actions): python3 skrip-wartawan.py --sekali
 # ══════════════════════════════════════════════════════
@@ -119,8 +124,11 @@ ESPN_NBA = ('basketball/nba', 'NBA')
 ESPN_SITE = 'https://site.api.espn.com/apis/site/v2/sports/'
 ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/soccer/leagues/'
 
-# V6.4.3 — OLAHRAGA 5 SLOT (07/13/15/17/20) + rangkuman malam 00:00 (di sesi)
-# V6.4.4 — KESEHATAN 3 SLOT (10/15/20) dengan domain perputaran
+# V6.4.3 — OLAHRAGA: slot 15 DIHAPUS (pemilik 20 Sep — jadi milik
+# teknologi yang naik). Olahraga kini 5x: 00, 07, 13, 17, 20
+# + rangkuman malam 00:00 (di sesi).
+# V6.4.4/6.5 — KESEHATAN 3 slot (10/15/20), TEKNOLOGI 3 slot (08/13/18)
+# — keduanya perputaran domain harian.
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1},
@@ -131,10 +139,10 @@ JADWAL_JAM = {
     12: {'nasional': 1, 'daerah': 2},
     13: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'olahraga': 1},
     14: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1},
-    15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1, 'olahraga': 1},
+    15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1},
     16: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'hiburan': 1},
     17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1},
-    18: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1},
+    18: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'teknologi': 1},
     19: {'nasional': 1},
     20: {'hiburan': 1, 'olahraga': 1, 'kesehatan': 1},
 }
@@ -193,10 +201,6 @@ JANJI_TABEL   = ['klasemen', 'standing', 'ranking', 'peringkat']
 JANJI_ANGKA   = ['hasil', 'skor', 'result']
 
 # ═══ V6.4.4 — KRAMAV644MARKER: KESEHATAN PERPUTARAN DOMAIN ═══
-# 8 domain berputar otomatis dari tanggal (fungsi penghitung di PART 3).
-# Slot 10:00 = indeks+0 • 15:00 = +1 • 20:00 = +2 → esok geser 3.
-# 'query' = daftar Google News query (lang 'id'/'en'); run kesehatan
-# HANYA berburu query domain hari itu → fokus & terarah.
 DOMAIN_KESEHATAN = [
     {'nama': 'Nutrisi & Makanan Sehat', 'query': [
         ('makanan sehat nutrisi pakar gizi', 'id'),
@@ -232,6 +236,70 @@ DOMAIN_KESEHATAN = [
     {'nama': 'Kesehatan Lansia', 'query': [
         ('jaga kesehatan lansia', 'id'),
         ('senior health tips doctor', 'en'),
+    ]},
+]
+
+# ═══ V6.5 — KRAMAV65MARKER: TEKNOLOGI PERPUTARAN DOMAIN ═══
+# 6 domain, 2 domain/hari (slot 08=+0, 13=+1, 18=+2), geser 2 tiap
+# hari, berlaku SEMUA hari termasuk weekend/libur.
+# 'aturan' = kedalaman khusus domain, disuntikkan ke pesan user
+# oleh sesi kategori (PART 4) + dijelaskan di prompt (PART 2).
+DOMAIN_TEKNOLOGI = [
+    {'nama': 'Gadget & Smartphone', 'aturan':
+        ('Berita HARUS BANYAK, boleh hingga 2 halaman. WAJIB memuat '
+         'SEBANYAK mungkin gadget/baru yang ada di materi sekaligus. '
+         'SPESIFIKASI setiap gadget WAJIB lengkap (layar, chipset, '
+         'RAM, kamera, baterai, sistem operasi — sesuai yang tertulis '
+         'di materi). Estimasi harga WAJIB disebut jika ada di materi.'),
+     'query': [
+        ('smartphone launch spesifikasi harga', 'id'),
+        ('gadget baru rilis Indonesia', 'id'),
+        ('new smartphone launch specs price', 'en'),
+    ]},
+    {'nama': 'AI & Kecerdasan Buatan', 'aturan':
+        ('Berita HARUS PANJANG dan LENGKAP, hingga 2 halaman. '
+         'WAJIB membahas perkembangan AI TERKINI SELURUH DUNIA yang '
+         'ada di materi: pemain barunya, kapabilitasnya, dampaknya, '
+         'angka & tanggal persis dari materi.'),
+     'query': [
+        ('artificial intelligence development', 'en'),
+        ('AI Indonesia terkini', 'id'),
+        ('kecerdasan buatan terbaru', 'id'),
+    ]},
+    {'nama': 'Aplikasi & Internet', 'aturan':
+        ('Berita HARUS LENGKAP dan BANYAK — gabungkan semua materi '
+         'aplikasi/internet yang tersedia menjadi satu berita kaya.'),
+     'query': [
+        ('aplikasi baru populer', 'id'),
+        ('fitur media sosial terbaru', 'id'),
+        ('internet Indonesia kecepatan', 'id'),
+    ]},
+    {'nama': 'Startup & Ekonomi Digital', 'aturan':
+        ('Berita HARUS LENGKAP dan BANYAK — pendanaan, valuasi, '
+         'ekspansi, e-commerce, fintech: semua angka WAJIB persis '
+         'dari materi.'),
+     'query': [
+        ('startup Indonesia pendanaan', 'id'),
+        ('e-commerce fintech Indonesia', 'id'),
+        ('startup funding tech asia', 'en'),
+    ]},
+    {'nama': 'Keamanan Digital', 'aturan':
+        ('Jika materi keamanan digital KURANG, BOLEH menambahkan '
+         'berita teknologi lainnya yang ada di materi sumber agar '
+         'berita tetap kaya (isi silang khusus domain ini).'),
+     'query': [
+        ('kebocoran data keamanan', 'id'),
+        ('scam online modus', 'id'),
+        ('cyber security breach', 'en'),
+    ]},
+    {'nama': 'Inovasi & Sains Teknologi', 'aturan':
+        ('Berita HARUS LENGKAP dan BANYAK — inovasi, riset, luar '
+         'angkasa, kendaraan listrik: semua yang ada di materi '
+         'dibahas menyeluruh.'),
+     'query': [
+        ('kendaraan listrik teknologi', 'id'),
+        ('space technology innovation', 'en'),
+        ('inovasi teknologi riset', 'id'),
     ]},
 ]
 
@@ -349,8 +417,8 @@ HUNT = {
         GN('us economy', 'en', 'Google News Ekonomi USA'),
         GN('latin america economy', 'en', 'Google News Ekonomi Amerika Latin'),
     ],
-    # V6.4.4 — OLAHRAGA +4 sumber non-bola; catatan: 'kesehatan' dihapus
-    # dari HUNT — kini berburu lewat DOMAIN_KESEHATAN harian (PART 3-4).
+    # V6.5 — OLAHRAGA tetap (sumber RSS sama); slot jam 15 sudah
+    # dihapus dari JADWAL_JAM di atas.
     'olahraga': [
         RSSF('https://www.cnnindonesia.com/olahraga/rss', 'CNN Indonesia'),
         RSSF('https://www.bola.net/feed', 'Bola.net'),
@@ -369,17 +437,8 @@ HUNT = {
         GN('IBL basket indonesia', 'id', 'Google News Basket IBL'),
         GN('tenis turnamen grand slam', 'id', 'Google News Tenis'),
     ],
-    'teknologi': [
-        RSSF('https://www.cnnindonesia.com/teknologi/rss', 'CNN Indonesia'),
-        RSSF('https://techcrunch.com/feed/', 'TechCrunch'),
-        RSSF('https://www.theverge.com/rss/index.xml', 'The Verge'),
-        RSSF('https://feeds.bbci.co.uk/news/technology/rss.xml', 'BBC Tech'),
-        GN('smartphone launch', 'en', 'Google News Smartphone'),
-        GN('artificial intelligence', 'en', 'Google News AI'),
-        GN('robot technology', 'en', 'Google News Robot'),
-        GN('new laptop release', 'en', 'Google News Laptop'),
-        GN('tablet launch', 'en', 'Google News Tablet'),
-    ],
+    # V6.5 — HUNT['teknologi'] DIHAPUS: teknologi kini berburu
+    # lewat DOMAIN_TEKNOLOGI harian (sumber_teknologi_hari_ini, PART 3).
     'hiburan': [
         RSSF('https://www.cnnindonesia.com/hiburan/rss', 'CNN Indonesia'),
         RSSF('https://hot.detik.com/rss', 'DetikHot'),
@@ -398,9 +457,9 @@ HUNT = {
 # ══════════════════════════════════════════════════════
 #  PART 2
 #  (cakupan: feeds breaking, kata-kunci, anti-dobel 36jam & 6jam,
-#   scraper, build_system_prompt — dengan ATURAN KESEHATAN
-#   (edukasi pakar > kegiatan) + ATURAN RANGKUMAN OLAHRAGA
-#   (1 judul banyak laporan) — V6.4.4)
+#   scraper, build_system_prompt — DENGAN ATURAN TEKNOLOGI BARU
+#   V6.5: kedalaman per domain + ATURAN KESEHATAN + ATURAN
+#   RANGKUMAN OLAHRAGA dari V6.4.4 tetap utuh)
 # ══════════════════════════════════════════════════════
 
 BREAKING_DOMESTIK_FEEDS = [
@@ -612,8 +671,6 @@ def sudah_serupa(judul):
             if len(sama) >= 3 and len(sama) / min(len(ki), len(kt)) >= 0.7:
                 return True
     # V6.4.3 — KRAMAV643MARKER: aturan longgar 6 jam
-    # (cukup 2 kata inti sama dalam 6 jam terakhir = tolak;
-    #  menutup kasus Iran eksekusi dobel beda 1 jam dengan judul berbeda)
     for t in JUDUL_6JAM:
         if not t:
             continue
@@ -680,9 +737,10 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV642MARKER — V6.4.4: fokus ASEAN & Timur Tengah; gambar tema alam/kota
+KRAMAV642MARKER — V6.5: fokus ASEAN & Timur Tengah; gambar tema alam/kota
 TANPA manusia; satu topik per berita; angka mesin disalin persis;
-dateline wajib dari materi sumber; kesehatan = edukasi pakar.
+dateline wajib dari materi sumber; kesehatan = edukasi pakar;
+teknologi = kedalaman per domain harian.
 
 TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
 
@@ -752,11 +810,31 @@ ATURAN KESEHATAN (WAJIB — V6.4.4): ══════════════�
   peneliti) yang tertulis di materi sumber.
 - WAJIB menonjolkan PESAN PRAKTIS untuk pembaca: apa yang harus
   dilakukan/dihindari, berapa batas aman, kapan harus waspada.
-- Materi "kegiatan/seremoni dinas" (peluncuran program, sosialisasi,
-  kunjungan pejabat kesehatan) = PILIHAN TERAKHIR. Jika terpaksa
+- Materi "kegiatan/seremoni dinas" = PILIHAN TERAKHIR. Jika terpaksa
   menulisnya, WAJIB menonjolkan SARAN PAKAR di dalamnya, bukan
   protokol acaranya.
 - DILARANG menulis nasihat medis yang tidak ada di materi sumber.
+
+ATURAN TEKNOLOGI (WAJIB — V6.5): ═══════════════════════════════
+- Pesan user akan menyertakan blok "DOMAIN TEKNOLOGI HARI INI" berisi
+  nama domain + aturan kedalamannya — WAJIB DIKUTUH persis.
+- Kedalaman per domain:
+  ▸ GADGET & SMARTPHONE: berita BANYAK, boleh hingga 2 halaman;
+    muat SEBANYAK mungkin gadget yang ada di materi; SPESIFIKASI tiap
+    gadget WAJIB lengkap sesuai materi (layar, chipset, RAM, kamera,
+    baterai, OS); ESTIMASI HARGA disebut jika ada di materi.
+  ▸ AI & KECERDASAN BUATAN: PANJANG & LENGKAP hingga 2 halaman;
+    perkembangan AI terkini SELURUH DUNIA yang ada di materi dibahas
+    menyeluruh (pemain, kapabilitas, dampak, angka, tanggal).
+  ▸ APLIKASI & INTERNET: LENGKAP & BANYAK.
+  ▸ STARTUP & EKONOMI DIGITAL: LENGKAP & BANYAK (angka persis materi).
+  ▸ KEAMANAN DIGITAL: jika materi kurang, BOLEH menambahkan berita
+    teknologi lain dari materi sumber (isi silang khusus domain ini).
+  ▸ INOVASI & SAINS TEKNOLOGI: LENGKAP & BANYAK.
+- DILARANG menambah spesifikasi/harga/angka yang TIDAK ada di materi
+  — "lengkap" berarti menggali seluruh materi, BUKAN mengarang.
+- Jika pesan user menyertakan ATURAN KEDALAMAN domain, kutip
+  persis sebagai panduan utama penulisan.
 
 ATURAN RANGKUMAN OLAHRAGA (WAJIB — V6.4.4): ═══════════════════
 - BERITA OLAHRAGA BOLEH dan DIANJURKAN berbentuk RANGKUMAN:
@@ -772,6 +850,8 @@ ATURAN ANTI-PLAGIAT (WAJIB — MATERI KAYA):
 
 ATURAN PANJANG (WAJIB):
 - Target jumlah kata DIBERIKAN di pesan user — IKUTI target itu.
+- Untuk domain teknologi yang mensyaratkan "2 halaman", target kata
+  di pesan user bisa lebih besar dari biasanya — IKUTI target itu.
 - DILARANG menggembung dengan kalimat kosong/penyangkalan/pengulangan.
 - Setiap kalimat WAJIB membawa informasi baru dari sumber.
 - Judul tidak boleh menjanjikan data yang tidak ditulis di isi.
@@ -814,6 +894,8 @@ ATURAN JUDUL (WAJIB):
   peristiwa yang paling utama dan tulis ITU saja.
 - PENGECUALIAN RANGKUMAN OLAHRAGA: banyak laga/liga dalam satu rangkuman
   = SATU topik (bukan pelanggaran aturan satu-topik).
+- PENGECUALIAN TEKNOLOGI GADGET: banyak gadget dalam satu berita
+  (rasa "2 halaman") = SATU topik domain (bukan pelanggaran).
 
 ATURAN ETIKA FAKTA (WAJIB):
 - HANYA fakta dari materi sumber & data mesin. DILARANG mengarang.
@@ -849,8 +931,9 @@ peristiwa lama = TULIS BERITA."""
 #  PART 3
 #  (cakupan: edge_call, rest_get, breaking helpers, gambar helpers,
 #   scraper kandidat, match, barat, dua-topik, cek_dateline,
-#   pemeriksa, sumber_kesehatan_hari_ini [KRAMAV644MARKER — perputaran
-#   8 domain dari tanggal], ai_write DENGAN koreksi mandiri
+#   pemeriksa, sumber_kesehatan_hari_ini [KRAMAV644MARKER],
+#   sumber_teknologi_hari_ini BARU [KRAMAV65MARKER — perputaran
+#   6 domain, 2 domain/hari], ai_write DENGAN koreksi mandiri
 #   [KRAMAV6433MARKER] + materi_asli [KRAMAV6434MARKER],
 #   rewrite single/multi, gempa skor, gambar terpakai, wikimedia,
 #   insert_news, vision anti-manusia [KRAMAV643MARKER], 4 fungsi ESPN)
@@ -1086,9 +1169,6 @@ def deteksi_dua_topik(judul, isi):
     return None
 
 # ═══ V6.4.3.1 — KRAMAV6431MARKER: PEMERIKSA DATELINE (REVISI) ═══
-# KOTA = kunci: wajib ada di materi sumber (kasus "Benuanta" tetap diblokir).
-# Wilayah generik (provinsi/negara) TIDAK lagi memblokir — menutup kasus
-# "MIAMI, FLORIDA" yang ditolak padahal fakta benar. Penjaga Kaltara tetap.
 def cek_dateline(isi, user_content):
     m = re.match(r'^([A-Z][^\n\-–—]{1,60}?)\s+[-–—]\s+', (isi or '').strip())
     if not m:
@@ -1148,9 +1228,6 @@ def cek_deskripsi_gambar(deskripsi):
     return None
 
 # ═══ V6.4.4 — KRAMAV644MARKER: SUMBER KESEHATAN PERPUTARAN DOMAIN ═══
-# Indeks domain = (hari sejak 2026-01-01) mod 8 → hari ini domain ke-N,
-# esok +3 slot (10/15/20 = +0/+1/+2), lusa +3 lagi... berputar selamanya
-# tanpa database. Run kesehatan HANYA berburu query domain hari itu.
 JAM_KESEHATAN = {10: 0, 15: 1, 20: 2}
 
 def sumber_kesehatan_hari_ini(jam):
@@ -1158,7 +1235,7 @@ def sumber_kesehatan_hari_ini(jam):
         return None, None
     try:
         dasar = datetime(2026, 1, 1).date()
-        indeks = (datetime.now(WITA).date() - dasar).days % len(DOMAIN_KESEHATAN)
+        indeks = (datetime.now(WITA).date() - dasar) % len(DOMAIN_KESEHATAN)
     except Exception:
         indeks = 0
     idx_domain = (indeks + JAM_KESEHATAN[jam]) % len(DOMAIN_KESEHATAN)
@@ -1170,6 +1247,33 @@ def sumber_kesehatan_hari_ini(jam):
     sumber.append(RSSF('https://health.kompas.com/rss', 'Kompas Health'))
     sumber.append(RSSF('https://feeds.bbci.co.uk/news/health/rss.xml', 'BBC Health'))
     print('   🏥 KESEHATAN hari ini (jam ' + str(jam) + '): ' + dom['nama'])
+    return dom, sumber
+
+# ═══ V6.5 — KRAMAV65MARKER: SUMBER TEKNOLOGI PERPUTARAN DOMAIN ═══
+# 6 domain, 2 domain/hari: slot 08=+0, 13=+1, 18=+2, geser 2 tiap hari.
+# Berlaku SEMUA hari termasuk weekend/libur (perhitungan tanggal murni).
+# Mengembalikan (dom, sumber) — dom['aturan'] disuntikkan ke pesan user
+# oleh sesi_kategori (PART 4) sebagai ATURAN KEDALAMAN domain.
+JAM_TEKNOLOGI = {8: 0, 13: 1, 18: 2}
+
+def sumber_teknologi_hari_ini(jam):
+    if jam not in JAM_TEKNOLOGI:
+        return None, None
+    try:
+        dasar = datetime(2026, 1, 1).date()
+        indeks = (datetime.now(WITA).date() - dasar).days % len(DOMAIN_TEKNOLOGI)
+    except Exception:
+        indeks = 0
+    idx_domain = (indeks + JAM_TEKNOLOGI[jam]) % len(DOMAIN_TEKNOLOGI)
+    dom = DOMAIN_TEKNOLOGI[idx_domain]
+    sumber = []
+    for q, lang in dom['query']:
+        sumber.append(GN(q, lang, 'GN Teknologi: ' + dom['nama']))
+    # CNN Teknologi & BBC Tech ikut sebagai tambahan (sama pola kesehatan);
+    # prioritas tetap materi domain — aturan kedalaman dikirim di pesan user.
+    sumber.append(RSSF('https://www.cnnindonesia.com/teknologi/rss', 'CNN Teknologi'))
+    sumber.append(RSSF('https://feeds.bbci.co.uk/news/technology/rss.xml', 'BBC Tech'))
+    print('   💻 TEKNOLOGI hari ini (jam ' + str(jam) + '): ' + dom['nama'])
     return dom, sumber
 
 POLA_LARANG = [
@@ -1718,12 +1822,14 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
 
 # ══════════════════════════════════════════════════════
 #  PART 4
-#  (cakupan: buat_materi_rangkuman_eropa [+Belanda otomatis],
-#   buat_materi_malam BARU [skor malam 5 liga + non-bola,
-#   KRAMAV644MARKER], sesi_olahraga_api handle 'malam' jam 00:00,
-#   sesi_breaking 3 slot, kategori_breaking, IDX terjadwal,
-#   sesi_kategori PAKAI DOMAIN KESEHATAN HARIAN [KRAMAV644MARKER],
-#   run_session V6.4.4, main_sekali, main)
+#  (cakupan: buat_materi_rangkuman_eropa [+Belanda],
+#   buat_materi_malam [KRAMAV644MARKER], sesi_olahraga_api
+#   handle 'malam' jam 00:00, sesi_breaking 3 slot, IDX,
+#   ai_rewrite_teknologi_single/multi BARU [V6.5 — aturan
+#   kedalaman domain + target besar utk domain "2 halaman"],
+#   produksi_satu +domain_tek, sesi_kategori handle KESEHATAN
+#   [KRAMAV644MARKER] + TEKNOLOGI [KRAMAV65MARKER], run_session
+#   V6.5, main)
 # ══════════════════════════════════════════════════════
 
 def buat_materi_rangkuman_eropa():
@@ -1760,9 +1866,6 @@ def buat_materi_rangkuman_eropa():
     return '\n\n'.join(bagian)
 
 # ═══ V6.4.4 — KRAMAV644MARKER: RANGKUMAN MALAM (jam 00:00 WITA) ═══
-# 1 judul menumpuk: skor malam SEMUA liga ESPN (Inggris, Spanyol,
-# Italia, Jerman, Prancis, Belanda, UEFA) + berita non-bola
-# (badminton, voli, basket IBL, tenis) dari Google News.
 SUMBER_NONBOLA = [
     GN('badminton indonesia turnamen hasil', 'id', 'GN Nonbola Badminton'),
     GN('badminton tournament result', 'en', 'GN Nonbola Badminton Dunia'),
@@ -1780,12 +1883,10 @@ def buat_materi_malam():
             skor_semua.append(nama.split(' (')[0] + ': ' + s)
     if not skor_semua:
         return None
-    # Klasemen ringkas 3 liga teratas (biar berita tak terlalu panjang)
     for code, nama in ESPN_LIGA[:3]:
         blok, teks = espn_klasemen(code, nama)
         if teks:
             klasemen_teks.append(teks[:400])
-    # Non-bola: kumpulkan kandidat segar (maks 6)
     nonbola = []
     try:
         today_urls = get_today_state()
@@ -2083,7 +2184,7 @@ def sesi_idx(today_urls, seen):
         print('   ⚠️ Insert IDX gagal: ' + str(e)[:80])
         return 0
 
-# ═════════ SESI KATEGORI — V6.4.4 ═════════
+# ═════════ SESI KATEGORI — V6.5 ═════════
 
 KATEGORI_DB = {
     'nasional': 'nasional', 'daerah': 'daerah',
@@ -2150,8 +2251,86 @@ def kelompok_topik(items, kata_list):
                     for it in items).lower()
     return teks_mengandung(teks, kata_list)
 
+# ═══ V6.5 — REWRITE KHUSUS TEKNOLOGI (ATURAN KEDALAMAN DOMAIN) ═══
+# Fungsi ini dibangun khusus utk slot domain teknologi: menyuntikkan
+# dom['aturan'] ke pesan user + TARGET BESAR utk domain "2 halaman"
+# (Gadget & AI = 600-900 kata; lainnya 400-600 kata).
+def _target_teknologi(dom):
+    if dom['nama'].startswith(('Gadget', 'AI')):
+        return ('600-900 kata (8-12 paragraf) — WAJIB panjang & menyeluruh '
+                'sesuai aturan kedalaman domain "2 halaman".')
+    return '400-600 kata (6-9 paragraf) — LENGKAP & BANYAK.'
+
+def ai_rewrite_teknologi_single(c, dom):
+    k = konteks_waktu()
+    materi, kaya = ambil_materi_kaya(c)
+    label_materi = 'ISI PENUH ARTIKEL SUMBER (scraping)' if kaya else 'RINGKASAN SUMBER'
+    tgl = c.get('tgl_pub')
+    if tgl:
+        baris_tgl = ('TANGGAL PUBLIKASI SUMBER: ' + tgl + ' — sumber terverifikasi segar.\n'
+                     'WAJIB: tulis kejadian dengan tanggal itu di dalam berita.\n')
+    else:
+        baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia — sistem memverifikasi '
+                     'umur sumber maksimal 30 jam. Tulis kejadian TERKINI ('
+                     + k['hari_ini'] + ' / ' + k['kemarin'] + ') dengan tanggal konkret.\n')
+    user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
+            + baris_tgl +
+            'JENIS MATERI: ' + label_materi + '\n'
+            'TARGET PANJANG: ' + _target_teknologi(dom) + '\n\n'
+            'DOMAIN TEKNOLOGI HARI INI: ' + dom['nama'] + '\n'
+            'ATURAN KEDALAMAN DOMAIN (WAJIB KUTUH):\n' + dom['aturan'] + '\n\n'
+            'MATERI SUMBER:\n'
+            'Judul asli: ' + c['title'] + '\n'
+            'Isi: ' + materi + '\n\n'
+            'Tulis berita teknologi sesuai SEMUA aturan sistem + ATURAN '
+            'KEDALAMAN DOMAIN di atas:\n'
+            '- TANGGAL KONKRET di isi berita.\n'
+            '- DATELINE: HANYA dari tempat yang tertulis di materi.\n'
+            '- NARASUMBER: "seorang pejabat/dll" SELALU DILARANG — atribusi '
+            'ke institusi tertulis atau lapor fakta langsung.\n'
+            '- DILARANG mengarang spesifikasi/harga/angka di luar materi — '
+            '"lengkap" berarti menggali seluruh materi, BUKAN mengarang.\n'
+            '- JUDUL maks 10 kata; banyak gadget dalam satu berita = SATU topik.\n'
+            '- deskripsi_gambar: tema alam/kota/kereta/buah/bintang — DILARANG '
+            'hewan, tempat ibadah, MANUSIA.\n'
+            '- Tulis ulang kalimatmu sendiri; jangan sebut media sumber; '
+            'salin utuh angka.')
+    return ai_write(user)
+
+def ai_rewrite_teknologi_multi(items, dom):
+    k = konteks_waktu()
+    bagian = []
+    total_len = 0
+    tgl = None
+    for i, it in enumerate(items[:4], 1):
+        materi, kaya = ambil_materi_kaya(it)
+        total_len += len(materi) if kaya else len(it.get('summary', ''))
+        if it.get('tgl_pub') and not tgl:
+            tgl = it['tgl_pub']
+        bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title'] + '\nIsi: ' + materi[:2000])
+    if tgl:
+        baris_tgl = ('TANGGAL PUBLIKASI SUMBER: ' + tgl + ' — sumber terverifikasi segar.\n'
+                     'WAJIB: tulis kejadian dengan tanggal itu di dalam berita.\n')
+    else:
+        baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia — sistem memverifikasi '
+                     'umur maksimal 30 jam. Tulis kejadian TERKINI ('
+                     + k['hari_ini'] + ' / ' + k['kemarin'] + ') tanggal konkret.\n')
+    user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
+            + baris_tgl +
+            'TARGET PANJANG: ' + _target_teknologi(dom) + '\n\n'
+            'DOMAIN TEKNOLOGI HARI INI: ' + dom['nama'] + '\n'
+            'ATURAN KEDALAMAN DOMAIN (WAJIB KUTUH):\n' + dom['aturan'] + '\n\n'
+            'Berikut beberapa materi teknologi domain ini:\n\n'
+            + '\n\n'.join(bagian) +
+            '\n\nGabungkan menjadi SATU berita teknologi kaya sesuai SEMUA '
+            'aturan sistem + ATURAN KEDALAMAN DOMAIN di atas:\n'
+            '- TANGGAL KONKRET; DATELINE dari materi; narasumber institusi.\n'
+            '- DILARANG mengarang spesifikasi/harga/angka di luar materi.\n'
+            '- deskripsi_gambar tanpa manusia/hewan/ibadah; jangan sebut media.\n')
+    return ai_write(user, timeout=180)
+
 def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
-                  sumber_custom=None):
+                  sumber_custom=None, domain_tek=None):
     cand = collect_candidates(sumber_custom if sumber_custom else HUNT.get(cat, []),
                               today_urls, seen)
     if not cand:
@@ -2200,7 +2379,13 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
         percobaan += 1
         print('\n   ✍️ [' + cat + '] menulis: ' + top['title'][:70])
         try:
-            if len(items) > 1:
+            if domain_tek:
+                # V6.5 — teknologi domain: pakai rewrite khusus dgn aturan kedalaman
+                if len(items) > 1:
+                    judul, isi, ringkasan, waktu, gambar = ai_rewrite_teknologi_multi(items, domain_tek)
+                else:
+                    judul, isi, ringkasan, waktu, gambar = ai_rewrite_teknologi_single(top, domain_tek)
+            elif len(items) > 1:
                 judul, isi, ringkasan, waktu, gambar = ai_rewrite_multi(items)
             else:
                 judul, isi, ringkasan, waktu, gambar = ai_rewrite_single(top)
@@ -2260,21 +2445,35 @@ def sesi_kategori(today_urls, seen):
             print('   🎯 Topik wajib nasional belum terpenuhi: ' + ' & '.join(nama)
                   + ' — kandidatnya didahulukan.')
     # ═══ V6.4.4 — KRAMAV644MARKER: kesehatan = DOMAIN HARI INI ═══
-    # Slot kesehatan (10/15/20) tidak pakai HUNT umum — berburu HANYA
-    # query domain hari ini (perputaran 8 domain dari tanggal).
     sumber_kesehatan = None
     if kuota.get('kesehatan'):
-        dom, sumber_kesehatan = sumber_kesehatan_hari_ini(jam)
-        if not dom:
+        dom_kes, sumber_kesehatan = sumber_kesehatan_hari_ini(jam)
+        if not dom_kes:
             sumber_kesehatan = None
+    # ═══ V6.5 — KRAMAV65MARKER: teknologi = DOMAIN HARI INI ═══
+    # 2 domain/hari (slot 08=+0, 13=+1, 18=+2), geser 2 tiap hari,
+    # berlaku SEMUA hari termasuk weekend/libur. dom['aturan'] ikut
+    # disuntikkan ke pesan user oleh produksi_satu → rewrite teknologi.
+    sumber_teknologi = None
+    dom_tek = None
+    if kuota.get('teknologi'):
+        dom_tek, sumber_teknologi = sumber_teknologi_hari_ini(jam)
+        if not dom_tek:
+            sumber_teknologi = None
     total = 0
     for cat, n in kuota.items():
         prio = utamakan_topik if cat == 'nasional' else None
-        sumber = sumber_kesehatan if cat == 'kesehatan' else None
+        sumber = None
+        domain_tek = None
+        if cat == 'kesehatan':
+            sumber = sumber_kesehatan
+        elif cat == 'teknologi':
+            sumber = sumber_teknologi
+            domain_tek = dom_tek
         for _ in range(n):
             if produksi_satu(cat, today_urls, seen,
                              utamakan_kaltara and cat == 'daerah',
-                             prio, sumber):
+                             prio, sumber, domain_tek):
                 total += 1
     return total
 
@@ -2283,7 +2482,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.4.4)')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.5)')
     print('══════════════════════════════════════════')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -2321,7 +2520,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.4.4 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.5 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
