@@ -1200,12 +1200,12 @@ def cek_deskripsi_gambar(deskripsi):
 #  PART 3B
 #  (JAM_KESEHATAN [KRAMAV644], JAM_TEKNOLOGI [KRAMAV65],
 #   POLA_LARANG, ai_write koreksi mandiri [6433] + materi_asli
-#   [6434], rewrite single/multi, gempa, gambar terpakai,
-#   wikimedia anti-hewan, pexels [KRAMAV652], cari_gambar_otomatis,
+#   [6434] + KOREKSI MANDIRI DATELINE [KRAMAV652C — baru],
+#   rewrite single/multi, gempa, gambar terpakai, wikimedia
+#   anti-hewan, pexels [KRAMAV652], cari_gambar_otomatis,
 #   vision anti-manusia+anti-hewan+relevansi, insert_news,
-#   REVISI KRAMAV652B: FUNGSI TEKNOLOGI DIPULIHKAN
-#   (_target_teknologi, ai_rewrite_teknologi_single/multi —
-#   hilang saat restrukturisasi 4A), espn 4 fungsi)
+#   SCRAPE LOG DETAIL [KRAMAV652C — baru: alasan gagal Jina
+#   dicatat untuk diagnosa], espn 4 fungsi)
 # ══════════════════════════════════════════════════════
 
 # ═══ V6.4.4 — KRAMAV644MARKER: KESEHATAN PERPUTARAN DOMAIN ═══
@@ -1289,10 +1289,14 @@ def _panggil_deepseek(user_content, temperature):
     return parse_ai_json(r.json()['choices'][0]['message']['content'])
 
 def ai_write(user_content, timeout=150):
-    # V6.4.3.3 — KRAMAV6433MARKER: KOREKSI MANDIRI (retry 1x, temp 0.3)
+    # V6.4.3.3 — KRAMAV6433MARKER: KOREKSI MANDIRI FRASA (retry 1x, temp 0.3)
     # V6.4.3.4 — KRAMAV6434MARKER: materi_asli utk cek_dateline
+    # V6.5.2   — KRAMAV652C: KOREKSI MANDIRI DATELINE (retry 1x,
+    #            perbaiki dateline tanpa mengubah isi)
     obj = None
     materi_asli = user_content
+    frasa_diperbaiki = False
+    dateline_diperbaiki = False
     for percobaan in (1, 2):
         try:
             obj = _panggil_deepseek(user_content, 0.8 if percobaan == 1 else 0.3)
@@ -1307,7 +1311,10 @@ def ai_write(user_content, timeout=150):
             raise BeritaLama(str(obj.get('tolak'))[:100])
         isi_c = obj.get('isi', '').strip()
         frasa = _frasa_tertangkap(isi_c)
-        if frasa and percobaan == 1:
+        cek_dl = cek_dateline(isi_c, materi_asli)
+        # KOREKSI FRASA TERLARANG — prioritas pertama
+        if frasa and percobaan == 1 and not frasa_diperbaiki:
+            frasa_diperbaiki = True
             print('       🔁 Koreksi mandiri: frasa "' + frasa + '" — minta AI tulis ulang...')
             user_content = (
                 'TULISANMU SEBELUMNYA DITOLAK SISTEM karena memuat frasa '
@@ -1321,6 +1328,24 @@ def ai_write(user_content, timeout=150):
                 'laporkan fakta langsung TANPA atribusi siapa pun.\n'
                 '- Jangan mengubah fakta, angka, tanggal, dan struktur lain.\n'
                 '- Jangan menambah topik/wilayah baru yang tidak ada di materi.\n'
+                '- Jawab HANYA JSON valid dengan format yang sama.')
+            continue
+        # KOREKSI DATELINE — prioritas kedua (jika frasa sudah oke)
+        if cek_dl and percobaan == 1 and not dateline_diperbaiki:
+            dateline_diperbaiki = True
+            print('       🔁 Koreksi mandiri dateline: ' + cek_dl[:70] + ' — minta AI perbaiki...')
+            user_content = (
+                'TULISANMU SEBELUMNYA DITOLAK SISTEM karena DATELINE-nya '
+                'bermasalah: ' + cek_dl + '.\n\n'
+                'PERBAIKI DATELINE dengan ATURAN KETAT:\n'
+                '- Gunakan HANYA nama tempat yang TERTULIS di materi sumber '
+                '(kota/negara — ejaan PERSIS materi, jangan diterjemahkan).\n'
+                '- Jika materi hanya menyebut NEGARA, dateline = nama NEGARA '
+                '(contoh: "PHILIPPINES - ").\n'
+                '- Jika tidak ada tempat sama sekali di materi, ganti dateline '
+                'menjadi: "INDONESIA - ".\n'
+                '- Isi berita (fakta, angka, kutipan, tanggal, urutan paragraf) '
+                'JANGAN DIUBAH SAMA SEKALI — hanya baris dateline di awal.\n'
                 '- Jawab HANYA JSON valid dengan format yang sama.')
             continue
         break
@@ -1340,7 +1365,7 @@ def ai_write(user_content, timeout=150):
         raise Exception('diblokir tembok anti-2-topik V6.4.2: ' + dua_topik[:60])
     cek_dl = cek_dateline(isi, materi_asli)
     if cek_dl:
-        raise Exception('diblokir pemeriksa dateline V6.4.3: ' + cek_dl[:70])
+        raise Exception('diblokir pemeriksa dateline V6.4.3 (setelah koreksi): ' + cek_dl[:70])
     for t in JUDUL_6JAM:
         if len(kata_inti(judul) & kata_inti(t)) >= DOBEL_6JAM_MIN_KATA:
             raise Exception('diblokir anti-dobel-6jam V6.4.3: mirip "' + t[:40] + '"')
@@ -1697,8 +1722,7 @@ def gambar_lolos_blur_gate(img_url, judul_berita):
           ('LOLOS' if skor >= BLUR_SKOR_MINIMUM else 'DIBUANG (blur/manusia/hewan/tak relevan)'))
     return skor >= BLUR_SKOR_MINIMUM
 
-# ═══ V6.5.2 — KRAMAV652B: FUNGSI TEKNOLOGI DIPULIHKAN ═══
-# Hilang saat restrukturisasi 4A — dipulihkan (kasus "is not defined")
+# ═══ V6.5.2 — KRAMAV652B: FUNGSI TEKNOLOGI (DIPULIHKAN) ═══
 def _target_teknologi(dom):
     if dom['nama'].startswith(('Gadget', 'AI')):
         return ('600-900 kata (8-12 paragraf) — WAJIB panjang & menyeluruh '
