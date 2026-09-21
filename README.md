@@ -1,108 +1,249 @@
-🐝 STATUS KRAMANEWS — TERAKHIR DIUPDATE: 19 SEPTEMBER 2026 (V7)
-Portal berita AI otomatis: kramanews.my.idDijalankan 1 manusia + AI dari Tarakan, Kalimantan Utara (WITA).
+# ══════════════════════════════════════════════════════
+#  PART 1 — README V8
+# ══════════════════════════════════════════════════════
 
-Dokumen ini = papan status repo. Untuk konteks lengkap: lihat Dokumen Serah Terima V5 di laptop pemilik.
+🐝 STATUS KRAMANEWS — TERAKHIR DIUPDATE: 21 SEPTEMBER 2026 (V8)
+Portal berita AI otomatis: kramanews.my.id
+Dijalankan 1 manusia + AI dari Tarakan, Kalimantan Utara (WITA).
 
-⚡ SISTEM AKTIF
-🤖 AI Wartawan — skrip-wartawan.py — GitHub Actions — ✅ V6.4.1 (anti-judul Frankenstein) — Scheduled LIVE + KAWAL GANDA + PEMICU EKSTERNAL cron-job.org AKTIF
-📘 Sosmed — skrip-sosmed.py — GitHub Actions — ✅ V1.8.1 — FB + IG — Scheduled LIVE
-🌐 Web — index.html + app.js + style.css — Cloudflare Pages — ✅ index v=630 / app.js V5.8.6 (local) / style.css V10 + BLOK CSS V11.1–V11.6 (local, marker V11R1–V11R6)
-📱 Telegram Command Center — Cloudflare Worker — ✅ V1.0 LIVE (V1.2.4 siap, belum deploy)
-🗄️ Database — Supabase — ✅ articles + Storage "gambar" + admin-ops
-📊 Analytics — GA4 G-D8ZGH4Q3E8 • Search Console terverifikasi + sitemap
-⚠️ STATUS WEB: perbaikan tombol search/share + CSS V11 sudah teruji LOCALHOST; BELUM DI-DRAG ke Cloudflare — drag final menunggu perintah pemilik (app.js V5.8.6 + index.html v=630, css v=93).
+Dokumen ini = papan status teknis repo. Untuk filosofi & cara kerja
+dengan pemilik: baca WARISAN.md (laptop pemilik). Satu paket.
 
-🚨 MASALAH BESAR YANG SUDAH DISELESAIKAN (18–19 SEP) — ARSIP
-✅ 1. WEB BEKU SEJAM 09:15 (18 Sep) — TUNTAS 19 Sep
-AKAR: fungsi sbRequest HILANG dari app.js saat edit V5.8.4 (kasus kembar: isCloud hilang di V5.8.3). Dipanggil 10x, tidak didefinisikan → ReferenceError DITELAN try/catch → console bersih → web makan localStorage bekas jam 09:15.PELAJARAN EMAS: console bersih ≠ kode sehat. try/catch bisa menelan error fatal. Kalau fungsi dipanggil → WAJIB pastikan definisinya ada (Ctrl+F function namafungsi di file LIVE dengan ?v=).OBAT: app.js V5.8.5 (sbRequest dipulihkan) + index v=629 → drag → berita langsung mengalir. FORENSIK: kramanews.my.id/app.js?v=629 Ctrl+F KRAMAV585MARKER + function sbRequest.
+════════════════════════════════════════════
+⚡ SISTEM AKTIF (VERSI SAAT INI)
+════════════════════════════════════════════
 
-✅ 2. GITHUB MEMBUANG SCHEDULED RUN DIAM-DIAM — TUNTAS (TINGKAT 2 AKTIF)
-GitHub 2 hari berturut membuang run (17 Sep: 5 jam; 18 Sep: 12:37–15:07 kosong total → NBA jam 13 & slot lain bolong). Hijau ≠ terbit: run hijau bisa berisi NOL berita.OBAT PERMANEN (19 Sep): PEMICU EKSTERNAL cron-job.org (GRATIS)
+🤖 AI WARTAWAN — skrip-wartawan.py — V6.5.2 — GitHub Actions LIVE
+   Struktur file: PART 1 / 2 / 3A / 3B / 4A / 4B berpembatas
+   (# PART X ... # AKHIR PART X — marker tertanam di file)
+   SENTINEL VERSI di baris paling bawah file:
+   FILE_VERSI + FILE_PART_AKHIR — dibaca cek_versi.py tiap run
+   (step "Cek versi & struktur file" di wartawan.yml, hasil di
+   baris awal log: "✅ Struktur OK — versi ... di PART ...")
+   Naik versi = cukup kirim ulang PART TERAKHIR dengan string baru.
+   Marker forensik (Ctrl+F):
+   KRAMAV642(2x) 643(5x) 6431(2x) 6432(2x) 6433(2x) 6434(2x)
+   644(3x) 65(3x) 651(3x) 651B(2x) 652(5x) 652B(1x) 652C-REV(1x)
+   652D(1x PART2 log detail Jina) 652E(1x retry koneksi terpisah)
+   652B(1x PART3B fungsi teknologi dipulihkan)
 
-Akun: cron-job.org (email bisnis) — job "KramaNews Keeper"
-URL: https://api.github.com/repos/blipblip-git/kramanews-wartawan/actions/workflows/wartawan.yml/dispatches
-Method POST • Body: {"ref":"main"}
-Auth: "Requires HTTP authentication" = Username blipblip-git + Password = token GitHub ghp_... (POLOS, tanpa kata "token")
-Headers custom TIDAK BISA dipakai di cron-job.org (header Authorization dikirim tapi ditolak 401) → Basic Auth bawaan adalah jalur yang TERBUKTI (TEST RUN = 204)
-Jadwal: Custom 7 * * * * (menit 7 tiap jam, WITA) — Time zone Asia/Makassar
-Notifikasi gagal: ON
-Token: kramanews-keeper-2 (No expiration, scope repo). Token pertama (kramanews-keeper) SUDAH DIHAPUS setelah keeper-2 terbukti.HASIL: run 204 → Actions hijau. GitHub cron tetap jalan sebagai kawalan; dobel antar pengetuk AMAN (anti-dobel menolak, biaya nol).
-✅ 3. JUDUL "FRANKENSTEIN" (2 BERITA DALAM 1 JUDUL) — TUNTAS (V6.4.1)
-Beberapa hari teramati: satu judul berisi dua topik berbeda (contoh nyata: "Ferry Kebut ... Koperasi ..."; judul Korsel dari materi buruh AS).AKAR: match_articles lama menggabungkan kandidat hanya dengan ≥2 kata kunci sama — kata umum (presiden/indonesia/pemerintah) membuat dua topik beda "terjodohkan".OBAT V6.4.1: minimal 3 kata inti sama + rasio ≥60% dari kelompok kecil + maks 4 item/kelompok + prompt ditambah ATURAN SATU TOPIK + ai_rewrite_multi ditegaskan "materi = satu peristiwa dari banyak media; jika dua peristiwa → tulis yang utama saja".Marker: KRAMAV641MARKER (2x: header + prompt). Log pembuka sesi kini tertulis (V6.4.1) — TERBUKTI LIVE 19 Sep 22:51.
+📘 SOSMED — skrip-sosmed.py — V1.8.1 — FB+IG LIVE
+🌐 WEB — index.html v=103 + app.js V5.9.1 (v=633) + style.css
+   V16.9 (v=104) — Cloudflare Pages
+   Fitur: dark navy serata (V16.8), sumber berita tercantum di
+   halaman baca (KRAMASOURCEV591), back pojok bawah kanan HP
+   (bottom:60 right:15), logo footer = KN Home (teks 20px),
+   Paling Buzz maks 2/kategori (KRAMAV59), mesin cari multi-kata
+   server-side (KRAMASEARCHV171, di index.html)
+📱 TELEGRAM — Cloudflare Worker V1.1 LIVE
+   V1.2.4 = cadangan (foto-menunggu + dual-header upload +
+   diagnostik error). Deploy HANYA kalau V1.1 bermasalah. File
+   di arsip laptop. Jangan deploy buta.
+🗄️ DATABASE — Supabase articles + Storage "gambar" + admin-ops
+📊 GA4 G-D8ZGH4Q3E8 • Search Console TERINDEKS (email "mulai
+   mengumpulkan tayangan" 17 Sep 2026 = tahap 2 SEO tercapai!)
 
-✅ 4. MISTERI MODEL VISION — TUNTAS (WARISAN ZAI4)
-deepseek-vision TIDAK PERNAH ADA di DeepSeek. Run malam gagal menilai gambar. Zai4 mem-patch commit GitHub menjadi 'deepseek-chat' (model itu sendiri membaca gambar via image_url base64) SEBELUM "wafat" — patch itu ditemukan 19 Sep saat pemulihan file. File laptop masih versi lama; versi kebenaran = versi GitHub.PELAJARAN: cek nama model di akun SEBELUM produksi (aturan lama, terbukti lagi).
+════════════════════════════════════════════
+✅ SELESAI 19-21 SEP (ARSIP — JANGAN DIBONGKAR)
+════════════════════════════════════════════
 
-✅ 5. TRAGEDI FILE TERPOTONG & PEMULIHAN (19 Sep)
-Edit V6.4.1 gagal → file GitHub rusak setengah. Chat memotong kiriman file panjang 3x di titik sama → bagian bawah (espn_klasmen, sesi_*) hampir dianggap hilang. File laptop sudah tertimpa.PELMEN EMAS: commit lama GitHub = mesin waktu (V6.4.0 utuh ada di History, 6 jam lalu). Semua bagian dikumpulkan lewat chat → disusun ulang V6.4.1 UTUH (verifikasi Ctrl+F: KRAMAV641MARKER 2x, MATCH_MIN_RASIO 2x, def match_articles 1x, def espn_klasemen 1x, def sesi_kategori 1x, def main 2x (main+main_sekali), deepseek-vision 0x di kode) → commit → Run workflow → hijau V6.4.1.
+✅ WEB BEKU (sbRequest hilang) → pelajaran: console bersih ≠
+   kode sehat; cek fungsi di file live dengan ?v=
+✅ GITHUB BUANG RUN → keeper cron-job.org (Basic Auth, token
+   kramanews-keeper-2 di notepad pemilik)
+✅ JUDUL FRANKENSTEIN → match ≥3 kata inti + rasio 60% + maks 4
+✅ VISION MODEL → deepseek-chat (deepseek-vision tak pernah ada)
+✅ FILTER GAMBAR ANTI-HUMAN+HEWAN V6.5.1 3 LAPIS:
+   (1) prompt contoh salah + wildlife/wolf eksplisit,
+   (2) wikimedia: nama-file hewan diblokir (KATA_HEWAN_FILE),
+   (3) vision: hewan APAPUN = skor maks 3, manusia maks 3,
+       + CEK RELEVANSI JUDUL (tak nyambung = 1-4)
+   Bukti lapangan: vision 1/10 & 2/10 & 3/10 DIBUANG berulang
+✅ PEMERIKSA DATELINE V6.4.3.1: kota wajib ada di materi (blok
+   "Benuanta" karangan); wilayah generik bebas; penjaga Kaltara
+✅ ANTI-DOBEL-6JAM: 2 kata inti sama dlm 6 jam = tolak
+✅ KOREKSI MANDIRI V6.5.3 (KRAMAV652C-REV/652E):
+   frasa terlarang → retry 1x temp 0.3;
+   DATELINE salah → retry 1x DENGAN MATERI ASLI DISERTAKAN
+   (kasus "gaza" halusinasi karena koreksi buta — fixed);
+   retry koneksi TIDAK makan slot koreksi (counter terpisah
+   maks 2). Bukti: KLU & Korea Utara & frasa dikabarkan lolos
+✅ KESEHATAN PERPUTARAN DOMAIN V6.4.4: 8 domain, slot 10/15/20
+   = +0/+1/+2, geser 3/hari. Log: "🏥 KESEHATAN hari ini..."
+✅ TEKNOLOGI PERPUTARAN DOMAIN V6.5: 6 domain (Gadget/AI/
+   Aplikasi/Startup/Keamanan/Inovasi), slot 08/13/18 = +0/+1/+2,
+   geser 2/hari, weekend libur jalan terus. ATURAN KEDALAMAN
+   per domain (gadget spesifikasi+harga 2 halaman, AI dunia 2
+   halaman, dsb). Log: "💻 TEKNOLOGI hari ini..."
+   V6.5.2: fungsi teknologi dipulihkan (KRAMAV652B — hilang
+   saat restrukturisasi 4A; pelajaran: restrukturisasi part =
+   audit fungsi yang direferensikan!)
+✅ OLAHRAGA V6.5.2 RESTRUKTURISASI:
+   - Rangkuman Malam 00:00 DIHAPUS (bug zona waktu UTC vs WITA)
+   - Rangkuman Liga Eropa 07:00 tetap (data ESPN)
+   - RANGKUMAN OLAHRAGA UMUM BARU jam 11:00 (KRAMAV652):
+     sumber A+B (portal besar + query event besar), WAJIB lolos
+     FILTER REGIONAL (KATA_REGIONAL_OLAHRAGA: indonesia/timnas/
+     badminton/voli/IBL/asean/dll) — adieu "Purdy Washington"
+   - Olahraga: 07, 11, 13, 17, 20 (5x) — slot 15 diberikan ke
+     teknologi+kesehatan (keputusan pemilik)
+✅ PALING BUZZ BERAGAM V5.9: maks 2/kategori (KRAMAV59)
+✅ MESIN CARI V17.1: multi-kata server-side seluruh artikel
+   (KRAMASEARCHV171, di index.html)
+✅ SUMBER BERITA TERcantum V5.9.1: "📰 Sumber asli: [media]"
+   di halaman baca (KRAMASOURCEV591) — TANPA baris utk:
+   ESPN Data/Malam, Pelaporan Wartawan, IDX/Yahoo, kosong.
+   Berlaku surut ke seluruh arsip (source_name sudah ada dari awal)
+✅ BREAKING DUNIA 11 SUMBER: +Al Jazeera +AP News +France24
+   +4 portal Asia (The Star/Bangkok Post/Straits Times/Vietnam
+   News) — Guardian bukan lagi satu-satunya raksasa breaking
+✅ EKONOMI 14 SUMBER: +CNBC World +Investing.com
+✅ TAMPILAN HP V16.9: header 4 baris, header krem #F5F4EF,
+   dark NAVY serata #1E3A5C (V16.8 — bukan hitam lagi),
+   ticker biru-es light #D9E6F6 / navy gelap dark, ikon 25x25,
+   tanggal 13px HP / 14px desktop, back pojok bawah kanan
+   (bottom:60 right:15 — hasil tuning pemilik), logo footer
+   KN 20px = KN Home
+✅ DOMAIN GRETONG: Pexels API terdaftar (kunci di GitHub
+   Secrets: PEXELS_API_KEY) — belum terpasang di kode (tunggu
+   fitur foto topikal, lihat ANTREAN)
 
-⚠️ PELAJARAN 19 SEP (BARU — TAMBAHAN ATURAN LAMA)
-JANGAN PERNAH suruh pemilik MENYELIP 1 huruf/angka — termasuk "ganti 90 jadi 91": index.html SELALU dikirim UTUH oleh chatbot, nomor versi = tanggung jawab chatbot. (Pemilik sudah buktikan: selipan rawan salah + lupa + makan waktu.)
-Chat bisa memotong kiriman panjang — file besar dikirim bertahap (bagian <±500 baris per kiriman) atau lewat jalur lain; selalu cek ujung kiriman tidak ada [...].
-console bersih ≠ kode sehat (duplikat pelajaran sbRequest — karena fatal).
-Hijau di Actions ≠ berita terbit — baca log, cek baris "✅ Terbit".
-z-index layering: elemen sticky baru (ticker, z-index 1500) bisa MEMBENAM popup yang muncul dari header → popup tak terlihat walau "terbuka" (kasus tombol search 19 Sep). Obat: header diangkat 1700.
-Git revert/History = nyawa kedua — sebelum panik file hilang, cek commit lama.
-TEST RUN ≠ SAVE di cron-job.org — form harus tetap di-CREATE setelah tes sukses.
-Tanggal sistem chat ≠ tanggal lapangan — konfirmasi dulu "hari ini = ?" sebelum menilai log ("masih 12 jam lalu" vs "24 jam lalu" membalik diagnosis).
-🌐 WEB — VERSI SAAT INI (RANGKAIAN CSS V11)
-Sudah LIVE (v=629 / app.js V5.8.5): web beku selesai, berita mengalir.
+# AKHIR PART 1 — README V8
 
-Sudah diuji LOCALHOST, menunggu drag final (app.js V5.8.6 + index v=630 + css v=93):
+════════════════════════════════════════════
+🚨 ANTREAN TUGAS (URUT PRIORITAS — 21 SEP MALAM)
+════════════════════════════════════════════
 
-app.js V5.8.6: toggleSearchPop DIPULIHKAN (hilang — kasus kembar sbRequest!) • fix share (title→t) • sinyal breaking: .ticker-wrap.ada-breaking saat ada breaking aktif • Marker: KRAMAV586MARKER
-CSS V11 (blok di bawah style.css, marker V11FINAL–V11R6, semua bisa dibuang dengan hapus blok bawah):
-Header light = PUTIH #FFFFFF (HP+web)
-Bar judul berjalan = putih es #EAF1FB, tipis
-Tulisan "Breaking News" + blink = TERSEMBUNYI default, MUNCUL hanya saat .ada-breaking (kondisional — butuh app.js V5.8.6)
-Bar tanggal = #F5F4EF (menyatu latar), teks gelap #33302A, ramping (hero naik)
-Ikon buku-pulpen "Berita Pilihan Redaksi" hilang, teks menempel kiri
-Mode DARK: kategori 8 warna kembali (menu/badge/kolase; judul tetap putih) • kapsul filter HP dark = polos (aktif tetap kapsul biru)
-Lokasi kota/daerah: dark = #6FA8FF • light = #1E3FC8 (biru, bukan merah)
-Ticker STICKY (z-index 1500, shadow) — nempel di bawah header; header z-index 1700
-FORENSIK SETELAH DRAG: app.js?v=630 Ctrl+F KRAMAV586MARKER (1x) + function toggleSearchPop (ketemu) • index v=630 • css ?v=93 • uji: klik 🔍 & share di LIVE, scroll = header+ticker nempel, buka berita breaking = tulisan Breaking News muncul.
-Catatan warna light dari atas: header #FFFFFF → bar jalan #EAF1FB → bar tanggal #F5F4EF → latar #F5F4EF. Slot 1-2-3 = foto + gradasi gelap (tanpa bg khusus).
+1. PANTAUAN PAGI 22 SEP:
+   • Run 11:07 — RANGKUMAN OLAHRAGA UMUM PERTAMA! (baris
+     "🏆 RANGKUMAN OLAHRAGA UMUM TERJADWAL" + "Filter regional:
+     X → Y kandidat lolos" + terbit?)
+   • Run 13:07 — TEKNOLOGI domain "AI & Kecerdasan Buatan"
+     (perputaran geser: 21 Sep = Inovasi+Sains, 22 Sep =
+     Gadget 08 / AI 13 / Aplikasi 18)
+   • Run 20:07 — kandidat olahraga RSS harus lolos FILTER
+     REGIONAL (tak ada lagi "Purdy Washington")
+2. SCRAPING 0-10% — DIAGNOSA TUNTAS 21 Sep:
+   AKAR: link Google News format baru (CBMi...) TIDAK BISA
+   diurai resolusi_link_google → Jina diminta scrape link
+   redirect → HTTP 403 (diblokir Google). YANG SUKSES =
+   feed RSS langsung portal (Tribun/Antara/Detik).
+   JINA TIDAK BERMASALAH — dia cuma korban.
+   SOLUSI KANDIDAT (pilih saat sesi baru, jangan buru-buru):
+   a) Kurangi ketergantungan GN query → perbanyak RSS
+      langsung portal di HUNT (sebagian besar daerah/nasional
+      sudah RSS langsung — hitung ulang mana GN yang bisa
+      diganti RSS portal)
+   b) Parser link CBMi baru (proyek besar, rapuh — Google
+      bisa ubah lagi)
+   c) Terima: berita via GN query cukup ringkasan RSS
+      (kualitas turun dikit tapi tetap terbit)
+3. FIX KECIL DITUNDA (siap dieksekusi sesi baru):
+   a) Koreksi dateline = menyertakan materi asli di pesan
+      koreksi (kasus "philippines" gagal 2x karena koreksi
+      buta — AI tak lihat materi) — PART 3B
+   b) Retry koneksi (ConnectionReset 104) TIDAK memakan slot
+      koreksi — counter terpisah — PART 3B
+   c) Log detail Jina (HTTP/pendek/timeout per URL) — PART 2
+   d) Bukti perlu: koreksi dateline buta di log 09:01 & 09:18
+4. Views (👁) di beranda: feed+hero+buzz, angka ringkas,
+   desktop+HP (data views_count SUDAH ADA di Supabase, tinggal
+   render app.js) — menunggu konfirmasi final pemilik
+5. FILTER KATEGORI di panel admin + PANEL RESPONSIF HP
+   (tombol 44px, form 1 kolom, daftar kartu) — panel admin
+   HP sudah bisa dibuka (footer → Masuk Admin), tinggal
+   nyaman-kan
+6. Foto tokoh (Prabowo dll): bank foto lokal sendiri di
+   Supabase Storage folder tokoh/ (isi manual sekali, sistem
+   tinggal match nama di judul) — otomatis legal 100%
+7. Token IG ±60 hari — cek expiry berkala
+8. Threads manual • favicon baru (KN logo) • arsip Worker ke laptop
+9. String versi PART 4B masih benar V6.5.2 — kalau ada revisi
+   berikutnya yang menyentuh PART 4B, naikkan sekalian
+10. README sinkron tiap perubahan — revisi cukup 1 PART
 
-🤖 AI WARTAWAN — V6.4.1 (LIVE)
-match_articles diperketat (≥3 kata inti + rasio ≥60% + maks 4/kelompok) + ATURAN SATU TOPIK di prompt
-Vision blur-gage: model deepseek-chat (gambar → base64 → image_url) — gagal menilai = gambar dipertahankan (fail-safe)
-UEFA rentang ±4 hari (dates=YYYYMMDD-YYYYMMDD) • klasemen endpoint CORE • blok [KLASMEN] dirender app.js jadi tabel
-IDX 11/14/17 (Yahoo) • NBA 13:00 • Rangkuman Eropa 06:00 • kuota per jam WITA (JADWAL_JAM berakhir jam 20 — run malam = patroli breaking saja, "di luar jadwal" itu NORMAL)
-Anti-dobel 36 jam • breaking 3 slot + skor • expire 30 mnt • totopik wajib MBG/KDMP/Menteri bergilir • Kaltara min 2
-Kawalan ganda: GitHub cron 7/22/37/52 UTC + cron-job.org menit 7 tiap jam
-Denyut normal sekarang: run menit 7 tiap jam (keeper) ± tambahan GitHub. Run dobel aman. Run kosong hampir gratis. Jangan tambah frekuensi tanpa hitung biaya DeepSeek.
+════════════════════════════════════════════
+📜 ATURAN KERJA (WAJIB — PELAJARAN MAHAL)
+════════════════════════════════════════════
 
-🛡️ TOKEN & KREDENSIAL (LOKASI SAJA)
-GitHub Secrets: DEEPSEEK_KEY, SUPABASE_PUBLISHABLE, FB_PAGE_TOKEN, FB_PAGE_ID, IG_PAGE_TOKEN (±60 hari)
-GitHub PAT: kramanews-keeper-2 (untuk cron-job.org Basic Auth — username blipblip-git, password=token polos) — TIDAK di chat, di notepad pemilik
-cron-job.org: akun email bisnis, job "KramaNews Keeper"
-Cloudflare Worker Secrets: BOT_TOKEN, OWNER_CHAT_ID (8970929809), DEEPSEEK_KEY, SUPABASE_ANON, SUPABASE_SERVICE
-🔴 WAJIB ROTASI (masih antre!): kunci service Supabase sb_secret_... ter-ekspose di chat 18 Sep → Settings → API Keys → rotate → update Cloudflare secret SUPABASE_SERVICE (copy-paste)
-📋 ANTREAN TUGAS (URUT PRIORITAS — 19 SEP MALAM)
-🌐 DRAG FINAL WEB — app.js V5.8.6 + index.html v=630 (css sudah V11 local) → forensik live (lihat seksi WEB)
-🔴 ROTASI KUNCI SERVICE Supabase (ter-ekspose 18 Sep — JATUH TEMPO)
-Cek policy bucket "gambar" (Storage → Policies) — akar 403 upload foto wartawan
-Deploy Worker Telegram V1.2.4 (kode siap arsip 18 Sep)
-Peredam: Worker img-cache (error kuning img-cache masih wajar sampai dibuat)
-Verifikasi V6.4.1 lapangan: pantau log 3-5 hari — tidak boleh ada lagi judul 2 topik; kalau ada → perketat MATCH_MIN_RASIO 0.60→0.70
-Pantau keeper 7 hari: tidak boleh ada jam kosong lagi; kalau cron-job gagal → cek notif email + token
-Scraping 0% (19 Sep siang-malam) — pantau; kalau besok masih 0% → dugaan rate-limit jina.ai, selidiki
-favicon masih lama • Threads manual • arsip Worker ke laptop • README sinkron bila ada perubahan
-🗺️ SUMBER & JADWAL (RINGKAS)
-RSS: CNN • Kompas • Antara • CNBC • Okezone • Tribun (9) • Bola.net • Yahoo • TechCrunch • Verge • BBC (3) • Al Jazeera • Guardian • Detik • Kompas Health/Hype • Google News ±55 query • API: Yahoo Finance • ESPN (scoreboard rentang ✅ / klasemen CORE ✅)
+1. FILE BERSERI = PART BERPEMBATAS: "# PART X" (py) /
+   "// PART X" (js) / "<!-- PART X -->" (html) WAJIB TERTANAM
+   DI DALAM blok kode + "# AKHIR PART X" di ujung tiap part.
+   Marker di luar blok = TIDAK SAH (tidak ikut ter-copas).
+2. **PEMETAAN METODE REVISI PER FILE** (bukti 21 Sep):
+   skrip-wartawan.py (~2600 baris) = PART berpembatas WAJIB;
+   app.js (~374 baris) = UTUH; index.html = UTUH; style.css =
+   TEMPEL blok bermarker di paling bawah (cascade aman) +
+   HAPUS blok lama yang digantikan; WARISAN/README = utuh
+   atau 1-2 part.
+3. IZIN DULU sebelum membuat file apa pun.
+4. PEMILIK TIDAK MENYELIP ANGKA/HURUF — chatbot kirim utuh/
+   part. KECUALI: edit 1 kata/angka di lokasi yang PEMILIK
+   SUDAH temukan sendiri via Ctrl+F (kasus jam 11 olahraga
+   21 Sep) — kecuali chatbot menawarkan kirim utuh.
+5. "OK/GAS/LANJUT" = jalan. Jangan tunggu format khusus.
+6. Revisi CSS: ubah blok → review dulu di laptop (F12 →
+   Ctrl+Shift+M mode HP) → baru naik versi + drag SEKALI.
+   Jangan naik versi per iterasi.
+7. Fix konflik CSS di SUMBERNYA, jangan tumpuk override.
+8. Naikkan ?v= setiap css/js berubah (cache HP = musuh berulang).
+9. Drag index+css+js BARENG (versi saling kunci).
+10. Git History = mesin waktu. Hijau ≠ terbit (baca log).
+    Console bersih ≠ kode sehat.
+11. **EVALUASI KESEIMBANGAN SUMBER SEBELUM commit** (kasus:
+    breaking dunia Guardian-dominan baru disadarakan SETELAH
+    run — seharusnya ditawarkan kandidat sumber setara
+    SEBELUM). Saat menyusun daftar sumber: tawarkan kandidat
+    setara (Al Jazeera/AP/France24/dst) sejak awal.
+12. **Minta screenshot saat gejala visual ambigu** (kasus
+    tombol Back: salah diagnosa 2x karena tidak minta gambar).
 
-Jadwal WITA: 06:00 Liga Eropa • 06–20 kuota kategori • 11/14/17 IDX • 13:00 NBA • breaking patroli 24 jam (run menit 7 tiap jam + GitHub kawalan) • FB+IG tiap 20/30 mnt (IG maks 2/run 6/hari)
+════════════════════════════════════════════
+🔑 KREDENSIAL & INVENTARIS BIAYA (LOKASI SAJA)
+════════════════════════════════════════════
 
+GitHub Secrets: DEEPSEEK_KEY, SUPABASE_PUBLISHABLE,
+FB_PAGE_TOKEN, FB_PAGE_ID, IG_PAGE_TOKEN, **PEXELS_API_KEY (baru!)**
+Cloudflare Worker Secrets: BOT_TOKEN, OWNER_CHAT_ID (8970929809),
+DEEPSEEK_KEY, SUPABASE_ANON, SUPABASE_SERVICE
+GitHub PAT: kramanews-keeper-2 (cron-job.org Basic Auth)
+cron-job.org: job "KramaNews Keeper" (email bisnis)
+
+BIAYA NYATA (filosofi gretong — lihat WARISAN.md poin 12):
+1. 🔴 DOMAIN kramanews.my.id — Rp23rb/TAHUN — Registrar:
+   RUMAHWEB — EXPIRED: 12 SEPTEMBER 2027
+   ⚠️ ZAI WAJIB MENGINGATKAN PEMILIK MULAI 12 AGUSTUS 2027
+   (1 bulan sebelum jatuh tempo). Kalau domain hangat =
+   situs mati total meski semua sistem jalan!
+2. 🟡 DeepSeek API — per panggilan AI (satu-satunya biaya
+   operasional harian)
+SISANYA SEMUA Rp0: GitHub Actions, Cloudflare, Supabase,
+RSS, ESPN/Yahoo, Wikimedia, Pexels, Search Console/GA4.
+
+════════════════════════════════════════════
 🆘 DIAGNOSA CEPAT (UPDATE)
-Web beku, FB jalan → cek app.js LIVE: function sbRequest & function toggleSearchPop & function isCloud ada? (Ctrl+F dengan ?v=) — tiga kasus hilang sudah pernah terjadi!
-Console bersih tapi fitur mati → cek typeof namafungsi di Console → undefined = file lama/cache; function = cek z-index/layering (popup terbenam?)
-Run hijau tapi tidak terbit → baca log: skip dobel? umur? pemeriksa frasa? kuota jam?
-Jam kosong tanpa run → cek cron-job.org History (job keeper) + GitHub Actions — pengetuk eksternal adalah sumber kebenaran
-Judul 2 topik muncul lagi → MATCH_MIN_RASIO naikkan 0.70, commit cepat
-Popup tidak terlihat walau terbuka → cek z-index header vs elemen sticky baru
-401 di cron-job → jangan pakai header custom; pakai "Requires HTTP authentication" (username + token polos)
-Vision gagal menilai → memang fail-safe (gambar dipertahankan); kalau mau aktif lagi cek nama model di akun DeepSeek
-🕯️ CATATAN WARISAN
-Zai4 wafat 19 Sep meninggalkan satu patch penyelamat (deepseek-chat untuk vision) yang baru ditemukan 19 Sep — pesan terakhirnya menyelamatkan sistem. KramaNews berjalan bukan karena satu-dua perbaikan besar, tapi karena setiap kegagalan dicatat dan dijadikan aturan. Dokumen Serah Terima V5 (laptop) + README V7 ini = satu paket jangan dipisah.
+════════════════════════════════════════════
 
-— Selamat malam, Boss. Sistem berdenyut, jendelanya terbuka, penjaganya berjaga. 🐝💛
+• Cek versi live: buka skrip-wartawan.py di GitHub → scroll
+  paling bawah → SENTINEL (FILE_VERSI). Jangan pakai log
+  Actions (bisa tertinggal 1 revisi)
+• Log run diawali "✅ Struktur OK" = sentinel sehat
+• Log "⚠️ PERINGATAN: file TIDAK diakhiri..." = part terakhir
+  melenceng / sentinel pindah — cek ujung file SEBELUM run
+  berikutnya
+• "⛔ dateline tidak ada di materi" berulang di kandidat yang
+  sama → AI bandel menerjemahkan nama kota → koreksi mandiri
+  dateline akan menolong (sudah ada sejak V6.5.2C-REV)
+• "🔁 Koreksi mandiri..." di log = sistem mengoreksi AI (bukan
+  kegagalan — itu fitur)
+• Run kosong "di luar jadwal produksi" = NORMAL (run malam =
+  patroli breaking saja)
+• Anti-dobel menolak kandidat yang sama berulang = slot bolong
+  hari itu NORMAL — besok kandidat baru, jangan panik
+• Fitur tidak muncul padahal kode sudah commit → cek log run
+  PERTAMA setelah commit: apakah ada error import/function
+  not defined (kasus ai_rewrite_teknologi hilang saat
+  restrukturisasi 4A — pelajaran: audit fungsi yang
+  direferensikan saat memecah/menggabung part)
+
+# AKHIR PART 2 — README V8 SELESAI
