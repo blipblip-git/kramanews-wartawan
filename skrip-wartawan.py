@@ -412,11 +412,10 @@ HUNT = {
 
 # ══════════════════════════════════════════════════════
 #  PART 2
-#  (cakupan: feeds breaking, kata-kunci, anti-dobel 36jam & 6jam,
-#   scraper, build_system_prompt — V6.5.1: ATURAN GAMBAR
-#   DIPERKETAT ANTI-HEWAN (contoh salah + wildlife/wolf eksplisit).
-#   Perubahan lain V6.5 tetap: ATURAN TEKNOLOGI per domain,
-#   ATURAN KESEHATAN, ATURAN RANGKUMAN OLAHRAGA)
+#  (feeds breaking [DUNIA +4 SUMBER ASIA — V6.5.2], kata-kunci,
+#   anti-dobel 36jam & 6jam, scraper, build_system_prompt —
+#   DENGAN ATURAN TEKNOLOGI per domain, ATURAN KESEHATAN,
+#   ATURAN RANGKUMAN OLAHRAGA, ATURAN GAMBAR anti-hewan)
 # ══════════════════════════════════════════════════════
 
 BREAKING_DOMESTIK_FEEDS = [
@@ -432,12 +431,16 @@ BREAKING_DOMESTIK_FEEDS = [
 
 BREAKING_DUNIA_FEEDS = [
     RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
-    RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
     RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
     RSSF('http://rss.cnn.com/rss/edition_world.rss', 'CNN World'),
+    RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
+    RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
+    RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
+    RSSF('https://vietnamnews.vn/rss.html', 'Vietnam News'),
     GN('breaking world news', 'en', 'GN Breaking Dunia'),
     GN('major earthquake', 'en', 'GN Gempa Besar Dunia'),
     GN('war conflict missile', 'en', 'GN Perang'),
+    GN('breaking asia news', 'en', 'GN Breaking Asia'),
 ]
 
 LUAR_NEGERI_WORDS = ['jepang', 'china', 'amerika', 'eropa', 'luar negeri', 'inggris',
@@ -694,7 +697,7 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV642MARKER — V6.5.1: fokus ASEAN & Timur Tengah; gambar tema alam/kota
+KRAMAV642MARKER — V6.5.2: fokus ASEAN & Timur Tengah; gambar tema alam/kota
 TANPA manusia & TANPA hewan; satu topik per berita; angka mesin disalin
 persis; dateline wajib dari materi sumber; kesehatan = edukasi pakar;
 teknologi = kedalaman per domain harian.
