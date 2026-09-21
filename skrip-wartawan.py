@@ -412,11 +412,15 @@ HUNT = {
 
 # ══════════════════════════════════════════════════════
 #  PART 2
-#  (feeds breaking [DUNIA 11 sumber — V6.5.2 +3 ASIA +AJ/AP/F24],
-#   EKONOMI [14 sumber — +CNBC World & Investing.com],
-#   kata-kunci, anti-dobel, scraper, build_system_prompt —
-#   DENGAN ATURAN TEKNOLOGI per domain, ATURAN KESEHATAN,
-#   ATURAN RANGKUMAN OLAHRAGA, ATURAN GAMBAR anti-hewan)
+#  (feeds breaking [DUNIA 11 sumber + ASIA — V6.5.2],
+#   kata-kunci, anti-dobel 36jam & 6jam, scraper
+#   **KRAMAV652D BARU: LOG DETAIL GAGAL JINA** — tiap gagal
+#   dicatat alasannya: HTTP status, hasil pendek (dengan jumlah
+#   karakter), timeout, exception — supaya diagnosa akurat
+#   tanpa tebak-tebakan,
+#   build_system_prompt dengan ATURAN TEKNOLOGI per domain +
+#   ATURAN KESEHATAN + ATURAN RANGKUMAN OLAHRAGA +
+#   ATURAN GAMBAR anti-hewan)
 # ══════════════════════════════════════════════════════
 
 BREAKING_DOMESTIK_FEEDS = [
@@ -521,19 +525,28 @@ def resolusi_link_google(url):
         return url
 
 def scrape_via_jina(url):
+    # KRAMAV652D — LOG DETAIL: alasan gagal dicatat spesifik
     try:
         headers = {'User-Agent': random.choice(UA_LIST)}
         r = requests.get(JINA_READER + url, headers=headers,
                          timeout=SCRAPER_TIMEOUT + 8, allow_redirects=True)
         if not r.ok:
+            print('       ⚠️ Jina HTTP ' + str(r.status_code) + ' — ' + url[:60])
             return ''
         teks = r.text or ''
         teks = re.sub(r'!\[[^\]]*\]\([^)]*\)', ' ', teks)
         teks = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', teks)
         teks = re.sub(r'[#*_`>]{1,3}', ' ', teks)
         teks = re.sub(r'\s+', ' ', teks).strip()
-        return teks if len(teks) >= SCRAPE_MIN_KARAKTER else ''
-    except Exception:
+        if len(teks) < SCRAPE_MIN_KARAKTER:
+            print('       ⚠️ Jina hasil PENDEK: ' + str(len(teks)) + ' kar (butuh ' + str(SCRAPE_MIN_KARAKTER) + ') — ' + url[:60])
+            return ''
+        return teks
+    except requests.exceptions.Timeout:
+        print('       ⚠️ Jina TIMEOUT — ' + url[:60])
+        return ''
+    except Exception as e:
+        print('       ⚠️ Jina EXCEPTION: ' + str(e)[:80] + ' — ' + url[:60])
         return ''
 
 def _bersihkan_html_artikel(html):
@@ -584,8 +597,9 @@ def scrape_artikel(url):
             hasil = _bersihkan_html_artikel(r.text or '')
             if len(hasil) >= SCRAPE_MIN_KARAKTER:
                 return hasil
-    except Exception:
-        pass
+        print('       ⚠️ Langsung scrape pendek: ' + str(len(hasil)) + ' kar — ' + url_asli[:60])
+    except Exception as e:
+        print('       ⚠️ Langsung scrape gagal: ' + str(e)[:60])
     hasil = scrape_via_jina(url_asli)
     if hasil:
         return hasil
@@ -701,7 +715,7 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV642MARKER — V6.5.2: fokus ASEAN & Timur Tengah; gambar tema alam/kota
+KRAMAV642MARKER — V6.5.3: fokus ASEAN & Timur Tengah; gambar tema alam/kota
 TANPA manusia & TANPA hewan; satu topik per berita; angka mesin disalin
 persis; dateline wajib dari materi sumber; kesehatan = edukasi pakar;
 teknologi = kedalaman per domain harian.
@@ -1198,14 +1212,15 @@ def cek_deskripsi_gambar(deskripsi):
 
 # ══════════════════════════════════════════════════════
 #  PART 3B
-#  (JAM_KESEHATAN [KRAMAV644], JAM_TEKNOLOGI [KRAMAV65],
-#   POLA_LARANG, ai_write koreksi mandiri [6433] + materi_asli
-#   [6434] + KOREKSI MANDIRI DATELINE [KRAMAV652C — baru],
-#   rewrite single/multi, gempa, gambar terpakai, wikimedia
-#   anti-hewan, pexels [KRAMAV652], cari_gambar_otomatis,
-#   vision anti-manusia+anti-hewan+relevansi, insert_news,
-#   SCRAPE LOG DETAIL [KRAMAV652C — baru: alasan gagal Jina
-#   dicatat untuk diagnosa], espn 4 fungsi)
+#  V6.5.3 PERBAIKAN:
+#  [KRAMAV652C-REV] Koreksi dateline kini MENYERTAKAN MATERI ASLI
+#   di pesan koreksi — AI bisa MELIHAT tempat apa yang valid,
+#   bukan menebak buta (kasus "gaza" halusinasi & "philippines"
+#   gagal 2x karena koreksi buta).
+#  [KRAMAV652E] Retry koneksi (panggilan AI gagal jaringan)
+#   TIDAK LAGI memakan slot koreksi — counter koneksi terpisah
+#   dari koreksi frasa & dateline. Maks: 2 koneksi-retry + 1
+#   frasa-koreksi + 1 dateline-koreksi (4 panggilan maks).
 # ══════════════════════════════════════════════════════
 
 # ═══ V6.4.4 — KRAMAV644MARKER: KESEHATAN PERPUTARAN DOMAIN ═══
@@ -1289,63 +1304,72 @@ def _panggil_deepseek(user_content, temperature):
     return parse_ai_json(r.json()['choices'][0]['message']['content'])
 
 def ai_write(user_content, timeout=150):
-    # V6.4.3.3 — KRAMAV6433MARKER: KOREKSI MANDIRI FRASA (retry 1x, temp 0.3)
+    # V6.4.3.3 — KRAMAV6433MARKER: koreksi frasa terlarang
     # V6.4.3.4 — KRAMAV6434MARKER: materi_asli utk cek_dateline
-    # V6.5.2   — KRAMAV652C: KOREKSI MANDIRI DATELINE (retry 1x,
-    #            perbaiki dateline tanpa mengubah isi)
+    # V6.5.3   — KRAMAV652C-REV: koreksi dateline MENYERTAKAN MATERI
+    #            asli di pesan koreksi (AI melihat sendiri tempat valid)
+    # V6.5.3   — KRAMAV652E: retry koneksi TIDAK makan slot koreksi
     obj = None
     materi_asli = user_content
-    frasa_diperbaiki = False
-    dateline_diperbaiki = False
-    for percobaan in (1, 2):
+    frasa_dikoreksi = False
+    dateline_dikoreksi = False
+    koneksi_retry = 0
+    MAX_KONEKSI_RETRY = 2
+    percobaan = 0
+    while percobaan < 10:  # batas keras anti-loop tak berujung
+        percobaan += 1
         try:
             obj = _panggil_deepseek(user_content, 0.8 if percobaan == 1 else 0.3)
         except BeritaLama:
             raise
         except Exception as e:
-            if percobaan == 2:
+            if koneksi_retry >= MAX_KONEKSI_RETRY:
                 raise
-            print('       ⚠️ Panggilan AI gagal (' + str(e)[:60] + ') — coba sekali lagi.')
+            koneksi_retry += 1
+            print('       ⚠️ Panggilan AI gagal (' + str(e)[:60] + ') — retry koneksi '
+                  + str(koneksi_retry) + '/' + str(MAX_KONEKSI_RETRY) + '...')
             continue
         if str(obj.get('tolak', '')).strip():
             raise BeritaLama(str(obj.get('tolak'))[:100])
         isi_c = obj.get('isi', '').strip()
         frasa = _frasa_tertangkap(isi_c)
         cek_dl = cek_dateline(isi_c, materi_asli)
-        # KOREKSI FRASA TERLARANG — prioritas pertama
-        if frasa and percobaan == 1 and not frasa_diperbaiki:
-            frasa_diperbaiki = True
-            print('       🔁 Koreksi mandiri: frasa "' + frasa + '" — minta AI tulis ulang...')
+        # KOREKSI 1: FRASA TERLARANG (sekali seumur siklus)
+        if frasa and not frasa_dikoreksi:
+            frasa_dikoreksi = True
+            print('       🔁 Koreksi frasa: "' + frasa + '"...')
             user_content = (
                 'TULISANMU SEBELUMNYA DITOLAK SISTEM karena memuat frasa '
                 'terlarang: "' + frasa + '".\n\n'
                 'TULIS ULANG berita yang sama dengan ATURAN KETAT:\n'
                 '- HAPUS total frasa itu dan semua variannya.\n'
-                '- DILARANG deskripsi kabur pengganti nama orang ("seorang '
-                'pejabat", "seorang pengusaha", dst) — APA PUN kondisinya.\n'
-                '- Atribusi HANYA ke institusi/lembaga yang tertulis di materi '
-                '(contoh: "Kementerian Kesehatan setempat mengatakan...") ATAU '
-                'laporkan fakta langsung TANPA atribusi siapa pun.\n'
-                '- Jangan mengubah fakta, angka, tanggal, dan struktur lain.\n'
-                '- Jangan menambah topik/wilayah baru yang tidak ada di materi.\n'
+                '- DILARANG deskripsi kabur pengganti nama orang — APA PUN '
+                'kondisinya.\n'
+                '- Atribusi HANYA ke institusi yang tertulis di materi ATAU '
+                'laporkan fakta langsung tanpa atribusi.\n'
+                '- Jangan mengubah fakta, angka, tanggal, struktur lain.\n'
+                '- Jangan menambah topik/wilayah baru.\n'
                 '- Jawab HANYA JSON valid dengan format yang sama.')
             continue
-        # KOREKSI DATELINE — prioritas kedua (jika frasa sudah oke)
-        if cek_dl and percobaan == 1 and not dateline_diperbaiki:
-            dateline_diperbaiki = True
-            print('       🔁 Koreksi mandiri dateline: ' + cek_dl[:70] + ' — minta AI perbaiki...')
+        # KOREKSI 2: DATELINE (sekali seumur siklus) — DENGAN MATERI
+        if cek_dl and not dateline_dikoreksi:
+            dateline_dikoreksi = True
+            print('       🔁 Koreksi dateline: ' + cek_dl[:60] + ' — minta AI perbaiki (materi dilampirkan)...')
             user_content = (
                 'TULISANMU SEBELUMNYA DITOLAK SISTEM karena DATELINE-nya '
                 'bermasalah: ' + cek_dl + '.\n\n'
+                'Berikut MATERI SUMBER ASLI — BACA untuk melihat sendiri '
+                'tempat apa yang tertulis di dalamnya:\n'
+                '==========================================\n'
+                + materi_asli + '\n'
+                '==========================================\n\n'
                 'PERBAIKI DATELINE dengan ATURAN KETAT:\n'
-                '- Gunakan HANYA nama tempat yang TERTULIS di materi sumber '
+                '- Gunakan HANYA nama tempat yang TERTULIS di materi di atas '
                 '(kota/negara — ejaan PERSIS materi, jangan diterjemahkan).\n'
-                '- Jika materi hanya menyebut NEGARA, dateline = nama NEGARA '
-                '(contoh: "PHILIPPINES - ").\n'
-                '- Jika tidak ada tempat sama sekali di materi, ganti dateline '
-                'menjadi: "INDONESIA - ".\n'
-                '- Isi berita (fakta, angka, kutipan, tanggal, urutan paragraf) '
-                'JANGAN DIUBAH SAMA SEKALI — hanya baris dateline di awal.\n'
+                '- Jika materi hanya menyebut NEGARA, dateline = nama NEGARA.\n'
+                '- Jika tidak ada tempat sama sekali, dateline = "INDONESIA - ".\n'
+                '- Isi berita (fakta, angka, kutipan, tanggal, paragraf) JANGAN '
+                'DIUBAH SAMA SEKALI — hanya baris dateline di awal.\n'
                 '- Jawab HANYA JSON valid dengan format yang sama.')
             continue
         break
@@ -1365,7 +1389,7 @@ def ai_write(user_content, timeout=150):
         raise Exception('diblokir tembok anti-2-topik V6.4.2: ' + dua_topik[:60])
     cek_dl = cek_dateline(isi, materi_asli)
     if cek_dl:
-        raise Exception('diblokir pemeriksa dateline V6.4.3 (setelah koreksi): ' + cek_dl[:70])
+        raise Exception('diblokir pemeriksa dateline V6.4.3 (final): ' + cek_dl[:70])
     for t in JUDUL_6JAM:
         if len(kata_inti(judul) & kata_inti(t)) >= DOBEL_6JAM_MIN_KATA:
             raise Exception('diblokir anti-dobel-6jam V6.4.3: mirip "' + t[:40] + '"')
