@@ -1988,29 +1988,24 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
 
 # ══════════════════════════════════════════════════════
 #  PART 4A
-#  V6.5.4 (22 Sep) — KRAMAV654MARKER:
-#   [1] sesi_olahraga_api kini 2 jenis: 'eropa' jam 07 +
-#       'nba' jam 12 WITA (NBA HIDUP — wajib ada laga selesai;
-#       offseason/libur = diam otomatis, musim mulai = hidup sendiri)
-#   [2] Dateline Eropa & NBA = "INDONESIA - " (bukan JAKARTA):
-#       materi ESPN tak memuat kata "Jakarta" → prompt lama selalu
-#       kena koreksi/blok dateline. Nol koreksi mulai V6.5.4.
-#   [3] KATA_REGIONAL_OLAHRAGA + kata liga besar bahasa Inggris
-#       (premier league, champions league, dst) — filter lama hanya
-#       kenal bahasa Indonesia → berita Inggris dib semua.
-#   [4] FIX: source_name Rangkuman Umum dipaksa 'Rangkuman Olahraga'
-#       — dulu tersimpan nama portal (Yahoo Sports dst) sehingga
-#       gate 20 jam TIDAK PERNAH cocok (ditemukan 22 Sep).
-#  (buat_materi_rangkuman_eropa tetap, jendela 4 hari aman;
-#   V6.5.2: SUMBER_RANGKUMAN_UMUM + sesi_rangkuman_umum jam 11
-#   — KRAMAV652MARKER)
+#  V6.5.5 (23 Sep) — KRAMAV655MARKER:
+#   [1] Laporan hasil SAJA: blok JADWAL/LAGA BERIKUTNYA DIHAPUS
+#       dari materi Eropa & NBA (pemilik: tidak butuh jadwal).
+#       Syarat terbit rangkuman = ADA SKOR hasil. Tidak ada skor
+#       (international break/offseason) = skip → diganti RSS.
+#   [2] NBA kosong → fallback di run_session (PART 4B):
+#       RSS olahraga regional nangkung — jam 12 TAK PERNAH kosong.
+#  (warisan V6.5.4: gate anti-dobel data-mesin di sesi_kategori,
+#   source_name Rangkuman Olahraga dipaksa, kata Inggris filter,
+#   dateline INDONESIA utk rangkuman data-mesin)
 # ══════════════════════════════════════════════════════
 
 def buat_materi_rangkuman_eropa():
+    # V6.5.5 — KRAMAV655MARKER: HANYA hasil + klasemen (tanpa jadwal).
+    # Wajib ada skor: tanpa skor = tidak ada yang dilaporkan → None.
     skor_semua = []
     klasemen_blok = []
     klasemen_teks = []
-    jadwal_teks = []
     for code, nama in ESPN_LIGA:
         for s in espn_skor_rentang(code):
             skor_semua.append(nama.split(' (')[0] + ': ' + s)
@@ -2018,21 +2013,14 @@ def buat_materi_rangkuman_eropa():
         if blok:
             klasemen_blok.append(blok)
             klasemen_teks.append(teks)
-        j = espn_jadwal_berikutnya(code, nama, maks=2)
-        if j:
-            jadwal_teks.append(nama.split(' (')[0] + ': ' + '; '.join(j))
-    if not skor_semua and not klasemen_blok:
+    if not skor_semua:
         return None
     bagian = []
-    if skor_semua:
-        bagian.append('HASIL LAGA TERAKHIR (ANGKA RESMI MESIN — SALIN PERSIS):\n'
-                      + '\n'.join(skor_semua))
+    bagian.append('HASIL LAGA TERAKHIR (ANGKA RESMI MESIN — SALIN PERSIS):\n'
+                  + '\n'.join(skor_semua))
     if klasemen_teks:
         bagian.append('KLASMEN (ANGKA RESMI MESIN — WAJIB disebut posisi tiap tim '
                       'yang dibahas):\n' + '\n'.join(klasemen_teks[:4]))
-    if jadwal_teks:
-        bagian.append('LAGA BERIKUTNYA (WAJIB sebut di paragraf akhir):\n'
-                      + '\n'.join(jadwal_teks[:4]))
     if klasemen_blok:
         bagian.append('BLOK KLASMEN SIAP-RENDER (WAJIB disalin APA ADUNA di akhir '
                       'isi berita, jangan diubah, jangan digandakan):\n'
@@ -2052,8 +2040,10 @@ def sesi_olahraga_api(jenis):
     # V6.5.4 — KRAMAV654MARKER: dua rangkuman data-mesin:
     #   'eropa' jam 07 WITA — source 'ESPN Data'
     #   'nba'   jam 12 WITA — source 'ESPN Data NBA'
-    # Urutan run: sesi ini jalan SEBELUM sesi_kategori (lihat 4B)
-    # supaya tidak diblokir anti-dobel-6jam oleh RSS olahraga.
+    # V6.5.5 — KRAMAV655MARKER: materi TANPA jadwal (hasil SAJA).
+    # Kalau kosong → return 0; penggantinya:
+    #   - eropa : gate sesi_kategori jam 07 (RSS nangkung otomatis)
+    #   - nba   : fallback RSS di run_session (PART 4B)
     jam = datetime.now(WITA).hour
 
     # ═══ LIGA EROPA — jam 07 WITA ═══
@@ -2064,21 +2054,22 @@ def sesi_olahraga_api(jenis):
             return 0
         materi = buat_materi_rangkuman_eropa()
         if not materi:
-            print('   🏖️ Tidak ada laga selesai/klasemen dari ESPN — skip aman.')
+            print('   🏖️ Tidak ada hasil laga Eropa semalam (international break?) — skip, RSS nangkung.')
             return 0
         k = konteks_waktu()
         user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
-                'TUGAS KHUSUS: BERITA RANGKUMAN HASIL LIGA EROPA (SATU judul, '
-                'BANYAK laporan — sederhana: hasil akhir + klasmen terbaru).\n\n'
+                'TUGAS KHUSUS: BERITA RANGKUMAN HASIL LIGA EROPA SEMALAM (SATU judul, '
+                'BANYAK laporan hasil akhir + klasmen terbaru).\n\n'
                 + materi + '\n\n'
                 'ATURAN TAMBAHAN:\n'
-                '- Dateline: "INDONESIA - " (rangkuman data-mesin — V6.5.4).\n'
+                '- Dateline: "INDONESIA - " (rangkuman data-mesin).\n'
                 '- Panjang: 300-500 kata.\n'
-                '- WAJIB membahas SEMUA liga yang diberikan.\n'
+                '- WAJIB membahas SEMUA hasil laga yang diberikan.\n'
                 '- WAJIB menyebut POSISI + POIN setiap tim yang kamu sebut.\n'
                 '- Jika ada blok [KLASMEN], WAJIB menyalinnya APA ADUNA di paragraf '
                 'terakhir isi (setelah paragraf terakhir, baris baru).\n'
                 '- DILARANG menebak penyebab hasil laga; DILARANG menambah angka/laga.\n'
+                '- DILARANG menulis jadwal laga berikutnya — materi tidak menyediakan.\n'
                 '- Judul maks 10 kata: sebut kompetisi + kata kunci hasil.\n'
                 '- deskripsi_gambar: tema stadion/bola/liga 3-6 kata — TANPA hewan, '
                 'tanpa manusia (sistem memblokir).\n'
@@ -2102,7 +2093,7 @@ def sesi_olahraga_api(jenis):
             print('   ⚠️ Insert gagal: ' + str(e)[:80])
             return 0
 
-    # ═══ NBA — jam 12 WITA (V6.5.4 BARU) ═══
+    # ═══ NBA — jam 12 WITA ═══
     if jenis == 'nba' and jam == 12:
         print('\n🏀 RANGKUMAN NBA TERJADWAL — jam 12:00 WITA')
         if olahraga_sudah_terbit_dengan_data('ESPN Data NBA'):
@@ -2110,15 +2101,15 @@ def sesi_olahraga_api(jenis):
             return 0
         materi = buat_materi_rangkuman_nba()
         if not materi:
-            print('   🏖️ Tidak ada laga NBA selesai (offseason/libur) — skip aman.')
+            print('   🏖️ Tidak ada laga NBA selesai (offseason/libur) — skip, fallback RSS dijalankan.')
             return 0
         k = konteks_waktu()
         user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
-                'TUGAS KHUSUS: BERITA RANGKUMAN NBA (SATU judul, BANYAK laporan — '
-                'hasil laga semalam + klasmen terbaru).\n\n'
+                'TUGAS KHUSUS: BERITA RANGKUMAN HASIL NBA SEMALAM (SATU judul, '
+                'BANYAK laporan hasil akhir + klasmen terbaru).\n\n'
                 + materi + '\n\n'
                 'ATURAN TAMBAHAN:\n'
-                '- Dateline: "INDONESIA - " (rangkuman data-mesin — V6.5.4).\n'
+                '- Dateline: "INDONESIA - " (rangkuman data-mesin).\n'
                 '- Panjang: 300-500 kata.\n'
                 '- WAJIB membahas SEMUA hasil laga yang diberikan (satu paragraf '
                 'per laga atau digabung rapi).\n'
@@ -2127,6 +2118,7 @@ def sesi_olahraga_api(jenis):
                 'terakhir isi (setelah paragraf terakhir, baris baru).\n'
                 '- DILARANG menebak penyebab hasil laga; DILARANG menambah '
                 'angka/laga/pemain di luar data.\n'
+                '- DILARANG menulis jadwal laga berikutnya — materi tidak menyediakan.\n'
                 '- Judul maks 10 kata: sebut NBA + kata kunci hasil.\n'
                 '- deskripsi_gambar: tema bola basket/lapangan indoor 3-6 kata — '
                 'TANPA hewan, tanpa manusia (sistem memblokir).\n'
@@ -2153,7 +2145,7 @@ def sesi_olahraga_api(jenis):
     return 0
 
 # ═══ V6.5.4 — KRAMAV654MARKER: MATERI RANGKUMAN NBA ═══
-# WAJIB ada laga selesai (skor). Tidak ada skor = None → skip.
+# V6.5.5: tanpa jadwal. Wajib ada skor: tanpa skor = None → fallback RSS.
 # Klasemen NBA dari ESPN punya 2 children (East/West) — sudah
 # ditangani espn_klasemen. Kolom "poin" NBA = jumlah kemenangan.
 def buat_materi_rangkuman_nba():
@@ -2163,17 +2155,12 @@ def buat_materi_rangkuman_nba():
     if not skor_semua:
         return None
     blok, teks = espn_klasemen('basketball/nba', 'NBA')
-    jadwal_teks = espn_jadwal_berikutnya('basketball/nba', 'NBA', maks=3)
     bagian = []
-    if skor_semua:
-        bagian.append('HASIL LAGA NBA TERAKHIR (ANGKA RESMI MESIN — SALIN PERSIS):\n'
-                      + '\n'.join(skor_semua))
+    bagian.append('HASIL LAGA NBA TERAKHIR (ANGKA RESMI MESIN — SALIN PERSIS):\n'
+                  + '\n'.join(skor_semua))
     if teks:
         bagian.append('KLASMEN NBA (ANGKA RESMI MESIN — WAJIB disebut posisi tiap tim '
                       'yang dibahas):\n' + teks)
-    if jadwal_teks:
-        bagian.append('LAGA BERIKUTNYA (WAJIB sebut di paragraf akhir):\n'
-                      + '; '.join(jadwal_teks))
     if blok:
         bagian.append('BLOK KLASMEN SIAP-RENDER (WAJIB disalin APA ADUNA di akhir '
                       'isi berita, jangan diubah, jangan digandakan):\n' + blok)
@@ -2301,18 +2288,14 @@ def sesi_rangkuman_umum(today_urls, seen):
 
 # ══════════════════════════════════════════════════════
 #  PART 4B — PENUTUP
-#  V6.5.4 (22 Sep) — KRAMAV654MARKER — PERBAIKAN URUTAN & GATE:
-#   [1] run_session: sesi data-mesin (Eropa 07, NBA 12, Umum 11)
-#       JALAN DULU sebelum sesi_kategori. Sebelumnya RSS olahraga
-#       terbit duluan → anti-dobel-6jam MEMBLOKIR rangkuman ESPN/
-#       Umum di semua 4 run (penyebab Liga Eropa & Rangkuman Umum
-#       tak pernah muncul — ditemukan & dibuktikan 22 Sep).
-#   [2] GATE anti-dobel di sesi_kategori: RSS olahraga jam 07 skip
-#       jika 'ESPN Data' sudah terbit; jam 11 skip jika 'Rangkuman
-#       Olahraga' sudah terbit. Rangkuman GAGAL/kosong → RSS nangkung.
-#   [3] IDX: 'IHSG Bursa Efek Jakarta' → kata "jakarta" ADA di
-#       materi → pemeriksa dateline lolos TANPA koreksi (dulu tiap
-#       run kena koreksi/blok dateline — penyebab IDX sering bolong).
+#  V6.5.5 (23 Sep) — KRAMAV655MARKER — FALLBACK NBA:
+#   [1] NBA jam 12 kosong (offseason/libur) → JANGAN diam:
+#       run_session langsung fallback RSS olahraga regional
+#       (produksi_satu wajib_regional) → jam 12 selalu ada
+#       berita olahraga apa pun kondisinya.
+#  (warisan V6.5.4: data-mesin dulu sebelum kategori; gate anti-dobel
+#   di sesi_kategori; IDX "Bursa Efek Jakarta" lolos dateline tanpa
+#   koreksi)
 #  ═══ SEMENTARA BAGIAN INI PENUH VERSI FILE ══
 #  File VERSI & PART TERAKHIR dibaca otomatis oleh cek_versi.py
 #  (Sentinel di baris paling bawah file — WAJIB tetap di ujung!)
@@ -2323,6 +2306,7 @@ def sesi_rangkuman_umum(today_urls, seen):
 #   KRAMAV644MARKER(3x P1/P3B/P4B) • KRAMAV65MARKER(3x P1/P3B/P4B)
 #   KRAMAV651MARKER(3x P2/P3B) • KRAMAV651B(2x P2/P3B)
 #   KRAMAV652MARKER(5x P3B/P4A/P4B) • KRAMAV654MARKER(V6.5.4, P4A/P4B)
+#   KRAMAV655MARKER(V6.5.5, P4A/P4B)
 # ══════════════════════════════════════════════════════
 
 def sesi_breaking(today_urls, seen):
@@ -2778,7 +2762,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.5.4)')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.5.5)')
     print('══════════════════════════════════════════')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -2791,11 +2775,18 @@ def run_session():
     print('   🖼️ ' + str(len(muat_gambar_terpakai())) + ' gambar 36 jam terakhir terdaftar (anti-dobel gambar).')
     seen = set()
     # ═══ V6.5.4 — KRAMAV654MARKER: DATA-MESIN DULU, KATEGORI BELAKANGAN ═══
-    # Urutan lama (breaking→kategori→idx→eropa→umum) membuat RSS olahraga
-    # terbit duluan lalu rangkuman ESPN/Umum diblokir anti-dobel-6jam di
-    # KEEMPAT run (7:07/22/37/52) → tak pernah muncul. Kini dibalik.
+    # Urutan lama membuat RSS olahraga terbit duluan lalu rangkuman
+    # ESPN/Umum diblokir anti-dobel-6jam. Kini dibalik.
     n_liga = sesi_olahraga_api('eropa')      # jam 07 WITA
-    n_nba = sesi_olahraga_api('nba')         # jam 12 WITA (V6.5.4 baru)
+    n_nba = sesi_olahraga_api('nba')         # jam 12 WITA
+    # ═══ V6.5.5 — KRAMAV655MARKER: NBA KOSONG → JANGAN DIAM ═══
+    # Offseason/libur NBA = bukan alasan jam 12 tanpa olahraga.
+    # Fallback: RSS olahraga regional (filter kata regional tetap jalan).
+    if n_nba == 0 and datetime.now(WITA).hour == 12:
+        print('   🔁 NBA kosong (offseason/libur) — fallback RSS olahraga regional...')
+        if produksi_satu('olahraga', today_urls, seen, False,
+                         wajib_regional=True):
+            n_nba = 1
     n_umum = sesi_rangkuman_umum(today_urls, seen)  # jam 11 WITA
     n_brk = sesi_breaking(today_urls, seen)
     n_kat = sesi_kategori(today_urls, seen)
@@ -2820,7 +2811,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.5.4 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.5.5 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -2841,6 +2832,6 @@ if __name__ == '__main__':
 #  ujung part baru itu + update nilai di bawah.
 #  Dibaca otomatis oleh cek_versi.py tiap run (GitHub Actions).
 # ══════════════════════════════════════════════════════
-FILE_VERSI      = 'V6.5.4'
+FILE_VERSI      = 'V6.5.5'
 FILE_PART_AKHIR = 'PART 4B'
-# AKHIR PART 4B — FILE V6.5.4 SELESAI
+# AKHIR PART 4B — FILE V6.5.5 SELESAI
