@@ -1,11 +1,8 @@
 name: AI Wartawan KramaNews
 
-# V6.4.2-KAWAL (19 Sep 2026): cron ganda + JAM MULAI 07:00 WITA.
-# Jendela 05:00-06:59 WITA DIHAPUS (keputusan pemilik: tidak ada lagi
-# berita jam 5-6 pagi). Run pertama tiap hari = 07:07 WITA — pas dengan
-# jendela RANGKUMAN LIGA EROPA yang kini berjalan jam 07:00.
-# Kalau satu run dibuang GitHub (antrean global padat), kawal
-# menit 22/52 menyelamatkan. Run dobel AMAN (anti-dobel menolak, biaya nol).
+# V6.5.2 (21 Sep): + step cek_versi.py — penjaga versi & struktur
+# file otomatis (SENTINEL VERSI dibaca tiap run, hasil di baris
+# awal log). Jadwal tidak berubah.
 on:
   schedule:
     # ═══ SEMUA CRON DALAM UTC — DIKALIBRASI KE WITA (UTC+8) ═══
@@ -32,8 +29,12 @@ jobs:
       - name: Install library
         run: pip install requests feedparser
 
+      - name: Cek versi & struktur file
+        run: python cek_versi.py
+
       - name: Wartawan berburu berita
         run: python3 skrip-wartawan.py --sekali
         env:
           DEEPSEEK_KEY: ${{ secrets.DEEPSEEK_KEY }}
           SUPABASE_PUBLISHABLE: ${{ secrets.SUPABASE_PUBLISHABLE }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
