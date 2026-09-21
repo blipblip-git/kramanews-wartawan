@@ -1186,13 +1186,14 @@ def cek_deskripsi_gambar(deskripsi):
 
 # ══════════════════════════════════════════════════════
 #  PART 3B
-#  (lanjutan langsung PART 3A — JAM_KESEHATAN [KRAMAV644],
-#   JAM_TEKNOLOGI [KRAMAV65], POLA_LARANG, ai_write koreksi
-#   mandiri [KRAMAV6433] + materi_asli [KRAMAV6434], rewrite
-#   single/multi, gempa, gambar terpakai, wikimedia anti-hewan,
-#   V6.5.2 BARU: cari_gambar_pexels + cari_gambar_otomatis
-#   [KRAMAV652MARKER] + vision CEK RELEVANSI JUDUL,
-#   insert_news, espn_klasemen/skor_semalam/jadwal/rentang)
+#  (JAM_KESEHATAN [KRAMAV644], JAM_TEKNOLOGI [KRAMAV65],
+#   POLA_LARANG, ai_write koreksi mandiri [6433] + materi_asli
+#   [6434], rewrite single/multi, gempa, gambar terpakai,
+#   wikimedia anti-hewan, pexels [KRAMAV652], cari_gambar_otomatis,
+#   vision anti-manusia+anti-hewan+relevansi, insert_news,
+#   REVISI KRAMAV652B: FUNGSI TEKNOLOGI DIPULIHKAN
+#   (_target_teknologi, ai_rewrite_teknologi_single/multi —
+#   hilang saat restrukturisasi 4A), espn 4 fungsi)
 # ══════════════════════════════════════════════════════
 
 # ═══ V6.4.4 — KRAMAV644MARKER: KESEHATAN PERPUTARAN DOMAIN ═══
@@ -1555,9 +1556,6 @@ def cari_gambar_wikimedia(deskripsi):
     return ''
 
 # ═══ V6.5.2 — KRAMAV652MARKER: PEXELS UTAMA ═══
-# Kunci API dari GitHub Secrets: PEXELS_API_KEY.
-# Foto hasil Pexels = ILUSTRASI (bukan dokumentasi kejadian) —
-# berita tayang dengan label "Foto: Ilustrasi" (ditangani web/app.js).
 PEXELS_API = 'https://api.pexels.com/v1/search'
 
 def cari_gambar_pexels(deskripsi):
@@ -1591,8 +1589,7 @@ def cari_gambar_pexels(deskripsi):
 
 def cari_gambar_otomatis(deskripsi, judul_berita):
     """V6.5.2 — urutan resmi: Pexels → Wikimedia → kosong.
-    Keduanya sudah melewati filter anti-hewan/anti-manusia;
-    vision gate (dengan cek relevansi) = pengaman terakhir."""
+    Vision gate (dengan cek relevansi) = pengaman terakhir."""
     img = cari_gambar_pexels(deskripsi)
     if img:
         return img
@@ -1687,6 +1684,82 @@ def gambar_lolos_blur_gate(img_url, judul_berita):
     print('       👁️ Vision skor: ' + str(skor) + '/10 → ' +
           ('LOLOS' if skor >= BLUR_SKOR_MINIMUM else 'DIBUANG (blur/manusia/hewan/tak relevan)'))
     return skor >= BLUR_SKOR_MINIMUM
+
+# ═══ V6.5.2 — KRAMAV652B: FUNGSI TEKNOLOGI DIPULIHKAN ═══
+# Hilang saat restrukturisasi 4A — dipulihkan (kasus "is not defined")
+def _target_teknologi(dom):
+    if dom['nama'].startswith(('Gadget', 'AI')):
+        return ('600-900 kata (8-12 paragraf) — WAJIB panjang & menyeluruh '
+                'sesuai aturan kedalaman domain "2 halaman".')
+    return '400-600 kata (6-9 paragraf) — LENGKAP & BANYAK.'
+
+def ai_rewrite_teknologi_single(c, dom):
+    k = konteks_waktu()
+    materi, kaya = ambil_materi_kaya(c)
+    label_materi = 'ISI PENUH ARTIKEL SUMBER (scraping)' if kaya else 'RINGKASAN SUMBER'
+    tgl = c.get('tgl_pub')
+    if tgl:
+        baris_tgl = ('TANGGAL PUBLIKASI SUMBER: ' + tgl + ' — sumber terverifikasi segar.\n'
+                     'WAJIB: tulis kejadian dengan tanggal itu di dalam berita.\n')
+    else:
+        baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia — sistem memverifikasi '
+                     'umur sumber maksimal 30 jam. Tulis kejadian TERKINI ('
+                     + k['hari_ini'] + ' / ' + k['kemarin'] + ') dengan tanggal konkret.\n')
+    user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
+            + baris_tgl +
+            'JENIS MATERI: ' + label_materi + '\n'
+            'TARGET PANJANG: ' + _target_teknologi(dom) + '\n\n'
+            'DOMAIN TEKNOLOGI HARI INI: ' + dom['nama'] + '\n'
+            'ATURAN KEDALAMAN DOMAIN (WAJIB KUTUH):\n' + dom['aturan'] + '\n\n'
+            'MATERI SUMBER:\n'
+            'Judul asli: ' + c['title'] + '\n'
+            'Isi: ' + materi + '\n\n'
+            'Tulis berita teknologi sesuai SEMUA aturan sistem + ATURAN '
+            'KEDALAMAN DOMAIN di atas:\n'
+            '- TANGGAL KONKRET di isi berita.\n'
+            '- DATELINE: HANYA dari tempat yang tertulis di materi — ejaan PERSIS '
+            'materi, DILARANG menerjemahkan nama kota.\n'
+            '- NARASUMBER: "seorang pejabat/dll" SELALU DILARANG — atribusi '
+            'ke institusi tertulis atau lapor fakta langsung.\n'
+            '- DILARANG mengarang spesifikasi/harga/angka di luar materi — '
+            '"lengkap" berarti menggali seluruh materi, BUKAN mengarang.\n'
+            '- JUDUL maks 10 kata; banyak gadget dalam satu berita = SATU topik.\n'
+            '- deskripsi_gambar: 3-6 kata kunci DARI ELEMEN UTAMA BERITA — DILARANG '
+            'manusia, hewan, insiden-korban.\n'
+            '- Tulis ulang kalimatmu sendiri; jangan sebut media sumber; '
+            'salin utuh angka.')
+    return ai_write(user)
+
+def ai_rewrite_teknologi_multi(items, dom):
+    k = konteks_waktu()
+    bagian = []
+    tgl = None
+    for i, it in enumerate(items[:4], 1):
+        materi, kaya = ambil_materi_kaya(it)
+        if it.get('tgl_pub') and not tgl:
+            tgl = it['tgl_pub']
+        bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title'] + '\nIsi: ' + materi[:2000])
+    if tgl:
+        baris_tgl = ('TANGGAL PUBLIKASI SUMBER: ' + tgl + ' — sumber terverifikasi segar.\n'
+                     'WAJIB: tulis kejadian dengan tanggal itu di dalam berita.\n')
+    else:
+        baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia — sistem memverifikasi '
+                     'umur maksimal 30 jam. Tulis kejadian TERKINI ('
+                     + k['hari_ini'] + ' / ' + k['kemarin'] + ') tanggal konkret.\n')
+    user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
+            + baris_tgl +
+            'TARGET PANJANG: ' + _target_teknologi(dom) + '\n\n'
+            'DOMAIN TEKNOLOGI HARI INI: ' + dom['nama'] + '\n'
+            'ATURAN KEDALAMAN DOMAIN (WAJIB KUTUH):\n' + dom['aturan'] + '\n\n'
+            'Berikut beberapa materi teknologi domain ini:\n\n'
+            + '\n\n'.join(bagian) +
+            '\n\nGabungkan menjadi SATU berita teknologi kaya sesuai SEMUA '
+            'aturan sistem + ATURAN KEDALAMAN DOMAIN di atas:\n'
+            '- TANGGAL KONKRET; DATELINE dari materi (ejaan PERSIS, KRAMAV651B).\n'
+            '- NARASUMBER: atribusi institusi saja — dilarang kabur.\n'
+            '- DILARANG mengarang spesifikasi/harga/angka di luar materi.\n'
+            '- deskripsi_gambar tanpa manusia/hewan/ibadah; jangan sebut media.\n')
+    return ai_write(user, timeout=180)
 
 # ═════════ V6.4.2: ESPN — FIX NBA ROUTING ═════════
 
