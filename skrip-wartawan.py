@@ -412,12 +412,9 @@ HUNT = {
 
 # ══════════════════════════════════════════════════════
 #  PART 2
-#  (feeds breaking [DUNIA 11 sumber + ASIA — V6.5.2],
+#  (feeds breaking [DUNIA 11 sumber — V6.5.2 +ASIA+AJ/AP/F24],
 #   kata-kunci, anti-dobel 36jam & 6jam, scraper
-#   **KRAMAV652D BARU: LOG DETAIL GAGAL JINA** — tiap gagal
-#   dicatat alasannya: HTTP status, hasil pendek (dengan jumlah
-#   karakter), timeout, exception — supaya diagnosa akurat
-#   tanpa tebak-tebakan,
+#   [KRAMAV652D log detail Jina + KRAMAV652F FIX BUG hasil],
 #   build_system_prompt dengan ATURAN TEKNOLOGI per domain +
 #   ATURAN KESEHATAN + ATURAN RANGKUMAN OLAHRAGA +
 #   ATURAN GAMBAR anti-hewan)
@@ -586,6 +583,7 @@ def scrape_artikel(url):
     if not url:
         return ''
     url_asli = resolusi_link_google(url)
+    hasil = ''  # KRAMAV652F — FIX BUG: variabel selalu terdefinisi
     try:
         headers = {
             'User-Agent': random.choice(UA_LIST),
@@ -715,7 +713,7 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV642MARKER — V6.5.3: fokus ASEAN & Timur Tengah; gambar tema alam/kota
+KRAMAV642MARKER — V6.5.2: fokus ASEAN & Timur Tengah; gambar tema alam/kota
 TANPA manusia & TANPA hewan; satu topik per berita; angka mesin disalin
 persis; dateline wajib dari materi sumber; kesehatan = edukasi pakar;
 teknologi = kedalaman per domain harian.
