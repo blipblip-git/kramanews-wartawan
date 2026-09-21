@@ -1988,12 +1988,22 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
 
 # ══════════════════════════════════════════════════════
 #  PART 4A
-#  (buat_materi_rangkuman_eropa [tetap, jendela 4 hari aman],
-#   sesi_olahraga_api SIMPEL: hanya 'eropa' jam 07 — NBA ESPN
-#   & Rangkuman Malam 00:00 DIHAPUS [keputusan pemilik 21 Sep],
-#   V6.5.2 BARU: KATA_REGIONAL_OLAHRAGA + SUMBER_RANGKUMAN_UMUM
-#   [A+B: portal besar + query event] + sesi_rangkuman_umum
-#   jam 11:00 + ai_rewrite_rangkuman_umum — KRAMAV652MARKER)
+#  V6.5.4 (22 Sep) — KRAMAV654MARKER:
+#   [1] sesi_olahraga_api kini 2 jenis: 'eropa' jam 07 +
+#       'nba' jam 12 WITA (NBA HIDUP — wajib ada laga selesai;
+#       offseason/libur = diam otomatis, musim mulai = hidup sendiri)
+#   [2] Dateline Eropa & NBA = "INDONESIA - " (bukan JAKARTA):
+#       materi ESPN tak memuat kata "Jakarta" → prompt lama selalu
+#       kena koreksi/blok dateline. Nol koreksi mulai V6.5.4.
+#   [3] KATA_REGIONAL_OLAHRAGA + kata liga besar bahasa Inggris
+#       (premier league, champions league, dst) — filter lama hanya
+#       kenal bahasa Indonesia → berita Inggris dib semua.
+#   [4] FIX: source_name Rangkuman Umum dipaksa 'Rangkuman Olahraga'
+#       — dulu tersimpan nama portal (Yahoo Sports dst) sehingga
+#       gate 20 jam TIDAK PERNAH cocok (ditemukan 22 Sep).
+#  (buat_materi_rangkuman_eropa tetap, jendela 4 hari aman;
+#   V6.5.2: SUMBER_RANGKUMAN_UMUM + sesi_rangkuman_umum jam 11
+#   — KRAMAV652MARKER)
 # ══════════════════════════════════════════════════════
 
 def buat_materi_rangkuman_eropa():
@@ -2039,55 +2049,135 @@ def olahraga_sudah_terbit_dengan_data(sumber='ESPN Data'):
         return False
 
 def sesi_olahraga_api(jenis):
-    # V6.5.2 — hanya 'eropa' (jam 07). NBA & Malam DIHAPUS:
-    # NBA bukan lagi fokus utama; slot 13/17/20 produksi RSS
-    # berfilter regional (PART 4B); slot 11 = Rangkuman Umum.
+    # V6.5.4 — KRAMAV654MARKER: dua rangkuman data-mesin:
+    #   'eropa' jam 07 WITA — source 'ESPN Data'
+    #   'nba'   jam 12 WITA — source 'ESPN Data NBA'
+    # Urutan run: sesi ini jalan SEBELUM sesi_kategori (lihat 4B)
+    # supaya tidak diblokir anti-dobel-6jam oleh RSS olahraga.
     jam = datetime.now(WITA).hour
-    if jenis != 'eropa' or jam != 7:
-        return 0
-    print('\n⚽ RANGKUMAN LIGA EROPA TERJADWAL — jam 7:00 WITA')
-    if olahraga_sudah_terbit_dengan_data():
-        print('   ⏭️ Berita data-olahraga sudah terbit 20 jam terakhir — skip.')
-        return 0
-    materi = buat_materi_rangkuman_eropa()
-    if not materi:
-        print('   🏖️ Tidak ada laga selesai/klasemen dari ESPN — skip aman.')
-        return 0
-    k = konteks_waktu()
-    user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
-            'TUGAS KHUSUS: BERITA RANGKUMAN HASIL LIGA EROPA (SATU judul, '
-            'BANYAK laporan — sederhana: hasil akhir + klasmen terbaru).\n\n'
-            + materi + '\n\n'
-            'ATURAN TAMBAHAN:\n'
-            '- Dateline: "JAKARTA, DKI JAKARTA - ".\n'
-            '- Panjang: 300-500 kata.\n'
-            '- WAJIB membahas SEMUA liga yang diberikan.\n'
-            '- WAJIB menyebut POSISI + POIN setiap tim yang kamu sebut.\n'
-            '- Jika ada blok [KLASMEN], WAJIB menyalinnya APA ADUNA di paragraf '
-            'terakhir isi (setelah paragraf terakhir, baris baru).\n'
-            '- DILARANG menebak penyebab hasil laga; DILARANG menambah angka/laga.\n'
-            '- Judul maks 10 kata: sebut kompetisi + kata kunci hasil.\n'
-            '- deskripsi_gambar: tema stadion/bola/liga 3-6 kata — TANPA hewan, '
-            'tanpa manusia (sistem memblokir).\n'
-            '- Jangan sebut sumber data. Tulis berita.')
-    print('   ✍️ AI menulis berita dari data ESPN...')
-    try:
-        judul, isi, ringkasan, waktu, gambar = ai_write(user)
-    except BeritaLama as bl:
-        print('   ⏳ Ditolak AI: ' + str(bl)[:60])
-        return 0
-    except Exception as e:
-        print('   ⛔ ' + str(e)[:90])
-        return 0
-    try:
-        insert_news(judul, isi, ringkasan, 'olahraga', '',
-                    'https://www.espn.com/soccer/ (data mesin eropa)',
-                    'ESPN Data', 'published', breaking=True, deskripsi_gambar=gambar)
-        print('   ✅ Rangkuman Liga Eropa BREAKING TERBIT: ' + judul[:60])
-        return 1
-    except Exception as e:
-        print('   ⚠️ Insert gagal: ' + str(e)[:80])
-        return 0
+
+    # ═══ LIGA EROPA — jam 07 WITA ═══
+    if jenis == 'eropa' and jam == 7:
+        print('\n⚽ RANGKUMAN LIGA EROPA TERJADWAL — jam 7:00 WITA')
+        if olahraga_sudah_terbit_dengan_data('ESPN Data'):
+            print('   ⏭️ Berita data-olahraga Eropa sudah terbit 20 jam terakhir — skip.')
+            return 0
+        materi = buat_materi_rangkuman_eropa()
+        if not materi:
+            print('   🏖️ Tidak ada laga selesai/klasemen dari ESPN — skip aman.')
+            return 0
+        k = konteks_waktu()
+        user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
+                'TUGAS KHUSUS: BERITA RANGKUMAN HASIL LIGA EROPA (SATU judul, '
+                'BANYAK laporan — sederhana: hasil akhir + klasmen terbaru).\n\n'
+                + materi + '\n\n'
+                'ATURAN TAMBAHAN:\n'
+                '- Dateline: "INDONESIA - " (rangkuman data-mesin — V6.5.4).\n'
+                '- Panjang: 300-500 kata.\n'
+                '- WAJIB membahas SEMUA liga yang diberikan.\n'
+                '- WAJIB menyebut POSISI + POIN setiap tim yang kamu sebut.\n'
+                '- Jika ada blok [KLASMEN], WAJIB menyalinnya APA ADUNA di paragraf '
+                'terakhir isi (setelah paragraf terakhir, baris baru).\n'
+                '- DILARANG menebak penyebab hasil laga; DILARANG menambah angka/laga.\n'
+                '- Judul maks 10 kata: sebut kompetisi + kata kunci hasil.\n'
+                '- deskripsi_gambar: tema stadion/bola/liga 3-6 kata — TANPA hewan, '
+                'tanpa manusia (sistem memblokir).\n'
+                '- Jangan sebut sumber data. Tulis berita.')
+        print('   ✍️ AI menulis berita dari data ESPN...')
+        try:
+            judul, isi, ringkasan, waktu, gambar = ai_write(user)
+        except BeritaLama as bl:
+            print('   ⏳ Ditolak AI: ' + str(bl)[:60])
+            return 0
+        except Exception as e:
+            print('   ⛔ ' + str(e)[:90])
+            return 0
+        try:
+            insert_news(judul, isi, ringkasan, 'olahraga', '',
+                        'https://www.espn.com/soccer/ (data mesin eropa)',
+                        'ESPN Data', 'published', breaking=True, deskripsi_gambar=gambar)
+            print('   ✅ Rangkuman Liga Eropa BREAKING TERBIT: ' + judul[:60])
+            return 1
+        except Exception as e:
+            print('   ⚠️ Insert gagal: ' + str(e)[:80])
+            return 0
+
+    # ═══ NBA — jam 12 WITA (V6.5.4 BARU) ═══
+    if jenis == 'nba' and jam == 12:
+        print('\n🏀 RANGKUMAN NBA TERJADWAL — jam 12:00 WITA')
+        if olahraga_sudah_terbit_dengan_data('ESPN Data NBA'):
+            print('   ⏭️ Rangkuman NBA sudah terbit 20 jam terakhir — skip.')
+            return 0
+        materi = buat_materi_rangkuman_nba()
+        if not materi:
+            print('   🏖️ Tidak ada laga NBA selesai (offseason/libur) — skip aman.')
+            return 0
+        k = konteks_waktu()
+        user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
+                'TUGAS KHUSUS: BERITA RANGKUMAN NBA (SATU judul, BANYAK laporan — '
+                'hasil laga semalam + klasmen terbaru).\n\n'
+                + materi + '\n\n'
+                'ATURAN TAMBAHAN:\n'
+                '- Dateline: "INDONESIA - " (rangkuman data-mesin — V6.5.4).\n'
+                '- Panjang: 300-500 kata.\n'
+                '- WAJIB membahas SEMUA hasil laga yang diberikan (satu paragraf '
+                'per laga atau digabung rapi).\n'
+                '- WAJIB menyebut POSISI setiap tim yang kamu bahas dari klasmen.\n'
+                '- Jika ada blok [KLASMEN], WAJIB menyalinnya APA ADUNA di paragraf '
+                'terakhir isi (setelah paragraf terakhir, baris baru).\n'
+                '- DILARANG menebak penyebab hasil laga; DILARANG menambah '
+                'angka/laga/pemain di luar data.\n'
+                '- Judul maks 10 kata: sebut NBA + kata kunci hasil.\n'
+                '- deskripsi_gambar: tema bola basket/lapangan indoor 3-6 kata — '
+                'TANPA hewan, tanpa manusia (sistem memblokir).\n'
+                '- Jangan sebut sumber data. Tulis berita.')
+        print('   ✍️ AI menulis rangkuman NBA dari data ESPN...')
+        try:
+            judul, isi, ringkasan, waktu, gambar = ai_write(user)
+        except BeritaLama as bl:
+            print('   ⏳ Ditolak AI: ' + str(bl)[:60])
+            return 0
+        except Exception as e:
+            print('   ⛔ ' + str(e)[:90])
+            return 0
+        try:
+            insert_news(judul, isi, ringkasan, 'olahraga', '',
+                        'https://www.espn.com/nba/ (data mesin nba)',
+                        'ESPN Data NBA', 'published', breaking=True, deskripsi_gambar=gambar)
+            print('   ✅ Rangkuman NBA BREAKING TERBIT: ' + judul[:60])
+            return 1
+        except Exception as e:
+            print('   ⚠️ Insert gagal: ' + str(e)[:80])
+            return 0
+
+    return 0
+
+# ═══ V6.5.4 — KRAMAV654MARKER: MATERI RANGKUMAN NBA ═══
+# WAJIB ada laga selesai (skor). Tidak ada skor = None → skip.
+# Klasemen NBA dari ESPN punya 2 children (East/West) — sudah
+# ditangani espn_klasemen. Kolom "poin" NBA = jumlah kemenangan.
+def buat_materi_rangkuman_nba():
+    skor_semua = []
+    for s in espn_skor_rentang('basketball/nba', hari_mundur=2):
+        skor_semua.append('NBA: ' + s)
+    if not skor_semua:
+        return None
+    blok, teks = espn_klasemen('basketball/nba', 'NBA')
+    jadwal_teks = espn_jadwal_berikutnya('basketball/nba', 'NBA', maks=3)
+    bagian = []
+    if skor_semua:
+        bagian.append('HASIL LAGA NBA TERAKHIR (ANGKA RESMI MESIN — SALIN PERSIS):\n'
+                      + '\n'.join(skor_semua))
+    if teks:
+        bagian.append('KLASMEN NBA (ANGKA RESMI MESIN — WAJIB disebut posisi tiap tim '
+                      'yang dibahas):\n' + teks)
+    if jadwal_teks:
+        bagian.append('LAGA BERIKUTNYA (WAJIB sebut di paragraf akhir):\n'
+                      + '; '.join(jadwal_teks))
+    if blok:
+        bagian.append('BLOK KLASMEN SIAP-RENDER (WAJIB disalin APA ADUNA di akhir '
+                      'isi berita, jangan diubah, jangan digandakan):\n' + blok)
+    return '\n\n'.join(bagian)
 
 # ═══ V6.5.2 — KRAMAV652MARKER: RANGKUMAN OLAHRAGA UMUM JAM 11 ═══
 # Sumber A+B: portal olahraga besar + query event besar berlangsung.
@@ -2101,6 +2191,13 @@ KATA_REGIONAL_OLAHRAGA = [
     'jepang', 'korea', 'thailand', 'malaysia', 'vietnam', 'singapura',
     'filipina', 'china', 'india', 'asia', 'piala dunia', 'fifa',
     'liga champions', 'uefa', 'eropa',
+    # ═══ V6.5.4 — KRAMAV654MARKER: liga besar bahasa Inggris ═══
+    # Filter lama hanya kenal bahasa Indonesia → berita Inggris dari
+    # Yahoo Sports/GN 'en' hampir semua dibuang ("Premier League" tak
+    # cocok "liga", "Singapore" tak cocok "singapura").
+    'premier league', 'champions league', 'europa league', 'la liga',
+    'serie a', 'bundesliga', 'ligue 1', 'eredivisie', 'world cup',
+    'europe', 'european', 'singapore', 'philippines', 'japan',
 ]
 
 SUMBER_RANGKUMAN_UMUM = [
@@ -2189,8 +2286,11 @@ def sesi_rangkuman_umum(today_urls, seen):
                 img_url = ''
             if img_url and not gambar_lolos_blur_gate(img_url, judul):
                 img_url = ''
+            # V6.5.4 — KRAMAV654MARKER: source_name DIPAKSA 'Rangkuman
+            # Olahraga' — dulu pakai nama portal (top['source']) sehingga
+            # gate 20 jam di atas TIDAK PERNAH cocok → risiko dobel harian.
             insert_news(judul, isi, ringkasan, 'olahraga', img_url,
-                        top.get('link', ''), top.get('source', 'Rangkuman Olahraga'),
+                        top.get('link', ''), 'Rangkuman Olahraga',
                         'published', breaking=True, deskripsi_gambar=gambar)
             dibuat += 1
             print('   ✅ RANGKUMAN OLAHRAGA TERBIT: ' + judul[:60])
@@ -2201,16 +2301,28 @@ def sesi_rangkuman_umum(today_urls, seen):
 
 # ══════════════════════════════════════════════════════
 #  PART 4B — PENUTUP
+#  V6.5.4 (22 Sep) — KRAMAV654MARKER — PERBAIKAN URUTAN & GATE:
+#   [1] run_session: sesi data-mesin (Eropa 07, NBA 12, Umum 11)
+#       JALAN DULU sebelum sesi_kategori. Sebelumnya RSS olahraga
+#       terbit duluan → anti-dobel-6jam MEMBLOKIR rangkuman ESPN/
+#       Umum di semua 4 run (penyebab Liga Eropa & Rangkuman Umum
+#       tak pernah muncul — ditemukan & dibuktikan 22 Sep).
+#   [2] GATE anti-dobel di sesi_kategori: RSS olahraga jam 07 skip
+#       jika 'ESPN Data' sudah terbit; jam 11 skip jika 'Rangkuman
+#       Olahraga' sudah terbit. Rangkuman GAGAL/kosong → RSS nangkung.
+#   [3] IDX: 'IHSG Bursa Efek Jakarta' → kata "jakarta" ADA di
+#       materi → pemeriksa dateline lolos TANPA koreksi (dulu tiap
+#       run kena koreksi/blok dateline — penyebab IDX sering bolong).
 #  ═══ SEMENTARA BAGIAN INI PENUH VERSI FILE ══
 #  File VERSI & PART TERAKHIR dibaca otomatis oleh cek_versi.py
 #  (Sentinel di baris paling bawah file — WAJIB tetap di ujung!)
-#  Daftar marker verifikasi seluruh file (pindahan dari PART 1):
+#  Daftar marker verifikasi seluruh file:
 #   KRAMAV642MARKER(2x P2) • KRAMAV643MARKER(5x P1/P2/P3B)
 #   KRAMAV6431MARKER(2x P1/P3A) • KRAMAV6432MARKER(2x P1/P2)
 #   KRAMAV6433MARKER(2x P1/P3B) • KRAMAV6434MARKER(2x P1/P3B)
 #   KRAMAV644MARKER(3x P1/P3B/P4B) • KRAMAV65MARKER(3x P1/P3B/P4B)
 #   KRAMAV651MARKER(3x P2/P3B) • KRAMAV651B(2x P2/P3B)
-#   KRAMAV652MARKER(5x P3B/P4A/P4B)
+#   KRAMAV652MARKER(5x P3B/P4A/P4B) • KRAMAV654MARKER(V6.5.4, P4A/P4B)
 # ══════════════════════════════════════════════════════
 
 def sesi_breaking(today_urls, seen):
@@ -2334,7 +2446,10 @@ def buat_data_idx():
     ihsg = yahoo_quote('^JKSE')
     if ihsg is None:
         return None
-    baris = ['IHSG: ' + angka_id(ihsg['harga'])
+    # V6.5.4 — KRAMAV654MARKER: 'Bursa Efek Jakarta' diselipkan ke
+    # MATERI supaya kata "jakarta" ADA di sumber → dateline
+    # "JAKARTA, DKI JAKARTA - " lolos pemeriksa tanpa koreksi.
+    baris = ['IHSG Bursa Efek Jakarta: ' + angka_id(ihsg['harga'])
              + ' (perubahan ' + persen_id(ihsg['pct']) + ' dari penutupan sebelumnya)']
     kurs = yahoo_quote('IDR=X')
     if kurs:
@@ -2383,7 +2498,8 @@ def sesi_idx(today_urls, seen):
             'DILARANG mengubah, membulatkan, atau menambah angka lain):\n'
             + data + '\n\n'
             'ATURAN TAMBAHAN:\n'
-            '- Dateline: "JAKARTA, DKI JAKARTA - ".\n'
+            '- Dateline: "JAKARTA, DKI JAKARTA - " (bursa berada di Jakarta — '
+            'tertulis di data).\n'
             '- Panjang: 150-250 kata (4-6 paragraf).\n'
             '- Sebut pergerakan dengan tanggal hari ini (konteks di atas).\n'
             '- DILARANG menebak atau menuliskan PENYEBAB/faktor pergerakan\n'
@@ -2640,6 +2756,16 @@ def sesi_kategori(today_urls, seen):
         elif cat == 'olahraga':
             # ═══ V6.5.2 — KRAMAV652MARKER: RSS olahraga WAJIB regional ═══
             wajib_regional = True
+            # ═══ V6.5.4 — KRAMAV654MARKER: GATE ANTI-DOBEL DATA-MESIN ═══
+            # Rangkuman data-mesin sudah terbit di jam ini → RSS dilewati
+            # (judulnya pasti mirip → anti-dobel-6jam akan membuangnya).
+            # Rangkuman GAGAL/kosong → RSS jalan sebagai pengganti.
+            if jam == 7 and olahraga_sudah_terbit_dengan_data('ESPN Data'):
+                print('   ⏭️ Rangkuman Liga Eropa sudah terbit — slot RSS olahraga dilewati (anti-dobel).')
+                continue
+            if jam == 11 and olahraga_sudah_terbit_dengan_data('Rangkuman Olahraga'):
+                print('   ⏭️ Rangkuman Olahraga Umum sudah terbit — slot RSS olahraga dilewati (anti-dobel).')
+                continue
         for _ in range(n):
             if produksi_satu(cat, today_urls, seen,
                              utamakan_kaltara and cat == 'daerah',
@@ -2652,7 +2778,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.5.2)')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.5.4)')
     print('══════════════════════════════════════════')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -2664,11 +2790,16 @@ def run_session():
     print('   🕐 ' + str(len(JUDUL_6JAM)) + ' judul 6 jam terakhir dimuat (anti-dobel-6jam).')
     print('   🖼️ ' + str(len(muat_gambar_terpakai())) + ' gambar 36 jam terakhir terdaftar (anti-dobel gambar).')
     seen = set()
+    # ═══ V6.5.4 — KRAMAV654MARKER: DATA-MESIN DULU, KATEGORI BELAKANGAN ═══
+    # Urutan lama (breaking→kategori→idx→eropa→umum) membuat RSS olahraga
+    # terbit duluan lalu rangkuman ESPN/Umum diblokir anti-dobel-6jam di
+    # KEEMPAT run (7:07/22/37/52) → tak pernah muncul. Kini dibalik.
+    n_liga = sesi_olahraga_api('eropa')      # jam 07 WITA
+    n_nba = sesi_olahraga_api('nba')         # jam 12 WITA (V6.5.4 baru)
+    n_umum = sesi_rangkuman_umum(today_urls, seen)  # jam 11 WITA
     n_brk = sesi_breaking(today_urls, seen)
     n_kat = sesi_kategori(today_urls, seen)
     n_idx = sesi_idx(today_urls, seen)
-    n_liga = sesi_olahraga_api('eropa')
-    n_umum = sesi_rangkuman_umum(today_urls, seen)
     total_scrape = STAT_SCRAPE['ok'] + STAT_SCRAPE['gagal']
     if total_scrape:
         persen = int(STAT_SCRAPE['ok'] * 100 / total_scrape)
@@ -2679,8 +2810,8 @@ def run_session():
         print('\n📊 Statistik scraping: tidak ada percobaan scraping sesi ini.')
     print('🏁 Sesi selesai — breaking: ' + str(n_brk) + ' • kategori: ' + str(n_kat)
           + ' • IDX: ' + str(n_idx) + ' • LigaEropa: ' + str(n_liga)
-          + ' • RangkumanUmum: ' + str(n_umum))
-    return n_brk + n_kat + n_idx + n_liga + n_umum
+          + ' • NBA: ' + str(n_nba) + ' • RangkumanUmum: ' + str(n_umum))
+    return n_brk + n_kat + n_idx + n_liga + n_nba + n_umum
 
 def main_sekali():
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
@@ -2689,7 +2820,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.5.2 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.5.4 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -2710,6 +2841,6 @@ if __name__ == '__main__':
 #  ujung part baru itu + update nilai di bawah.
 #  Dibaca otomatis oleh cek_versi.py tiap run (GitHub Actions).
 # ══════════════════════════════════════════════════════
-FILE_VERSI      = 'V6.5.2'
+FILE_VERSI      = 'V6.5.4'
 FILE_PART_AKHIR = 'PART 4B'
-# AKHIR PART 4B — FILE V6.5.2 SELESAI
+# AKHIR PART 4B — FILE V6.5.4 SELESAI
