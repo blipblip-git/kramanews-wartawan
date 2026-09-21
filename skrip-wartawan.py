@@ -412,8 +412,9 @@ HUNT = {
 
 # ══════════════════════════════════════════════════════
 #  PART 2
-#  (feeds breaking [DUNIA +4 SUMBER ASIA — V6.5.2], kata-kunci,
-#   anti-dobel 36jam & 6jam, scraper, build_system_prompt —
+#  (feeds breaking [DUNIA 11 sumber — V6.5.2 +3 ASIA +AJ/AP/F24],
+#   EKONOMI [14 sumber — +CNBC World & Investing.com],
+#   kata-kunci, anti-dobel, scraper, build_system_prompt —
 #   DENGAN ATURAN TEKNOLOGI per domain, ATURAN KESEHATAN,
 #   ATURAN RANGKUMAN OLAHRAGA, ATURAN GAMBAR anti-hewan)
 # ══════════════════════════════════════════════════════
@@ -437,6 +438,9 @@ BREAKING_DUNIA_FEEDS = [
     RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
     RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
     RSSF('https://vietnamnews.vn/rss.html', 'Vietnam News'),
+    RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
+    RSSF('https://apnews.com/index.rss', 'AP News'),
+    RSSF('https://www.france24.com/en/rss', 'France24'),
     GN('breaking world news', 'en', 'GN Breaking Dunia'),
     GN('major earthquake', 'en', 'GN Gempa Besar Dunia'),
     GN('war conflict missile', 'en', 'GN Perang'),
@@ -734,6 +738,11 @@ ATURAN SPESIFISITAS LOKASI (WAJIB):
 
 ATURAN DATELINE DARI SUMBER (WAJIB — V6.4.3):
 - Dateline HANYA boleh diambil dari nama tempat yang TERTULIS di materi.
+- V6.5.1B KRAMAV651B: KOTA dateline WAJIB ejaan PERSIS seperti di materi
+  — DILARANG MENERJEMAHKAN nama kota (materi "Moscow" → tulis "MOSCOW",
+  BUKAN "MOSKOW"; materi "Philippines" → tulis "PHILIPPINES", BUKAN
+  "FILIPINA"). Jika materi hanya menyebut NEGARA (tidak ada nama kota),
+  dateline = nama NEGARA saja (contoh: "PHILIPPINES - ").
 - DILARANG KERAS mengarang nama kota/wilayah yang tidak ada di materi.
 - Sistem MEMVERIFIKASI: kota yang tidak ada di materi = berita
   DIBLOKIR otomatis. Lebih baik "INDONESIA - " daripada mengarang.
