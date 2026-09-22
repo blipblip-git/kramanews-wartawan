@@ -2,14 +2,12 @@ name: AI Wartawan KramaNews
 
 # ══════════════════════════════════════════════════════
 #  WARTAWAN.YML — V6.6 (KRAMAV66MARKER)
+#  ATURAN EMAS: FILE INI TIDAK PERNAH BERISI KUNCI ASLI.
+#  Semua kunci tinggal di Settings → Secrets → Actions.
+#  File ini hanya MEMANGGIL nama lacinya: ${{ secrets.NAMA }}
 #  Perubahan dari V6.5.2:
-#   + ADMIN_OPS_SECRET disuntikkan ke env skrip-wartawan.py.
-#     Skrip V6.6 WAJIB membawa kunci ini untuk melewati gerbang
-#     admin-ops V2 (x-admin-secret) — tanpa kunci = skrip berhenti
-#     dengan pesan jelas (tidak lagi gagal 401 diam-diam).
-#  Warisan V6.5.2: step cek_versi.py — penjaga versi & struktur
-#  file otomatis (SENTINEL VERSI dibaca tiap run, hasil di baris
-#  awal log). Jadwal tidak berubah.
+#   + ADMIN_OPS_SECRET disuntikkan ke env skrip-wartawan.py
+#     (skrip V6.6 wajib bawa kunci melewati gerbang admin-ops V2)
 # ══════════════════════════════════════════════════════
 
 on:
@@ -44,8 +42,7 @@ jobs:
       - name: Wartawan berburu berita
         run: python3 skrip-wartawan.py --sekali
         env:
-          
-          DEEPSEEK_KEY: ${{ sk-fac9341a34884927b8fb9be9f086e4e1 }}
-          SUPABASE_PUBLISHABLE: ${{sb_publishable_Lp3ygH-WKXafc-sfB_fBIg_EduwjaZw }}
-          PEXELS_API_KEY: ${{ 4qLvZmyIfgF2hcZGlAGMc6Wvblk9m4hubr5tcAthYOoadbnLpC8MqbUS }}
-          ADMIN_OPS_SECRET: ${{321ae9077ab3ea07aa2ac70c59a48b001d3ae75c4d2e79cff1cfc1ee5ba6d8fe }}
+          DEEPSEEK_KEY: ${{ secrets.DEEPSEEK_KEY }}
+          SUPABASE_PUBLISHABLE: ${{ secrets.SUPABASE_PUBLISHABLE }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          ADMIN_OPS_SECRET: ${{ secrets.ADMIN_OPS_SECRET }}
