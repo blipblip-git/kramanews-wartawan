@@ -1,10 +1,11 @@
 # ══════════════════════════════════════════════════════
 #  PART 1
 #  KONFIGURASI, JADWAL & SUMBER
-#  V6.6 — KRAMAV66MARKER:
-#   [1] ADMIN_OPS_SECRET — kunci gerbang admin-ops V2
-#       (wartawan lama 401 karena gembok dipasang, skrip
-#        belum bawa kunci — kini bawa kunci).
+#  V6.6.1 — KRAMAV66MARKER (HOTFIX):
+#   [HOTFIX] def GN & def RSSF dipindah ke ATAS blok IDX —
+#   sebelumnya IDX_FEEDS memakai RSSF() sebelum didefinisikan
+#   → NameError saat load → workflow gagal total. Maaf, bray!
+#   [1] ADMIN_OPS_SECRET — kunci gerbang admin-ops V2.
 #   [2] IDX baru: jam 10/14/17, gate 2 jam, sumber utama
 #       RSS pasar modal (Yahoo = pelengkap angka).
 #   [3] RSS ekonomi baru: market.bisnis.com + Antara Pasar Modal.
@@ -74,6 +75,20 @@ KATA_ASEAN         = ['asean', 'malaysia', 'thailand', 'vietnam', 'filipina', 'p
 HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
             'Agustus', 'September', 'Oktober', 'November', 'Desember']
+
+# ═══ [HOTFIX V6.6.1] GN & RSSF WAJIB DIDEFINISIKAN DI SINI —
+# SEBELUM blok IDX_FEEDS & HUNT yang memakainya ═══
+def GN(q, lang='id', label=None):
+    if lang == 'en':
+        url = ('https://news.google.com/rss/search?q=' + quote_plus(q + ' when:1d')
+               + '&hl=en-US&gl=US&ceid=US:EN')
+    else:
+        url = ('https://news.google.com/rss/search?q=' + quote_plus(q + ' when:1d')
+               + '&hl=id&gl=ID&ceid=ID:id')
+    return {'url': url, 'source': label or ('Google News: ' + q), 'gn': True}
+
+def RSSF(url, source):
+    return {'url': url, 'source': source, 'gn': False}
 
 # ═══ V6.6 — KRAMAV66MARKER: IDX FOKUS BARU ═══
 # Jam 10 = pembukaan pagi • 14 = pergerakan siang • 17 = penutupan.
@@ -296,18 +311,6 @@ DOMAIN_TEKNOLOGI = [
         ('inovasi teknologi riset', 'id'),
     ]},
 ]
-
-def GN(q, lang='id', label=None):
-    if lang == 'en':
-        url = ('https://news.google.com/rss/search?q=' + quote_plus(q + ' when:1d')
-               + '&hl=en-US&gl=US&ceid=US:EN')
-    else:
-        url = ('https://news.google.com/rss/search?q=' + quote_plus(q + ' when:1d')
-               + '&hl=id&gl=ID&ceid=ID:id')
-    return {'url': url, 'source': label or ('Google News: ' + q), 'gn': True}
-
-def RSSF(url, source):
-    return {'url': url, 'source': source, 'gn': False}
 
 HUNT = {
     'nasional': [
