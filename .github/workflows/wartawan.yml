@@ -5,9 +5,6 @@ name: AI Wartawan KramaNews
 #  ATURAN EMAS: FILE INI TIDAK PERNAH BERISI KUNCI ASLI.
 #  Semua kunci tinggal di Settings → Secrets → Actions.
 #  File ini hanya MEMANGGIL nama lacinya: ${{ secrets.NAMA }}
-#  Perubahan dari V6.5.2:
-#   + ADMIN_OPS_SECRET disuntikkan ke env skrip-wartawan.py
-#     (skrip V6.6 wajib bawa kunci melewati gerbang admin-ops V2)
 # ══════════════════════════════════════════════════════
 
 on:
