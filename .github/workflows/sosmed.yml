@@ -26,3 +26,4 @@ jobs:
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           SUPABASE_PUBLISHABLE: ${{ secrets.SUPABASE_PUBLISHABLE }}
           IG_PAGE_TOKEN: ${{ secrets.IG_PAGE_TOKEN }}
+          ADMIN_OPS_SECRET: ${{ secrets.ADMIN_OPS_SECRET }}
