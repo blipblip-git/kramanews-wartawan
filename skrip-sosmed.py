@@ -1,17 +1,14 @@
 # ══════════════════════════════════════════════════════
-#  KRAMANEWS — SKRIP SOSMED V1.8.1 (FB + INSTAGRAM)
-#  Baru V1.8.1 (fix antrean IG selalu kosong):
-#   • PENYEBAB: kolom posted_ig baris lama berisi NULL (bukan false),
-#     sehingga filter posted_ig=eq.false tidak pernah cocok → antrean
-#     IG selalu kosong walau ada berita segar bergambar.
-#   • SOLUSI: ambil 15 berita terbaru TANPA filter posted_ig, lalu
-#     saring di Python: posted_ig kosong/NULL/false = BELUM diposting.
-#     Kekbal NULL — tidak tergantung kondisi data Supabase.
-#   • FB tetap V1.7: prioritas Kaltara, maks 3 post/run, anti-dobel
-#     posted_fb, retry 504, link ?baca=ID
-#   • IG: foto wajib, maks 2/run, maks 6/hari, hashtag kategori+
-#     Kaltara, token ±60 hari (expired → log memberi instruksi).
-#   • Marker: cari kata "KRAMASOSMEDV18MARKER"
+#  KRAMANEWS — SKRIP SOSMED V1.9 (FB + INSTAGRAM)
+#  Baru V1.9 (KRAMASOSMEDV19MARKER) — SAHABAT ADMIN-OPS TERKUNCI:
+#   • ADMIN_OPS_SECRET dibaca dari Secrets, dikirim sebagai header
+#     x-admin-secret di setiap panggilan edge admin-ops.
+#     Tanpa ini → semua update ditolak 401 (gerbang V2).
+#   • mode_web() kini NULL-aman (pola v1.8.1): ambil 5 terbaru per
+#     kategori TANPA filter featured, saring di Python.
+#   • FB & IG LOGIKA PERSIS V1.8.1 — tidak ada perubahan posting.
+#  Warisan V1.8.1: antrean IG kebal NULL, foto wajib IG, maks
+#  2/run & 6/hari, hashtag kategori+Kaltara, retry 504, ?baca=ID
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -25,6 +22,7 @@ from datetime import datetime, timezone, timedelta
 FB_PAGE_TOKEN = os.environ.get('FB_PAGE_TOKEN', '')
 FB_PAGE_ID    = os.environ.get('FB_PAGE_ID', '')
 IG_TOKEN      = os.environ.get('IG_PAGE_TOKEN', '')
+ADMIN_SECRET  = os.environ.get('ADMIN_OPS_SECRET', '')   # ═══ V1.9 ═══
 SUPABASE_URL  = 'https://imcvijgytdjjpotlaltv.supabase.co'
 SUPABASE_ANON = os.environ.get('SUPABASE_PUBLISHABLE', '')
 SITE_URL      = 'https://kramanews.my.id'
@@ -66,7 +64,7 @@ BOLD_MAP = {
     'U': '𝗨', 'V': '𝗩', 'W': '𝗪', 'X': '𝗫', 'Y': '𝗬', 'Z': '𝗭',
     'a': '𝗮', 'b': '𝗯', 'c': '𝗰', 'd': '𝗱', 'e': '𝗲', 'f': '𝗳',
     'g': '𝗴', 'h': '𝗵', 'i': '𝗶', 'j': '𝗷', 'k': '𝗸', 'l': '𝗹', 'm': '𝗺',
-    'n': '𝗻', 'o': '𝗼', 'p': '𝗽', 'q': '𝗾', 'r': '𝗿', 's': '𝘀', 't': '𝘁',
+    'n': '𝗻', 'o': '𝗽', 'p': '𝗽', 'q': '𝗾', 'r': '𝗿', 's': '𝘀', 't': '𝘁',
     'u': '𝘂', 'v': '𝘃', 'w': '𝘄', 'x': '𝘅', 'y': '𝘆', 'z': '𝘇',
     '0': '𝟬', '1': '𝟭', '2': '𝟮', '3': '𝟯', '4': '𝟰',
     '5': '𝟱', '6': '𝟲', '7': '𝟳', '8': '𝟴', '9': '𝟵',
@@ -99,11 +97,13 @@ def supabase_get_safe(query):
     return r.json() or []
 
 def supabase_update(article_id, payload):
+    # ═══ V1.9: kirim x-admin-secret — gerbang admin-ops V2 ═══
     def do_update():
         return requests.post(
-            'https://imcvijgytdjjpotlaltv.supabase.co/functions/v1/admin-ops',
+            SUPABASE_URL + '/functions/v1/admin-ops',
             headers={'apikey': SUPABASE_ANON,
                      'Authorization': 'Bearer ' + SUPABASE_ANON,
+                     'x-admin-secret': ADMIN_SECRET,
                      'Content-Type': 'application/json'},
             json={'action': 'update', 'id': article_id, 'payload': payload},
             timeout=30)
@@ -359,28 +359,42 @@ def mode_ig():
           + str(hari_ini + ok) + '/' + str(IG_DAILY_MAX) + ').')
 
 def mode_web():
+    # ═══ V1.9: NULL-aman (pola v1.8.1) — ambil 5 terbaru per kategori
+    # TANPA filter featured, saring di Python: NULL/false = kandidat. ═══
     print('🌐 MODE WEB — tandai berita unggulan per kategori...')
     total = 0
     cats = list(KATEGORI_LABEL.keys())
     for cat in cats:
-        rows = supabase_get_safe(
-            'articles?select=id,title,category,updated_at'
-            '&status=eq.published&category=eq.' + cat +
-            '&featured=eq.false&breaking=eq.false'
-            '&order=created_at.desc&limit=1')
-        for n in rows:
-            supabase_update(n['id'], {'featured': True})
-            print('   ⭐ ' + cat + ': ' + (n.get('title') or '')[:60])
-            total += 1
+        try:
+            rows = supabase_get_safe(
+                'articles?select=id,title,category,updated_at,featured'
+                '&status=eq.published&category=eq.' + cat +
+                '&breaking=eq.false'
+                '&order=created_at.desc&limit=5')
+        except Exception as e:
+            print('   ⚠️ ' + cat + ': ' + str(e)[:100])
+            continue
+        kandidat = [n for n in rows if not n.get('featured')]
+        if kandidat:
+            n = kandidat[0]
+            try:
+                supabase_update(n['id'], {'featured': True})
+                print('   ⭐ ' + cat + ': ' + (n.get('title') or '')[:60])
+                total += 1
+            except Exception as e:
+                print('   ⚠️ ' + cat + ': ' + str(e)[:100])
     print('🏁 Mode Web selesai — ' + str(total) + ' berita ditandai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.8.1 (KRAMASOSMEDV18MARKER) — FB + INSTAGRAM')
+    print('📣 KRAMANEWS SOSMED V1.9 (KRAMASOSMEDV19MARKER) — FB + INSTAGRAM')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
     if not SUPABASE_ANON:
         print('❌ SUPABASE_PUBLISHABLE belum ada di Secrets!')
+        return
+    if not ADMIN_SECRET:   # ═══ V1.9 ═══
+        print('❌ ADMIN_OPS_SECRET belum ada di Secrets!')
         return
     if '--web' in sys.argv:
         mode_web()
