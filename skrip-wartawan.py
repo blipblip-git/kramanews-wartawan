@@ -2312,25 +2312,17 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
 # AKHIR PART 3B
 
 # ══════════════════════════════════════════════════════
-#  PART 4A — V6.9.1 (KRAMAV691MARKER)
-#  WARTAWAN OLAHRAGA CERDAS — KEPUTUSAN PEMILIK 23 SEP:
-#   [JAM 07] Liga Eropa & Liga Champions: ESPN skor(selesai)+
-#     klasemen WAJIB dulu; kosong → BERITA BOLA lainnya
-#     (masih bertema bola — dilarang cabang lain).
-#   [JAM 11] EVENT BESAR berlangsung (klasmen medali WAJIB
-#     tersaji) → kosong → berita lain.
-#   [JAM 13:30] NBA/WNBA: ESPN dulu → kosong → berita tema
-#     NBA/WNBA.
-#   [JAM 17] EVENT BESAR berlangsung (klasmen medali ASEAN/
-#     dunia WAJIB) → kosong → berita olahraga lain.
-#   [JAM 20] berita olahraga umum.
-#  V6.9.1 HOTFIX: + sesi_rangkuman_umum (jam 11 lama warisan,
-#     hilang saat penyusunan V6.9 → NameError #3!) +
-#     buat_materi_rangkuman_nba + KATA_REGIONAL_OLAHRAGA +
-#     SUMBER_RANGKUMAN_UMUM — SEMUA fungsi Part 4A lama kini
-#     LENGKAP di file ini. Aturan "file utuh" ditegakkan.
-#  Warisan V6.7/V6.8 utuh: KALENDER_EVENT, varian dateline,
-#  promise-harga kualitatif, vision hemat, percobaan 2, kunci.
+#  PART 4A — V6.9.3.1 (KRAMAV6931MARKER)
+#  UTUH — SEMUA FUNGSI LENGKAP (audit daftar:
+#   KALENDER_EVENT, event_besara_aktif, buat_sumber_event,
+#   ATURAN_KOMPETISI_WAJIB, _tulis_dari_kandidat,
+#   _tulis_event_besar, olahraga_sudah_terbit_dengan_data
+#   ← INI YANG HILANG (NameError #4), KATA_REGIONAL_OLAHRAGA,
+#   SUMBER_RANGKUMAN_UMUM, sesi_rangkuman_umum,
+#   buat_materi_rangkuman_nba, buat_materi_rangkuman_eropa,
+#   SUMBER_REKAP_EROPA, buat_materi_rekap_eropa_berita,
+#   sesi_olahraga_api (eropa opsB + nba 13:30),
+#   sesi_olahraga_cerdas)
 # ══════════════════════════════════════════════════════
 
 # ═══ [V6.9] KALENDER EVENT BESAR DUNIA/ASEAN 2026-2027 ═══
@@ -2475,8 +2467,19 @@ def _tulis_event_besar(cand, aktif, breaking=True):
         print('   ⚠️ Insert gagal: ' + str(e)[:80])
         return 0
 
+# ═══ [V6.9.3.1 — DIPULIHKAN] YANG HILANG (NameError #4) ═══
+def olahraga_sudah_terbit_dengan_data(sumber='ESPN Data', jam=20):
+    """Gate anti-dobel — dipanggil Part 4B & 4A.
+    Warisan V6.7 — hilang saat menyusun Part 4A V6.9."""
+    try:
+        batas = (datetime.now(timezone.utc) - timedelta(hours=jam)).isoformat()
+        rows = rest_get('?select=id&source_name=eq.' + quote_plus(sumber)
+                        + '&created_at=gte.' + batas)
+        return len(rows) > 0
+    except Exception:
+        return False
+
 # ═══ [V6.9.1 — DIPULIHKAN] RANGKUMAN OLAHRAGA UMUM JAM 11 ═══
-# (hilang saat penyusunan V6.9 → NameError #3 — keluarga RSSF!)
 KATA_REGIONAL_OLAHRAGA = [
     'indonesia', 'timnas', 'pssi', 'liga 1', 'tarakan', 'kaltara',
     'asean', 'aff', 'sea games', 'asian games', 'olimpiade', 'olympic',
@@ -2590,7 +2593,7 @@ def sesi_rangkuman_umum(today_urls, seen):
             print('   ⚠️ Insert gagal: ' + str(e)[:80])
     return dibuat
 
-# ═══ [V6.9.1 — DIPULIHKAN] MATERI RANGKUMAN NBA (warisan) ═══
+# ═══ [V6.9.1 — DIPULIHKAN] MATERI RANGKUMAN NBA ═══
 def buat_materi_rangkuman_nba():
     skor_semua = []
     for s in espn_skor_rentang('basketball/nba', hari_mundur=2):
@@ -2609,7 +2612,7 @@ def buat_materi_rangkuman_nba():
                       'isi berita, jangan diubah, jangan digandakan):\n' + blok)
     return '\n\n'.join(bagian)
 
-# ═══ [V6.7 warisan — UTUH] MATERI RANGKUMAN EROPA (TAHAP 1) ═══
+# ═══ [V6.7 warisan] MATERI RANGKUMAN EROPA (TAHAP 1) ═══
 def buat_materi_rangkuman_eropa():
     skor_semua = []
     klasemen_blok = []
@@ -2652,7 +2655,7 @@ SUMBER_REKAP_EROPA = [
 ]
 
 def buat_materi_rekap_eropa_berita(candidates):
-    """V6.7 — susun materi dari berita hasil/klasmen liga Eropa."""
+    """V6.7 — susun materi dari berita hasil/klasemen liga Eropa."""
     if not candidates:
         return None
     bagian = []
@@ -2802,37 +2805,6 @@ def sesi_olahraga_api(jenis):
         return 0
 
     return 0
-
-# ═══ [V6.9 UTUH] SESI OLAHRAGA CERDAS JAM 17 & 11 (EVENT BESAR) ═══
-def sesi_olahraga_event(jam):
-    """V6.9 — dipanggil dari sesi_kategori utk slot 11 & 17:
-    EVENT BESAR aktif → rekap medali (WAJIB klasmen) → kosong →
-    kembalikan 0 (biar olahraga biasa/berita lain lanjut)."""
-    aktif = event_besara_aktif()
-    if not aktif:
-        print('   ➡️ Tidak ada event besar aktif — ke berita lain.')
-        return 0
-    print('\n🏅 OLAHRAGA ' + str(jam) + ':00 — EVENT BESAR: '
-          + ' & '.join(e['nama'] for e in aktif))
-    if olahraga_sudah_terbit_dengan_data('Event Besar Dunia'):
-        print('   ⏭️ Event besar sudah terbit 20 jam terakhir — skip.')
-        return 1
-    today_urls = get_today_state()
-    seen = set()
-    sumber = buat_sumber_event(aktif)
-    cand = collect_candidates(sumber, today_urls, seen)
-    if not cand:
-        print('   🏖️ Tidak ada materi event segar — ke berita lain.')
-        return 0
-    return _tulis_event_besar(cand, aktif, breaking=True)
-
-# ═══ [V6.9.1 UTUH] SESI OLAHRAGA CERDAS (dipanggil sesi_kategori) ═══
-def sesi_olahraga_cerdas(jam, today_urls, seen):
-    """V6.9 — dipanggil dari sesi_kategori utk slot 07 & 13:30:
-    07 → Eropa (ESPN→Bola lain); 13:30 → NBA/WNBA (ESPN→tema)."""
-    return sesi_olahraga_api(
-        'eropa' if jam == 7 else ('nba' if jam == 13 else ''),
-        ) if jam in (7, 13) else 0
 # AKHIR PART 4A
 
 # ══════════════════════════════════════════════════════
