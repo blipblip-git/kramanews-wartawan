@@ -2312,17 +2312,17 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
 # AKHIR PART 3B
 
 # ══════════════════════════════════════════════════════
-#  PART 4A — V6.9.3.1 (KRAMAV6931MARKER)
+#  PART 4A — V6.9.3.2 (KRAMAV6932MARKER)
 #  UTUH — SEMUA FUNGSI LENGKAP (audit daftar:
 #   KALENDER_EVENT, event_besara_aktif, buat_sumber_event,
 #   ATURAN_KOMPETISI_WAJIB, _tulis_dari_kandidat,
-#   _tulis_event_besar, olahraga_sudah_terbit_dengan_data
-#   ← INI YANG HILANG (NameError #4), KATA_REGIONAL_OLAHRAGA,
-#   SUMBER_RANGKUMAN_UMUM, sesi_rangkuman_umum,
-#   buat_materi_rangkuman_nba, buat_materi_rangkuman_eropa,
-#   SUMBER_REKAP_EROPA, buat_materi_rekap_eropa_berita,
-#   sesi_olahraga_api (eropa opsB + nba 13:30),
-#   sesi_olahraga_cerdas)
+#   _tulis_event_besar, olahraga_sudah_terbit_dengan_data,
+#   KATA_REGIONAL_OLAHRAGA, SUMBER_RANGKUMAN_UMUM,
+#   sesi_rangkuman_umum, buat_materi_rangkuman_nba,
+#   buat_materi_rangkuman_eropa, SUMBER_REKAP_EROPA,
+#   buat_materi_rekap_eropa_berita, sesi_olahraga_api,
+#   sesi_olahraga_cerdas,
+#   _tulis_event_besar_dari_cand ← BARU (NameError #5 fix)
 # ══════════════════════════════════════════════════════
 
 # ═══ [V6.9] KALENDER EVENT BESAR DUNIA/ASEAN 2026-2027 ═══
@@ -2467,7 +2467,7 @@ def _tulis_event_besar(cand, aktif, breaking=True):
         print('   ⚠️ Insert gagal: ' + str(e)[:80])
         return 0
 
-# ═══ [V6.9.3.1 — DIPULIHKAN] YANG HILANG (NameError #4) ═══
+# ═══ [V6.9.3.1 — DIPULIHKAN] GATE ANTI-DOBEL ═══
 def olahraga_sudah_terbit_dengan_data(sumber='ESPN Data', jam=20):
     """Gate anti-dobel — dipanggil Part 4B & 4A.
     Warisan V6.7 — hilang saat menyusun Part 4A V6.9."""
@@ -2648,14 +2648,14 @@ SUMBER_REKAP_EROPA = [
     GN('hasil eredivisie belanda', 'id', 'GN Hasil Eredivisie'),
     GN('hasil liga champions', 'id', 'GN Hasil Liga Champions'),
     GN('hasil liga europa', 'id', 'GN Hasil Liga Europa'),
-    GN('klasemen premier league', 'id', 'GN Klasmen Premier League'),
+    GN('klasmen premier league', 'id', 'GN Klasmen Premier League'),
     GN('klasemen la liga serie a', 'id', 'GN Klasmen Liga Eropa'),
     RSSF('https://www.bola.net/feed', 'Bola.net'),
     RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
 ]
 
 def buat_materi_rekap_eropa_berita(candidates):
-    """V6.7 — susun materi dari berita hasil/klasemen liga Eropa."""
+    """V6.7 — susun materi dari berita hasil/klasmen liga Eropa."""
     if not candidates:
         return None
     bagian = []
@@ -2805,6 +2805,18 @@ def sesi_olahraga_api(jenis):
         return 0
 
     return 0
+
+# ═══ [V6.9.3.2 — BARU] JEMBATAN UTK PART 4B (NameError #5 fix) ═══
+def _tulis_event_besar_dari_cand(today_urls, seen, aktif):
+    """V6.9.3.2 — dipanggil Part 4B sesi_kategori.
+    Ambil kandidat event aktif → tulis SATU berita event besar.
+    Return 1 = terbit, 0 = gagal."""
+    sumber = buat_sumber_event(aktif)
+    cand = collect_candidates(sumber, today_urls, seen)
+    if not cand:
+        print('   🏖️ Tidak ada materi event segar.')
+        return 0
+    return _tulis_event_besar(cand, aktif, breaking=True)
 # AKHIR PART 4A
 
 # ══════════════════════════════════════════════════════
