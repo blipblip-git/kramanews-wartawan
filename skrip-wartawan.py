@@ -1,17 +1,17 @@
 # ══════════════════════════════════════════════════════
 #  PART 1
 #  KONFIGURASI, JADWAL & SUMBER
-#  V6.9.3 — KRAMAV693MARKER:
-#   [1] DETIKHOT DICABUT DARI SUMBER HIBURAN (keputusan
-#       pemilik 23 SEP — semua berita hiburan dari DetikHot
-#       terbukti jiplakan isi + gambar sama dgn sumber;
-#       10 berita dihapus dari portal).
-#   [2] KARANTINA_SUMBER = daftar domain yang WAJIB scraping
-#       penuh — ringkasan RSS mereka DITOLAK (Part 3B yang
-#       memakai). DetikHot masuk daftar ini juga.
-#   [3] Warisan V6.9.1/V6.9.2 utuh: kalender event, wartawan
-#       cerdas, blokir zodiak, fallback olahraga, varian
-#       dateline, promise-harga kualitatif.
+#  V6.9.4 — KRAMAV694MARKER:
+#   [1] AMBANG_MIRIP dinaikkan 0.50 → 0.65 — judul 50% mirip
+#       sebelumnya dianggap dobel (terlalu ketat). 0.65 lebih
+#       toleran, berita beda tetap bisa terbit, berita benar-
+#       benar sama tetap diblokir.
+#   [2] KATA_BARAT_USA diperjelas komentarnya — kata ini hanya
+#       untuk cek "sudah terbit atau belum", BUKAN untuk
+#       memblokir berita ASEAN yang MENYEBUT Amerika.
+#   [3] Warisan V6.9.3 utuh: DETIKHOT dicabut dari hiburan
+#       + KARANTINA_SUMBER, kalender event, wartawan cerdas,
+#       blokir zodiak, fallback olahraga, varian dateline.
 #   HOTFIX: def GN/def RSSF di ATAS pemakai (NameError 2x!)
 # ══════════════════════════════════════════════════════
 
@@ -47,7 +47,11 @@ JENDELA_DOBEL_JAM   = 36
 GEMPA_DOM_MIN       = 5.5
 GEMPA_DUNIA_MIN     = 6.5
 SKOR_BREAKING_MIN   = 30
-AMBANG_MIRIP        = 0.50
+# ═══ V6.9.4 — AMBANG_MIRIP dinaikkan 0.50 → 0.65 ═══
+# Sebelumnya 0.50 terlalu ketat: dua judul 50% mirip dianggap
+# dobel, padahal bisa jadi berita berbeda (mis. "Gempa M5.2
+# Tarakan" vs "Gempa M5.5 Tarakan"). 0.65 lebih toleran.
+AMBANG_MIRIP        = 0.65
 SCRAPER_TIMEOUT     = 12
 SCRAPE_MIN_KARAKTER = 600
 JINA_READER         = 'https://r.jina.ai/'
@@ -60,6 +64,12 @@ MATCH_MIN_KATA     = 3
 MATCH_MIN_RASIO    = 0.60
 
 BARAT_MAX_HARI     = 1
+# ═══ V6.9.4 — KATA_BARAT_USA diperjelas ═══
+# Kata ini dipakai HANYA untuk cek "apakah berita tentang negara
+# ini SUDAH terbit hari ini" (fungsi barat_sudah_terbit() di Part 3A).
+# BUKAN untuk memblokir berita ASEAN yang MENYEBUT Amerika —
+# mis. "Indonesia kerja sama dengan Amerika" tetap boleh terbit
+# di kategori internasional_asean.
 KATA_BARAT_USA     = ['amerika', 'u.s', 'washington', 'trump', 'biden', 'new york', 'california', 'texas']
 KATA_BARAT_RUSIA   = ['rusia', 'russia', 'moskow', 'moscow', 'putin', 'ukraina', 'ukraine']
 KATA_BARAT_EROPA   = ['eropa', 'europe', 'jerman', 'germany', 'perancis', 'france', 'inggris',
