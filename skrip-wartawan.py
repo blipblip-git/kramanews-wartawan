@@ -2728,17 +2728,17 @@ def sesi_olahraga_cerdas(jam, today_urls, seen):
 # AKHIR PART 4A
 
 # ══════════════════════════════════════════════════════
-#  PART 4B — V6.9 (KRAMAV69MARKER)
+#  PART 4B — V6.9.2 (KRAMAV692MARKER)
 #  Perubahan dari V6.8:
-#   [1] JADWAL JAM 17/11/13:30/20 → WARTAWAN CERDAS (Part 4A):
-#       07 ESPN/tema BOLA • 11 EVENT BESAR→berita lain •
-#       13:30 NBA/WNBA (ESPN→tema) • 17 EVENT BESAR→olahraga
-#       lain • 20 olahraga umum.
-#   [2] sesi_olahraga_api LAMA DIGANTI sesi_olahraga_cerdas
-#       (Part 4A) — ESPN tetap dipanggil dulu (opsi B).
-#   [3] Gate anti-dobel diperluas: 'Event Besar Dunia'.
-#   [4] Sentinel FILE_VERSI = 'V6.9'.
-#  Warisan utuh: breaking, pasar modal 10:30, kategori, hemat.
+#   [1] produksi_satu: + cek_bukan_berita (blokir zodiak/dsb
+#       SEBELUM AI menulis — hemat kuota)
+#   [2] sesi_olahraga_api NBA: tema NBA kosong → FALLBACK
+#       olahraga biasa (permintaan pemilik: jangan ada slot
+#       kosong tanpa pengganti)
+#   [3] _tulis_event_besar / sesi_kategori EVENT BESAR:
+#       materi kosong → FALLBACK olahraga biasa (dulu lewat
+#       kosong — bug log 17:07)
+#   Warisan utuh: Eropa opsB, Pasar Modal 10:30, gate, hemat.
 # ══════════════════════════════════════════════════════
 
 def sesi_breaking(today_urls, seen):
@@ -2877,7 +2877,7 @@ def sesi_idx(today_urls, seen):
         print('   ⚠️ Insert pasar modal gagal: ' + str(e)[:80])
         return 0
 
-# ═════════ SESI KATEGORI — V6.9: OLAHRAGA VIA WARTAWAN CERDAS ═════════
+# ═════════ SESI KATEGORI — V6.9.2 ═════════
 
 KATEGORI_DB = {
     'nasional': 'nasional', 'daerah': 'daerah',
@@ -3016,6 +3016,10 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
             break
         items = g['items']
         top = items[0]
+        # ═══ [V6.9.2] BLOKIR BUKAN-BERITA (zodiak/dsb) SEBELUM AI ═══
+        if cek_bukan_berita(top['title'], top.get('summary', '')):
+            print('   ⛔ Bukan berita (zodiak/dsb): ' + top['title'][:50] + ' — skip.')
+            continue
         if cat in ('internasional_asean', 'internasional_tt', 'internasional'):
             b = kategori_barat(top['title'], top.get('summary', ''))
             if b and barat_sudah_terbit(b):
@@ -3110,44 +3114,61 @@ def sesi_kategori(today_urls, seen):
             sumber = sumber_teknologi
             domain_tek = dom_tek
         elif cat == 'olahraga':
-            # ═══ V6.9 — OLAHRAGA VIA WARTAWAN CERDAS ═══
-            # Gate anti-dobel diperluas: 'Event Besar Dunia'
-            if olahraga_sudah_terbit_dengan_data('Event Besar Dunia'):
+            wajib_regional = True
+            # ═══ GATE ANTI-DOBEL — warisan V6.7/V6.8 + Event Besar ═══
+            if olahraga_sudah_terbit_dengan_data('Event Besar Dunia') and jam in (11, 17):
                 print('   ⏭️ Event Besar Dunia sudah terbit — slot dilewati.')
                 continue
-            aktif = event_besara_aktif()
-            if aktif:
-                print('   🏅 EVENT BESAR AKTIF: '
-                      + ' & '.join(e['nama'] for e in aktif)
-                      + ' — diprioritaskan.')
-                if olahraga_sudah_terbit_dengan_data('ESPN Data'):
-                    print('   ⏭️ Sudah terbit 20 jam (ESPN/tema) — skip.')
-                    continue
-                sumber = buat_sumber_event(aktif)
-                cand = collect_candidates(sumber, today_urls, seen)
-                if cand:
-                    if _tulis_event_besar(cand, aktif, breaking=True) == 1:
-                        total += 1
-                    continue
-                # event aktif tapi materi kosong → jalan ke olahraga biasa
-                print('   ➡️ Materi event kosong — ke olahraga biasa.')
-            # jam 7: Eropa dulu (opsi B)
+            if jam == 7 and olahraga_sudah_terbit_dengan_data('ESPN Data'):
+                print('   ⏭️ ESPN sudah terbit — skip (anti-dobel).')
+                continue
+            if jam == 7 and olahraga_sudah_terbit_dengan_data('Rangkuman Liga Eropa'):
+                print('   ⏭️ Rekap tema Eropa sudah terbit — skip (anti-dobel).')
+                continue
+            if jam == 11 and olahraga_sudah_terbit_dengan_data('Rangkuman Olahraga'):
+                print('   ⏭️ Rangkuman Umum sudah terbit — skip (anti-dobel).')
+                continue
+            if jam == 13 and olahraga_sudah_terbit_dengan_data('ESPN Data NBA'):
+                print('   ⏭️ ESPN NBA sudah terbit — skip (anti-dobel).')
+                continue
+            if jam == 13 and olahraga_sudah_terbit_dengan_data('Rangkuman NBA'):
+                print('   ⏭️ Tema NBA/WNBA sudah terbit — skip (anti-dobel).')
+                continue
+            if jam in (7, 13) and olahraga_sudah_terbit_dengan_data('Olahraga Fallback'):
+                print('   ⏭️ Fallback olahraga sudah terbit — skip (anti-dobel).')
+                continue
+            # ═══ V6.9 — OLAHRAGA CERDAS (jam 07 & 13:30) ═══
             if jam == 7:
                 if sesi_olahraga_cerdas(7, today_urls, seen) == 1:
                     total += 1
                 continue
-            # jam 13:30: NBA/WNBA (opsi B)
             if jam == 13 and datetime.now(WITA).minute >= 30:
                 if sesi_olahraga_cerdas(13, today_urls, seen) == 1:
                     total += 1
                 continue
-            wajib_regional = True
-            # gate anti-dobel data-mesin (warisan)
-            if jam == 7 and olahraga_sudah_terbit_dengan_data('ESPN Data'):
-                print('   ⏭️ Sudah terbit — skip (anti-dobel).')
-                continue
-            if jam == 13 and olahraga_sudah_terbit_dengan_data('ESPN Data NBA'):
-                print('   ⏭️ Sudah terbit — skip (anti-dobel).')
+            # ═══ V6.9 — JAM 11 & 17: EVENT BESAR DULU, LALU FALLBACK ═══
+            if jam in (11, 17):
+                aktif = event_besara_aktif()
+                if aktif:
+                    print('   🏅 EVENT BESAR AKTIF: '
+                          + ' & '.join(e['nama'] for e in aktif)
+                          + ' — diprioritaskan.')
+                    if _tulis_event_besar_dari_cand(
+                            today_urls, seen, aktif) == 1:
+                        total += 1
+                        continue
+                    # ═══ [V6.9.2 FIX] FALLBACK OLAHRAGA BIASA ═══
+                    print('   ➡️ Event besar tanpa materi — FALLBACK olahraga biasa.')
+                    if produksi_satu('olahraga', today_urls, seen, False,
+                                     wajib_regional=True):
+                        total += 1
+                    continue
+                # tidak ada event aktif → olahraga biasa
+                for _ in range(n):
+                    if produksi_satu(cat, today_urls, seen,
+                                     utamakan_kaltara and cat == 'daerah',
+                                     prio, sumber, domain_tek, wajib_regional):
+                        total += 1
                 continue
         for _ in range(n):
             if produksi_satu(cat, today_urls, seen,
@@ -3156,12 +3177,22 @@ def sesi_kategori(today_urls, seen):
                 total += 1
     return total
 
+def _tulis_event_besar_dari_cand(today_urls, seen, aktif):
+    """V6.9.2 — ambil kandidat event + tulis (dipindah agar bisa
+    di-fallback dari sesi_kategori). Return 1 = terbit, 0 = gagal."""
+    sumber = buat_sumber_event(aktif)
+    cand = collect_candidates(sumber, today_urls, seen)
+    if not cand:
+        print('   🏖️ Tidak ada materi event segar.')
+        return 0
+    return _tulis_event_besar(cand, aktif, breaking=True)
+
 # ═══ STATISTIK + SATU SESI PENUH ═══
 
 def run_session():
     now = datetime.now(WITA)
     print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.9)')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.9.2)')
     print('══════════════════════════════════════════')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3173,9 +3204,9 @@ def run_session():
     print('   🕐 ' + str(len(JUDUL_6JAM)) + ' judul 6 jam terakhir dimuat (anti-dobel-6jam).')
     print('   🖼️ ' + str(len(muat_gambar_terpakai())) + ' gambar 36 jam terakhir terdaftar (anti-dobel gambar).')
     seen = set()
-    n_umum = sesi_rangkuman_umum(today_urls, seen)  # jam 11 — event besar dulu
+    n_umum = sesi_rangkuman_umum(today_urls, seen)  # jam 11: event besar dulu
     n_brk = sesi_breaking(today_urls, seen)
-    n_kat = sesi_kategori(today_urls, seen)        # 17: event besar via cerdas
+    n_kat = sesi_kategori(today_urls, seen)        # 17: event besar dulu
     n_idx = sesi_idx(today_urls, seen)              # 10:30
     total_scrape = STAT_SCRAPE['ok'] + STAT_SCRAPE['gagal']
     if total_scrape:
@@ -3200,7 +3231,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.9 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.9.2 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3218,6 +3249,6 @@ if __name__ == '__main__':
 #  SENTINEL VERSI — WAJIB SELALU DI BARIS PALING BAWAH FILE
 #  Dibaca otomatis oleh cek_versi.py tiap run (GitHub Actions).
 # ══════════════════════════════════════════════════════
-FILE_VERSI      = 'V6.9'
+FILE_VERSI      = 'V6.9.2'
 FILE_PART_AKHIR = 'PART 4B'
-# AKHIR PART 4B — FILE V6.9 SELESAI
+# AKHIR PART 4B — FILE V6.9.2 SELESAI
