@@ -1,14 +1,15 @@
 # ══════════════════════════════════════════════════════
-#  KRAMANEWS — SKRIP SOSMED V1.9 (FB + INSTAGRAM)
-#  Baru V1.9 (KRAMASOSMEDV19MARKER) — SAHABAT ADMIN-OPS TERKUNCI:
-#   • ADMIN_OPS_SECRET dibaca dari Secrets, dikirim sebagai header
-#     x-admin-secret di setiap panggilan edge admin-ops.
-#     Tanpa ini → semua update ditolak 401 (gerbang V2).
-#   • mode_web() kini NULL-aman (pola v1.8.1): ambil 5 terbaru per
-#     kategori TANPA filter featured, saring di Python.
-#   • FB & IG LOGIKA PERSIS V1.8.1 — tidak ada perubahan posting.
-#  Warisan V1.8.1: antrean IG kebal NULL, foto wajib IG, maks
-#  2/run & 6/hari, hashtag kategori+Kaltara, retry 504, ?baca=ID
+#  KRAMANEWS — SKRIP SOSMED V1.9.1 (FB + INSTAGRAM)
+#  Baru V1.9.1 (KRAMASOSMEDV191MARKER) — FIX HURUF O:
+#   • BOLD_MAP yang diketik manual ternyata punya entri 'O'
+#     yang SALAH (menunjuk glyph mirip P) → setiap post FB
+#     dengan judul tebal selalu salah huruf O (laporan pemilik:
+#     "Prabwp/Sekplah/Kpruptpr" — semua O jadi P).
+#   • SOLUSI: BOLD_MAP dibuat PROGRAMATIK dari kode Unicode
+#     (chr(0x1D5D4+i) dst) — mustahil salah ketik lagi.
+#   Warisan V1.9: x-admin-secret, mode_web null-aman, FB/IG
+#   logika V1.8.1 (IG kebal NULL, foto wajib IG, maks 2/run
+#   6/hari, hashtag kategori+Kaltara, retry 504, ?baca=ID)
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -22,7 +23,7 @@ from datetime import datetime, timezone, timedelta
 FB_PAGE_TOKEN = os.environ.get('FB_PAGE_TOKEN', '')
 FB_PAGE_ID    = os.environ.get('FB_PAGE_ID', '')
 IG_TOKEN      = os.environ.get('IG_PAGE_TOKEN', '')
-ADMIN_SECRET  = os.environ.get('ADMIN_OPS_SECRET', '')   # ═══ V1.9 ═══
+ADMIN_SECRET  = os.environ.get('ADMIN_OPS_SECRET', '')
 SUPABASE_URL  = 'https://imcvijgytdjjpotlaltv.supabase.co'
 SUPABASE_ANON = os.environ.get('SUPABASE_PUBLISHABLE', '')
 SITE_URL      = 'https://kramanews.my.id'
@@ -57,18 +58,18 @@ def is_kaltara(n):
     teks = ' '.join(str(n.get(k) or '') for k in ('title', 'dateline', 'excerpt', 'content')).lower()
     return any(w in teks for w in KALTARA_WORDS)
 
-BOLD_MAP = {
-    'A': '𝗔', 'B': '𝗕', 'C': '𝗖', 'D': '𝗗', 'E': '𝗘', 'F': '𝗙',
-    'G': '𝗚', 'H': '𝗛', 'I': '𝗜', 'J': '𝗝', 'K': '𝗞', 'L': '𝗟', 'M': '𝗠',
-    'N': '𝗡', 'O': '𝗢', 'P': '𝗣', 'Q': '𝗤', 'R': '𝗥', 'S': '𝗦', 'T': '𝗧',
-    'U': '𝗨', 'V': '𝗩', 'W': '𝗪', 'X': '𝗫', 'Y': '𝗬', 'Z': '𝗭',
-    'a': '𝗮', 'b': '𝗯', 'c': '𝗰', 'd': '𝗱', 'e': '𝗲', 'f': '𝗳',
-    'g': '𝗴', 'h': '𝗵', 'i': '𝗶', 'j': '𝗷', 'k': '𝗸', 'l': '𝗹', 'm': '𝗺',
-    'n': '𝗻', 'o': '𝗽', 'p': '𝗽', 'q': '𝗾', 'r': '𝗿', 's': '𝘀', 't': '𝘁',
-    'u': '𝘂', 'v': '𝘃', 'w': '𝘄', 'x': '𝘅', 'y': '𝘆', 'z': '𝘇',
-    '0': '𝟬', '1': '𝟭', '2': '𝟮', '3': '𝟯', '4': '𝟰',
-    '5': '𝟱', '6': '𝟲', '7': '𝟳', '8': '𝟴', '9': '𝟵',
-}
+# ═══ V1.9.1 — BOLD_MAP PROGRAMATIK (KRAMASOSMEDV191MARKER) ═══
+# Dibuat dari kode Unicode matematika — NOL kemungkinan salah ketik
+# glyph (fix huruf O yang dulu salah menunjuk karakter mirip P).
+# Sans-Serif Bold: A=U+1D5D4..Z=U+1D5ED, a=U+1D5EE..z=U+1D607,
+# 0=U+1D7EC..9=U+1D7F5.
+BOLD_MAP = {}
+for _i, _ch in enumerate('ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
+    BOLD_MAP[_ch] = chr(0x1D5D4 + _i)
+for _i, _ch in enumerate('abcdefghijklmnopqrstuvwxyz'):
+    BOLD_MAP[_ch] = chr(0x1D5EE + _i)
+for _i, _ch in enumerate('0123456789'):
+    BOLD_MAP[_ch] = chr(0x1D7EC + _i)
 
 def to_bold(text):
     return ''.join(BOLD_MAP.get(c, c) for c in text)
@@ -97,7 +98,7 @@ def supabase_get_safe(query):
     return r.json() or []
 
 def supabase_update(article_id, payload):
-    # ═══ V1.9: kirim x-admin-secret — gerbang admin-ops V2 ═══
+    # [V1.9] kirim x-admin-secret — gerbang admin-ops V2
     def do_update():
         return requests.post(
             SUPABASE_URL + '/functions/v1/admin-ops',
@@ -278,7 +279,6 @@ def mode_ig():
         print('⏭️ IG_PAGE_TOKEN belum ada di Secrets — IG dilewati.')
         return
 
-    # Hitung kuota harian: post IG hari ini (WITA)
     try:
         sudah_rows = supabase_get_safe(
             'articles?select=created_at&posted_ig=eq.true&order=created_at.desc&limit=50')
@@ -299,8 +299,6 @@ def mode_ig():
               + ') — akun muda harus sopan. Selesai.')
         return
 
-    # V1.8.1: ambil 15 terbaru TANPA filter posted_ig (NULL-aman),
-    # saring di Python: kosong/NULL/false = belum diposting
     try:
         rows = supabase_get_safe(
             'articles?select=id,title,excerpt,content,category,img,dateline,posted_ig,breaking'
@@ -359,8 +357,8 @@ def mode_ig():
           + str(hari_ini + ok) + '/' + str(IG_DAILY_MAX) + ').')
 
 def mode_web():
-    # ═══ V1.9: NULL-aman (pola v1.8.1) — ambil 5 terbaru per kategori
-    # TANPA filter featured, saring di Python: NULL/false = kandidat. ═══
+    # [V1.9] NULL-aman — ambil 5 terbaru per kategori TANPA filter
+    # featured, saring di Python: NULL/false = kandidat.
     print('🌐 MODE WEB — tandai berita unggulan per kategori...')
     total = 0
     cats = list(KATEGORI_LABEL.keys())
@@ -386,14 +384,14 @@ def mode_web():
     print('🏁 Mode Web selesai — ' + str(total) + ' berita ditandai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.9 (KRAMASOSMEDV19MARKER) — FB + INSTAGRAM')
+    print('📣 KRAMANEWS SOSMED V1.9.1 (KRAMASOSMEDV191MARKER) — FB + INSTAGRAM')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
     if not SUPABASE_ANON:
         print('❌ SUPABASE_PUBLISHABLE belum ada di Secrets!')
         return
-    if not ADMIN_SECRET:   # ═══ V1.9 ═══
+    if not ADMIN_SECRET:
         print('❌ ADMIN_OPS_SECRET belum ada di Secrets!')
         return
     if '--web' in sys.argv:
