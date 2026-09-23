@@ -997,19 +997,15 @@ Tanpa bukti tertulis peristiwa lama = TULIS BERITA."""
 # AKHIR PART 2
 
 # ══════════════════════════════════════════════════════
-#  PART 3A — V6.8 (KRAMAV68MARKER)
-#  Perubahan dari V6.7:
-#   [1] cek_dateline: MENERIMA EJAAN GANDA — kota di dateline
-#       dianggap valid bila ada di materi ATAU variannya
-#       (kasus: materi EN "North Korea" → AI tulis dateline
-#       ID "KOREA SELATAN" → dulu diblok; kini cocokkan juga
-#       lewat tabel varian EN↔ID + cek kata per kata materi).
-#   [2] cek_janji_judul: PROMISE-HARGA KUALITATIF — judul boleh
-#       menyebut "harga naik/turun/melorot/merangkak" TANPA
-#       angka, ASAL tema harga benar-benar ada di isi
-#       (kasus: "Harga Tengkulak Lebih Tinggi" gugur sia-sia).
-#   [3] cek_deskripsi_gambar: hewan = KATA UTUH (warisan V6.7).
-#   Warisan: edge_call bawa kunci; persen auto-fix; dsb.
+#  PART 3A — V6.9.2 (KRAMAV692MARKER)
+#  Warisan V6.8 utuh (dateline varian EN↔ID 40+ pasangan,
+#  promise-harga kualitatif, kata-utuh hewan, kunci gerbang).
+#  Baru V6.9.2:
+#   [ZODIAK FIX] KATA_BUKAN_BERITA — zodiak/horoskop/ramalan/
+#     shio/arti mimpi dst DIBLOKIR dari semua kategori
+#     (kasus: "Ramalan Zodiak Sagitarius" terbit sbg kesehatan!)
+#   Dipasang dgn cek_bukan_berita() dipanggil di produksi_satu
+#   (Part 4B V6.9.2).
 # ══════════════════════════════════════════════════════
 
 def edge_call(payload_json):
@@ -1245,11 +1241,8 @@ def deteksi_dua_topik(judul, isi):
         pass
     return None
 
-# ═══ V6.4.3.1 — PEMERIKSA DATELINE
-# ═══ V6.8 — KRAMAV68MARKER: EJAAN GANDA EN↔ID ═══
-# Kasus: materi EN "North Korea" → AI tulis dateline "KOREA SELATAN"
-# → dulu diblok. Kini: kota dianggap valid bila cocok di materi
-# ATAU variannya ada di materi ATAU pasangan variannya ada.
+# ═══ V6.4.3.1 — PEMERIKSA DATELINE ═══
+# ═══ V6.8 warisan — VARIAN_KOTA_EN_ID (40+ pasangan) ═══
 VARIAN_KOTA_EN_ID = {
     'korea selatan': ['south korea', 'korea'],
     'korea': ['korea selatan', 'south korea', 'north korea'],
@@ -1315,7 +1308,6 @@ def cek_dateline(isi, user_content):
     kota = bag[0] if bag else ''
     wilayah = bag[1] if len(bag) > 1 else ''
     sumber = re.sub(r'\s+', ' ', (user_content or '')).lower()
-    # [V6.8] kota valid bila: ada langsung ATAU variannya ada
     if kota and not _varian_cocok(kota, sumber):
         return 'kota dateline "' + kota + '" tidak ada di materi sumber'
     if 'kalimantan utara' in wilayah:
@@ -1363,14 +1355,7 @@ def cek_janji_judul(judul, isi):
     if any(w in j for w in JANJI_ANGKA):
         if not re.search(r'\d', b):
             return 'judul menjanjikan HASIL/SKOR tapi isi tidak memuat angka'
-    # ═══ [V6.8] PROMISE-HARGA — DIPERLEBAR: kualitatif boleh ═══
-    # Kasus gugur: "Harga Tengkulak Lebih Tinggi" (judul sumber begitu,
-    # materi tak memuat angka) → itu berita HARGA yang SAH.
-    # Aturan baru: judul janji harga SAH bila:
-    #   (a) isi memuat angka harga (rp/rb/juta/...), ATAU
-    #   (b) isi membahas tema harga/harga bahan pokok/dinas terkait
-    #       (harga, tengkulak, bulog, pasar, petani, pangan, komoditas,
-    #        inflasi, rp, saham, kurs) — indikasi topik harga nyata.
+    # ═══ [V6.8] PROMISE-HARGA — kualitatif sah ═══
     if any(w in j for w in JANJI_HARGA):
         ada_harga = (
             'rp' in b
@@ -1388,7 +1373,6 @@ def cek_janji_judul(judul, isi):
             if not tema_harga:
                 return ('judul menjanjikan HARGA/TARIF tapi isi tidak memuat '
                         'angka harga maupun tema harga (kasus iPhone tanpa harga)')
-            # kualitatif sah — lolos
     return None
 
 # ═══ V6.7 warisan — cek deskripsi gambar (hewan kata-utuh) ═══
@@ -1402,6 +1386,23 @@ def cek_deskripsi_gambar(deskripsi):
         if k in d:
             return 'deskripsi gambar memuat kata terlarang: ' + k
     return None
+
+# ═══ V6.9.2 — KRAMAV692MARKER: BLOKIR BUKAN-BERITA ═══
+# Kasus: "Ramalan Zodiak Sagitarius" terbit sbg kesehatan (RSS
+# Kompas kadang bawa zodiak). Blokir dari SEMUA kategori.
+KATA_BUKAN_BERITA = [
+    'zodiak', 'horoskop', 'ramalan bintang', 'ramalan cinta',
+    'ramalan nasib', 'ramalan zodiak', 'shio', 'primbon',
+    'arti mimpi', 'artinya mimpi', 'pertanda baik', 'pertanda buruk',
+    'keberuntungan hari ini', 'peruntungan',
+]
+
+def cek_bukan_berita(judul, isi):
+    """V6.9.2 — True = konten bukan berita (zodiak/horoskop/dsb)."""
+    j = (judul or '').lower()
+    b = (isi or '').lower()
+    gab = j + ' ' + b
+    return any(k in gab for k in KATA_BUKAN_BERITA)
 # AKHIR PART 3A
 
 # ══════════════════════════════════════════════════════
