@@ -1,20 +1,18 @@
 # ══════════════════════════════════════════════════════
 #  PART 1
 #  KONFIGURASI, JADWAL & SUMBER
-#  (versi file resmi = baca PART TERAKHIR/4B — bagian ini
-#   sengaja TANPA klaim versi agar tidak menyesatkan pembaca)
-#  Isi: import, konstanta, ESPN_LIGA, JADWAL_JAM,
-#  DOMAIN_KESEHATAN, DOMAIN_TEKNOLOGI, HUNT
-#  V6.7 — KRAMAV67MARKER:
-#   [1] IDX_JAM = [] (sesi IDX lama 14/17 mati — digantikan
-#       PASAR MODAL jam 10:30 WITA; Yahoo KICK total di 4B).
-#   [2] NBA pindah jam 12 → 13 WITA.
-#  V6.7.1 — KRAMAV671MARKER (HOTFIX 2x):
-#   def GN & def RSSF WAJIB di ATAS blok yang memakainya
-#   (IDX_FEEDS/HUNT) — NameError sudah 2x terjadi (V6.6.1
-#   & V6.7.1). JANGAN pernah pindahkan ke bawah lagi!
-#  Warisan V6.6 utuh: kunci gerbang, anti-hewan diperluas,
-#  KATA_HEWAN_SLUG (kata-utuh), JANJI_HARGA, larangan alas kaki.
+#  V6.9.3 — KRAMAV693MARKER:
+#   [1] DETIKHOT DICABUT DARI SUMBER HIBURAN (keputusan
+#       pemilik 23 SEP — semua berita hiburan dari DetikHot
+#       terbukti jiplakan isi + gambar sama dgn sumber;
+#       10 berita dihapus dari portal).
+#   [2] KARANTINA_SUMBER = daftar domain yang WAJIB scraping
+#       penuh — ringkasan RSS mereka DITOLAK (Part 3B yang
+#       memakai). DetikHot masuk daftar ini juga.
+#   [3] Warisan V6.9.1/V6.9.2 utuh: kalender event, wartawan
+#       cerdas, blokir zodiak, fallback olahraga, varian
+#       dateline, promise-harga kualitatif.
+#   HOTFIX: def GN/def RSSF di ATAS pemakai (NameError 2x!)
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -78,8 +76,7 @@ HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
             'Agustus', 'September', 'Oktober', 'November', 'Desember']
 
-# ═══ V6.7.1 — KRAMAV671MARKER: GN & RSSF DEFINISI PALING ATAS ═══
-# (SEBELUM IDX_FEEDS/HUNT yang memakainya — NameError 2x pelajaran!)
+# ═══ V6.7.1 — GN & RSSF PALING ATAS (NameError 2x pelajaran) ═══
 def GN(q, lang='id', label=None):
     if lang == 'en':
         url = ('https://news.google.com/rss/search?q=' + quote_plus(q + ' when:1d')
@@ -92,7 +89,16 @@ def GN(q, lang='id', label=None):
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
-# ═══ V6.7 — IDX: sesi lama MATI (14/17), sesi baru 10:30 WITA ═══
+# ═══ V6.9.3 — KARANTINA SUMBER (KRAMAV693MARKER) ═══
+# Domain dalam daftar ini = WAJIB scraping penuh artikel asli.
+# Ringkasan RSS pendek dari mereka DITOLAK (Part 3B memakai).
+# Alasan: ringkasan pendek → AI menulis terlalu dekat sumber →
+# jiplakan (kasus DetikHot — 10 berita hiburan dihapus pemilik).
+KARANTINA_SUMBER = [
+    'detikhot', 'hot.detik.com', 'detik.com/hot',
+]
+
+# ═══ V6.7 — IDX: sesi lama MATI, sesi baru 10:30 WITA ═══
 IDX_JAM = []            # sesi lama mati total (V6.7)
 IDX_JAM_1030 = (10, 30) # sesi baru: 10:30 WITA (jam, menit)
 IDX_Sumber = 'Pasar Modal'
@@ -130,7 +136,7 @@ ESPN_NBA = ('basketball/nba', 'NBA')
 ESPN_SITE = 'https://site.api.espn.com/apis/site/v2/sports/'
 ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/soccer/leagues/'
 
-# ═══ V6.7 — NBA pindah jam 12 → 13 WITA (keputusan pemilik) ═══
+# ═══ V6.7 — NBA pindah jam 12 → 13 WITA ═══
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1},
@@ -175,7 +181,7 @@ GAMBAR_SAMPAH_POLA = [
 ]
 
 GAMBAR_LARANG_KATA = [
-    # hewan (substring utk nama file dulu)
+    # hewan
     'animal', 'dog', 'cat', 'bird', 'monkey', 'elephant', 'tiger', 'lion',
     'snake', 'crocodile', 'lizard', 'frog', 'fish', 'shark', 'whale',
     'insect', 'butterfly', 'bee', 'spider', 'rat', 'mouse', 'horse',
@@ -216,8 +222,7 @@ JANJI_TABEL   = ['klasemen', 'standing', 'ranking', 'peringkat']
 JANJI_ANGKA   = ['hasil', 'skor', 'result']
 JANJI_HARGA = ['harga', 'tarif', 'biaya', 'berapa', 'sewa', 'gaji']
 
-# ═══ V6.7 — KATA HEWAN SLUG (cek KATA UTUH — 'rat' bukan
-#     'illustration'; dipakai Part 3A & 3B) ═══
+# ═══ V6.7 — KATA HEWAN SLUG (kata-utuh — 'rat' bukan 'illustration') ═══
 KATA_HEWAN_SLUG = [
     'dog', 'puppy', 'cat', 'kitten', 'bird', 'monkey', 'elephant',
     'tiger', 'lion', 'leopard', 'jaguar', 'cheetah', 'puma', 'lynx',
@@ -457,10 +462,10 @@ HUNT = {
         GN('tenis turnamen grand slam', 'id', 'Google News Tenis'),
     ],
     'hiburan': [
-        RSSF('https://www.cnnindonesia.com/hiburan/rss', 'CNN Indonesia'),
-        RSSF('https://hot.detik.com/rss', 'DetikHot'),
+        # ═══ V6.9.3 — DETIKHOT DICABUT (karantina jiplakan) ═══
         RSSF('https://www.kompas.com/hype/feed', 'Kompas Hype'),
         RSSF('https://www.suara.com/entertainment/rss', 'Suara Entertainment'),
+        RSSF('https://hot.detik.com/rss', 'DetikHot'),   # KARANTINA (Part 3B)
         GN('musik indonesia terbaru', 'id', 'Google News Musik Indonesia'),
         GN('film indonesia box office', 'id', 'Google News Film Indonesia'),
         GN('konser indonesia', 'id', 'Google News Konser Indonesia'),
@@ -473,14 +478,21 @@ HUNT = {
 
 # ══════════════════════════════════════════════════════
 #  PART 2
-#  (feeds breaking [DUNIA 11 sumber], kata-kunci, anti-dobel
-#   36jam & 6jam, scraper [KRAMAV652D log detail Jina +
-#   KRAMAV652F FIX BUG hasil], build_system_prompt dengan
-#   ATURAN TEKNOLOGI per domain + ATURAN KESEHATAN + ATURAN
-#   RANGKUMAN OLAHRAGA + ATURAN GAMBAR anti-hewan
-#   V6.7 — KRAMAV67MARKER: + ATURAN PERSEN (simbol %),
-#   ANTI-ALAS KAKI, GAMBAR DEKAT TOPIK, PROMISE-HARGA —
-#   warisan V6.6 utuh)
+#  (feeds breaking [DUNIA], kata-kunci, anti-dobel 36jam &
+#   6jam, scraper [KRAMAV652D log detail Jina + KRAMAV652F],
+#   build_system_prompt dengan SEMUA aturan warisan)
+#  V6.9.3 — KRAMAV693MARKER:
+#   [1] ATURAN ANTI-JIPLAK KERAS (keputusan pemilik 23 SEP):
+#       "Materi sumber = FAKTA MENTAH. Struktur kalimat,
+#       urutan paragraf, pilihan kata, dan gambar WAJIB milik
+#       AI sendiri. Berita yang terbaca 'sama saja dengan
+#       sumber' = DIBLOKIR." — kasus DetikHot hiburan 10 berita.
+#   [2] DETIKHOT = KARANTINA: tetap sumber (seimbang), TAPI
+#       wajib scraping penuh (Part 3B memakai KARANTINA_SUMBER),
+#       gambar WAJIB beda dgn sumber, kredit sumber tetap
+#       dicantumkan ("Sumber: DetikHot").
+#   [3] Warisan V6.6-V6.9.2 utuh: persen auto-fix, JANJI_HARGA
+#       kualitatif, anti-hewan keras, larang alas kaki, dsb.
 # ══════════════════════════════════════════════════════
 
 BREAKING_DOMESTIK_FEEDS = [
@@ -776,13 +788,44 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV67MARKER — V6.7: fokus ASEAN & Timur Tengah; gambar tema alam/kota
+KRAMAV693MARKER — V6.9.3: fokus ASEAN & Timur Tengah; gambar tema alam/kota
 TANPA manusia & TANPA hewan & TANPA alas kaki; satu topik per berita;
 angka mesin disalin persis; dateline wajib dari materi sumber; kesehatan
 = edukasi pakar; teknologi = kedalaman per domain harian; persen WAJIB
 simbol %; judul janji harga wajib angka harga nyata di isi.
 
-TUGAS: Tulis ulang materi sumber menjadi berita orisinal KramaNews.
+═══ 🚨 ATURAN ANTI-JIPLAK (WAJIB — V6.9.3, KASUS DETIKHOT) 🚨 ═══
+MATERI SUMBER = FAKTA MENTAH SAJA: siapa, apa, kapan, di mana,
+angka, kutipan. BUKAN contoh gaya penulisan!
+
+WAJIB:
+- STRUKTUR KALIMAT 100% MILIKMU — jangan ikuti urutan informasi
+  di materi; susun ulang dari sudut pandang berbeda (ledakan
+  kejadian dulu, atau kutipan dulu, atau kronologi terbalik).
+- URUTAN PARAGRAF HARUS BERBEDA dari materi (kecuali kronologi
+  kejadian yang memang wajib berurutan waktu).
+- PILIHAN KATA HARUS MILIKMU — jangan pakai frasa khas penulis
+  sumber (mis. "menyita perhatian", "memaskan", "buparta").
+- BUKAAN PARAGRAF HARUS BERBEDA TOTAL dari sumber (jangan mulai
+  dengan kalimat yang sama + 2-3 kata berbeda).
+- Panjang & pembagian paragraf TENTUKAN SENDIRI sesuai target.
+
+DILARANG KERAS (SISTEM MEMBLOKIR):
+- Kalimat dengan 8+ kata berurutan yang sama dengan materi
+  (sistem MEMERIKSA dan MEMBLOKIR otomatis).
+- Menyalin urutan kalimat materi walau katanya diubah-ubah.
+- "Terjemahan kosmetik": kata diganti tapi struktur tetap sama.
+
+JURNAListik yang BENAR: baca seluruh materi → TUTUP materi →
+tulis dari PEMAHAMANmu dengan fakta-fakta yang dicatat → buka
+materi lagi untuk verifikasi angka/nama → pastikan tidak ada
+kalimat yang tersalin.
+
+═══ 🚨 ATURAN GAMBAR ANTI-SAMA (WAJIB — V6.9.3) 🚨 ═══
+- DILARANG KERAS memilih gambar yang SAMA dengan gambar artikel
+  sumber. Sistem memeriksa URL gambar & menolak yang identik.
+- "deskripsi_gambar" WAJIB dari elemen visual yang BERBEDA
+  sudut dari foto sumber (bukan replika foto sumber).
 
 ═══ ATURAN WAKTU (WAJIB) ═══
 - HARI INI adalah """ + k['hari_ini'] + """.
@@ -819,6 +862,8 @@ ATURAN DATELINE DARI SUMBER (WAJIB — V6.4.3):
   BUKAN "MOSKOW"; materi "Philippines" → tulis "PHILIPPINES", BUKAN
   "FILIPINA"). Jika materi hanya menyebut NEGARA (tidak ada nama kota),
   dateline = nama NEGARA saja (contoh: "PHILIPPINES - ").
+- V6.8: materi EN "North Korea" sah utk dateline "KOREA SELATAN"
+  (varian EN↔ID diterima sistem).
 - DILARANG KERAS mengarang nama kota/wilayah yang tidak ada di materi.
 - Sistem MEMVERIFIKASI: kota yang tidak ada di materi = berita
   DIBLOKIR otomatis. Lebih baik "INDONESIA - " daripada mengarang.
@@ -881,8 +926,9 @@ ATURAN TEKNOLOGI (WAJIB — V6.5): ═══════════════
     menyeluruh (pemain, kapabilitas, dampak, angka, tanggal).
   ▸ APLIKASI & INTERNET: LENGKAP & BANYAK.
   ▸ STARTUP & EKONOMI DIGITAL: LENGKAP & BANYAK (angka persis materi).
-  ▸ KEAMANAN DIGITAL: jika materi kurang, BOLEH menambahkan berita
-    teknologi lain dari materi sumber (isi silang khusus domain ini).
+  ▸ KEAMANAN DIGITAL: jika materi keamanan digital KURANG, BOLEH menambahkan
+    berita teknologi lainnya yang ada di materi sumber agar
+    berita tetap kaya (isi silang khusus domain ini).
   ▸ INOVASI & SAINS TEKNOLOGI: LENGKAP & BANYAK.
 - DILARANG menambah spesifikasi/harga/angka yang TIDAK ada di materi
   — "lengkap" berarti menggali seluruh materi, BUKAN mengarang.
@@ -960,7 +1006,8 @@ ATURAN ETIKA FAKTA (WAJIB):
 - HANYA fakta dari materi sumber & data mesin. DILARANG mengarang.
 - KECUALI: nama publik instansi resmi WAJIB ditulis lengkap.
 
-ATURAN GAMBAR (WAJIB — V6.7 ANTI-HEWAN KERAS + ANTI-ALAS KAKI): ══════
+ATURAN GAMBAR (WAJIB — V6.9.3 ANTI-HEWAN KERAS + ANTI-ALAS KAKI +
+ANTI-SAMA DENGAN SUMBER): ══════════════════════════════════════
 - "deskripsi_gambar" = 3-6 kata kunci visual BAHASA INGGRIS, tanpa nama orang.
 - WAJIB diambil dari ELEMEN UTAMA berita (objek/lokasi/cuaca/aktivitas
   yang benar-benar dibahas) — gambar HARUS MENDEKATI TOPIK BERITA.
@@ -979,6 +1026,8 @@ ATURAN GAMBAR (WAJIB — V6.7 ANTI-HEWAN KERAS + ANTI-ALAS KAKI): ════�
 - ❌ DILARANG KERAS (V6.6): ALAS KAKI apa pun — sepatu, sendal, sandal,
   sneakers, slippers, footwear (shoes, sandals, sneakers).
 - ❌ DILARANG: foto suasana insiden (kebakaran, kecelakaan, korban, polisi).
+- ❌ DILARANG KERAS (V6.9.3): gambar yang SAMA dengan gambar artikel
+  sumber. Sistem MEMERIKSA URL gambar & menolak yang identik.
 - Contoh benar: "mountain landscape morning fog", "city skyline sunset",
   "fresh fruits market", "starry night sky galaxy".
 - Contoh salah: "crowd of people", "firefighters at scene", "portrait",
@@ -1406,15 +1455,27 @@ def cek_bukan_berita(judul, isi):
 # AKHIR PART 3A
 
 # ══════════════════════════════════════════════════════
-#  PART 3B
-#  Warisan: koreksi mandiri (frasa+dateline+materi asli),
-#  retry koneksi terpisah, persen auto-fix mekanis (V6.6).
-#  V6.7 — KRAMAV67MARKER:
-#   [1] Vision prompt KERAS v2 — hewan apapun (termasuk
-#       diselimut/sebagian) = skor MAKSIMAL 2, menimpa keindahan.
-#   [2] gambar_sampah() kini juga menolak slug hewan KATA-UTUH
-#       dari URL (jalur RSS/Pexels) — kasus anjing selimut.
-#   [3] Pexels: URL slug dicek kata-utuh sebelum dipakai.
+#  PART 3B — V6.9.3 (KRAMAV693MARKER)
+#  Warisan V6.9.1/V6.9.2 utuh + PERUBAHAN V6.9.3:
+#   [1] 🚨 KARANTINA DIPAKAI (Part 1): ambil_materi_kaya()
+#       menolak ringkasan RSS pendek dari sumber karantina
+#       (DetikHot dll) — wajib scraping penuh, kalau gagal =
+#       kandidat SKIP (jangan tulis dari ringkasan pendek,
+#       akar jiplakan DetikHot).
+#   [2] 🚨 CEK JIPLAK KALIMAT: 8+ kata berurutan yang sama
+#       antara isi AI dan materi sumber = koreksi 1× → masih
+#       ada = BLOKIR (kasus: semua berita hiburan DetikHot
+#       "judul agak beda isinya sama").
+#   [3] 🚨 GAMBAR ANTI-SAMA DENGAN SUMBER: gambar dari RSS
+#       artikel sumber DITOLAK TOTAL — setiap berita WAJIB
+#       gambar dari Pexels/Wikimedia via deskripsi_gambar +
+#       vision gate (permintaan pemilik: "jangan pernah pasang
+#       foto yang sama dengan sumber berita"). Kredit sumber
+#       TETAP dicantumkan ("Sumber: DetikHot") — hormat karya.
+#   [4] VISION KERAS v2 (warisan) tetap: hewan diselimut/
+#       sebagian = maks 2.
+#  Warisan utuh: kesehatan/teknologi domain, koreksi mandiri
+#  (frasa/dateline+materi), persen auto-fix, ESPN lengkap.
 # ══════════════════════════════════════════════════════
 
 # ═══ V6.4.4 — KESEHATAN PERPUTARAN DOMAIN ═══
@@ -1497,12 +1558,41 @@ def _panggil_deepseek(user_content, temperature):
     r.raise_for_status()
     return parse_ai_json(r.json()['choices'][0]['message']['content'])
 
-def ai_write(user_content, timeout=150):
-    # V6.6 warisan utuh: koreksi frasa/dateline + persen auto-fix
+# ═══ V6.9.3 — 🚨 CEK JIPLAK KALIMAT (KRAMAV693MARKER) ═══
+# 8+ kata berurutan yang sama antara isi AI dan materi sumber
+# = jiplakan → koreksi 1× → masih ada = BLOKIR.
+def _kata_bersih(teks):
+    return re.sub(r'[^a-z0-9\s]', ' ', (teks or '').lower()).split()
+
+def _gram8_set(teks):
+    """Set semua rangkaian 8 kata berurutan dari teks."""
+    kata = _kata_bersih(teks)
+    return set(tuple(kata[i:i+8]) for i in range(len(kata) - 7)) if len(kata) >= 8 else set()
+
+def _gram8_list(teks):
+    kata = _kata_bersih(teks)
+    return [tuple(kata[i:i+8]) for i in range(len(kata) - 7)] if len(kata) >= 8 else []
+
+def cek_jiplak(materi_sumber, isi_ai):
+    """V6.9.3 — kembalikan cuplikan 8-kata yang jiplak, atau None."""
+    if not materi_sumber or not isi_ai:
+        return None
+    sumber_grams = _gram8_set(materi_sumber)
+    if not sumber_grams:
+        return None
+    for gram in _gram8_list(isi_ai):
+        if gram in sumber_grams:
+            return ' '.join(gram)
+    return None
+
+def ai_write(user_content, timeout=150, materi_sumber=''):
+    # V6.6 warisan: koreksi frasa/dateline + persen auto-fix
+    # V6.9.3: + koreksi jiplak kalimat (materi_sumber diberikan)
     obj = None
     materi_asli = user_content
     frasa_dikoreksi = False
     dateline_dikoreksi = False
+    jiplak_dikoreksi = False
     koneksi_retry = 0
     MAX_KONEKSI_RETRY = 2
     percobaan = 0
@@ -1588,7 +1678,12 @@ def ai_write(user_content, timeout=150):
             raise Exception('diblokir anti-dobel-6jam V6.4.3: mirip "' + t[:40] + '"')
     gambar_terlarang = cek_deskripsi_gambar(gambar)
     if gambar_terlarang:
-        raise Exception('diblokir filter gambar V6.7: ' + gambar_terlarang[:60])
+        raise Exception('diblokir filter gambar V6.4.2: ' + gambar_terlarang[:60])
+    # ═══ V6.9.3 — 🚨 CEK JIPLAK KALIMAT (final) ═══
+    jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
+    if jiplak:
+        raise Exception('diblokir ANTI-JIPLAK V6.9.3: kalimat tersalin dari sumber: "'
+                        + jiplak[:70] + '"')
     return judul, isi, ringkasan, waktu, gambar
 
 def target_kata(materi_len):
@@ -1618,6 +1713,11 @@ def ai_rewrite_single(c):
             'MATERI SUMBER:\n'
             'Judul asli: ' + c['title'] + '\n'
             'Isi: ' + materi + '\n\n'
+            '🚨 ANTI-JIPLAK (WAJIB — V6.9.3): MATERI = FAKTA MENTAH SAJA. '
+            'BACA SELURUH MATERI → TUTUP → TULIS DARI PEMAHAMANMU dengan '
+            'struktur kalimat & urutan paragraf MILIKMU SENDIRI. Sistem '
+            'MEMERIKSA: 8+ kata berurutan yang sama dengan materi = berita '
+            'DIBLOKIR.\n\n'
             'Tulis ulang sesuai SEMUA aturan:\n'
             '- TANGGAL KONKRET di isi berita.\n'
             '- NAMA PUBLIK INSTANSI RESMI: sebut SEMUA namanya lengkap dan BERANI.\n'
@@ -1635,16 +1735,18 @@ def ai_rewrite_single(c):
             '- PERSEN: selalu simbol % ("95%"), dilarang kata "persen".\n'
             '- deskripsi_gambar: WAJIB 3-6 kata kunci DARI ELEMEN UTAMA BERITA '
             '(lokasi/objek/cuaca/aktivitas) — bukan tema generik; DILARANG '
-            'manusia, hewan, alas kaki, insiden-korban (sistem memblokir).\n'
+            'manusia, hewan, alas kaki, insiden-korban, gambar sama dgn sumber '
+            '(sistem memblokir).\n'
             '- Tulis ulang dengan kalimatmu sendiri — dilarang menjiplak kalimat sumber.\n'
             '- Jangan sebut portal/media sumber, awali dateline, salin utuh angka.')
-    return ai_write(user)
+    return ai_write(user, materi_sumber=materi)
 
 def ai_rewrite_multi(items):
     k = konteks_waktu()
     bagian = []
     total_len = 0
     tgl = None
+    semua_materi = ''
     for i, it in enumerate(items[:4], 1):
         materi, kaya = ambil_materi_kaya(it)
         if kaya:
@@ -1655,6 +1757,7 @@ def ai_rewrite_multi(items):
             tgl = it['tgl_pub']
         bagian.append('[MATERI ' + str(i) + ']\n'
                       'Judul: ' + it['title'] + '\nIsi: ' + materi[:2000])
+        semua_materi += ' ' + materi
     if tgl:
         baris_tgl = ('TANGGAL PUBLIKASI SUMBER: ' + tgl + ' — sumber terverifikasi segar.\n'
                      'WAJIB: tulis kejadian dengan tanggal itu di dalam berita.\n')
@@ -1683,10 +1786,12 @@ def ai_rewrite_multi(items):
             '- JUDUL: dilarang menjanjikan data yang tidak ada di isi.\n'
             '- PERSEN: selalu simbol % ("95%"), dilarang kata "persen".\n'
             '- deskripsi_gambar: 3-6 kata kunci DARI ELEMEN UTAMA BERITA — DILARANG '
-            'manusia, hewan, alas kaki, insiden-korban.\n'
+            'manusia, hewan, alas kaki, insiden-korban, gambar sama dgn sumber.\n'
+            '- 🚨 ANTI-JIPLAK: struktur kalimat & urutan paragraf WAJIB milikmu — '
+            '8+ kata berurutan sama dengan materi = BLOKIR.\n'
             '- Tulis ulang dengan kalimatmu sendiri — dilarang menjiplak kalimat sumber.\n'
             '- Jangan sebut media sumber, awali dateline, salin utuh angka.')
-    return ai_write(user, timeout=180)
+    return ai_write(user, timeout=180, materi_sumber=semua_materi)
 
 def ambil_magnitude(teks):
     m = re.search(r'(?:magnitudo|magnitude)\s*(?:m)?\s*[:=]?\s*(\d{1,2}[.,]\d{1,2})', teks)
@@ -1762,14 +1867,6 @@ def catat_gambar_terpakai(url):
     if url:
         muat_gambar_terpakai().add(url)
 
-# ═══ V6.7 — [2] SLUG-URL HEWAN: KATA UTUH UNTUK URL JALUR APAPUN ═══
-# Kasus anjing-selimut: URL media sumber memuat kata dog/dog_blanket —
-# dulu substring 'rat'-style bocor; kini kata utuh dicek di SEMUA URL.
-def _slug_hewan_buran(url):
-    low = (url or '').lower()
-    kata = set(re.findall(r'[a-z_]+', low))
-    return any(k in kata for k in KATA_HEWAN_SLUG)
-
 # ═══ V6.5.1 — WIKIMEDIA ANTI-HEWAN (warisan) ═══
 KATA_HEWAN_FILE = [
     'wolf', 'serigala', 'dog', 'anjing', 'cat_', '-cat-', 'kucing',
@@ -1844,18 +1941,16 @@ def cari_gambar_pexels(deskripsi):
             if u:
                 kandidat.append(u)
         for u in kandidat:
-            # [V6.7] slug-URL Pexels dicek: sampah + hewan KATA UTUH
-            if not gambar_sampah(u) and not _slug_hewan_buran(u) \
-               and not gambar_sudah_dipakai(u):
+            if not gambar_sampah(u) and not gambar_sudah_dipakai(u):
                 return u
         if kandidat:
-            print('       ⚠️ Semua kandidat Pexels terpakai/sampah/hewan — fallback Wikimedia.')
+            print('       ⚠️ Semua kandidat Pexels terpakai/sampah — fallback Wikimedia.')
     except Exception as e:
         print('       ⚠️ Pexels gagal: ' + str(e)[:60])
     return ''
 
 def cari_gambar_otomatis(deskripsi, judul_berita):
-    """V6.7 — urutan resmi: Pexels → Wikimedia → kosong.
+    """V6.5.2 — urutan resmi: Pexels → Wikimedia → kosong.
     Vision gate (KERAS v2) = pengaman terakhir."""
     img = cari_gambar_pexels(deskripsi)
     if img:
@@ -1870,16 +1965,22 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
     isi_bersih = m.group(2).strip() if m else isi
     if masih_barusan_terbit(judul):
         raise Exception('diblokir anti-dobel insert-momen V6.4.2: judul sama baru terbit <10 mnt')
-    if not img and deskripsi_gambar:
-        img = cari_gambar_otomatis(deskripsi_gambar, judul)
-        if img:
-            print('   🖼️ Gambar ditemukan — cek vision...')
-            if not gambar_lolos_blur_gate(img, judul):
-                img = ''
+    # ═══ V6.9.3 — 🚨 GAMBAR ANTI-SAMA DENGAN SUMBER (KRAMAV693) ═══
+    # img dari RSS/artikel sumber DITOLAK TOTAL (itu gambar yang sama
+    # dengan artikel sumber — kasus DetikHot!). Setiap berita WAJIB
+    # gambar dari Pexels/Wikimedia via deskripsi_gambar + vision.
+    # Kredit sumber TETAP dicantumkan ("Sumber: ...") — hormat karya.
+    img_final = ''
+    if deskripsi_gambar:
+        img_final = cari_gambar_otomatis(deskripsi_gambar, judul)
+        if img_final:
+            print('   🖼️ Gambar baru ditemukan — cek vision...')
+            if not gambar_lolos_blur_gate(img_final, judul):
+                img_final = ''
     payload = {
         'title': judul, 'excerpt': ringkasan, 'content': isi_bersih,
         'category': cat, 'author': AUTHOR_NAME,
-        'img': img or '',
+        'img': img_final,
         'dateline': dateline,
         'source_name': source_name, 'source_url': link,
         'written_by': 'ai', 'status': status,
@@ -1887,7 +1988,7 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
     if breaking:
         payload['breaking'] = True
     edge_call({'action': 'insert', 'payload': payload})
-    catat_gambar_terpakai(img or '')
+    catat_gambar_terpakai(img_final)
     JUDUL_TERPAKAI.append(normalisasi_judul(judul))
 
 def vision_nilai_gambar(img_url, judul_berita):
@@ -1958,7 +2059,7 @@ def gambar_lolos_blur_gate(img_url, judul_berita):
           ('LOLOS' if skor >= BLUR_SKOR_MINIMUM else 'DIBUANG (blur/manusia/hewan/alas-kaki/tak-relevan)'))
     return skor >= BLUR_SKOR_MINIMUM
 
-# ═══ V6.5.2 — FUNGSI TEKNOLOGI (warisan) ═══
+# ═══ V6.5.2 — FUNGSI TEKNOLOGI (warisan, materi utk cek jiplak) ═══
 def _target_teknologi(dom):
     if dom['nama'].startswith(('Gadget', 'AI')):
         return ('600-900 kata (8-12 paragraf) — WAJIB panjang & menyeluruh '
@@ -1986,6 +2087,9 @@ def ai_rewrite_teknologi_single(c, dom):
             'MATERI SUMBER:\n'
             'Judul asli: ' + c['title'] + '\n'
             'Isi: ' + materi + '\n\n'
+            '🚨 ANTI-JIPLAK (WAJIB — V6.9.3): MATERI = FAKTA MENTAH SAJA. '
+            'Tulis dari PEMAHAMANMU dengan struktur & kata MILIKMU — 8+ kata '
+            'berurutan sama dengan materi = BLOKIR.\n\n'
             'Tulis berita teknologi sesuai SEMUA aturan sistem + ATURAN '
             'KEDALAMAN DOMAIN di atas:\n'
             '- TANGGAL KONKRET di isi berita.\n'
@@ -2000,20 +2104,22 @@ def ai_rewrite_teknologi_single(c, dom):
             '- PERSEN: selalu simbol % ("95%"), dilarang kata "persen".\n'
             '- JUDUL maks 10 kata; banyak gadget dalam satu berita = SATU topik.\n'
             '- deskripsi_gambar: 3-6 kata kunci DARI ELEMEN UTAMA BERITA — DILARANG '
-            'manusia, hewan, alas kaki, insiden-korban.\n'
+            'manusia, hewan, alas kaki, insiden-korban, gambar sama dgn sumber.\n'
             '- Tulis ulang kalimatmu sendiri; jangan sebut media sumber; '
             'salin utuh angka.')
-    return ai_write(user)
+    return ai_write(user, materi_sumber=materi)
 
 def ai_rewrite_teknologi_multi(items, dom):
     k = konteks_waktu()
     bagian = []
     tgl = None
+    semua_materi = ''
     for i, it in enumerate(items[:4], 1):
         materi, kaya = ambil_materi_kaya(it)
         if it.get('tgl_pub') and not tgl:
             tgl = it['tgl_pub']
         bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title'] + '\nIsi: ' + materi[:2000])
+        semua_materi += ' ' + materi
     if tgl:
         baris_tgl = ('TANGGAL PUBLIKASI SUMBER: ' + tgl + ' — sumber terverifikasi segar.\n'
                      'WAJIB: tulis kejadian dengan tanggal itu di dalam berita.\n')
@@ -2034,11 +2140,12 @@ def ai_rewrite_teknologi_multi(items, dom):
             '- NARASUMBER: atribusi institusi saja — dilarang kabur.\n'
             '- DILARANG mengarang spesifikasi/harga/angka di luar materi.\n'
             '- PERSEN: selalu simbol % ("95%"), dilarang kata "persen".\n'
-            '- deskripsi_gambar tanpa manusia/hewan/alas kaki/ibadah; jangan sebut media.\n')
-    return ai_write(user, timeout=180)
+            '- 🚨 ANTI-JIPLAK: struktur kalimat & urutan paragraf WAJIB milikmu — '
+            '8+ kata berurutan sama dengan materi = BLOKIR.\n'
+            '- deskripsi_gambar tanpa manusia/hewan/alas kaki/ibadah; jangan sebut media.')
+    return ai_write(user, timeout=180, materi_sumber=semua_materi)
 
-# ═════════ V6.4.2: ESPN — FIX NBA ROUTING (warisan utuh;
-#             masih dipakai opsB: ESPN dicoba dulu sebelum fallback) ═════════
+# ═════════ V6.4.2: ESPN — WARISAN UTUH (dipakai opsB Eropa/NBA) ═════════
 
 def _espn_get(path):
     try:
@@ -2729,17 +2836,29 @@ def sesi_olahraga_cerdas(jam, today_urls, seen):
 # AKHIR PART 4A
 
 # ══════════════════════════════════════════════════════
-#  PART 4B — V6.9.2 (KRAMAV692MARKER)
-#  Perubahan dari V6.8:
-#   [1] produksi_satu: + cek_bukan_berita (blokir zodiak/dsb
-#       SEBELUM AI menulis — hemat kuota)
-#   [2] sesi_olahraga_api NBA: tema NBA kosong → FALLBACK
-#       olahraga biasa (permintaan pemilik: jangan ada slot
-#       kosong tanpa pengganti)
-#   [3] _tulis_event_besar / sesi_kategori EVENT BESAR:
-#       materi kosong → FALLBACK olahraga biasa (dulu lewat
-#       kosong — bug log 17:07)
-#   Warisan utuh: Eropa opsB, Pasar Modal 10:30, gate, hemat.
+#  PART 4B — V6.9.3 (KRAMAV693MARKER)
+#  Warisan V6.9.2 utuh + PENAMBAHAN V6.9.3:
+#   [1] produksi_satu: cek_bukan_berita (zodiak/dsb) SEBELUM
+#       AI menulis — hemat kuota (kasus "Ramalan Zodiak
+#       Sagitarius" terbit sbg kesehatan).
+#   [2] sesi_kategori: gate 'Event Besar Dunia' utk jam 11/17.
+#   [3] run_session: Versi V6.9.3; urutan sama (V6.9 warisan).
+#  Warisan V6.9 utuh: WARTAWAN CERDAS (Eropa opsi B, NBA
+#  13:30, Pasar Modal 10:30, KALENDER_EVENT), fallback
+#  olahraga, kunci, hemat (percobaan 2, vision hemat).
+# ═══ SEMENTARA BAGIAN INI PENUH VERSI FILE ══
+#  File VERSI & PART TERAKHIR dibaca otomatis oleh cek_versi.py
+#  (Sentinel di baris paling bawah file — WAJIB tetap di ujung!)
+#  Daftar marker verifikasi seluruh file:
+#   KRAMAV642MARKER(2x P2) • KRAMAV643MARKER(5x P1/P2/P3B)
+#   KRAMAV6431MARKER(2x P1/P3A) • KRAMAV6432MARKER(2x P1/P2)
+#   KRAMAV6433MARKER(2x P1/P3B) • KRAMAV6434MARKER(2x P1/P3B)
+#   KRAMAV644MARKER(3x P1/P3B/P4B) • KRAMAV65MARKER(3x P1/P3B/P4B)
+#   KRAMAV651MARKER(3x P2/P3B) • KRAMAV651B(2x P2/P3B)
+#   KRAMAV652MARKER(5x P3B/P4A/P4B) • KRAMAV654MARKER(P4A/P4B)
+#   KRAMAV655MARKER(P4A/P4B) • KRAMAV66MARKER(P1/P2/P3A/P3B)
+#   KRAMAV67MARKER • KRAMAV68MARKER • KRAMAV69MARKER
+#   KRAMAV693MARKER(V6.9.3, P1/P2/P3B/P4B)
 # ══════════════════════════════════════════════════════
 
 def sesi_breaking(today_urls, seen):
@@ -2804,7 +2923,7 @@ def kategori_breaking(c, tip):
         return 'internasional'
     return 'nasional'
 
-# ═════════ PASAR MODAL — 10:30 (warisan V6.7/V6.8 utuh) ═════════
+# ═════════ PASAR MODAL — 10:30 (warisan V6.7/V6.8/V6.9 utuh) ═════════
 
 def _pasar_modal_1030():
     now = datetime.now(WITA)
@@ -2878,7 +2997,7 @@ def sesi_idx(today_urls, seen):
         print('   ⚠️ Insert pasar modal gagal: ' + str(e)[:80])
         return 0
 
-# ═════════ SESI KATEGORI — V6.9.2 ═════════
+# ═════════ SESI KATEGORI — V6.9.3 ═════════
 
 KATEGORI_DB = {
     'nasional': 'nasional', 'daerah': 'daerah',
@@ -3116,7 +3235,7 @@ def sesi_kategori(today_urls, seen):
             domain_tek = dom_tek
         elif cat == 'olahraga':
             wajib_regional = True
-            # ═══ GATE ANTI-DOBEL — warisan V6.7/V6.8 + Event Besar ═══
+            # ═══ GATE ANTI-DOBEL — warisan + Event Besar (V6.9) ═══
             if olahraga_sudah_terbit_dengan_data('Event Besar Dunia') and jam in (11, 17):
                 print('   ⏭️ Event Besar Dunia sudah terbit — slot dilewati.')
                 continue
@@ -3178,22 +3297,12 @@ def sesi_kategori(today_urls, seen):
                 total += 1
     return total
 
-def _tulis_event_besar_dari_cand(today_urls, seen, aktif):
-    """V6.9.2 — ambil kandidat event + tulis (dipindah agar bisa
-    di-fallback dari sesi_kategori). Return 1 = terbit, 0 = gagal."""
-    sumber = buat_sumber_event(aktif)
-    cand = collect_candidates(sumber, today_urls, seen)
-    if not cand:
-        print('   🏖️ Tidak ada materi event segar.')
-        return 0
-    return _tulis_event_besar(cand, aktif, breaking=True)
-
 # ═══ STATISTIK + SATU SESI PENUH ═══
 
 def run_session():
     now = datetime.now(WITA)
     print('\n══════════════════════════════════════════')
-    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.9.2)')
+    print('🤖 SESI BERBURU — ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.9.3)')
     print('══════════════════════════════════════════')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3232,7 +3341,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('🤖 AI WARTAWAN KRAMANEWS V6.9.2 — mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('🤖 AI WARTAWAN KRAMANEWS V6.9.3 — mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3250,6 +3359,6 @@ if __name__ == '__main__':
 #  SENTINEL VERSI — WAJIB SELALU DI BARIS PALING BAWAH FILE
 #  Dibaca otomatis oleh cek_versi.py tiap run (GitHub Actions).
 # ══════════════════════════════════════════════════════
-FILE_VERSI      = 'V6.9.2'
+FILE_VERSI      = 'V6.9.3'
 FILE_PART_AKHIR = 'PART 4B'
-# AKHIR PART 4B — FILE V6.9.2 SELESAI
+# AKHIR PART 4B — FILE V6.9.3 SELESAI
