@@ -7,13 +7,14 @@
 #  DOMAIN_KESEHATAN, DOMAIN_TEKNOLOGI, HUNT
 #  V6.7 — KRAMAV67MARKER:
 #   [1] IDX_JAM = [] (sesi IDX lama 14/17 mati — digantikan
-#       PASAR MODAL jam 10:30 WITA via IDX_JAM_1030 = [10] +
-#       cek menit di sesi_idx; Yahoo KICK total di Part 4B).
+#       PASAR MODAL jam 10:30 WITA; Yahoo KICK total di 4B).
 #   [2] NBA pindah jam 12 → 13 WITA.
-#   [3] + GN query rekap liga Eropa (amunisi fallback tema)
-#       & NBA/WNBA — dipakai Part 4A.
-#   [4] Warisan V6.6 utuh: kunci gerbang, anti-hewan diperluas,
-#       JANJI_HARGA, larangan alas kaki, RSS pasar modal.
+#  V6.7.1 — KRAMAV671MARKER (HOTFIX 2x):
+#   def GN & def RSSF WAJIB di ATAS blok yang memakainya
+#   (IDX_FEEDS/HUNT) — NameError sudah 2x terjadi (V6.6.1
+#   & V6.7.1). JANGAN pernah pindahkan ke bawah lagi!
+#  Warisan V6.6 utuh: kunci gerbang, anti-hewan diperluas,
+#  KATA_HEWAN_SLUG (kata-utuh), JANJI_HARGA, larangan alas kaki.
 # ══════════════════════════════════════════════════════
 
 import requests
@@ -77,9 +78,21 @@ HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
             'Agustus', 'September', 'Oktober', 'November', 'Desember']
 
-# ═══ V6.7 — IDX: sesi lama MATI (jam 14/17 dihapus), sesi baru
-# jam 10:30 WITA via kombinasi jam+menit (dicek di sesi_idx Part 4B).
-# Yahoo di-KICK: buat_data_idx DIHAPUS di Part 4B. ═══
+# ═══ V6.7.1 — KRAMAV671MARKER: GN & RSSF DEFINISI PALING ATAS ═══
+# (SEBELUM IDX_FEEDS/HUNT yang memakainya — NameError 2x pelajaran!)
+def GN(q, lang='id', label=None):
+    if lang == 'en':
+        url = ('https://news.google.com/rss/search?q=' + quote_plus(q + ' when:1d')
+               + '&hl=en-US&gl=US&ceid=US:EN')
+    else:
+        url = ('https://news.google.com/rss/search?q=' + quote_plus(q + ' when:1d')
+               + '&hl=id&gl=ID&ceid=ID:id')
+    return {'url': url, 'source': label or ('Google News: ' + q), 'gn': True}
+
+def RSSF(url, source):
+    return {'url': url, 'source': source, 'gn': False}
+
+# ═══ V6.7 — IDX: sesi lama MATI (14/17), sesi baru 10:30 WITA ═══
 IDX_JAM = []            # sesi lama mati total (V6.7)
 IDX_JAM_1030 = (10, 30) # sesi baru: 10:30 WITA (jam, menit)
 IDX_Sumber = 'Pasar Modal'
@@ -118,7 +131,6 @@ ESPN_SITE = 'https://site.api.espn.com/apis/site/v2/sports/'
 ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/soccer/leagues/'
 
 # ═══ V6.7 — NBA pindah jam 12 → 13 WITA (keputusan pemilik) ═══
-# OLAHRAGA: 07 (Eropa), 11 (Rangkuman Umum), 13 (NBA/WNBA BARU), 17, 20
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1},
@@ -163,7 +175,7 @@ GAMBAR_SAMPAH_POLA = [
 ]
 
 GAMBAR_LARANG_KATA = [
-    # hewan
+    # hewan (substring utk nama file dulu)
     'animal', 'dog', 'cat', 'bird', 'monkey', 'elephant', 'tiger', 'lion',
     'snake', 'crocodile', 'lizard', 'frog', 'fish', 'shark', 'whale',
     'insect', 'butterfly', 'bee', 'spider', 'rat', 'mouse', 'horse',
@@ -172,7 +184,7 @@ GAMBAR_LARANG_KATA = [
     'kucing', 'anjing', 'burung', 'ular', 'kuda', 'sapi', 'ayam', 'bebek',
     'kambing', 'harimau', 'singa', 'gajah', 'monyet', 'buaya', 'ikan',
     'pet', 'wildlife', 'fauna', 'orangutan', 'komodo',
-    # ═══ V6.7 — diperluas (kasus macan tutul, srigala, anjing selimut) ═══
+    # ═══ V6.7 — diperluas (macan tutul, srigala, anjing selimut) ═══
     'leopard', 'jaguar', 'cheetah', 'puma', 'lynx', 'panther',
     'puppy', 'kitten', 'hound', 'terrier', 'retriever', 'shepherd',
     'falcon', 'hawk', 'sparrow', 'pigeon', 'parakeet', 'peacock',
@@ -204,8 +216,8 @@ JANJI_TABEL   = ['klasemen', 'standing', 'ranking', 'peringkat']
 JANJI_ANGKA   = ['hasil', 'skor', 'result']
 JANJI_HARGA = ['harga', 'tarif', 'biaya', 'berapa', 'sewa', 'gaji']
 
-# ═══ V6.7 — KATA HEWAN UNTUK SLUG-URL (cek kata utuh, bukan substring:
-#     kasus 'rat' menangkap 'illustration') — dipakai Part 3B ═══
+# ═══ V6.7 — KATA HEWAN SLUG (cek KATA UTUH — 'rat' bukan
+#     'illustration'; dipakai Part 3A & 3B) ═══
 KATA_HEWAN_SLUG = [
     'dog', 'puppy', 'cat', 'kitten', 'bird', 'monkey', 'elephant',
     'tiger', 'lion', 'leopard', 'jaguar', 'cheetah', 'puma', 'lynx',
@@ -321,18 +333,6 @@ DOMAIN_TEKNOLOGI = [
         ('inovasi teknologi riset', 'id'),
     ]},
 ]
-
-def GN(q, lang='id', label=None):
-    if lang == 'en':
-        url = ('https://news.google.com/rss/search?q=' + quote_plus(q + ' when:1d')
-               + '&hl=en-US&gl=US&ceid=US:EN')
-    else:
-        url = ('https://news.google.com/rss/search?q=' + quote_plus(q + ' when:1d')
-               + '&hl=id&gl=ID&ceid=ID:id')
-    return {'url': url, 'source': label or ('Google News: ' + q), 'gn': True}
-
-def RSSF(url, source):
-    return {'url': url, 'source': source, 'gn': False}
 
 HUNT = {
     'nasional': [
