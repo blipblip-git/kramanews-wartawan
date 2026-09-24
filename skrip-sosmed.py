@@ -1,16 +1,7 @@
-# ══════════════════════════════════════════════════════
-#  KRAMANEWS — SKRIP SOSMED V1.9.1 (FB + INSTAGRAM)
-#  Baru V1.9.1 (KRAMASOSMEDV191MARKER) — FIX HURUF O:
-#   • BOLD_MAP yang diketik manual ternyata punya entri 'O'
-#     yang SALAH (menunjuk glyph mirip P) → setiap post FB
-#     dengan judul tebal selalu salah huruf O (laporan pemilik:
-#     "Prabwp/Sekplah/Kpruptpr" — semua O jadi P).
-#   • SOLUSI: BOLD_MAP dibuat PROGRAMATIK dari kode Unicode
-#     (chr(0x1D5D4+i) dst) — mustahil salah ketik lagi.
-#   Warisan V1.9: x-admin-secret, mode_web null-aman, FB/IG
-#   logika V1.8.1 (IG kebal NULL, foto wajib IG, maks 2/run
-#   6/hari, hashtag kategori+Kaltara, retry 504, ?baca=ID)
-# ══════════════════════════════════════════════════════
+# KRAMANEWS — SKRIP SOSMED V1.9.2 (FB + INSTAGRAM)
+# V1.9.2: mode_fb round-robin per kategori (1 daerah + 4 kategori lain)
+# Warisan V1.9.1: BOLD_MAP programatik, x-admin-secret, mode_web null-aman,
+# IG kebal NULL, foto wajib IG, maks 2/run 6/hari, retry 504, ?baca=ID
 
 import requests
 import os
@@ -29,8 +20,8 @@ SUPABASE_ANON = os.environ.get('SUPABASE_PUBLISHABLE', '')
 SITE_URL      = 'https://kramanews.my.id'
 
 WITA = timezone(timedelta(hours=8))
-IG_DAILY_MAX = 6   # maks post IG per hari (akun muda — jangan rakus)
-IG_PER_RUN   = 2   # maks post IG per run
+IG_DAILY_MAX = 6
+IG_PER_RUN   = 2
 
 KATEGORI_LABEL = {
     'nasional': 'Nasional', 'daerah': 'Daerah',
@@ -50,7 +41,6 @@ HASHTAG_KATEGORI = {
     'kesehatan': '#Kesehatan',
 }
 
-# ═══ KATA KUNCI PRIORITAS KALTARA (V1.7) ═══
 KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
                  'tana tidung', 'sesayap', 'juata']
 
@@ -58,11 +48,6 @@ def is_kaltara(n):
     teks = ' '.join(str(n.get(k) or '') for k in ('title', 'dateline', 'excerpt', 'content')).lower()
     return any(w in teks for w in KALTARA_WORDS)
 
-# ═══ V1.9.1 — BOLD_MAP PROGRAMATIK (KRAMASOSMEDV191MARKER) ═══
-# Dibuat dari kode Unicode matematika — NOL kemungkinan salah ketik
-# glyph (fix huruf O yang dulu salah menunjuk karakter mirip P).
-# Sans-Serif Bold: A=U+1D5D4..Z=U+1D5ED, a=U+1D5EE..z=U+1D607,
-# 0=U+1D7EC..9=U+1D7F5.
 BOLD_MAP = {}
 for _i, _ch in enumerate('ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
     BOLD_MAP[_ch] = chr(0x1D5D4 + _i)
@@ -98,7 +83,6 @@ def supabase_get_safe(query):
     return r.json() or []
 
 def supabase_update(article_id, payload):
-    # [V1.9] kirim x-admin-secret — gerbang admin-ops V2
     def do_update():
         return requests.post(
             SUPABASE_URL + '/functions/v1/admin-ops',
@@ -121,8 +105,6 @@ def ambil_teaser(content, kalimat=3):
     bersih = re.sub(r'\s+', ' ', content or '').strip()
     kalimat_list = re.split(r'(?<=[.!?])\s+', bersih)
     return ' '.join(kalimat_list[:kalimat]).strip()
-
-# ═══ FACEBOOK (V1.7 — TIDAK BERUBAH) ═══
 
 def fb_post_photo(message, image_url):
     r = requests.post(
@@ -175,36 +157,72 @@ def post_fb(n):
         return fb_post_feed(pesan, SITE_URL + '/?baca=' + str(n.get('id')))
 
 def mode_fb():
-    print('📘 MODE FB — antrean auto-post (PRIORITAS KALTARA)...')
+    print('📘 MODE FB — round-robin (1 daerah + 4 kategori lain)...')
 
     rows = supabase_get_safe(
         'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking'
         '&status=eq.published&posted_fb=eq.false'
-        '&order=created_at.desc&limit=15')
+        '&order=created_at.desc&limit=50')
 
     if not rows:
         print('✅ Tidak ada berita baru yang perlu diposting. Selesai.')
         return
 
-    prio = [n for n in rows if is_kaltara(n)]
-    lain = [n for n in rows if not is_kaltara(n)]
-    urutan = prio + lain
+    KATEGORI_LAIN = ['nasional', 'internasional', 'ekonomi', 'olahraga',
+                     'teknologi', 'hiburan', 'kesehatan']
 
-    if prio:
-        print('🏝️ ' + str(len(prio)) + ' berita KALTARA/TARAKAN diprioritaskan di depan:')
-        for n in prio[:3]:
-            print('   • ' + (n.get('title') or '')[:60])
+    terpilih = []
+    id_terpilih = set()
 
-    antre = urutan[:3]
+    kaltara = [n for n in rows if n.get('category') == 'daerah' and is_kaltara(n)]
+    daerah_lain = [n for n in rows if n.get('category') == 'daerah' and not is_kaltara(n)]
+    if kaltara:
+        terpilih.append(kaltara[0])
+        id_terpilih.add(kaltara[0]['id'])
+    elif daerah_lain:
+        terpilih.append(daerah_lain[0])
+        id_terpilih.add(daerah_lain[0]['id'])
+    else:
+        for n in rows:
+            if n['id'] not in id_terpilih and n.get('category') != 'daerah':
+                terpilih.append(n)
+                id_terpilih.add(n['id'])
+                break
+
+    for kat in KATEGORI_LAIN:
+        if len(terpilih) >= 5:
+            break
+        kandidat = [n for n in rows
+                    if n['id'] not in id_terpilih
+                    and n.get('category') == kat]
+        if kandidat:
+            terpilih.append(kandidat[0])
+            id_terpilih.add(kandidat[0]['id'])
+
+    if len(terpilih) < 5:
+        for n in rows:
+            if len(terpilih) >= 5:
+                break
+            if n['id'] not in id_terpilih:
+                terpilih.append(n)
+                id_terpilih.add(n['id'])
+
+    if not terpilih:
+        print('✅ Tidak ada kandidat. Selesai.')
+        return
+
+    print('📋 Terpilih ' + str(len(terpilih)) + ' berita untuk diposting:')
+    for n in terpilih:
+        print('   • [' + (n.get('category') or '?') + '] ' + (n.get('title') or '')[:60])
 
     ok = 0
-    for n in antre:
+    for n in terpilih:
         if n.get('breaking'):
             print('🚨 BREAKING: ' + (n.get('title') or '')[:60])
-        elif is_kaltara(n):
-            print('🏝️ KALTARA PRIORITAS: ' + (n.get('title') or '')[:60])
+        elif n.get('category') == 'daerah' and is_kaltara(n):
+            print('🏝️ KALTARA: ' + (n.get('title') or '')[:60])
         else:
-            print('📤 Posting: ' + (n.get('title') or '')[:60])
+            print('📤 [' + (n.get('category') or '?') + ']: ' + (n.get('title') or '')[:60])
         try:
             post_fb(n)
             supabase_update(n['id'], {'posted_fb': True})
@@ -216,14 +234,11 @@ def mode_fb():
 
     print('🏁 Mode FB selesai — ' + str(ok) + ' post terkirim.')
 
-# ═══ INSTAGRAM (V1.8.1 — ANTREAN KEBAL NULL) ═══
-
 def ada_img(n):
     u = (n.get('img') or '').strip()
     return bool(u) and not u.lower().endswith('.svg')
 
 def belum_post_ig(n):
-    """V1.8.1: NULL/kosong/false = belum diposting (kebal data lama)."""
     return not n.get('posted_ig')
 
 def ig_post_photo(image_url, caption):
@@ -357,8 +372,6 @@ def mode_ig():
           + str(hari_ini + ok) + '/' + str(IG_DAILY_MAX) + ').')
 
 def mode_web():
-    # [V1.9] NULL-aman — ambil 5 terbaru per kategori TANPA filter
-    # featured, saring di Python: NULL/false = kandidat.
     print('🌐 MODE WEB — tandai berita unggulan per kategori...')
     total = 0
     cats = list(KATEGORI_LABEL.keys())
@@ -384,7 +397,7 @@ def mode_web():
     print('🏁 Mode Web selesai — ' + str(total) + ' berita ditandai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.9.1 (KRAMASOSMEDV191MARKER) — FB + INSTAGRAM')
+    print('📣 KRAMANEWS SOSMED V1.9.2 — FB + INSTAGRAM')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
