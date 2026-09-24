@@ -1219,7 +1219,7 @@ def cek_bukan_berita(judul, isi):
 
 # AKHIR PART 3A
 
-# PART 3B - KESEHATAN/TEKNOLOGI DOMAIN, KOREKSI MANDIRI, ANTI-JIPLAK, ESPN - V6.9.6
+# PART 3B - KESEHATAN/TEKNOLOGI DOMAIN, KOREKSI MANDIRI, ANTI-JIPLAK, ESPN - V6.9.7
 
 JAM_KESEHATAN = {10: 0, 15: 1, 20: 2}
 
@@ -1650,7 +1650,6 @@ def cari_gambar_otomatis(deskripsi, judul_berita):
         return img
     print('       Pexels kosong - fallback Wikimedia...')
     return cari_gambar_wikimedia(deskripsi)
-
 def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
                 breaking=False, deskripsi_gambar=''):
     m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+(.*)$', isi, re.DOTALL)
@@ -1665,6 +1664,9 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
             print('   Gambar baru ditemukan - cek vision...')
             if not gambar_lolos_blur_gate(img_final, judul):
                 img_final = ''
+    if not img_final:
+        img_final = 'https://picsum.photos/seed/kn' + str(int(datetime.now().timestamp())) + '/800/500'
+        print('   Fallback Picsum dipakai (gambar AI kosong).')
     payload = {
         'title': judul, 'excerpt': ringkasan, 'content': isi_bersih,
         'category': cat, 'author': AUTHOR_NAME,
