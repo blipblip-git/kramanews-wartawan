@@ -2322,17 +2322,15 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
 # AKHIR PART 3B
 
 # ══════════════════════════════════════════════════════
-#  PART 4A — V6.9.3.2 (KRAMAV6932MARKER)
-#  UTUH — SEMUA FUNGSI LENGKAP (audit daftar:
-#   KALENDER_EVENT, event_besara_aktif, buat_sumber_event,
-#   ATURAN_KOMPETISI_WAJIB, _tulis_dari_kandidat,
-#   _tulis_event_besar, olahraga_sudah_terbit_dengan_data,
-#   KATA_REGIONAL_OLAHRAGA, SUMBER_RANGKUMAN_UMUM,
-#   sesi_rangkuman_umum, buat_materi_rangkuman_nba,
-#   buat_materi_rangkuman_eropa, SUMBER_REKAP_EROPA,
-#   buat_materi_rekap_eropa_berita, sesi_olahraga_api,
-#   sesi_olahraga_cerdas,
-#   _tulis_event_besar_dari_cand ← BARU (NameError #5 fix)
+#  PART 4A — V6.9.5 (KRAMAV695MARKER)
+#  PERUBAHAN dari V6.9.4:
+#   [1] olahraga_sudah_terbit_dengan_data: default jam
+#       20 → 6 — gate anti-dobel terlalu ketat (berita
+#       olahraga kemarin jam 7 memblokir olahraga hari ini
+#       jam 7). 6 jam lebih seimbang: ESPN/Liga Eropa
+#       bisa terbit beberapa kali sehari, tapi tidak dobel.
+#  Warisan V6.9.3.2 utuh: kalender event, wartawan cerdas,
+#   NBA 13:30, Pasar Modal 10:30, fallback olahraga.
 # ══════════════════════════════════════════════════════
 
 # ═══ [V6.9] KALENDER EVENT BESAR DUNIA/ASEAN 2026-2027 ═══
@@ -2478,8 +2476,12 @@ def _tulis_event_besar(cand, aktif, breaking=True):
         return 0
 
 # ═══ [V6.9.3.1 — DIPULIHKAN] GATE ANTI-DOBEL ═══
-def olahraga_sudah_terbit_dengan_data(sumber='ESPN Data', jam=20):
+def olahraga_sudah_terbit_dengan_data(sumber='ESPN Data', jam=6):
     """Gate anti-dobel — dipanggil Part 4B & 4A.
+    V6.9.5 — default jam 20 → 6 (gate terlalu ketat: berita
+    olahraga kemarin jam 7 memblokir olahraga hari ini jam 7).
+    6 jam lebih seimbang: ESPN/Liga Eropa bisa terbit beberapa
+    kali sehari, tapi tidak dobel dalam 6 jam.
     Warisan V6.7 — hilang saat menyusun Part 4A V6.9."""
     try:
         batas = (datetime.now(timezone.utc) - timedelta(hours=jam)).isoformat()
@@ -2527,7 +2529,7 @@ def sesi_rangkuman_umum(today_urls, seen):
         return 0
     print('\n🏆 RANGKUMAN OLAHRAGA UMUM TERJADWAL — jam 11:00 WITA')
     if olahraga_sudah_terbit_dengan_data('Rangkuman Olahraga'):
-        print('   ⏭️ Rangkuman umum sudah terbit 20 jam terakhir — skip.')
+        print('   ⏭️ Rangkuman umum sudah terbit 6 jam terakhir — skip.')
         return 0
     cand = collect_candidates(SUMBER_RANGKUMAN_UMUM, today_urls, seen)
     if not cand:
@@ -2695,7 +2697,7 @@ def sesi_olahraga_api(jenis):
     if jenis == 'eropa' and jam == 7:
         print('\n⚽ OLAHRAGA 07:00 — LIGA EROPA & LIGA CHAMPIONS')
         if olahraga_sudah_terbit_dengan_data('ESPN Data'):
-            print('   ⏭️ Sudah terbit 20 jam terakhir — skip.')
+            print('   ⏭️ Sudah terbit 6 jam terakhir — skip.')
             return 1
         # TAHAP 1: ESPN skor(post)+klasemen (opsi B — data resmi)
         materi = buat_materi_rangkuman_eropa()
@@ -2759,7 +2761,7 @@ def sesi_olahraga_api(jenis):
     if jenis == 'nba' and jam == 13 and now.minute >= 30:
         print('\n🏀 OLAHRAGA 13:30 — NBA/WNBA')
         if olahraga_sudah_terbit_dengan_data('ESPN Data NBA'):
-            print('   ⏭️ Sudah terbit 20 jam terakhir — skip.')
+            print('   ⏭️ Sudah terbit 6 jam terakhir — skip.')
             return 1
         # TAHAP 1: ESPN dulu (opsi B)
         materi = buat_materi_rangkuman_nba()
