@@ -1,0 +1,29 @@
+name: KramaNews Sosmed Auto-Post
+
+on:
+  schedule:
+    # ═══ KALIBRASI WITA (UTC+8) — waktu Tarakan ═══
+    # ═══ TIAP 20 MENIT — JAM SIBUK (09:00-21:59 WITA) ═══
+    - cron: '*/20 1-13 * * *'
+    # ═══ TIAP 30 MENIT — JAM TENANG (22:00-08:59 WITA) ═══
+    - cron: '0,30 14-15 * * *'
+    - cron: '0,30 16-23 * * *'
+    - cron: '0,30 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  posting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - run: python3 skrip-sosmed.py
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          SUPABASE_PUBLISHABLE: ${{ secrets.SUPABASE_PUBLISHABLE }}
+          IG_PAGE_TOKEN: ${{ secrets.IG_PAGE_TOKEN }}
+          ADMIN_OPS_SECRET: ${{ secrets.ADMIN_OPS_SECRET }}
