@@ -731,7 +731,6 @@ def konteks_waktu():
     return {'hari_ini': tanggal_panjang(now.date()),
             'kemarin': tanggal_panjang(kemarin),
             'tahun': str(now.year)}
-
 def tanggal_publikasi_str(entry):
     t = entry.get('published_parsed') or entry.get('updated_parsed')
     if not t:
@@ -741,7 +740,9 @@ def tanggal_publikasi_str(entry):
         return tanggal_panjang(pub.date())
     except Exception:
         return None
-    def build_system_prompt():
+
+
+def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
 KRAMAV698MARKER - V6.9.8: fokus ASEAN & Timur Tengah; gambar tema alam/kota
