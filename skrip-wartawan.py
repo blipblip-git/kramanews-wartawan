@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.13.0
+# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.14.0
 
 import requests
 import json
@@ -132,7 +132,7 @@ JADWAL_JAM = {
     16: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'hiburan': 1},
     17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1},
     18: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'teknologi': 1},
-    19: {'nasional': 1},
+    19: {'nasional': 1, 'olahraga': 1, 'ekonomi': 1},
     20: {'hiburan': 1, 'olahraga': 1, 'kesehatan': 1},
 }
 
@@ -928,7 +928,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
     
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, GAMBAR CEK - V6.13.0
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, GAMBAR CEK - V6.14.0
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1136,7 +1136,10 @@ def kategori_barat(title, summary):
         return 'eropa'
     return None
 
-def barat_sudah_terbit(kelompok):
+def barat_terbit_jumlah(kelompok):
+    """V6.14.0: hitung jumlah berita kelompok (usa/rusia/eropa) yang
+    terbit HARI INI (WITA)."""
+    n = 0
     try:
         rows = rest_get('?select=title,created_at&order=created_at.desc&limit=300')
         today = datetime.now(WITA).date()
@@ -1147,16 +1150,21 @@ def barat_sudah_terbit(kelompok):
                     continue
                 teks = (row.get('title') or '').lower()
                 if kelompok == 'usa' and any(k in teks for k in KATA_BARAT_USA):
-                    return True
-                if kelompok == 'rusia' and any(k in teks for k in KATA_BARAT_RUSIA):
-                    return True
-                if kelompok == 'eropa' and any(k in teks for k in KATA_BARAT_EROPA):
-                    return True
+                    n += 1
+                elif kelompok == 'rusia' and any(k in teks for k in KATA_BARAT_RUSIA):
+                    n += 1
+                elif kelompok == 'eropa' and any(k in teks for k in KATA_BARAT_EROPA):
+                    n += 1
             except Exception:
                 pass
     except Exception:
         pass
-    return False
+    return n
+
+def barat_sudah_terbit(kelompok, batas=2):
+    """V6.14.0: cek apakah kelompok sudah mencapai batas berita/hari.
+    Sebelumnya batas 1 (terlalu galak). Sekarang default 2."""
+    return barat_terbit_jumlah(kelompok) >= batas
 
 def deteksi_dua_topik(judul, isi):
     try:
@@ -1316,8 +1324,6 @@ def cek_deskripsi_gambar(deskripsi):
                 return 'deskripsi gambar memuat kata terlarang: ' + k
     return None
 
-# V6.13.0: validator nama - deteksi jabatan tanpa nama
-# Pola: "menteri X" tanpa nama orang, atau "[jabatan] [kata kerja]"
 POLA_JABATAN_TANPA_NAMA = [
     'menteri ', 'presiden ', 'wakil presiden ', 'gubernur ',
     'wakil gubernur ', 'walikota ', 'wakil walikota ', 'bupati ',
@@ -1332,15 +1338,10 @@ POLA_JABATAN_TANPA_NAMA = [
 
 def cek_jabatan_tanpa_nama(isi):
     """V6.13.0: cek apakah ada jabatan yang muncul tanpa diikuti nama.
-    Return string alasan kalau ada, None kalau OK.
-    Longgar: hanya mendeteksi kasus jelas (jabatan + kata kerja
-    langsung, tanpa nama orang di antaranya)."""
+    Return string alasan kalau ada, None kalau OK."""
     if not isi:
         return None
-    # Bersihkan dulu
     teks = isi
-    # Cek: [jabatan] + [kata kerja umum tanpa nama]
-    # Kata kerja yang biasanya muncul kalau jabatan jadi subjek
     KATA_KERJA = [
         'mengatakan', 'menyatakan', 'menjelaskan', 'menuturkan',
         'mengungkapkan', 'mengimbau', 'menghimbau', 'meminta',
@@ -1349,8 +1350,6 @@ def cek_jabatan_tanpa_nama(isi):
         'berbicara', 'menegaskan bahwa',
     ]
     for jabatan in POLA_JABATAN_TANPA_NAMA:
-        # Cari pola: [jabatan][spasi][KATA_KERJA]
-        # Tapi hindari match kalau ada nama (Comma Kapital) setelah jabatan
         pola = re.compile(
             r'\b' + re.escape(jabatan).rstrip() + r'\s+(?:yang\s+)?('
             + '|'.join(re.escape(k) for k in KATA_KERJA) + r')\b',
@@ -1358,10 +1357,8 @@ def cek_jabatan_tanpa_nama(isi):
         )
         m = pola.search(teks)
         if m:
-            # Cek apakah sebelum kata kerja ada nama (2+ kata kapital)
             awal = max(0, m.start() - 80)
             sebelum = teks[awal:m.start()]
-            # Kalau ada koma + minimal 1 kata Kapital (nama) sebelum kata kerja
             if re.search(r',\s*[A-Z][a-zA-Z\.\'\-]+', sebelum):
                 continue
             return 'jabatan "' + jabatan.strip() + '" muncul tanpa nama orang'
@@ -1382,7 +1379,7 @@ def cek_bukan_berita(judul, isi):
 
 # AKHIR PART 3A
 
-# PART 3B - KESEHATAN/TEKNOLOGI DOMAIN, KOREKSI MANDIRI, ANTI-JIPLAK, ESPN - V6.13.0
+# PART 3B - KESEHATAN/TEKNOLOGI DOMAIN, KOREKSI MANDIRI, ANTI-JIPLAK, ESPN - V6.14.0
 # BAGIAN 1 DARI 2
 
 JAM_KESEHATAN = {10: 0, 15: 1, 20: 2}
@@ -1452,10 +1449,12 @@ def _frasa_tertangkap(isi):
     return None
 
 def _panggil_deepseek(user_content, temperature):
+    """V6.14.0: pakai deepseek-flash (model baru, support vision).
+    deepseek-chat sudah deprecated 24 Juli 2026."""
     r = requests.post('https://api.deepseek.com/chat/completions',
         headers={'Authorization': 'Bearer ' + DEEPSEEK_KEY,
                  'Content-Type': 'application/json'},
-        json={'model': 'deepseek-chat',
+        json={'model': 'deepseek-flash',
               'messages': [{'role': 'system', 'content': build_system_prompt()},
                            {'role': 'user', 'content': user_content}],
               'temperature': temperature},
@@ -1598,14 +1597,12 @@ def ai_write(user_content, timeout=150, materi_sumber=''):
     if cek_dl:
         print('       Dateline masih salah setelah koreksi - paksa INDONESIA -')
         isi = _paksa_dateline_indonesia(isi)
-    # V6.13.0: gate anti-dobel-6jam + pengecualian topik besar
     if not judul_topik_besar(judul):
         for t in JUDUL_6JAM:
             if len(kata_inti(judul) & kata_inti(t)) >= DOBEL_6JAM_MIN_KATA:
                 raise Exception('diblokir anti-dobel-6jam V6.4.3: mirip "' + t[:40] + '"')
     else:
         print('       Topik besar terdeteksi - gate 6jam dilewati (V6.13.0).')
-    # V6.13.0: cek nama jabatan wajib ada nama (validator akhir)
     masalah_nama_akhir = cek_jabatan_tanpa_nama(isi)
     if masalah_nama_akhir:
         print('       Nama masih kosong setelah koreksi - loloskan (log): '
@@ -1615,7 +1612,7 @@ def ai_write(user_content, timeout=150, materi_sumber=''):
         raise Exception('diblokir filter gambar V6.4.2: ' + gambar_terlarang[:60])
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
     if jiplak:
-        raise Exception('diblokir ANTI-JIPLAK V6.13.0: kalimat tersalin dari sumber: "'
+        raise Exception('diblokir ANTI-JIPLAK V6.14.0: kalimat tersalin dari sumber: "'
                         + jiplak[:70] + '"')
     return judul, isi, ringkasan, waktu, gambar
 
@@ -1928,6 +1925,8 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
     JUDUL_TERPAKAI.append(normalisasi_judul(judul))
 
 def vision_nilai_gambar(img_url, judul_berita):
+    """V6.14.0: pakai deepseek-flash yang support vision asli
+    (deepseek-chat tidak bisa lihat gambar, cuma ngarang skor)."""
     try:
         img_r = requests.get(img_url, headers={'User-Agent': random.choice(UA_LIST)},
                              timeout=20)
@@ -1938,7 +1937,7 @@ def vision_nilai_gambar(img_url, judul_berita):
             headers={'Authorization': 'Bearer ' + DEEPSEEK_KEY,
                      'Content-Type': 'application/json'},
             json={
-                'model': 'deepseek-chat',
+                'model': 'deepseek-flash',
                 'messages': [
                     {'role': 'user', 'content': [
                         {'type': 'text',
@@ -1955,7 +1954,7 @@ def vision_nilai_gambar(img_url, judul_berita):
                                   '(5) Blur, rusak, iklan, placeholder, logo = skor 1-4. '
                                   '(6) Gambar sesuai tema, tajam, bebas hewan/alas kaki = skor 8-10. '
                                   'Jawab HANYA JSON: {"skor": <angka>} '
-                                  'KRAMAV613MARKER')},
+                                  'KRAMAV614MARKER')},
                         {'type': 'image_url',
                          'image_url': {'url': 'data:image/jpeg;base64,' + b64}}
                     ]}
@@ -2219,7 +2218,7 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
 
 # AKHIR PART 3B
 
-# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS - V6.13.0
+# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS - V6.14.0
 
 KALENDER_EVENT = [
     {'nama': 'Asian Games Aichi-Nagoya 2026',
@@ -2397,10 +2396,12 @@ SUMBER_RANGKUMAN_UMUM = [
 ]
 
 def sesi_rangkuman_umum(today_urls, seen):
+    """V6.14.0: gate jam diperlebar dari `jam == 11` ke `10 <= jam < 13`.
+    Jadi kalau cron telat ke jam 12, masih sempat jalan."""
     jam = datetime.now(WITA).hour
-    if jam != 11:
+    if not (10 <= jam < 13):
         return 0
-    print('\nRANGKUMAN OLAHRAGA UMUM TERJADWAL - jam 11:00 WITA')
+    print('\nRANGKUMAN OLAHRAGA UMUM TERJADWAL - jam ' + str(jam) + ':00 WITA')
     if olahraga_sudah_terbit_dengan_data('Rangkuman Olahraga'):
         print('   Rangkuman umum sudah terbit 6 jam terakhir - skip.')
         return 0
@@ -2561,16 +2562,15 @@ def _tulis_event_besar_dari_cand(today_urls, seen, aktif):
     return _tulis_event_besar(cand, aktif, breaking=True)
 
 def sesi_olahraga_api(jenis):
-    """V6.13.0 - OLAHRAGA WAJIB TERBIT:
-    'eropa' jam 07: TAHAP1 ESPN (Liga Eropa) -> TAHAP2 event besar aktif
-                     -> TAHAP3 berita bola apa saja -> TAHAP4 olahraga umum.
-    'nba'   jam 13:30: TAHAP1 ESPN NBA -> TAHAP2 berita NBA/WNBA -> TAHAP3 olahraga umum.
-    Tidak boleh kosong."""
+    """V6.14.0 - OLAHRAGA WAJIB TERBIT:
+    'eropa': gate jam 7 <= jam < 12 (dulu jam == 7 tepat).
+    'nba': gate jam 13 <= jam < 17 (dulu jam == 13:30+).
+    Toleran terhadap keterlambatan cron GitHub Actions."""
     now = datetime.now(WITA)
     jam = now.hour
 
-    if jenis == 'eropa' and jam == 7:
-        print('\nOLAHRAGA 07:00 - LIGA EROPA / EVENT BESAR / OLAHRAGA UMUM')
+    if jenis == 'eropa' and 7 <= jam < 12:
+        print('\nOLAHRAGA ' + str(jam) + ':00 - LIGA EROPA / EVENT BESAR / OLAHRAGA UMUM')
         if olahraga_sudah_terbit_dengan_data('ESPN Data'):
             print('   ESPN sudah terbit 6 jam terakhir - skip.')
             return 1
@@ -2680,8 +2680,8 @@ def sesi_olahraga_api(jenis):
         print('   Tidak ada berita olahraga apa pun - skip.')
         return 0
 
-    if jenis == 'nba' and jam == 13 and now.minute >= 30:
-        print('\nOLAHRAGA 13:30 - NBA/WNBA')
+    if jenis == 'nba' and 13 <= jam < 17:
+        print('\nOLAHRAGA ' + str(jam) + ':00 - NBA/WNBA')
         if olahraga_sudah_terbit_dengan_data('ESPN Data NBA'):
             print('   ESPN NBA sudah terbit 6 jam terakhir - skip.')
             return 1
@@ -2765,7 +2765,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.13.0
+# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.14.0
 
 def sesi_breaking(today_urls, seen):
     made = 0
@@ -2829,14 +2829,30 @@ def kategori_breaking(c, tip):
         return 'internasional'
     return 'nasional'
 
-def _pasar_modal_jam_tepat():
+def _pasar_modal_sesi():
+    """V6.14.0: pasar Indonesia tutup sesi I jam 12:00 WIB (13:00 WITA),
+    tutup sesi II jam 15:00 WIB (16:00 WITA).
+    - Jam 13:00-15:59 WITA => sesi TENGAH (data sesi I)
+    - Jam >= 16:00 WITA     => sesi PENUTUPAN
+    Toleran terhadap keterlambatan cron GitHub Actions (dulu jendela
+    sempit 25 menit, sekarang 11 jam)."""
     now = datetime.now(WITA)
-    return now.hour in (12, 18) and now.minute < 25
+    jam = now.hour
+    if 13 <= jam < 16:
+        return 'Tengah'
+    if jam >= 16:
+        return 'Penutupan'
+    return None
 
-def pasar_modal_sudah_terbit(jam):
+def pasar_modal_sudah_terbit(sesi):
+    """V6.14.0: cek apakah sesi pasar modal sudah terbit HARI INI (WITA).
+    Sebelumnya cek 2 jam terakhir - terlalu sempit."""
     try:
-        batas = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
-        sumber = 'Pasar Modal ' + str(jam)
+        now_wita = datetime.now(WITA)
+        awal_hari_wita = datetime(now_wita.year, now_wita.month, now_wita.day,
+                                  0, 0, 0, tzinfo=WITA)
+        batas = awal_hari_wita.astimezone(timezone.utc).isoformat()
+        sumber = 'Pasar Modal ' + str(sesi)
         rows = rest_get('?select=id&source_name=eq.' + quote_plus(sumber)
                         + '&created_at=gte.' + batas)
         return len(rows) > 0
@@ -2867,7 +2883,7 @@ def _ambil_harga_yahoo(simbol):
         return None
 
 def _ambil_kurs_usdidr():
-    """V6.13.0: coba beberapa sumber untuk kurs USD/IDR.
+    """V6.14.0: coba beberapa sumber untuk kurs USD/IDR.
     1. Yahoo USDIDR=X
     2. Yahoo IDR=X (fallback)
     3. open.er-api.com (gratis, no API key)
@@ -2917,12 +2933,18 @@ def _format_kurs_usdidr():
     return s
 
 def sesi_pasar_modal(today_urls, seen):
-    if not _pasar_modal_jam_tepat():
+    """V6.14.0: pasar modal turun 2x/hari:
+    - Sesi TENGAH (jam 13:00-15:59 WITA) - data sesi I
+    - Sesi PENUTUPAN (jam >= 16:00 WITA) - data final
+    Anti-dobel per sesi per hari. Kalau cron telat sampai jam 19:00,
+    tetap jalan (selama belum terbit sesi Penutupan hari ini)."""
+    sesi = _pasar_modal_sesi()
+    if not sesi:
         return 0
     jam = datetime.now(WITA).hour
-    print('\nPASAR MODAL TERJADWAL - jam ' + str(jam) + ':00 WITA')
-    if pasar_modal_sudah_terbit(jam):
-        print('   Pasar modal jam ' + str(jam) + ' sudah terbit - skip.')
+    print('\nPASAR MODAL TERJADWAL - sesi ' + sesi + ' (jam ' + str(jam) + ':00 WITA)')
+    if pasar_modal_sudah_terbit(sesi):
+        print('   Pasar modal sesi ' + sesi + ' sudah terbit hari ini - skip.')
         return 0
 
     baris = []
@@ -2949,8 +2971,9 @@ def sesi_pasar_modal(today_urls, seen):
     tanggal = datetime.now(WITA).strftime('%d %B %Y')
     jam_str = datetime.now(WITA).strftime('%H:%M')
     k = konteks_waktu()
+    kata_sesi = 'sesi tengah hari' if sesi == 'Tengah' else 'penutupan'
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
-            'TUGAS: Tulis SATU berita laporan pasar keuangan terkini '
+            'TUGAS: Tulis SATU berita laporan pasar keuangan ' + kata_sesi + ' '
             'dari data berikut:\n\n'
             + '\n'.join(baris) + '\n\n'
             'Aturan:\n'
@@ -2964,7 +2987,7 @@ def sesi_pasar_modal(today_urls, seen):
             '- deskripsi_gambar: tema city skyline/gedung bursa.\n'
             '- Akhiri dengan kalimat: "Data dihimpun KramaNews dari perdagangan '
             'terakhir ' + jam_str + ' WITA, ' + tanggal + '."')
-    print('   AI menulis laporan pasar modal...')
+    print('   AI menulis laporan pasar modal (' + sesi + ')...')
     try:
         judul, isi, ringkasan, waktu, gambar = ai_write(user)
     except BeritaLama as bl:
@@ -2976,9 +2999,9 @@ def sesi_pasar_modal(today_urls, seen):
         return 0
     try:
         insert_news(judul, isi, ringkasan, 'ekonomi', '',
-                    'https://finance.yahoo.com/', 'Pasar Modal ' + str(jam),
+                    'https://finance.yahoo.com/', 'Pasar Modal ' + sesi,
                     'published', breaking=True, deskripsi_gambar=gambar)
-        print('   PASAR MODAL TERBIT: ' + judul[:60])
+        print('   PASAR MODAL TERBIT (' + sesi + '): ' + judul[:60])
         return 1
     except Exception as e:
         print('   Insert pasar modal gagal: ' + str(e)[:80])
@@ -3245,12 +3268,12 @@ def sesi_kategori(today_urls, seen):
             if jam in (7, 13) and olahraga_sudah_terbit_dengan_data('Olahraga Fallback'):
                 print('   Fallback olahraga sudah terbit - skip (anti-dobel).')
                 continue
-            if jam == 7:
-                if sesi_olahraga_api(7) == 1:
+            if 7 <= jam < 12:
+                if sesi_olahraga_api('eropa') == 1:
                     total += 1
                 continue
-            if jam == 13 and datetime.now(WITA).minute >= 30:
-                if sesi_olahraga_api(13) == 1:
+            if 13 <= jam < 17:
+                if sesi_olahraga_api('nba') == 1:
                     total += 1
                 continue
             if jam in (11, 17):
@@ -3284,7 +3307,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.13.0)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.14.0)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3323,7 +3346,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.13.0 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.14.0 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3337,7 +3360,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.13.0'
+FILE_VERSI      = 'V6.14.0'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
