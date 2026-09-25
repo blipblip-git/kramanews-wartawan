@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.15.1
+# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.15.2
 
 import requests
 import json
@@ -74,15 +74,18 @@ def GN(q, lang='id', label=None):
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
-ESPN_LIGA = [
+# V6.15.2: pisah liga top (rekap jam 7) & liga lain (slot terpisah)
+ESPN_LIGA_TOP = [
     ('eng.1',        'Premier League (Inggris)'),
     ('esp.1',        'La Liga (Spanyol)'),
     ('ita.1',        'Serie A (Italia)'),
     ('ger.1',        'Bundesliga (Jerman)'),
     ('fra.1',        'Ligue 1 (Prancis)'),
-    ('ned.1',        'Eredivisie (Belanda)'),
     ('uefa.champions', 'Liga Champions'),
     ('uefa.europa',  'Liga Europa'),
+]
+ESPN_LIGA_LAIN = [
+    ('ned.1',        'Eredivisie (Belanda)'),
     ('uefa.europa.conf', 'Liga Conference'),
     ('idn.1',        'Liga 1 (Indonesia)'),
 ]
@@ -414,6 +417,10 @@ HUNT = {
         GN('volleyball nations league', 'en', 'Google News Voli Dunia'),
         GN('IBL basket indonesia', 'id', 'Google News Basket IBL'),
         GN('tenis turnamen grand slam', 'id', 'Google News Tenis'),
+        # V6.15.2: tambah sumber liga lain (Eredivisie, Conference, Liga 1)
+        GN('eredivisie hasil', 'id', 'Google News Eredivisie'),
+        GN('liga conference hasil', 'id', 'Google News Liga Conference'),
+        GN('liga 1 indonesia hasil', 'id', 'Google News Liga 1'),
     ],
     'hiburan': [
         RSSF('https://www.kompas.com/hype/feed', 'Kompas Hype'),
@@ -2237,7 +2244,7 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
 
 # AKHIR PART 3B
 
-# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS - V6.15.0
+# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS - V6.15.2
 
 KALENDER_EVENT = [
     {'nama': 'Asian Games Aichi-Nagoya 2026',
@@ -2415,8 +2422,6 @@ SUMBER_RANGKUMAN_UMUM = [
 ]
 
 def sesi_rangkuman_umum(today_urls, seen):
-    """V6.14.0: gate jam diperlebar dari `jam == 11` ke `10 <= jam < 13`.
-    Jadi kalau cron telat ke jam 12, masih sempat jalan."""
     jam = datetime.now(WITA).hour
     if not (10 <= jam < 13):
         return 0
@@ -2517,10 +2522,14 @@ def buat_materi_rangkuman_nba():
     return '\n\n'.join(bagian)
 
 def buat_materi_rangkuman_eropa():
+    """V6.15.2: rekap fokus LIGA TOP saja (Premier League, La Liga,
+    Serie A, Bundesliga, Ligue 1, Liga Champions, Liga Europa).
+    Liga lain (Eredivisie, Conference, Liga 1) ditangani slot terpisah
+    lewat HUNT['olahraga']."""
     skor_semua = []
     klasemen_blok = []
     klasemen_teks = []
-    for code, nama in ESPN_LIGA:
+    for code, nama in ESPN_LIGA_TOP:
         for s in espn_skor_rentang(code):
             skor_semua.append(nama.split(' (')[0] + ': ' + s)
         blok, teks = espn_klasemen(code, nama)
@@ -2530,7 +2539,8 @@ def buat_materi_rangkuman_eropa():
     if not skor_semua:
         return None
     bagian = []
-    bagian.append('HASIL LAGA TERAKHIR (ANGKA RESMI MESIN - SALIN PERSIS):\n'
+    bagian.append('HASIL LAGA TERAKHIR LIGA TOP EROPA '
+                  '(ANGKA RESMI MESIN - SALIN PERSIS):\n'
                   + '\n'.join(skor_semua))
     if klasemen_teks:
         bagian.append('KLASMEN (ANGKA RESMI MESIN - WAJIB disebut posisi tiap tim '
@@ -2541,8 +2551,6 @@ def buat_materi_rangkuman_eropa():
                       + '\n\n'.join(klasemen_blok[:4]))
     return '\n\n'.join(bagian)
 
-# V6.15.0: fungsi mati dihapus (SUMBER_REKAP_EROPA, buat_materi_rekap_eropa_berita).
-
 def _tulis_event_besar_dari_cand(today_urls, seen, aktif):
     sumber = buat_sumber_event(aktif)
     cand = collect_candidates(sumber, today_urls, seen)
@@ -2552,26 +2560,26 @@ def _tulis_event_besar_dari_cand(today_urls, seen, aktif):
     return _tulis_event_besar(cand, aktif, breaking=True)
 
 def sesi_olahraga_api(jenis):
-    """V6.14.0 - OLAHRAGA WAJIB TERBIT:
+    """V6.15.2 - OLAHRAGA WAJIB TERBIT:
     'eropa': gate jam 7 <= jam < 12 (dulu jam == 7 tepat).
     'nba': gate jam 13 <= jam < 17 (dulu jam == 13:30+).
-    Toleran terhadap keterlambatan cron GitHub Actions."""
+    Rekap fokus LIGA TOP EROPA (7 liga utama)."""
     now = datetime.now(WITA)
     jam = now.hour
 
     if jenis == 'eropa' and 7 <= jam < 12:
-        print('\nOLAHRAGA ' + str(jam) + ':00 - LIGA EROPA / EVENT BESAR / OLAHRAGA UMUM')
+        print('\nOLAHRAGA ' + str(jam) + ':00 - LIGA TOP EROPA / EVENT BESAR / OLAHRAGA UMUM')
         if olahraga_sudah_terbit_dengan_data('ESPN Data'):
             print('   ESPN sudah terbit 6 jam terakhir - skip.')
             return 1
 
-        print('   TAHAP 1: ESPN Liga Eropa...')
+        print('   TAHAP 1: ESPN Liga Top Eropa...')
         materi = buat_materi_rangkuman_eropa()
         if materi:
             k = konteks_waktu()
             user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: '
                     + k['kemarin'] + ')\n'
-                    'TUGAS: RANGKUMAN HASIL LIGA EROPA & LIGA CHAMPIONS '
+                    'TUGAS: RANGKUMAN HASIL LIGA TOP EROPA & LIGA CHAMPIONS '
                     '(SATU judul, BANYAK laporan).\n\n' + materi + '\n\n'
                     'ATURAN TAMBAHAN:\n'
                     '- Dateline: "INDONESIA - ".\n- Panjang: 300-500 kata.\n'
@@ -2755,7 +2763,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.15.0
+# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.15.2
 
 def sesi_breaking(today_urls, seen):
     made = 0
@@ -3094,8 +3102,7 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                   sumber_custom=None, domain_tek=None, wajib_regional=False,
                   sumber_fallback=None):
     """V6.15.0 (K1): wajib_regional jadi PRIORITAS, bukan filter wajib.
-    Kalau tidak ada kandidat regional, boleh turun berita internasional.
-    Tapi kalau ada kandidat regional, dia didahulukan."""
+    Kalau tidak ada kandidat regional, boleh turun berita internasional."""
     cand = collect_candidates(sumber_custom if sumber_custom else HUNT.get(cat, []),
                               today_urls, seen)
     if not cand:
@@ -3107,7 +3114,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
         if not cand:
             print('   (tt) Tidak ada kandidat Timur Tengah segar.')
             return False
-    # V6.15.0: log jumlah kandidat regional (tidak difilter)
     if wajib_regional and cat == 'olahraga':
         n_reg = sum(1 for c in cand
                     if teks_mengandung(c['title'] + ' ' + c['summary'],
@@ -3131,7 +3137,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                     return 0
             return 1
         groups.sort(key=topik_prio)
-    # V6.15.0 (K1): olahraga regional diprioritaskan (bukan wajib)
     if wajib_regional and cat == 'olahraga':
         groups.sort(key=lambda g: 0 if kelompok_regional_olahraga(g['items']) else 1)
     if cat == 'internasional_asean':
@@ -3306,7 +3311,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.15.0)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.15.2)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3345,7 +3350,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.15.0 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.15.2 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3359,7 +3364,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.15.0'
+FILE_VERSI      = 'V6.15.2'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
