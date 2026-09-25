@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.14.0
+# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.15.0
 
 import requests
 import json
@@ -18,7 +18,7 @@ DEEPSEEK_KEY         = os.environ.get('DEEPSEEK_KEY', '')
 SUPABASE_PUBLISHABLE = os.environ.get('SUPABASE_PUBLISHABLE', '')
 ADMIN_SECRET         = os.environ.get('ADMIN_OPS_SECRET', '')
 
-SUPABASE_URL = 'https://imcvijgytdjjpotlaltv.supabase.co'
+SUPABASE_URL = 'https://imcvijgtdjjpotlaltv.supabase.co'
 REST_URL     = SUPABASE_URL + '/rest/v1/articles'
 EDGE_URL     = SUPABASE_URL + '/functions/v1/admin-ops'
 AUTHOR_NAME  = 'DT'
@@ -27,11 +27,11 @@ WITA = timezone(timedelta(hours=8))
 
 BREAKING_MAX_SLOT   = 3
 BREAKING_UMUR_MENIT = 30
-MAX_UMUR_BERITA_JAM = 24
+MAX_UMUR_BERITA_JAM = 30   # V6.15.0: naik dari 24, biar sumber telat index tetap masuk
 JENDELA_DOBEL_JAM   = 36
 GEMPA_DOM_MIN       = 5.5
 GEMPA_DUNIA_MIN     = 6.5
-SKOR_BREAKING_MIN   = 30
+SKOR_BREAKING_MIN   = 20   # V6.15.0: turun dari 30, biar breaking gampang lolos
 AMBANG_MIRIP        = 0.65
 SCRAPER_TIMEOUT     = 12
 SCRAPE_MIN_KARAKTER = 600
@@ -41,10 +41,12 @@ GAMBAR_MIN_LEBAR    = 400
 BLUR_SKOR_MINIMUM  = 5
 VISION_TIMEOUT     = 30
 
-MATCH_MIN_KATA     = 3
-MATCH_MIN_RASIO    = 0.60
+MATCH_MIN_KATA     = 2     # V6.15.0: turun dari 3, grup berita lebih gampang terbentuk
+MATCH_MIN_RASIO    = 0.50  # V6.15.0: turun dari 0.60
 
-BARAT_MAX_HARI     = 1
+# V6.15.0: domain yang sering HTTP 403 saat scraping — langsung pakai RSS
+DOMAIN_SKIP_SCRAPE = ['berita.tarakankota.go.id']
+
 KATA_BARAT_USA     = ['amerika', 'u.s', 'washington', 'trump', 'biden', 'new york', 'california', 'texas']
 KATA_BARAT_RUSIA   = ['rusia', 'russia', 'moskow', 'moscow', 'putin', 'ukraina', 'ukraine']
 KATA_BARAT_EROPA   = ['eropa', 'europe', 'jerman', 'germany', 'perancis', 'france', 'inggris',
@@ -73,34 +75,9 @@ def GN(q, lang='id', label=None):
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
-KARANTINA_SUMBER = [
-    'detikhot', 'hot.detik.com', 'detik.com/hot',
-]
-
-IDX_JAM = []
-IDX_JAM_1030 = (10, 0)
-IDX_Sumber = 'Pasar Modal'
-IDX_GATE_JAM = 2
-
-IDX_FEEDS = [
-    RSSF('https://market.bisnis.com/feed', 'Bisnis Market'),
-    RSSF('https://www.antaranews.com/rss/pasar-modal', 'Antara Pasar Modal'),
-    RSSF('https://www.cnbcindonesia.com/market/rss', 'CNBC Market'),
-    RSSF('https://finance.detik.com/rss', 'Detik Finance'),
-    RSSF('https://www.kompas.com/money/feed', 'Kompas Money'),
-    RSSF('https://www.idx.co.id/rss/berita', 'IDX Resmi'),
-    GN('IHSG hari ini', 'id', 'GN IHSG'),
-    GN('kurs rupiah hari ini', 'id', 'GN Rupiah'),
-    GN('saham Indonesia hari ini', 'id', 'GN Saham'),
-]
-
-IDX_KATA = ['ihsg', 'saham', 'bursa', 'rupiah', 'idx', 'pareto',
-            'wall street', 'wallstreet', 'bursa efek', 'papan utama',
-            'papan pengembangan', 'penutupan', 'perdagangan',
-            'lq45', 'dana asing', 'closes', 'sesi perdagangan',
-            'pembukaan', 'kurs', 'dolar as']
-
-IDX_EMITEN = []
+# V6.15.0: variabel mati dihapus (IDX_JAM, IDX_JAM_1030, IDX_EMITEN,
+# IDX_FEEDS, IDX_KATA, IDX_Sumber, IDX_GATE_JAM, BARAT_MAX_HARI,
+# KARANTINA_SUMBER) — tidak dipakai di kode manapun.
 
 ESPN_LIGA = [
     ('eng.1',        'Premier League (Inggris)'),
@@ -153,12 +130,18 @@ UA_LIST = [
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
 ]
 
-GAMBAR_SAMPAH_POLA = [
-    'logo', 'icon', 'icon_', 'banner', 'ads', 'advert', 'sponsor',
-    'placeholder', 'default', 'no-image', 'noimage', 'avatar',
-    'thumb_100', 'thumb_150', 'thumb_200', '/100x', '/150x', '/200x',
-    '100x100', '150x150', '200x200', '100-', '150-', '200-',
+# V6.15.0: pisah pola menjadi "kata" (word boundary) & "path" (substring)
+GAMBAR_SAMPAH_KATA = [
+    'logo', 'icon', 'banner', 'ads', 'advert', 'sponsor',
+    'placeholder', 'default', 'noimage', 'avatar',
     'profile', 'favicon', 'sprite', 'watermark', 'blank', 'pixel',
+]
+GAMBAR_SAMPAH_POLA = [
+    'icon_', 'no-image',
+    'thumb_100', 'thumb_150', 'thumb_200',
+    '/100x', '/150x', '/200x',
+    '100x100', '150x150', '200x200',
+    '100-', '150-', '200-',
 ]
 
 GAMBAR_LARANG_KATA = [
@@ -197,6 +180,10 @@ JANJI_JADWAL  = ['jadwal', 'schedule']
 JANJI_TABEL   = ['klasemen', 'standing', 'ranking', 'peringkat']
 JANJI_ANGKA   = ['hasil', 'skor', 'result']
 JANJI_HARGA = ['harga', 'tarif', 'biaya', 'berapa', 'sewa', 'gaji']
+
+# V6.15.0: kata yang memicu longgarkan cek_janji_judul saat judul menjanjikan harga
+KATA_HARGA_LONGGAR = ['naik', 'turun', 'melonjak', 'anjlok', 'drastis',
+                      'meroket', 'terjun', 'menguat', 'melemah']
 
 KATA_HEWAN_SLUG = [
     'dog', 'puppy', 'cat', 'kitten', 'bird', 'monkey', 'elephant',
@@ -393,6 +380,8 @@ HUNT = {
         GN('turkey middle east', 'en', 'Google News Turki'),
         GN('west asia conflict', 'en', 'Google News Asia Barat'),
     ],
+    # V6.15.0: HUNT['internasional'] = cadangan, tidak dipakai rutin di
+    # JADWAL_JAM. Tetap disimpan untuk potensi kategori baru.
     'internasional': [
         RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
         RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
@@ -452,7 +441,7 @@ HUNT = {
 }
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.13.0
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.15.0
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -522,8 +511,6 @@ DUNIA_KRITIS = [
     'resignation', 'overthrown', 'state of emergency', 'killed',
 ]
 
-# V6.13.0: topik besar yang boleh melewati gate anti-dobel-6jam
-# (bencana besar & event olahraga besar - topik berkembang berhari-hari)
 TOPIK_BESAR_GATE = [
     'tsunami', 'gempa', 'erupsi', 'gunung meletus', 'banjir bandang',
     'tanah longsor', 'kebakaran hutan', 'karhutla',
@@ -543,7 +530,7 @@ def judul_topik_besar(judul):
 class BeritaLama(Exception):
     pass
 
-STAT_SCRAPE = {'ok': 0, 'gagal': 0}
+STAT_SCRAPE = {'ok': 0, 'gagal': 0, 'skip': 0}
 
 JUDUL_TERPAKAI = []
 JUDUL_6JAM = []
@@ -551,6 +538,8 @@ DOBEL_6JAM_MIN_KATA = 2
 _GAMBAR_TERPAKAI_CACHE = None
 
 def resolusi_link_google(url):
+    """V6.15.0: regex diperkuat. Prioritaskan href ke portal berita
+    Indonesia/asing yang valid, hindari halaman consent & redirect Google."""
     try:
         if 'news.google.com' not in url:
             return url
@@ -559,19 +548,32 @@ def resolusi_link_google(url):
         if not r.ok:
             return url
         html = r.text or ''
-        m = re.search(r'href="(https?://(?!news\.google|www\.google)[^"]+)"', html)
+        # V6.15.0: prioritas 1 — cari URL di dalam tag <a href> yang mengarah
+        # ke domain berita umum (bukan google, bukan consent, bukan akun)
+        m = re.search(
+            r'href="(https?://(?!(?:www\.)?(?:google|accounts|consent|policies|support)\.)[^"]+\.(?:com|id|net|co|org|tv|co\.id|or\.id|go\.id|ac\.id)[^"]*)"',
+            html
+        )
         if m:
             kandidat = m.group(1)
-            if 'google' not in kandidat:
+            if 'google' not in kandidat.lower():
                 return kandidat
-        m = re.search(r'https?://(?!news\.google|www\.google)[A-Za-z0-9\.\-]+(?:/[^\s"\'<>\\]+)+', html)
-        if m:
+        # V6.15.0: prioritas 2 — cari URL mentah di body
+        for m in re.finditer(
+            r'https?://(?!(?:www\.)?(?:google|accounts|consent|policies|support)\.)[A-Za-z0-9\.\-]+\.(?:com|id|net|co|org|tv|co\.id|or\.id|go\.id|ac\.id)(?:/[^\s"\'<>\\]*)?',
+            html
+        ):
             kandidat = m.group(0)
-            if 'google' not in kandidat and any(d in kandidat for d in ('.com', '.id', '.net', '.co', '.org')):
+            if 'google' not in kandidat.lower() and 'gstatic' not in kandidat.lower():
                 return kandidat
         return url
     except Exception:
         return url
+
+def domain_skip_scrape(url):
+    """V6.15.0: cek apakah domain dilarang scraping (HTTP 403 konsisten)."""
+    low = (url or '').lower()
+    return any(d in low for d in DOMAIN_SKIP_SCRAPE)
 
 def scrape_via_jina(url):
     try:
@@ -633,6 +635,11 @@ def _bersihkan_html_artikel(html):
 def scrape_artikel(url):
     if not url:
         return ''
+    # V6.15.0: skip domain yang konsisten HTTP 403
+    if domain_skip_scrape(url):
+        STAT_SCRAPE['skip'] += 1
+        print('       Skip scraping (domain 403 konsisten) - ' + url[:60])
+        return ''
     url_asli = resolusi_link_google(url)
     hasil = ''
     try:
@@ -659,7 +666,7 @@ def scrape_artikel(url):
     return ''
 
 def ambil_materi_kaya(c):
-    """V6.13.0: kalau scraping gagal, GABUNG title + summary + content RSS
+    """V6.15.0: kalau scraping gagal, GABUNG title + summary + content RSS
     biar materi lebih kaya daripada cuma summary."""
     scraped = scrape_artikel(c.get('link', ''))
     if scraped and len(scraped) >= SCRAPE_MIN_KARAKTER:
@@ -667,7 +674,6 @@ def ambil_materi_kaya(c):
         print('       Scraping artikel asli: ' + str(len(scraped)) + ' karakter')
         return scraped, True
     STAT_SCRAPE['gagal'] += 1
-    # V6.13.0: gabung title + summary + content RSS
     potongan = []
     t = (c.get('title') or '').strip()
     if t:
@@ -791,61 +797,54 @@ def tanggal_publikasi_str(entry):
         return None
 
 def build_system_prompt():
+    """V6.15.0: prompt dirapikan ~900 kata (dari ~1100)."""
     k = konteks_waktu()
-    return """Kamu adalah AI Wartawan profesional KramaNews Indonesia.
-KRAMAV613MARKER - V6.13.0
+    return """Kamu AI Wartawan profesional KramaNews Indonesia.
+KRAMAV615MARKER - V6.15.0
 
 GAYA BAHASA (ANTI-JIPLAK):
-- Tulis dengan kalimatmu sendiri. Struktur beda dari materi.
-- Kalimat pembuka wajib struktur baru, dilarang salin pembuka materi.
+- Tulis dengan kalimatmu sendiri, struktur beda dari materi.
+- Kalimat pembuka wajib struktur baru, jangan salin pembuka materi.
 - Pakai sinonim ("mengatakan" -> "menuturkan/menyatakan/mengungkapkan").
 - Acak urutan fakta, jangan ikuti urutan materi.
 - DILARANG frasa khas media: "dalam keterangan resminya", "seperti
   dikutip dari", "dalam siaran pers yang diterima redaksi".
 - DILARANG 10+ kata berurutan sama dengan materi (diblokir otomatis).
-- Materi pendek (<500 kata) dapat toleransi 20 kata.
+- Materi pendek (<500 kata) toleransi 20 kata.
 - Istilah resmi (nama lembaga/jabatan) boleh disalin persis.
 
 ATURAN NAMA ORANG (SANGAT KERAS - WAJIB):
-Setiap pejabat/tokoh yang disebut di berita WAJIB ada NAMANYA.
+Setiap pejabat/tokoh yang disebut WAJIB ada NAMANYA.
 
 Contoh SALAH vs BENAR:
 - SALAH: "Kementerian Pendidikan memperkuat literasi digital..."
 - BENAR: "Menteri Pendidikan Dasar dan Menengah, Abdul Mu'ti,
   memperkuat literasi digital..."
-- SALAH: "Sat Binmas Polres Tarakan mengingatkan warga..."
-- BENAR: "Kasat Binmas Polres Tarakan, AKP Budi Santoso,
-  mengingatkan warga..."
 - SALAH: "Ketua FIFA menyatakan..."
 - BENAR: "Presiden FIFA, Gianni Infantino, menyatakan..."
-- SALAH: "Kepala Cabang PELNI Tarakan menjelaskan..."
-- BENAR: "Kepala Cabang PELNI Tarakan, [nama], menjelaskan..."
 - SALAH: "Sekjen PBB menyerukan..."
 - BENAR: "Sekretaris Jenderal PBB, António Guterres, menyerukan..."
 
 ATURAN:
 - Jabatan muncul => NAMA orang HARUS muncul.
-- DILARANG menulis jabatan tanpa nama. DILARANG menulis institusi saja.
+- DILARANG jabatan tanpa nama. DILARANG institusi saja.
 - Berlaku untuk pejabat Indonesia & asing, tokoh olahraga/ekonomi/
-  hiburan, ketua organisasi internasional (PBB, FIFA, WHO, ASEAN,
-  IMF, Bank Dunia).
+  hiburan, ketua organisasi internasional (PBB, FIFA, WHO, ASEAN).
 - Sertakan gelar akademik bila materi menyebutnya.
 
 CARA CARI NAMA:
-- Langkah 1: Cari di materi. Kalau ada nama, pakai.
+- Langkah 1: Cari di materi. Ada nama -> pakai.
 - Langkah 2: Kalau materi hanya sebut jabatan, PAKAI PENGETAHUAN UMUM
-  untuk nama pejabat yang menjabat SEKARANG. Contoh yang SUDAH PASTI:
+  yang kamu YAKIN. Contoh pasti:
     * Presiden RI = Prabowo Subianto
     * Wapres RI = Gibran Rakabuming Raka
-    * Menteri Pendidikan Dasar dan Menengah = Abdul Mu'ti
-    * Sekretaris Jenderal PBB = António Guterres
+    * Mendikdasmen = Abdul Mu'ti
+    * Sekjen PBB = António Guterres
     * Presiden FIFA = Gianni Infantino
-    * Presiden AS = Donald Trump
-    * Presiden Rusia = Vladimir Putin
   Untuk yang TIDAK YAKIN, JANGAN mengarang.
-- Langkah 3: Kalau benar-benar tidak tahu nama valid, atribusi ke
-  INSTITUSI langsung sebagai subjek (tanpa kata "pejabat"). Contoh:
-  "Polres Tarakan mengimbau warga..." (bukan "seorang pejabat Polres").
+- Langkah 3: Kalau tidak tahu nama valid, atribusi ke INSTITUSI
+  langsung sebagai subjek (tanpa kata "pejabat"). Contoh:
+  "Polres Tarakan mengimbau warga..."
 
 VARIASI FRASA KUTIPAN:
 "kata [jabatan + nama]", "ujar [jabatan + nama]", "menurut
@@ -855,30 +854,29 @@ DILARANG "seorang pejabat", "seorang pengusaha", "seorang pengamat".
 
 WAKTU:
 - HARI INI: """ + k['hari_ini'] + """ | KEMARIN: """ + k['kemarin'] + """ | TAHUN: """ + k['tahun'] + """
-- Sumber terverifikasi segar (maks 24 jam).
+- Sumber terverifikasi segar (maks 30 jam).
 - DILARANG "belum dikonfirmasi waktu". DILARANG mengarang jam.
 - DILARANG tanggal tahun sebelum """ + k['tahun'] + """.
 
 DATELINE:
 - HANYA dari tempat yang TERTULIS di materi, ejaan PERSIS.
-- Bila hanya negara, dateline = nama negara.
-- Bila tidak ada tempat, dateline = "INDONESIA - ".
+- Hanya negara -> dateline = nama negara.
+- Tidak ada tempat -> dateline = "INDONESIA - ".
 - DILARANG mengarang nama kota.
 
 PERSEN: selalu simbol % ("95%", "3,5%"). Dilarang "95 persen".
 
-KATEGORI (WAJIB TEPAT - BACA TOPIK INTI, BUKAN KATA KUNCI ACAK):
-Tentukan kategori dari ISI UTAMA berita, bukan dari 1 kata yang
-kebetulan mirip.
+KATEGORI (WAJIB TEPAT - BACA TOPIK INTI):
+Tentukan dari ISI UTAMA, bukan 1 kata mirip.
 
 - nasional: pemerintah pusat, DPR, presiden, wapres, menteri, program
-  nasional, kebijakan pusat, KPK, Mabes Polri, isu nasional.
+  nasional, kebijakan pusat, KPK, Mabes Polri.
 - daerah: peristiwa/pejabat lokal kota/kabupaten Indonesia
   (walikota, bupati, kapolres, kajari, dinas daerah).
 - internasional: peristiwa luar negeri, pejabat asing, PBB, ASEAN,
   konflik luar, gempa luar, ekonomi global.
 - ekonomi: IHSG, kurs, saham, harga komoditas, BI, OJK, keuangan,
-  bisnis, UMKM (aspek komersial), startup (bisnisnya).
+  bisnis, UMKM (komersial), startup (bisnisnya).
 - olahraga: sepak bola, basket, badminton, voli, tenis, MotoGP, F1,
   liga, timnas, atlet, pertandingan, klasemen.
 - teknologi: gadget, AI, aplikasi, internet, startup (teknologinya),
@@ -890,14 +888,9 @@ kebetulan mirip.
 PERHATIAN KHUSUS:
 - "Kemendikbud", "literasi digital sekolah", "pendidikan" => nasional
   (BUKAN olahraga).
-- "Kemendikbud" atau "literasi" ATAU "sekolah" ATAU "kurikulum" =>
-  JANGAN pernah masuk olahraga.
 - "Mobil listrik China" => teknologi (BUKAN olahraga).
 - "Hilirisasi nikel" => ekonomi (BUKAN olahraga).
-- "MLP" atau "LNG" atau "metana" => ekonomi atau teknologi (BUKAN
-  olahraga).
-- Kalau ragu antara dua kategori, pilih yang paling dominan di
-  paragraf pertama.
+- "MLP"/"LNG"/"metana" => ekonomi atau teknologi (BUKAN olahraga).
 
 GAMBAR (deskripsi_gambar):
 - 3-6 kata kunci visual bahasa Inggris.
@@ -908,14 +901,14 @@ GAMBAR (deskripsi_gambar):
   DILARANG wajah jelas atau kerumunan.
 
 PANJANG: target kata diberikan di pesan user. Dilarang menggembung
-dengan kalimat kosong; setiap kalimat wajib bawa informasi baru.
+dengan kalimat kosong.
 
 JUDUL: maks 10 kata. Dilarang janjikan jadwal/klasemen/hasil/harga
 bila isi tidak memuat datanya.
 
 KHUSUS KESEHATAN: utamakan edukasi pakar (dokter, ahli gizi,
-psikolog). Bila tidak ada nama pakar di materi, pakai institusi
-(Kemenkes, WHO) sebagai subjek langsung.
+psikolog). Bila tidak ada nama pakar, pakai institusi sebagai subjek
+langsung.
 
 KHUSUS TEKNOLOGI: ikuti aturan kedalaman domain di pesan user.
 
@@ -928,7 +921,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
     
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, GAMBAR CEK - V6.14.0
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, GAMBAR CEK - V6.15.0
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -994,11 +987,19 @@ def expire_breaking(menit):
     return n
 
 def gambar_sampah(url):
+    """V6.15.0: pisah cek kata (word boundary) & pola (substring).
+    'logo' tidak match 'logogram', 'icon' tidak match 'iconic'."""
     if not url:
         return True
     low = url.lower()
+    # Pola substring (dengan underscore, slash, dash - memang harus substring)
     if any(p in low for p in GAMBAR_SAMPAH_POLA):
         return True
+    # Kata utuh (word boundary)
+    for k in GAMBAR_SAMPAH_KATA:
+        if re.search(r'\b' + re.escape(k) + r'\b', low):
+            return True
+    # Larangan kata (word boundary, kecuali yang ada _ atau -)
     for k in GAMBAR_LARANG_KATA:
         if k.endswith('_') or k.endswith('-'):
             if k in low:
@@ -1263,6 +1264,8 @@ def perbaiki_persen(teks):
     return POLA_PERSEN.sub(lambda m: m.group(1).rstrip('.,') + '%', teks or '')
 
 def cek_janji_judul(judul, isi):
+    """V6.15.0: P1 - longgarkan judul 'harga' kalau ada kata naik/turun/
+    drastis (bukan cuma cek angka)."""
     j = (judul or '').lower()
     b = (isi or '').lower()
     if not j or not b:
@@ -1299,7 +1302,9 @@ def cek_janji_judul(judul, isi):
                 'harga', 'tengkulak', 'bulog', 'pasar', 'petani', 'pangan',
                 'komoditas', 'inflasi', 'kurs', 'saham', 'ihsg', 'bursa',
                 'parit', 'gabah', 'beras', 'jagung', 'cabai', 'beras'))
-            if not tema_harga:
+            # V6.15.0: longgarkan kalau ada kata tren naik/turun di judul
+            ada_tren = any(w in j for w in KATA_HARGA_LONGGAR)
+            if not tema_harga and not ada_tren:
                 return ('judul menjanjikan HARGA/TARIF tapi isi tidak memuat '
                         'angka harga maupun tema harga')
     return None
@@ -1337,8 +1342,11 @@ POLA_JABATAN_TANPA_NAMA = [
 ]
 
 def cek_jabatan_tanpa_nama(isi):
-    """V6.13.0: cek apakah ada jabatan yang muncul tanpa diikuti nama.
-    Return string alasan kalau ada, None kalau OK."""
+    """V6.15.0 (P6): perbaiki deteksi frasa sisipan panjang.
+    Contoh: "Menteri Pendidikan, dalam keterangan tertulisnya,
+    mengatakan..." -> tidak lagi false positive karena ada koma + nama.
+    Tetap deteksi: "Menteri Pendidikan mengatakan..."
+    """
     if not isi:
         return None
     teks = isi
@@ -1349,16 +1357,27 @@ def cek_jabatan_tanpa_nama(isi):
         'menyampaikan', 'menekankan', 'mengajak', 'memastikan',
         'berbicara', 'menegaskan bahwa',
     ]
+    pola_kerja = '|'.join(re.escape(k) for k in KATA_KERJA)
     for jabatan in POLA_JABATAN_TANPA_NAMA:
+        # V6.15.0: diperluas - jabatan + (yang | koma + frasa sisipan + koma)? + kata kerja
+        # Frasa sisipan yang diizinkan (dianggap bukan nama):
+        # "dalam keterangan tertulisnya", "dalam siaran pers", "melalui akun X",
+        # "saat dihubungi", "di Jakarta", "kepada wartawan", "secara terpisah"
         pola = re.compile(
-            r'\b' + re.escape(jabatan).rstrip() + r'\s+(?:yang\s+)?('
-            + '|'.join(re.escape(k) for k in KATA_KERJA) + r')\b',
+            r'\b' + re.escape(jabatan).rstrip() + r'\b'
+            + r'(?:'
+              + r'\s+(?:yang|itu|tersebut)?\s*'
+              + r'(?:,?\s*(?:dalam|melalui|saat|di|kepada|secara|pada|untuk)\s+[^,\.]{1,60},?\s*)?'
+            + r')?'
+            + r'\s+(' + pola_kerja + r')\b',
             re.IGNORECASE
         )
         m = pola.search(teks)
         if m:
-            awal = max(0, m.start() - 80)
+            # Cek: apakah sebelum kata kerja ada koma + Kapital (nama orang)?
+            awal = max(0, m.start() - 120)
             sebelum = teks[awal:m.start()]
+            # Kalau ada koma + minimal 1 kata Kapital = nama -> lolos
             if re.search(r',\s*[A-Z][a-zA-Z\.\'\-]+', sebelum):
                 continue
             return 'jabatan "' + jabatan.strip() + '" muncul tanpa nama orang'
@@ -1372,14 +1391,21 @@ KATA_BUKAN_BERITA = [
 ]
 
 def cek_bukan_berita(judul, isi):
-    j = (judul or '').lower()
-    b = (isi or '').lower()
-    gab = j + ' ' + b
-    return any(k in gab for k in KATA_BUKAN_BERITA)
+    """V6.15.0 (P4): pakai word boundary untuk hindari false positive
+    'shio' di nama orang atau 'zodiak' di kata lain."""
+    gab = ((judul or '') + ' ' + (isi or '')).lower()
+    for k in KATA_BUKAN_BERITA:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                return True
+        else:
+            if k in gab:
+                return True
+    return False
 
 # AKHIR PART 3A
 
-# PART 3B - KESEHATAN/TEKNOLOGI DOMAIN, KOREKSI MANDIRI, ANTI-JIPLAK, ESPN - V6.14.0
+# PART 3B - KESEHATAN/TEKNOLOGI DOMAIN, KOREKSI MANDIRI, ANTI-JIPLAK, ESPN - V6.15.0
 # BAGIAN 1 DARI 2
 
 JAM_KESEHATAN = {10: 0, 15: 1, 20: 2}
@@ -1612,7 +1638,7 @@ def ai_write(user_content, timeout=150, materi_sumber=''):
         raise Exception('diblokir filter gambar V6.4.2: ' + gambar_terlarang[:60])
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
     if jiplak:
-        raise Exception('diblokir ANTI-JIPLAK V6.14.0: kalimat tersalin dari sumber: "'
+        raise Exception('diblokir ANTI-JIPLAK V6.15.0: kalimat tersalin dari sumber: "'
                         + jiplak[:70] + '"')
     return judul, isi, ringkasan, waktu, gambar
 
@@ -1856,13 +1882,15 @@ def cari_gambar_pexels(deskripsi):
 WORKER_GAMBAR_URL = 'https://kramanews-generate-image.denytriono-btm.workers.dev'
 
 def generate_gambar_ai(deskripsi):
+    """V6.15.0 (P3): timeout turun 60 -> 30 detik, biar tidak boros waktu
+    kalau Worker lambat/ngadat."""
     if not deskripsi:
         return ''
     try:
         r = requests.post(WORKER_GAMBAR_URL,
             headers={'Content-Type': 'application/json'},
             json={'prompt': deskripsi},
-            timeout=60)
+            timeout=30)
         if not r.ok:
             print('       AI gambar HTTP ' + str(r.status_code) + ' - lewati.')
             return ''
@@ -1954,7 +1982,7 @@ def vision_nilai_gambar(img_url, judul_berita):
                                   '(5) Blur, rusak, iklan, placeholder, logo = skor 1-4. '
                                   '(6) Gambar sesuai tema, tajam, bebas hewan/alas kaki = skor 8-10. '
                                   'Jawab HANYA JSON: {"skor": <angka>} '
-                                  'KRAMAV614MARKER')},
+                                  'KRAMAV615MARKER')},
                         {'type': 'image_url',
                          'image_url': {'url': 'data:image/jpeg;base64,' + b64}}
                     ]}
@@ -2218,7 +2246,7 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
 
 # AKHIR PART 3B
 
-# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS - V6.14.0
+# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS - V6.15.0
 
 KALENDER_EVENT = [
     {'nama': 'Asian Games Aichi-Nagoya 2026',
@@ -2522,36 +2550,7 @@ def buat_materi_rangkuman_eropa():
                       + '\n\n'.join(klasemen_blok[:4]))
     return '\n\n'.join(bagian)
 
-SUMBER_REKAP_EROPA = [
-    GN('hasil pertandingan premier league', 'id', 'GN Hasil Premier League'),
-    GN('hasil liga spanyol la liga', 'id', 'GN Hasil La Liga'),
-    GN('hasil serie a italia', 'id', 'GN Hasil Serie A'),
-    GN('hasil bundesliga jerman', 'id', 'GN Hasil Bundesliga'),
-    GN('hasil ligue 1 prancis', 'id', 'GN Hasil Ligue 1'),
-    GN('hasil eredivisie belanda', 'id', 'GN Hasil Eredivisie'),
-    GN('hasil liga champions', 'id', 'GN Hasil Liga Champions'),
-    GN('hasil liga europa', 'id', 'GN Hasil Liga Europa'),
-    GN('klasmen premier league', 'id', 'GN Klasmen Premier League'),
-    GN('klasemen la liga serie a', 'id', 'GN Klasmen Liga Eropa'),
-    RSSF('https://www.bola.net/feed', 'Bola.net'),
-    RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
-]
-
-def buat_materi_rekap_eropa_berita(candidates):
-    if not candidates:
-        return None
-    bagian = []
-    terpilih = []
-    for c in candidates[:6]:
-        bagian.append('[MATERI]\nJudul: ' + c['title'] + '\nIsi: ' + c['summary'][:1500])
-        terpilih.append(c)
-    if not bagian:
-        return None
-    materi = ('Berita-berita TERKINI tentang liga-liga Eropa '
-              '(Premier League Inggris, La Liga Spanyol, Serie A Italia, '
-              'Bundesliga Jerman, Ligue 1 Prancis, Eredivisie Belanda, '
-              'Liga Champions, Liga Europa):\n\n' + '\n\n'.join(bagian))
-    return materi, terpilih
+# V6.15.0: fungsi mati dihapus (SUMBER_REKAP_EROPA, buat_materi_rekap_eropa_berita).
 
 def _tulis_event_besar_dari_cand(today_urls, seen, aktif):
     sumber = buat_sumber_event(aktif)
@@ -2765,7 +2764,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.14.0
+# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.15.0
 
 def sesi_breaking(today_urls, seen):
     made = 0
@@ -3073,6 +3072,12 @@ def kelompok_topik(items, kata_list):
                     for it in items).lower()
     return teks_mengandung(teks, kata_list)
 
+def kelompok_regional_olahraga(items):
+    """V6.15.0 (K1): cek apakah grup olahraga ini punya kaitan regional."""
+    teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '')
+                    for it in items).lower()
+    return teks_mengandung(teks, KATA_REGIONAL_OLAHRAGA)
+
 def tolak_amerika_lokal(teks):
     """V6.13.0: pakai word boundary hindari false positive (misal 'bills'
     di 'billion')."""
@@ -3097,6 +3102,9 @@ def tolak_amerika_lokal(teks):
 def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                   sumber_custom=None, domain_tek=None, wajib_regional=False,
                   sumber_fallback=None):
+    """V6.15.0 (K1): wajib_regional jadi PRIORITAS, bukan filter wajib.
+    Kalau tidak ada kandidat regional, boleh turun berita internasional.
+    Tapi kalau ada kandidat regional, dia didahulukan."""
     cand = collect_candidates(sumber_custom if sumber_custom else HUNT.get(cat, []),
                               today_urls, seen)
     if not cand:
@@ -3108,16 +3116,13 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
         if not cand:
             print('   (tt) Tidak ada kandidat Timur Tengah segar.')
             return False
-    if wajib_regional:
-        sebelum = len(cand)
-        cand = [c for c in cand
-                if teks_mengandung(c['title'] + ' ' + c['summary'],
-                                   KATA_REGIONAL_OLAHRAGA)]
-        print('   (' + cat + ') Filter regional: ' + str(sebelum) + ' -> '
-              + str(len(cand)) + ' kandidat lolos.')
-        if not cand:
-            print('   (' + cat + ') Tidak ada kandidat regional segar - skip.')
-            return False
+    # V6.15.0: log jumlah kandidat regional (tidak difilter)
+    if wajib_regional and cat == 'olahraga':
+        n_reg = sum(1 for c in cand
+                    if teks_mengandung(c['title'] + ' ' + c['summary'],
+                                       KATA_REGIONAL_OLAHRAGA))
+        print('   (' + cat + ') Kandidat regional: ' + str(n_reg) + '/' + str(len(cand))
+              + ' (diprioritaskan, tidak wajib).')
     if cat == 'olahraga':
         sebelum_tolak = len(cand)
         cand = [c for c in cand
@@ -3135,6 +3140,9 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                     return 0
             return 1
         groups.sort(key=topik_prio)
+    # V6.15.0 (K1): olahraga regional diprioritaskan (bukan wajib)
+    if wajib_regional and cat == 'olahraga':
+        groups.sort(key=lambda g: 0 if kelompok_regional_olahraga(g['items']) else 1)
     if cat == 'internasional_asean':
         def asean_prio(g):
             if kelompok_topik(g['items'], KATA_ASEAN):
@@ -3307,7 +3315,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.14.0)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.15.0)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3328,7 +3336,7 @@ def run_session():
         persen = int(STAT_SCRAPE['ok'] * 100 / total_scrape)
         print('\nStatistik scraping: ' + str(STAT_SCRAPE['ok']) + ' sukses / '
               + str(total_scrape) + ' artikel (' + str(persen) + '%) - gagal '
-              + str(STAT_SCRAPE['gagal']))
+              + str(STAT_SCRAPE['gagal']) + ' - skip ' + str(STAT_SCRAPE['skip']))
     else:
         print('\nStatistik scraping: tidak ada percobaan scraping sesi ini.')
     print('Sesi selesai - breaking: ' + str(n_brk) + ' - kategori: ' + str(n_kat)
@@ -3346,7 +3354,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.14.0 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.15.0 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3360,7 +3368,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.14.0'
+FILE_VERSI      = 'V6.15.0'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
