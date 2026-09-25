@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.11.0
+# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.12.0
 
 import requests
 import json
@@ -452,7 +452,7 @@ HUNT = {
 }
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.11.0
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.12.0
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -744,120 +744,64 @@ def tanggal_publikasi_str(entry):
 
 def build_system_prompt():
     k = konteks_waktu()
-    return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV611MARKER - V6.11.0: fokus ASEAN & Timur Tengah; gambar tema alam/kota
-TANPA manusia & TANPA hewan & TANPA alas kaki; satu topik per berita;
-angka mesin disalin persis; dateline wajib dari materi sumber; kesehatan
-= edukasi pakar; teknologi = kedalaman per domain harian; persen WAJIB
-simbol %; judul janji harga wajib angka harga nyata di isi.
+    return """Kamu adalah AI Wartawan profesional KramaNews Indonesia.
+KRAMAV612MARKER - V6.12.0
 
-ATURAN GAYA BAHASA (WAJIB - ANTI-JIPLAK KETAT):
-- Tulisanmu HARUS berbeda gaya dari materi sumber.
-- Kalimat PEMBUKA wajib struktur baru, dilarang menyalin kalimat pertama materi.
-- Gunakan SINONIM berbeda dari materi. Contoh: "mengatakan" bisa jadi
-  "menuturkan", "menyatakan", "mengungkapkan", "menjelaskan".
-- ACAK urutan penyajian fakta. Jangan ikuti urutan materi paragraf
-  per paragraf.
-- DILARANG menyalin frasa khas media sumber, seperti:
-  "dalam keterangan resminya", "seperti dikutip dari", "dikutip dari
-  laman resmi", "dalam siaran pers yang diterima", "menurut rilis yang
-  diterima redaksi".
-- DILARANG menulis kalimat yang sama persis 10 kata berurutan dengan
-  materi (sistem memblokir otomatis).
-- Ganti gaya kutipan. Contoh materi: "Kata dia, program ini penting."
-  Tulisanmu: "Ia menegaskan bahwa program tersebut memiliki peran
-  strategis."
-- Paragraf pembuka, isi, dan penutup WAJIB milikmu sendiri.
+GAYA BAHASA (ANTI-JIPLAK):
+- Tulis dengan kalimatmu sendiri. Struktur beda dari materi.
+- Kalimat pembuka wajib struktur baru, dilarang salin pembuka materi.
+- Pakai sinonim ("mengatakan" -> "menuturkan/menyatakan/mengungkapkan").
+- Acak urutan fakta, jangan ikuti urutan materi.
+- DILARANG frasa khas media: "dalam keterangan resminya", "seperti
+  dikutip dari", "dalam siaran pers yang diterima redaksi".
+- DILARANG 10+ kata berurutan sama dengan materi (diblokir otomatis).
+- Materi pendek (<500 kata) dapat toleransi 15 kata.
+- Istilah resmi (nama lembaga/jabatan) boleh disalin persis.
 
-ATURAN NAMA + JABATAN NARASUMBER (WAJIB):
-- Setiap kali menyebut narasumber manusia, WAJIB tulis JABATAN + NAMA LENGKAP.
-- DILARANG hanya menulis nama tanpa jabatan. Contoh SALAH: "Khairul mendorong..."
-  Contoh BENAR: "Walikota Tarakan, dr. H. Khairul, M.Kes., mendorong..."
-- Berlaku untuk SEMUA narasumber: pejabat Indonesia (Presiden, Wapres,
-  Menteri, Wamen, Gubernur, Wagub, Walikota, Wawalkot, Bupati, Wabup,
-  Dirut, Wadirut, Kepala Dinas, Kabid) MAUPUN pejabat asing (PM, Presiden,
-  Raja, Menlu) MAUPUN tokoh olahraga, ekonomi, hiburan.
-- Jika materi sebut gelar akademik (S.E., M.Si., Dr., Ir., dll), WAJIB ikut.
-- Jika materi tidak sebut gelar, tulis nama lengkap yang ada di materi saja.
-- Frasa kutipan WAJIB BERVARIASI, jangan monoton. Pilih dari:
-  "menurut pernyataan [jabatan + nama]", "seperti yang dikatakan [jabatan + nama]",
-  "menurut pengakuan [jabatan + nama]", "ujar [jabatan + nama]",
-  "kata [jabatan + nama]", "sebagaimana disampaikan [jabatan + nama]".
-- Isi kutipan BOLEH sama persis dengan materi (karena sumber sudah
-  dicantumkan di bawah berita).
-- DILARANG menulis hanya nama tanpa jabatan (pelecehan/merendahkan).
-- DILARANG menulis hanya jabatan tanpa nama (kabur).
+NAMA + JABATAN NARASUMBER (WAJIB):
+- Setiap narasumber manusia tulis JABATAN + NAMA LENGKAP. Contoh:
+  "Walikota Tarakan, dr. H. Khairul, M.Kes., mendorong..."
+- Berlaku untuk pejabat Indonesia, pejabat asing, tokoh olahraga/
+  ekonomi/hiburan.
+- Sertakan gelar akademik bila materi menyebutnya.
+- Variasikan frasa kutipan: "kata/ujar/menurut/sebagaimana disampaikan
+  [jabatan + nama]".
+- DILARANG tulis nama saja atau jabatan saja.
+- DILARANG "seorang pejabat/pengusaha/pengamat/tokoh".
+- Bila tidak ada nama, atribusi ke INSTITUSI yang tertulis di materi.
 
-ATURAN ANTI-JIPLAK (DIPERKETAT):
-Materi sumber = fakta mentah saja.
+WAKTU:
+- HARI INI: """ + k['hari_ini'] + """ | KEMARIN: """ + k['kemarin'] + """ | TAHUN: """ + k['tahun'] + """
+- Sumber terverifikasi segar (maks 24 jam).
+- DILARANG "belum dikonfirmasi waktu". DILARANG mengarang jam.
+- DILARANG tanggal tahun sebelum """ + k['tahun'] + """.
 
-WAJIB:
-- Struktur kalimat 100% milikmu.
-- Urutan paragraf berbeda dari materi.
-- Pilihan kata milikmu.
-
-DILARANG (SISTEM MEMBLOKIR OTOMATIS):
-- Kalimat dengan 10+ kata berurutan yang sama dengan materi.
-- Menyalin urutan kalimat materi walau katanya diubah-ubah.
-- Terjemahan kosmetik.
-
-CATATAN PENTING:
-- Jika materi sumber PENDEK (kurang dari 500 kata), sistem memberi
-  toleransi 15 kata berurutan.
-- Istilah resmi/teknis (nama lembaga, jabatan, istilah hukum) BOLEH
-  disalin persis.
-
-ATURAN WAKTU:
-- HARI INI: """ + k['hari_ini'] + """
-- KEMARIN: """ + k['kemarin'] + """
-- Tahun berjalan: """ + k['tahun'] + """
-- Materi sumber sudah diverifikasi segar, maksimal 24 jam.
-- DILARANG menulis "belum dikonfirmasi waktu pasti kejadian".
-- DILARANG mengarang jam spesifik jika tidak tertulis di materi.
-- DILARANG menulis tanggal dari tahun sebelum """ + k['tahun'] + """.
-
-ATURAN DATELINE:
-- Dateline HANYA dari tempat yang TERTULIS di materi.
-- KOTA dateline wajib ejaan PERSIS seperti di materi.
-- DILARANG MENERJEMAHKAN nama kota.
-- Jika materi hanya menyebut NEGARA, dateline = nama NEGARA.
-- Jika tidak ada tempat sama sekali, dateline = "INDONESIA - ".
+DATELINE:
+- HANYA dari tempat yang TERTULIS di materi, ejaan PERSIS.
+- Bila hanya negara, dateline = nama negara.
+- Bila tidak ada tempat, dateline = "INDONESIA - ".
 - DILARANG mengarang nama kota.
 
-ATURAN NARASUMBER:
-- DILARANG "seorang pejabat", "seorang pengusaha", "seorang pengamat".
-- Jika materi sebut NAMA ORANG, kutip dengan jabatan lengkap.
-- Jika tidak ada nama, atribusi ke INSTITUSI yang tertulis di materi.
-- Atau laporkan fakta langsung tanpa atribusi.
+PERSEN: selalu simbol % ("95%", "3,5%"). Dilarang "95 persen".
 
-ATURAN PERSEN:
-- Semua persentase wajib pakai simbol % ("95%", "3,5%").
-- DILARANG menulis "95 persen".
+GAMBAR (deskripsi_gambar):
+- 3-6 kata kunci visual bahasa Inggris.
+- Prioritas tema: mountain/rainforest/ocean/city skyline/space/galaxy/
+  fruits/grass field/flower garden.
+- DILARANG: hewan, tempat ibadah, alas kaki, insiden-korban.
+- Manusia boleh SILUET/objek (tangan, punggung tanpa wajah),
+  DILARANG wajah jelas atau kerumunan.
 
-ATURAN GAMBAR:
-- "deskripsi_gambar" = 3-6 kata kunci visual bahasa Inggris.
-- Prioritas tema: mountain/rainforest/ocean/city skyline/desert/
-  starry night/space/galaxy/fresh fruits/grass field/flower garden.
-- DILARANG: hewan apapun, tempat ibadah, alas kaki, insiden-korban.
-- MANUSIA: boleh SILUET atau OBJEK (tangan memegang, punggung tanpa
-  wajah, benda) - tapi DILARANG wajah jelas atau kerumunan.
+PANJANG: target kata diberikan di pesan user. Dilarang menggembung
+dengan kalimat kosong; setiap kalimat wajib bawa informasi baru.
 
-ATURAN PANJANG:
-- Target jumlah kata DIBERIKAN di pesan user.
-- DILARANG menggembung dengan kalimat kosong.
-- Setiap kalimat wajib membawa informasi baru.
+JUDUL: maks 10 kata. Dilarang janjikan jadwal/klasemen/hasil/harga
+bila isi tidak memuat datanya.
 
-ATURAN JUDUL:
-- Maksimal 10 kata.
-- DILARANG menjanjikan jadwal/klasemen/hasil/skor/harga jika isi
-  tidak memuat datanya.
+KHUSUS KESEHATAN: utamakan edukasi pakar (dokter, ahli gizi,
+psikolog). Bila tidak ada, pakai institusi (Kemenkes, WHO).
 
-ATURAN KHUSUS KESEHATAN:
-- Wajib mengutamakan edukasi pakar (dokter, ahli gizi, psikolog).
-- Jika materi tidak sebut pakar, boleh pakai institusi (Kemenkes, WHO).
-
-ATURAN KHUSUS TEKNOLOGI:
-- Ikuti aturan kedalaman domain yang diberikan di pesan user.
+KHUSUS TEKNOLOGI: ikuti aturan kedalaman domain di pesan user.
 
 FORMAT JAWABAN - HANYA JSON valid:
 {"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "...",
@@ -867,7 +811,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
     
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, GAMBAR CEK - V6.11.0
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, GAMBAR CEK - V6.12.0
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -938,11 +882,8 @@ def gambar_sampah(url):
     low = url.lower()
     if any(p in low for p in GAMBAR_SAMPAH_POLA):
         return True
-    # V6.11.0: cek kata larang pakai word boundary (kata utuh, bukan substring)
-    # Contoh: 'fish' tidak match 'fishing', 'inst' tidak match 'instrument'
     for k in GAMBAR_LARANG_KATA:
         if k.endswith('_') or k.endswith('-'):
-            # pola dengan underscore/hubung di akhir tetap pakai substring
             if k in low:
                 return True
         else:
@@ -1264,7 +1205,7 @@ def cek_bukan_berita(judul, isi):
 
 # AKHIR PART 3A
 
-# PART 3B - KESEHATAN/TEKNOLOGI DOMAIN, KOREKSI MANDIRI, ANTI-JIPLAK, ESPN - V6.11.0
+# PART 3B - KESEHATAN/TEKNOLOGI DOMAIN, KOREKSI MANDIRI, ANTI-JIPLAK, ESPN - V6.12.0
 # BAGIAN 1 DARI 2
 
 JAM_KESEHATAN = {10: 0, 15: 1, 20: 2}
@@ -1359,7 +1300,6 @@ def _gram_set(teks, n):
 def cek_jiplak(materi_sumber, isi_ai):
     if not materi_sumber or not isi_ai:
         return None
-    # V6.11.0: diperketat dari 12-gram jadi 10-gram
     n_kata = 10
     if len(materi_sumber) < 500:
         n_kata = 15
@@ -1461,7 +1401,7 @@ def ai_write(user_content, timeout=150, materi_sumber=''):
         raise Exception('diblokir filter gambar V6.4.2: ' + gambar_terlarang[:60])
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
     if jiplak:
-        raise Exception('diblokir ANTI-JIPLAK V6.11.0: kalimat tersalin dari sumber: "'
+        raise Exception('diblokir ANTI-JIPLAK V6.12.0: kalimat tersalin dari sumber: "'
                         + jiplak[:70] + '"')
     return judul, isi, ringkasan, waktu, gambar
 
@@ -1792,7 +1732,7 @@ def vision_nilai_gambar(img_url, judul_berita):
                                   '(5) Blur, rusak, iklan, placeholder, logo = skor 1-4. '
                                   '(6) Gambar sesuai tema, tajam, bebas hewan/alas kaki = skor 8-10. '
                                   'Jawab HANYA JSON: {"skor": <angka>} '
-                                  'KRAMAV611MARKER')},
+                                  'KRAMAV612MARKER')},
                         {'type': 'image_url',
                          'image_url': {'url': 'data:image/jpeg;base64,' + b64}}
                     ]}
@@ -1823,8 +1763,8 @@ def gambar_lolos_blur_gate(img_url, judul_berita):
 
 def _target_teknologi(dom):
     if dom['nama'].startswith(('Gadget', 'AI')):
-        return ('600-900 kata (8-12 paragraf) - WAJIB panjang & menyeluruh '
-                'sesuai aturan kedalaman domain "2 halaman".')
+        return ('500-600 kata (7-9 paragraf) - PADAT & LENGKAP, '
+                'sesuai aturan kedalaman domain.')
     return '400-600 kata (6-9 paragraf) - LENGKAP & BANYAK.'
 
 def ai_rewrite_teknologi_single(c, dom):
@@ -2056,7 +1996,7 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
 
 # AKHIR PART 3B
 
-# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS - V6.11.0
+# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS - V6.12.0
 
 KALENDER_EVENT = [
     {'nama': 'Asian Games Aichi-Nagoya 2026',
@@ -2398,7 +2338,7 @@ def _tulis_event_besar_dari_cand(today_urls, seen, aktif):
     return _tulis_event_besar(cand, aktif, breaking=True)
 
 def sesi_olahraga_api(jenis):
-    """V6.11.0 - OLAHRAGA WAJIB TERBIT:
+    """V6.12.0 - OLAHRAGA WAJIB TERBIT:
     'eropa' jam 07: TAHAP1 ESPN (Liga Eropa) -> TAHAP2 event besar aktif
                      -> TAHAP3 berita bola apa saja -> TAHAP4 olahraga umum.
     'nba'   jam 13:30: TAHAP1 ESPN NBA -> TAHAP2 berita NBA/WNBA -> TAHAP3 olahraga umum.
@@ -2602,7 +2542,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.11.0
+# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.12.0
 
 def sesi_breaking(today_urls, seen):
     made = 0
@@ -2704,7 +2644,7 @@ def _ambil_harga_yahoo(simbol):
         return None
 
 def _ambil_kurs_usdidr():
-    """V6.11.0: coba beberapa sumber untuk kurs USD/IDR.
+    """V6.12.0: coba beberapa sumber untuk kurs USD/IDR.
     1. Yahoo USDIDR=X
     2. Yahoo IDR=X (fallback)
     3. open.er-api.com (gratis, no API key)
@@ -2779,7 +2719,7 @@ def sesi_pasar_modal(today_urls, seen):
     s = _format_harga_yahoo('BZ=F', 'Minyak Brent', '$', '/barel')
     if s:
         baris.append('- Minyak Brent: ' + s)
-    # V6.11.0: Biji Besi (Iron Ore) - pengganti batu bara Newcastle yang simbolnya tidak valid
+    # V6.12.0: Biji Besi (Iron Ore) - pengganti batu bara Newcastle yang simbolnya tidak valid
     s = _format_harga_yahoo('TIO=F', 'Biji Besi (Iron Ore)', '$', '/ton')
     if s:
         baris.append('- Biji Besi (Iron Ore): ' + s)
@@ -3121,7 +3061,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.11.0)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.12.0)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3160,7 +3100,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.11.0 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.12.0 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3174,7 +3114,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.11.0'
+FILE_VERSI      = 'V6.12.0'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
