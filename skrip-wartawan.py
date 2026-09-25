@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.9.8
+# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.11.0
 
 import requests
 import json
@@ -452,7 +452,7 @@ HUNT = {
 }
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.9.8
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.11.0
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -731,6 +731,7 @@ def konteks_waktu():
     return {'hari_ini': tanggal_panjang(now.date()),
             'kemarin': tanggal_panjang(kemarin),
             'tahun': str(now.year)}
+
 def tanggal_publikasi_str(entry):
     t = entry.get('published_parsed') or entry.get('updated_parsed')
     if not t:
@@ -740,14 +741,33 @@ def tanggal_publikasi_str(entry):
         return tanggal_panjang(pub.date())
     except Exception:
         return None
+
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV698MARKER - V6.9.8: fokus ASEAN & Timur Tengah; gambar tema alam/kota
+KRAMAV611MARKER - V6.11.0: fokus ASEAN & Timur Tengah; gambar tema alam/kota
 TANPA manusia & TANPA hewan & TANPA alas kaki; satu topik per berita;
 angka mesin disalin persis; dateline wajib dari materi sumber; kesehatan
 = edukasi pakar; teknologi = kedalaman per domain harian; persen WAJIB
 simbol %; judul janji harga wajib angka harga nyata di isi.
+
+ATURAN GAYA BAHASA (WAJIB - ANTI-JIPLAK KETAT):
+- Tulisanmu HARUS berbeda gaya dari materi sumber.
+- Kalimat PEMBUKA wajib struktur baru, dilarang menyalin kalimat pertama materi.
+- Gunakan SINONIM berbeda dari materi. Contoh: "mengatakan" bisa jadi
+  "menuturkan", "menyatakan", "mengungkapkan", "menjelaskan".
+- ACAK urutan penyajian fakta. Jangan ikuti urutan materi paragraf
+  per paragraf.
+- DILARANG menyalin frasa khas media sumber, seperti:
+  "dalam keterangan resminya", "seperti dikutip dari", "dikutip dari
+  laman resmi", "dalam siaran pers yang diterima", "menurut rilis yang
+  diterima redaksi".
+- DILARANG menulis kalimat yang sama persis 10 kata berurutan dengan
+  materi (sistem memblokir otomatis).
+- Ganti gaya kutipan. Contoh materi: "Kata dia, program ini penting."
+  Tulisanmu: "Ia menegaskan bahwa program tersebut memiliki peran
+  strategis."
+- Paragraf pembuka, isi, dan penutup WAJIB milikmu sendiri.
 
 ATURAN NAMA + JABATAN NARASUMBER (WAJIB):
 - Setiap kali menyebut narasumber manusia, WAJIB tulis JABATAN + NAMA LENGKAP.
@@ -768,7 +788,7 @@ ATURAN NAMA + JABATAN NARASUMBER (WAJIB):
 - DILARANG menulis hanya nama tanpa jabatan (pelecehan/merendahkan).
 - DILARANG menulis hanya jabatan tanpa nama (kabur).
 
-ATURAN ANTI-JIPLAK:
+ATURAN ANTI-JIPLAK (DIPERKETAT):
 Materi sumber = fakta mentah saja.
 
 WAJIB:
@@ -777,7 +797,7 @@ WAJIB:
 - Pilihan kata milikmu.
 
 DILARANG (SISTEM MEMBLOKIR OTOMATIS):
-- Kalimat dengan 12+ kata berurutan yang sama dengan materi.
+- Kalimat dengan 10+ kata berurutan yang sama dengan materi.
 - Menyalin urutan kalimat materi walau katanya diubah-ubah.
 - Terjemahan kosmetik.
 
@@ -847,7 +867,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
     
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, GAMBAR CEK - V6.9.6
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, GAMBAR CEK - V6.11.0
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -918,8 +938,16 @@ def gambar_sampah(url):
     low = url.lower()
     if any(p in low for p in GAMBAR_SAMPAH_POLA):
         return True
-    if any(k in low for k in GAMBAR_LARANG_KATA):
-        return True
+    # V6.11.0: cek kata larang pakai word boundary (kata utuh, bukan substring)
+    # Contoh: 'fish' tidak match 'fishing', 'inst' tidak match 'instrument'
+    for k in GAMBAR_LARANG_KATA:
+        if k.endswith('_') or k.endswith('-'):
+            # pola dengan underscore/hubung di akhir tetap pakai substring
+            if k in low:
+                return True
+        else:
+            if re.search(r'\b' + re.escape(k) + r'\b', low):
+                return True
     m = re.search(r'(\d{2,4})x(\d{2,4})', low)
     if m:
         try:
@@ -1236,7 +1264,7 @@ def cek_bukan_berita(judul, isi):
 
 # AKHIR PART 3A
 
-# PART 3B - KESEHATAN/TEKNOLOGI DOMAIN, KOREKSI MANDIRI, ANTI-JIPLAK, ESPN - V6.10.0
+# PART 3B - KESEHATAN/TEKNOLOGI DOMAIN, KOREKSI MANDIRI, ANTI-JIPLAK, ESPN - V6.11.0
 # BAGIAN 1 DARI 2
 
 JAM_KESEHATAN = {10: 0, 15: 1, 20: 2}
@@ -1331,7 +1359,8 @@ def _gram_set(teks, n):
 def cek_jiplak(materi_sumber, isi_ai):
     if not materi_sumber or not isi_ai:
         return None
-    n_kata = 12
+    # V6.11.0: diperketat dari 12-gram jadi 10-gram
+    n_kata = 10
     if len(materi_sumber) < 500:
         n_kata = 15
     sumber_grams = _gram_set(materi_sumber, n_kata)
@@ -1432,7 +1461,7 @@ def ai_write(user_content, timeout=150, materi_sumber=''):
         raise Exception('diblokir filter gambar V6.4.2: ' + gambar_terlarang[:60])
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
     if jiplak:
-        raise Exception('diblokir ANTI-JIPLAK V6.9.6: kalimat tersalin dari sumber: "'
+        raise Exception('diblokir ANTI-JIPLAK V6.11.0: kalimat tersalin dari sumber: "'
                         + jiplak[:70] + '"')
     return judul, isi, ringkasan, waktu, gambar
 
@@ -1763,7 +1792,7 @@ def vision_nilai_gambar(img_url, judul_berita):
                                   '(5) Blur, rusak, iklan, placeholder, logo = skor 1-4. '
                                   '(6) Gambar sesuai tema, tajam, bebas hewan/alas kaki = skor 8-10. '
                                   'Jawab HANYA JSON: {"skor": <angka>} '
-                                  'KRAMAV697MARKER')},
+                                  'KRAMAV611MARKER')},
                         {'type': 'image_url',
                          'image_url': {'url': 'data:image/jpeg;base64,' + b64}}
                     ]}
@@ -2027,7 +2056,7 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
 
 # AKHIR PART 3B
 
-# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS - V6.9.7
+# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS - V6.11.0
 
 KALENDER_EVENT = [
     {'nama': 'Asian Games Aichi-Nagoya 2026',
@@ -2367,8 +2396,9 @@ def _tulis_event_besar_dari_cand(today_urls, seen, aktif):
         print('   Tidak ada materi event segar.')
         return 0
     return _tulis_event_besar(cand, aktif, breaking=True)
+
 def sesi_olahraga_api(jenis):
-    """V6.9.7 - OLAHRAGA WAJIB TERBIT:
+    """V6.11.0 - OLAHRAGA WAJIB TERBIT:
     'eropa' jam 07: TAHAP1 ESPN (Liga Eropa) -> TAHAP2 event besar aktif
                      -> TAHAP3 berita bola apa saja -> TAHAP4 olahraga umum.
     'nba'   jam 13:30: TAHAP1 ESPN NBA -> TAHAP2 berita NBA/WNBA -> TAHAP3 olahraga umum.
@@ -2572,7 +2602,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.10.0
+# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.11.0
 
 def sesi_breaking(today_urls, seen):
     made = 0
@@ -2673,6 +2703,30 @@ def _ambil_harga_yahoo(simbol):
     except Exception:
         return None
 
+def _ambil_kurs_usdidr():
+    """V6.11.0: coba beberapa sumber untuk kurs USD/IDR.
+    1. Yahoo USDIDR=X
+    2. Yahoo IDR=X (fallback)
+    3. open.er-api.com (gratis, no API key)
+    """
+    d = _ambil_harga_yahoo('USDIDR=X')
+    if d and d.get('harga'):
+        return d
+    d = _ambil_harga_yahoo('IDR=X')
+    if d and d.get('harga'):
+        return d
+    try:
+        r = requests.get('https://open.er-api.com/v6/latest/USD',
+                         headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
+        if r.ok:
+            data = r.json()
+            idr = (data.get('rates') or {}).get('IDR')
+            if idr:
+                return {'harga': float(idr), 'perubahan': None}
+    except Exception:
+        pass
+    return None
+
 def _format_harga_yahoo(simbol, nama, prefix='', suffix=''):
     d = _ambil_harga_yahoo(simbol)
     if not d:
@@ -2689,6 +2743,16 @@ def _format_harga_yahoo(simbol, nama, prefix='', suffix=''):
         s += ' (' + tanda + format(d['perubahan'], '.2f').replace('.', ',') + '%)'
     return s
 
+def _format_kurs_usdidr():
+    d = _ambil_kurs_usdidr()
+    if not d or not d.get('harga'):
+        return None
+    s = 'Rp ' + format(int(round(d['harga'])), ',').replace(',', '.')
+    if d.get('perubahan') is not None:
+        tanda = '+' if d['perubahan'] >= 0 else ''
+        s += ' (' + tanda + format(d['perubahan'], '.2f').replace('.', ',') + '%)'
+    return s
+
 def sesi_pasar_modal(today_urls, seen):
     if not _pasar_modal_jam_tepat():
         return 0
@@ -2698,18 +2762,28 @@ def sesi_pasar_modal(today_urls, seen):
         print('   Pasar modal jam ' + str(jam) + ' sudah terbit - skip.')
         return 0
 
-    daftar = [
-        ('^JKSE', 'IHSG', '', ''),
-        ('IDR=X', 'Kurs USD/IDR', 'Rp ', ''),
-        ('CL=F', 'Minyak WTI', '$', '/barel'),
-        ('BZ=F', 'Minyak Brent', '$', '/barel'),
-        ('MTF=F', 'Batu Bara Newcastle', '$', '/ton'),
-    ]
     baris = []
-    for simbol, nama, prefix, suffix in daftar:
-        s = _format_harga_yahoo(simbol, nama, prefix, suffix)
-        if s:
-            baris.append('- ' + nama + ': ' + s)
+    # IHSG
+    s = _format_harga_yahoo('^JKSE', 'IHSG', '', '')
+    if s:
+        baris.append('- IHSG: ' + s)
+    # Kurs USD/IDR (multi-sumber: USDIDR=X -> IDR=X -> open.er-api.com)
+    s = _format_kurs_usdidr()
+    if s:
+        baris.append('- Kurs USD/IDR: ' + s)
+    # Minyak WTI
+    s = _format_harga_yahoo('CL=F', 'Minyak WTI', '$', '/barel')
+    if s:
+        baris.append('- Minyak WTI: ' + s)
+    # Minyak Brent
+    s = _format_harga_yahoo('BZ=F', 'Minyak Brent', '$', '/barel')
+    if s:
+        baris.append('- Minyak Brent: ' + s)
+    # V6.11.0: Biji Besi (Iron Ore) - pengganti batu bara Newcastle yang simbolnya tidak valid
+    s = _format_harga_yahoo('TIO=F', 'Biji Besi (Iron Ore)', '$', '/ton')
+    if s:
+        baris.append('- Biji Besi (Iron Ore): ' + s)
+
     if not baris:
         print('   Semua data harga kosong - skip.')
         return 0
@@ -3047,7 +3121,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.10.0)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.11.0)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3086,7 +3160,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.10.0 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.11.0 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3100,7 +3174,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.10.0'
+FILE_VERSI      = 'V6.11.0'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
