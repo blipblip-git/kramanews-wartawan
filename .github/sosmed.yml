@@ -3,12 +3,15 @@ name: KramaNews Sosmed Auto-Post
 on:
   schedule:
     # ═══ KALIBRASI WITA (UTC+8) — waktu Tarakan ═══
-    # ═══ TIAP 20 MENIT — JAM SIBUK (09:00-21:59 WITA) ═══
-    - cron: '*/20 1-13 * * *'
+    # V1.1: menit digeser dari 0/20/30/40 ke 7/22/37/52
+    # (menit 00 paling padat di GitHub Actions → sering telat/dilewati)
+    # ═══ TIAP 15 MENIT — JAM SIBUK (09:00-21:59 WITA = 01-13 UTC) ═══
+    - cron: '7,22,37,52 1-13 * * *'
     # ═══ TIAP 30 MENIT — JAM TENANG (22:00-08:59 WITA) ═══
-    - cron: '0,30 14-15 * * *'
-    - cron: '0,30 16-23 * * *'
-    - cron: '0,30 0 * * *'
+    # 14-15 UTC = 22-23 WITA | 16-23 UTC = 00-07 WITA | 0 UTC = 08 WITA
+    - cron: '7,37 14-15 * * *'
+    - cron: '7,37 16-23 * * *'
+    - cron: '7,37 0 * * *'
   workflow_dispatch:
 
 jobs:
