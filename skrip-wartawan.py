@@ -740,8 +740,6 @@ def tanggal_publikasi_str(entry):
         return tanggal_panjang(pub.date())
     except Exception:
         return None
-
-
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
@@ -2540,7 +2538,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.9.7
+# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.9.9
 
 def sesi_breaking(today_urls, seen):
     made = 0
@@ -2719,7 +2717,9 @@ def sesi_pasar_modal(today_urls, seen):
     except Exception as e:
         print('   Insert pasar modal gagal: ' + str(e)[:80])
         return 0
-    KATEGORI_DB = {
+
+
+KATEGORI_DB = {
     'nasional': 'nasional', 'daerah': 'daerah',
     'internasional_asean': 'internasional', 'internasional_tt': 'internasional',
     'internasional': 'internasional',
@@ -3009,11 +3009,10 @@ def sesi_kategori(today_urls, seen):
                              prio, sumber, domain_tek, wajib_regional):
                 total += 1
     return total
-
 def run_session():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.9.7)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.9.9)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3052,7 +3051,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.9.7 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.9.9 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3066,7 +3065,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.9.7'
+FILE_VERSI      = 'V6.9.9'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
