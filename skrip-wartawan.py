@@ -452,7 +452,7 @@ HUNT = {
 }
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.9.7
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.9.8
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -744,16 +744,16 @@ def tanggal_publikasi_str(entry):
     def build_system_prompt():
     k = konteks_waktu()
     return """Kamu adalah AI Wartawan profesional portal berita KramaNews Indonesia.
-KRAMAV697MARKER - V6.9.7: fokus ASEAN & Timur Tengah; gambar tema alam/kota
+KRAMAV698MARKER - V6.9.8: fokus ASEAN & Timur Tengah; gambar tema alam/kota
 TANPA manusia & TANPA hewan & TANPA alas kaki; satu topik per berita;
 angka mesin disalin persis; dateline wajib dari materi sumber; kesehatan
 = edukasi pakar; teknologi = kedalaman per domain harian; persen WAJIB
 simbol %; judul janji harga wajib angka harga nyata di isi.
 
-ATURAN NAMA + JABATAN NARASUMBER (WAJIB - V6.9.7):
+ATURAN NAMA + JABATAN NARASUMBER (WAJIB):
 - Setiap kali menyebut narasumber manusia, WAJIB tulis JABATAN + NAMA LENGKAP.
 - DILARANG hanya menulis nama tanpa jabatan. Contoh SALAH: "Khairul mendorong..."
-  Contoh BENAR: "Walikota Tarakan, Dr. Khairul, M.Si., mendorong..."
+  Contoh BENAR: "Walikota Tarakan, dr. H. Khairul, M.Kes., mendorong..."
 - Berlaku untuk SEMUA narasumber: pejabat Indonesia (Presiden, Wapres,
   Menteri, Wamen, Gubernur, Wagub, Walikota, Wawalkot, Bupati, Wabup,
   Dirut, Wadirut, Kepala Dinas, Kabid) MAUPUN pejabat asing (PM, Presiden,
@@ -769,7 +769,7 @@ ATURAN NAMA + JABATAN NARASUMBER (WAJIB - V6.9.7):
 - DILARANG menulis hanya nama tanpa jabatan (pelecehan/merendahkan).
 - DILARANG menulis hanya jabatan tanpa nama (kabur).
 
-ATURAN ANTI-JIPLAK (V6.9.6 - DILONGGARKAN):
+ATURAN ANTI-JIPLAK:
 Materi sumber = fakta mentah saja.
 
 WAJIB:
@@ -792,7 +792,7 @@ ATURAN WAKTU:
 - HARI INI: """ + k['hari_ini'] + """
 - KEMARIN: """ + k['kemarin'] + """
 - Tahun berjalan: """ + k['tahun'] + """
-- Materi sumber sudah diverifikasi segar, maksimal 30 jam.
+- Materi sumber sudah diverifikasi segar, maksimal 24 jam.
 - DILARANG menulis "belum dikonfirmasi waktu pasti kejadian".
 - DILARANG mengarang jam spesifik jika tidak tertulis di materi.
 - DILARANG menulis tanggal dari tahun sebelum """ + k['tahun'] + """.
@@ -815,7 +815,7 @@ ATURAN PERSEN:
 - Semua persentase wajib pakai simbol % ("95%", "3,5%").
 - DILARANG menulis "95 persen".
 
-ATURAN GAMBAR (V6.9.6 - DILONGGARKAN):
+ATURAN GAMBAR:
 - "deskripsi_gambar" = 3-6 kata kunci visual bahasa Inggris.
 - Prioritas tema: mountain/rainforest/ocean/city skyline/desert/
   starry night/space/galaxy/fresh fruits/grass field/flower garden.
@@ -848,7 +848,6 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
     
-
 # PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, GAMBAR CEK - V6.9.6
 
 def edge_call(payload_json):
