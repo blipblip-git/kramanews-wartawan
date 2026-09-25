@@ -1236,7 +1236,8 @@ def cek_bukan_berita(judul, isi):
 
 # AKHIR PART 3A
 
-# PART 3B - KESEHATAN/TEKNOLOGI DOMAIN, KOREKSI MANDIRI, ANTI-JIPLAK, ESPN - V6.9.7
+# PART 3B - KESEHATAN/TEKNOLOGI DOMAIN, KOREKSI MANDIRI, ANTI-JIPLAK, ESPN - V6.10.0
+# BAGIAN 1 DARI 2
 
 JAM_KESEHATAN = {10: 0, 15: 1, 20: 2}
 
@@ -1663,12 +1664,46 @@ def cari_gambar_pexels(deskripsi):
         print('       Pexels gagal: ' + str(e)[:60])
     return ''
 
+WORKER_GAMBAR_URL = 'https://kramanews-generate-image.denytriono-btm.workers.dev'
+
+def generate_gambar_ai(deskripsi):
+    if not deskripsi:
+        return ''
+    try:
+        r = requests.post(WORKER_GAMBAR_URL,
+            headers={'Content-Type': 'application/json'},
+            json={'prompt': deskripsi},
+            timeout=60)
+        if not r.ok:
+            print('       AI gambar HTTP ' + str(r.status_code) + ' - lewati.')
+            return ''
+        data = r.json()
+        url = (data.get('image') or '').strip()
+        if not url:
+            print('       AI gambar kosong - lewati.')
+            return ''
+        if url.startswith('data:'):
+            print('       AI gambar gagal upload ke Supabase - lewati.')
+            return ''
+        return url
+    except Exception as e:
+        print('       AI gambar gagal: ' + str(e)[:60])
+        return ''
+
 def cari_gambar_otomatis(deskripsi, judul_berita):
     img = cari_gambar_pexels(deskripsi)
     if img:
         return img
     print('       Pexels kosong - fallback Wikimedia...')
-    return cari_gambar_wikimedia(deskripsi)
+    img = cari_gambar_wikimedia(deskripsi)
+    if img:
+        return img
+    print('       Wikimedia kosong - fallback AI generate...')
+    return generate_gambar_ai(deskripsi)
+
+# AKHIR PART 3B BAGIAN 1
+# PART 3B - BAGIAN 2 DARI 2
+
 def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
                 breaking=False, deskripsi_gambar=''):
     m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+(.*)$', isi, re.DOTALL)
@@ -1991,7 +2026,6 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
     return out
 
 # AKHIR PART 3B
-
 
 # PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS - V6.9.7
 
@@ -2538,7 +2572,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.9.9
+# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.10.0
 
 def sesi_breaking(today_urls, seen):
     made = 0
@@ -3009,10 +3043,11 @@ def sesi_kategori(today_urls, seen):
                              prio, sumber, domain_tek, wajib_regional):
                 total += 1
     return total
+
 def run_session():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.9.9)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.10.0)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3051,7 +3086,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.9.9 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.10.0 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3065,7 +3100,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.9.9'
+FILE_VERSI      = 'V6.10.0'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
