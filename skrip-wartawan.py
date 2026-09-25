@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.15.0
+# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.15.1
 
 import requests
 import json
@@ -18,7 +18,7 @@ DEEPSEEK_KEY         = os.environ.get('DEEPSEEK_KEY', '')
 SUPABASE_PUBLISHABLE = os.environ.get('SUPABASE_PUBLISHABLE', '')
 ADMIN_SECRET         = os.environ.get('ADMIN_OPS_SECRET', '')
 
-SUPABASE_URL = 'https://imcvijgtdjjpotlaltv.supabase.co'
+SUPABASE_URL = 'https://imcvijgytdjjpotlaltv.supabase.co'
 REST_URL     = SUPABASE_URL + '/rest/v1/articles'
 EDGE_URL     = SUPABASE_URL + '/functions/v1/admin-ops'
 AUTHOR_NAME  = 'DT'
@@ -27,11 +27,11 @@ WITA = timezone(timedelta(hours=8))
 
 BREAKING_MAX_SLOT   = 3
 BREAKING_UMUR_MENIT = 30
-MAX_UMUR_BERITA_JAM = 30   # V6.15.0: naik dari 24, biar sumber telat index tetap masuk
+MAX_UMUR_BERITA_JAM = 30
 JENDELA_DOBEL_JAM   = 36
 GEMPA_DOM_MIN       = 5.5
 GEMPA_DUNIA_MIN     = 6.5
-SKOR_BREAKING_MIN   = 20   # V6.15.0: turun dari 30, biar breaking gampang lolos
+SKOR_BREAKING_MIN   = 20
 AMBANG_MIRIP        = 0.65
 SCRAPER_TIMEOUT     = 12
 SCRAPE_MIN_KARAKTER = 600
@@ -41,10 +41,9 @@ GAMBAR_MIN_LEBAR    = 400
 BLUR_SKOR_MINIMUM  = 5
 VISION_TIMEOUT     = 30
 
-MATCH_MIN_KATA     = 2     # V6.15.0: turun dari 3, grup berita lebih gampang terbentuk
-MATCH_MIN_RASIO    = 0.50  # V6.15.0: turun dari 0.60
+MATCH_MIN_KATA     = 2
+MATCH_MIN_RASIO    = 0.50
 
-# V6.15.0: domain yang sering HTTP 403 saat scraping — langsung pakai RSS
 DOMAIN_SKIP_SCRAPE = ['berita.tarakankota.go.id']
 
 KATA_BARAT_USA     = ['amerika', 'u.s', 'washington', 'trump', 'biden', 'new york', 'california', 'texas']
@@ -74,10 +73,6 @@ def GN(q, lang='id', label=None):
 
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
-
-# V6.15.0: variabel mati dihapus (IDX_JAM, IDX_JAM_1030, IDX_EMITEN,
-# IDX_FEEDS, IDX_KATA, IDX_Sumber, IDX_GATE_JAM, BARAT_MAX_HARI,
-# KARANTINA_SUMBER) — tidak dipakai di kode manapun.
 
 ESPN_LIGA = [
     ('eng.1',        'Premier League (Inggris)'),
@@ -130,7 +125,6 @@ UA_LIST = [
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
 ]
 
-# V6.15.0: pisah pola menjadi "kata" (word boundary) & "path" (substring)
 GAMBAR_SAMPAH_KATA = [
     'logo', 'icon', 'banner', 'ads', 'advert', 'sponsor',
     'placeholder', 'default', 'noimage', 'avatar',
@@ -181,7 +175,6 @@ JANJI_TABEL   = ['klasemen', 'standing', 'ranking', 'peringkat']
 JANJI_ANGKA   = ['hasil', 'skor', 'result']
 JANJI_HARGA = ['harga', 'tarif', 'biaya', 'berapa', 'sewa', 'gaji']
 
-# V6.15.0: kata yang memicu longgarkan cek_janji_judul saat judul menjanjikan harga
 KATA_HARGA_LONGGAR = ['naik', 'turun', 'melonjak', 'anjlok', 'drastis',
                       'meroket', 'terjun', 'menguat', 'melemah']
 
@@ -380,8 +373,6 @@ HUNT = {
         GN('turkey middle east', 'en', 'Google News Turki'),
         GN('west asia conflict', 'en', 'Google News Asia Barat'),
     ],
-    # V6.15.0: HUNT['internasional'] = cadangan, tidak dipakai rutin di
-    # JADWAL_JAM. Tetap disimpan untuk potensi kategori baru.
     'internasional': [
         RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
         RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
