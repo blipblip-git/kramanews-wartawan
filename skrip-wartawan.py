@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.9.6
+# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.9.8
 
 import requests
 import json
@@ -27,7 +27,7 @@ WITA = timezone(timedelta(hours=8))
 
 BREAKING_MAX_SLOT   = 3
 BREAKING_UMUR_MENIT = 30
-MAX_UMUR_BERITA_JAM = 30
+MAX_UMUR_BERITA_JAM = 24
 JENDELA_DOBEL_JAM   = 36
 GEMPA_DOM_MIN       = 5.5
 GEMPA_DUNIA_MIN     = 6.5
@@ -258,7 +258,7 @@ DOMAIN_TEKNOLOGI = [
         ('Berita HARUS BANYAK, boleh hingga 2 halaman. WAJIB memuat '
          'SEBANYAK mungkin gadget/baru yang ada di materi sekaligus. '
          'SPESIFIKASI setiap gadget WAJIB lengkap (layar, chipset, '
-         'RAM, kamera, baterai, sistem operasi — sesuai yang tertulis '
+         'RAM, kamera, baterai, sistem operasi - sesuai yang tertulis '
          'di materi). Estimasi harga WAJIB disebut jika ada di materi.'),
      'query': [
         ('smartphone launch spesifikasi harga', 'id'),
@@ -276,7 +276,7 @@ DOMAIN_TEKNOLOGI = [
         ('kecerdasan buatan terbaru', 'id'),
     ]},
     {'nama': 'Aplikasi & Internet', 'aturan':
-        ('Berita HARUS LENGKAP dan BANYAK — gabungkan semua materi '
+        ('Berita HARUS LENGKAP dan BANYAK - gabungkan semua materi '
          'aplikasi/internet yang tersedia menjadi satu berita kaya.'),
      'query': [
         ('aplikasi baru populer', 'id'),
@@ -284,7 +284,7 @@ DOMAIN_TEKNOLOGI = [
         ('internet Indonesia kecepatan', 'id'),
     ]},
     {'nama': 'Startup & Ekonomi Digital', 'aturan':
-        ('Berita HARUS LENGKAP dan BANYAK — pendanaan, valuasi, '
+        ('Berita HARUS LENGKAP dan BANYAK - pendanaan, valuasi, '
          'ekspansi, e-commerce, fintech: semua angka WAJIB persis '
          'dari materi.'),
      'query': [
@@ -302,7 +302,7 @@ DOMAIN_TEKNOLOGI = [
         ('cyber security breach', 'en'),
     ]},
     {'nama': 'Inovasi & Sains Teknologi', 'aturan':
-        ('Berita HARUS LENGKAP dan BANYAK — inovasi, riset, luar '
+        ('Berita HARUS LENGKAP dan BANYAK - inovasi, riset, luar '
          'angkasa, kendaraan listrik: semua yang ada di materi '
          'dibahas menyeluruh.'),
      'query': [
@@ -331,6 +331,7 @@ HUNT = {
     'daerah': [
         RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
         RSSF('https://kaltim.tribunnews.com/rss', 'Tribun Kaltim'),
+        RSSF('https://berita.tarakankota.go.id/rss.xml', 'Humas Pemkot Tarakan'),
         GN('Tarakan', 'id', 'Google News Tarakan'),
         GN('Kaltara', 'id', 'Google News Kaltara'),
         RSSF('https://jatim.tribunnews.com/rss', 'Tribun Jatim'),
@@ -449,7 +450,6 @@ HUNT = {
         GN('asian pop music', 'en', 'Google News Musik Asia'),
     ],
 }
-
 # AKHIR PART 1
 
 # PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.9.7
