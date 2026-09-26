@@ -1076,7 +1076,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
     
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR - V6.16.0
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR - V6.16.2
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1141,7 +1141,6 @@ def expire_breaking(menit):
             print('   expire:', str(e)[:60])
     return n
 
-# ═══ V6.16.0: helper kategori & umur ═══
 def is_evergreen(cat):
     return cat in KATEGORI_EVERGREEN
 
@@ -1226,7 +1225,6 @@ def gn_split(title):
     return title.strip(), 'Google News'
 
 def collect_candidates(sources, today_urls, seen, max_umur_jam=None):
-    """V6.16.0: tambah parameter max_umur_jam untuk filter per kategori."""
     if max_umur_jam is None:
         max_umur_jam = MAX_UMUR_BERITA_JAM
     out = []
@@ -1480,25 +1478,103 @@ def cek_deskripsi_gambar(deskripsi):
                 return 'deskripsi gambar memuat kata terlarang: ' + k
     return None
 
-# ═══ V6.16.0: Validator narasumber dirombak total ═══
+# ═══ V6.16.2: skor breaking (dikembalikan dari V6.15.x) ═══
+def ambil_magnitude(teks):
+    m = re.search(r'(?:magnitudo|magnitude)\s*(?:m)?\s*[:=]?\s*(\d{1,2}[.,]\d{1,2})', teks)
+    if not m:
+        m = re.search(r'\bm\s*[:=]?\s*(\d{1,2}[.,]\d{1,2})\b', teks)
+    if not m:
+        m = re.search(r'(\d{1,2}[.,]\d{1,2})\s*(?:magnitude|magnitudo|sr)\b', teks)
+    if m:
+        try:
+            return float(m.group(1).replace(',', '.'))
+        except Exception:
+            return None
+    return None
 
-# Pangkat TNI/Polri yang sering muncul
+def skor_domestik(title, summary):
+    t = (title + ' ' + summary).lower()
+    if any(w in t for w in KATA_ANALISIS):
+        return 0
+    skor = 0
+    if 'gempa' in t:
+        if not any(w in t for w in INDO_GEO):
+            return 0
+        mag = ambil_magnitude(t)
+        if mag is None or mag < GEMPA_DOM_MIN:
+            return 0
+        skor = 60 + min(int(mag), 8)
+    hit = sum(1 for k in DOM_KRITIS if k in t)
+    if hit:
+        skor += 30 + (hit - 1) * 8
+    return skor
+
+def skor_dunia(title, summary):
+    t = (title + ' ' + summary).lower()
+    if any(w in t for w in KATA_ANALISIS):
+        return 0
+    skor = 0
+    if 'earthquake' in t or 'gempa' in t:
+        mag = ambil_magnitude(t)
+        if mag is None or mag < GEMPA_DUNIA_MIN:
+            return 0
+        skor = 60 + min(int(mag), 9)
+    hit = sum(1 for k in DUNIA_KRITIS if k in t)
+    if hit:
+        skor += 30 + (hit - 1) * 8
+    return skor
+
+POLA_JABATAN_TANPA_NAMA = [
+    'menteri ', 'presiden ', 'wakil presiden ', 'gubernur ',
+    'wakil gubernur ', 'walikota ', 'wakil walikota ', 'bupati ',
+    'wakil bupati ', 'kepala dinas ', 'kepala cabang ', 'kepala badan ',
+    'kepala kantor ', 'ketua ', 'wakil ketua ', 'direktur utama ',
+    'dirut ', 'direktur ', 'komisaris ',
+    'kasat ', 'kapolres ', 'kapolda ', 'kapolsek ', 'danramil ',
+    'dandim ', 'panglima ', 'jenderal ', 'sekjen ', 'sekretaris jenderal ',
+    'ketua umum ', 'presiden fifa', 'presiden pbb',
+    'kepala perwakilan ', 'kepala daerah ',
+]
+
+def cek_jabatan_tanpa_nama(isi):
+    if not isi:
+        return None
+    teks = isi
+    KATA_KERJA = [
+        'mengatakan', 'menyatakan', 'menjelaskan', 'menuturkan',
+        'mengungkapkan', 'mengimbau', 'menghimbau', 'meminta',
+        'menegaskan', 'menambahkan', 'mengatakan bahwa',
+        'menyampaikan', 'menekankan', 'mengajak', 'memastikan',
+        'berbicara', 'menegaskan bahwa',
+    ]
+    for jabatan in POLA_JABATAN_TANPA_NAMA:
+        pola = re.compile(
+            r'\b' + re.escape(jabatan).rstrip() + r'\s+(?:yang\s+)?('
+            + '|'.join(re.escape(k) for k in KATA_KERJA) + r')\b',
+            re.IGNORECASE
+        )
+        m = pola.search(teks)
+        if m:
+            awal = max(0, m.start() - 120)
+            sebelum = teks[awal:m.start()]
+            if re.search(r',\s*[A-Z][a-zA-Z\.\'\-]+', sebelum):
+                continue
+            return 'jabatan "' + jabatan.strip() + '" muncul tanpa nama orang'
+    return None
+
 PANGKAT_TNI_POLRI = [
     'jenderal', 'letnan jenderal', 'letjen', 'mayor jenderal', 'mayjen',
     'brigadir jenderal', 'brigjen', 'kolonel', 'letnan kolonel', 'letkol',
     'mayor', 'kapten', 'lettu', 'letda', 'letnan', 'pembantu letnan',
-    'pelda', 'pelton', 'peltu', 'sergeant', 'sersan', 'kopral', 'prajurit',
+    'pelda', 'pelton', 'peltu', 'sersan', 'kopral', 'prajurit',
     'akbp', 'akp', 'iptu', 'ipda', 'bripka', 'brigpol', 'bripda',
-    'komisaris besar', 'kombes', 'ajun komisaris besar', 'akbp',
-    'komisaris', 'kompol', 'ajun komisaris', 'akp',
-    'inspektur', 'inspektur polisi satu', 'iptu', 'inspektur polisi dua', 'ipda',
-    'ajun inspektur', 'aiptu', 'aipda',
-    'bripka', 'brigadir polisi', 'brigpol', 'brigadir polisi kepala', 'bripka',
-    'brigadir polisi satu', 'brigpol',
+    'komisaris besar', 'kombes', 'ajun komisaris besar',
+    'komisaris', 'kompol', 'ajun komisaris',
+    'inspektur', 'inspektur polisi satu', 'inspektur polisi dua',
+    'ajun inspektur',
     'bharada', 'bharatu', 'bharaka', 'abrip',
 ]
 
-# Jabatan institusi yang butuh nama (berita dalam negeri)
 INSTITUSI_BUTUH_NAMA = [
     'kementerian', 'kemenko', 'kemen',
     'dinas', 'badan', 'kantor', 'lembaga', 'komisi',
@@ -1506,10 +1582,10 @@ INSTITUSI_BUTUH_NAMA = [
     'polres', 'polsek', 'polda', 'kodam', 'korem', 'kodim', 'koramil',
     'kejaksaan', 'kejari', 'kejati', 'pengadilan',
     'bawaslu', 'kpu', 'kppu', 'kppn', 'kpp', 'bpjs',
-    'bank indonesia', 'ojk', 'bi',
-    'bulog', 'pertamina', 'pln', 'telkom', 'antm',
+    'bank indonesia', 'ojk',
+    'bulog', 'pertamina', 'pln', 'telkom',
     'perum', 'peruri', 'pelindo', 'angkasa pura',
-    'kpk', 'bnpb', 'bkn', 'bkn', 'basarnas',
+    'kpk', 'bnpb', 'basarnas',
 ]
 
 KATA_KERJA_NARASUMBER = [
@@ -1522,38 +1598,20 @@ KATA_KERJA_NARASUMBER = [
 ]
 
 def _ada_nama_orang_sebelum(teks, posisi):
-    """Cek apakah sebelum posisi ada nama orang (min 2 kata Kapital).
-    Return True kalau ada nama orang."""
     awal = max(0, posisi - 150)
     sebelum = teks[awal:posisi]
-    # Cari pola "Koma Nama Kapital" atau "jabatan, Nama Kapital"
-    # Minimal 2 kata Kapital berurutan (nama lengkap)
     pola_nama = re.compile(r'[A-Z][a-z]+\s+(?:[A-Z]\.\s*)?[A-Z][a-z]+')
     if pola_nama.search(sebelum):
-        # Cek apakah bukan bagian dari jabatan/frasa umum
         return True
     return False
 
 def cek_narasumber_tanpa_nama(isi, kategori=''):
-    """V6.16.0: Validator narasumber.
-    Return string alasan kalau bermasalah, None kalau OK.
-    Berita dalam negeri WAJIB nama narasumber.
-    Berita luar negeri lebih longgar."""
-
     if not isi:
         return None
-
-    # Untuk berita internasional, longgarkan
     if kategori in ('internasional', 'internasional_asean', 'internasional_tt'):
         return None
-
     teks = isi
-
-    # ─── Cek 1: Pangkat TNI/Polri tanpa nama ───
     for pangkat in PANGKAT_TNI_POLRI:
-        # Cari pola: "Pangkat X" tapi bukan "Pangkat Nama"
-        # Contoh SALAH: "AKBP mengatakan", "Kolonel menjelaskan"
-        # Contoh BENAR: "AKBP Budi Santoso mengatakan"
         pola = re.compile(
             r'\b' + re.escape(pangkat) + r'\s+('
             + '|'.join(re.escape(k) for k in KATA_KERJA_NARASUMBER) + r')\b',
@@ -1561,11 +1619,9 @@ def cek_narasumber_tanpa_nama(isi, kategori=''):
         )
         m = pola.search(teks)
         if m:
-            # Cek ada nama orang sebelum
             if not _ada_nama_orang_sebelum(teks, m.start()):
                 return ('pangkat TNI/Polri "' + pangkat
                         + '" muncul tanpa nama orang')
-        # Cek pola "Pangkat, kata kerja" (dengan koma)
         pola2 = re.compile(
             r'\b' + re.escape(pangkat) + r'\s*,\s*('
             + '|'.join(re.escape(k) for k in KATA_KERJA_NARASUMBER) + r')\b',
@@ -1574,12 +1630,7 @@ def cek_narasumber_tanpa_nama(isi, kategori=''):
         if pola2.search(teks):
             return ('pangkat TNI/Polri "' + pangkat
                     + '" diikuti koma langsung kata kerja (tanpa nama)')
-
-    # ─── Cek 2: Institusi + kata kerja tanpa nama pejabat ───
     for inst in INSTITUSI_BUTUH_NAMA:
-        # Cari pola: "Institusi X ... kata_kerja" tanpa nama di antaranya
-        # Contoh SALAH: "Bawaslu Tarakan menyatakan..."
-        # Contoh BENAR: "Ketua Bawaslu Tarakan, Budi, menyatakan..."
         pola = re.compile(
             r'\b' + re.escape(inst) + r'\b[^\.]{0,60}?\s+('
             + '|'.join(re.escape(k) for k in KATA_KERJA_NARASUMBER) + r')\b',
@@ -1590,28 +1641,18 @@ def cek_narasumber_tanpa_nama(isi, kategori=''):
             if not _ada_nama_orang_sebelum(teks, m.start()):
                 return ('institusi "' + inst
                         + '" muncul tanpa nama pejabat')
-
-    # ─── Cek 3: Pola umum "menurut [institusi]" tanpa nama ───
     for inst in INSTITUSI_BUTUH_NAMA:
         pola3 = re.compile(
             r'\bmenurut\s+' + re.escape(inst) + r'\b[^\.]{0,30}?[,\.]',
             re.IGNORECASE
         )
         if pola3.search(teks):
-            return ('"menurut ' + inst
-                    + '" tanpa nama pejabat')
-
+            return ('"menurut ' + inst + '" tanpa nama pejabat')
     return None
 
 def cek_nama_lembaga_diterjemahkan(judul, isi):
-    """V6.16.0: Cek apakah ada nama lembaga asing yang diterjemahkan.
-    Contoh SALAH: 'Gerakan Kecoak India' (dari Cockroach Janta Party).
-    Heuristik: cari kata Indonesia + 'India'/negara asing yang aneh."""
     if not judul:
         return None
-
-    # Deteksi pola: "Gerakan/Partai/Organisasi + kata hewan/aneh + Negara"
-    # Ini heuristik sederhana
     kata_aneh_terjemahan = [
         'kecoak', 'kecoa', 'tikus', 'ular', 'kadal', 'cicak',
         'kucing', 'anjing', 'monyet', 'babi', 'kerbau',
@@ -1621,8 +1662,6 @@ def cek_nama_lembaga_diterjemahkan(judul, isi):
     for k in kata_aneh_terjemahan:
         if k in j_low:
             return 'judul memuat terjemahan nama lembaga yang aneh: "' + k + '"'
-
-    # Deteksi: Partai/Gerakan/Organisasi + nama negara
     pola_aneh = re.compile(
         r'\b(partai|gerakan|organisasi|asosiasi|lembaga)\s+[a-z]+\s+'
         r'(india|china|jepang|korea|amerika|rusia|mesir|iran|irak)\b',
@@ -1630,16 +1669,13 @@ def cek_nama_lembaga_diterjemahkan(judul, isi):
     )
     m = pola_aneh.search(judul)
     if m:
-        # Kecuali kalau kata di tengah adalah kata yang wajar dalam bahasa Indonesia
         tengah = m.group(0).split()[1].lower()
-        # Kata umum yang tidak diterjemahkan
         kata_wajar = ['buruh', 'tani', 'nelayan', 'islam', 'kristen',
                       'hindu', 'budha', 'nasional', 'demokrasi', 'rakyat',
                       'merdeka', 'keadilan', 'persatuan', 'kebangsaan']
         if tengah not in kata_wajar:
             return ('judul memuat kemungkinan terjemahan nama lembaga: "'
                     + m.group(0) + '"')
-
     return None
 
 KATA_BUKAN_BERITA = [
