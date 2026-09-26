@@ -1090,7 +1090,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
     
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR - V6.16.5
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR - V6.16.6
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1691,55 +1691,88 @@ def cek_nama_lembaga_diterjemahkan(judul, isi):
                     + m.group(0) + '"')
     return None
 
-# ═══ V6.16.5: validator judul vs materi DIPERBAIKI LAGI ═══
-# Blokir HANYA nama orang (2+ kata Kapital), bukan frasa kerja.
-# DAN cek bahwa judul nyambung dengan materi (topik sama).
-KATA_KERJA_JUDUL = [
-    'kirim', 'kirimkan', 'uji', 'ujicoba', 'coba', 'luncurkan', 'rilis',
-    'umumkan', 'buka', 'tutup', 'gelar', 'gelar', 'mulai', 'akhiri',
-    'pimpin', 'pimpin', 'kunjungi', 'hadiri', 'sambut', 'terima',
-    'tolak', 'dukung', 'desak', 'minta', 'harap', 'imbau', 'ajak',
-    'tegaskan', 'nyatakan', 'jelaskan', 'sebut', 'tambah', 'tekan',
-    'catat', 'raih', 'menang', 'kalah', 'unggul', 'susul',
-    'naik', 'turun', 'melonjak', 'anjlok', 'menguat', 'melemah',
-    'buka', 'tutup', 'siap', 'siapkan', 'susun', 'bahas', 'kaji',
-    'lakukan', 'kerjakan', 'buat', 'ciptakan', 'temukan', 'ganti',
-    'beri', 'kasih', 'terapkan', 'terapkan', 'pasang', 'lepas',
-]
+# ═══ V6.16.6: Validator judul vs materi DIPERBAIKI TOTAL ═══
+# Blokir HANYA nama orang (pakai daftar nama), bukan 2 kata Kapital acak.
+# Kunci masalah V6.16.5: "Pesawat Jatuh", "Konvensi Siber", "Bebas Visa"
+# diblokir padahal itu BUKAN nama orang/lembaga — itu frasa kata benda.
+
+# Daftar gelar + nama umum yang sering muncul di berita
+KATA_GELAR_DAN_UMUM = {
+    'Indonesia', 'Jakarta', 'Pemerintah', 'Presiden', 'Menteri',
+    'Nasional', 'Daerah', 'Internasional', 'Breaking', 'News',
+    'Hari', 'Tahun', 'Bulan', 'Pekan', 'WIB', 'WITA', 'WIT',
+    'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu',
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
+    'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    'Pesawat', 'Konvensi', 'Perjanjian', 'Visa', 'Bebas', 'Kunjungan',
+    'Kerja', 'Sama', 'Bantuan', 'Program', 'Pemerintah', 'Negara',
+    'Puluhan', 'Ribuan', 'Jutaan', 'Miliaran', 'Puluh', 'Ratus',
+    'Global', 'Forum', 'KTT', 'G20', 'ASEAN', 'PBB', 'KTT',
+    'Kawasan', 'Regional', 'Dunia', 'Asia', 'Eropa', 'Amerika',
+    'Afrika', 'Australia', 'Timur', 'Barat', 'Tengah', 'Utara',
+    'Selatan', 'Laut', 'Darat', 'Udara', 'Angkatan', 'Bersenjata',
+}
+
+def _apakah_nama_orang(kata):
+    """Heuristik: cek apakah kata kemungkinan nama orang.
+    Nama orang biasanya: bukan kata umum, bukan kata kerja, 
+    bukan nama tempat besar."""
+    if not kata or len(kata) < 3:
+        return False
+    if kata in KATA_GELAR_DAN_UMUM:
+        return False
+    # Cek apakah kata kerja Indonesia (akhiran umum)
+    if kata.endswith(('kan', 'lah', 'nya')) and len(kata) > 5:
+        # Cek kata kerja yang jelas: "kirimkan", "lakukan", "sebutkan"
+        if kata not in ('sultan', 'tengku'):
+            return False
+    # Cek apakah termasuk kata kerja umum Indonesia
+    kata_kerja = {
+        'Kirim', 'Uji', 'Coba', 'Buka', 'Tutup', 'Gelar', 'Mulai',
+        'Akhiri', 'Pimpin', 'Kunjungi', 'Hadiri', 'Sambut', 'Terima',
+        'Tolak', 'Dukung', 'Desak', 'Minta', 'Harap', 'Imbau', 'Ajak',
+        'Tegaskan', 'Nyatakan', 'Jelaskan', 'Sebut', 'Tambah', 'Tekan',
+        'Catat', 'Raih', 'Menang', 'Kalah', 'Unggul', 'Susul',
+        'Naik', 'Turun', 'Buka', 'Siap', 'Siapkan', 'Susun', 'Bahas',
+        'Kaji', 'Lakukan', 'Kerjakan', 'Buat', 'Ciptakan', 'Temukan',
+        'Ganti', 'Beri', 'Kasih', 'Terapkan', 'Pasang', 'Lepas',
+    }
+    if kata in kata_kerja:
+        return False
+    return True
 
 def cek_judul_vs_materi(judul, materi_sumber):
-    """V6.16.5: blokir HANYA nama orang (2+ kata Kapital berurutan).
-    Kata kerja/frasa kerja DIBOLEHKAN walau tidak ada di materi."""
+    """V6.16.6: blokir HANYA nama orang (2+ kata Kapital) yang
+    tidak ada di materi. Kata benda/frasa umum TIDAK diblokir."""
     if not judul or not materi_sumber:
         return None
     materi_low = materi_sumber.lower()
     # Cek nama orang: 2+ kata Kapital berurutan (Title Case)
-    pola_nama = re.compile(r'\b[A-Z][a-z]{2,}\s+(?:[A-Z]\.\s*)?[A-Z][a-z]{2,}\b')
-    kandidat_nama = pola_nama.findall(judul)
-    for nama in kandidat_nama:
-        # Cek kata pertama apakah kata kerja umum → skip
-        kata_pertama = nama.split()[0].lower()
-        if kata_pertama in KATA_KERJA_JUDUL:
+    pola_nama = re.compile(r'\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b')
+    for m in pola_nama.finditer(judul):
+        kata1, kata2 = m.group(1), m.group(2)
+        # Skip kalau kedua kata bukan nama orang
+        if not _apakah_nama_orang(kata1) or not _apakah_nama_orang(kata2):
             continue
-        # Cek apakah nama ada di materi (lowercase substring)
-        if nama.lower() in materi_low:
+        # Skip kalau kata1/kata2 ada di daftar tempat besar / kategori
+        frasa = kata1 + ' ' + kata2
+        if frasa in KATA_GELAR_DAN_UMUM:
             continue
-        # Cek per kata
-        bagian = nama.split()
-        ada_di_materi = sum(1 for b in bagian if b.lower() in materi_low)
-        if ada_di_materi >= len(bagian) - 1:
+        # Cek ada/tidak di materi        if frasa.lower() in materi_low:
             continue
-        # Kalau tidak ada di materi → blokir
-        return ('judul memuat nama yang tidak ada di materi: ' + nama)
+        # Cek per kata — kalau minimal 1 kata ada, lolos (nama parsial)
+        if kata1.lower() in materi_low or kata2.lower() in materi_low:
+            continue
+        # Kedua kata tidak ada di materi → blokir
+        return ('judul memuat nama yang tidak ada di materi: ' + frasa)
     return None
 
-# ═══ V6.16.5: cek judul-isi nyambung topik ═══
+# ═══ V6.16.6: cek judul-isi nyambung (diperkuat) ═══
 def cek_judul_isi_nyambung(judul, isi):
-    """V6.16.5: pastikan judul & isi satu topik.
-    Ambil 3 kata kunci dari judul, cek ada di 5 kalimat pertama isi."""
+    """V6.16.6: pastikan judul & isi satu topik.
+    Ambil 4 kata kunci dari judul, cek ada di 800 karakter pertama isi."""
     if not judul or not isi:
         return None
-    # Kata kunci judul (buang stopword)
     STOP = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
                'sudah oleh sebagai ada adalah para kami mereka tidak bisa '
                'dapat juga lebih masih hanya setelah sebelum sekitar the and '
@@ -1748,13 +1781,10 @@ def cek_judul_isi_nyambung(judul, isi):
                      if w.lower() not in STOP)
     if not kata_judul:
         return None
-    # Ambil awal isi (500 karakter pertama, setelah dateline)
     isi_awal = re.sub(r'^[A-Z][^\n]{1,60}?\s*[-–—]\s*', '', isi)[:800].lower()
-    # Hitung berapa kata judul yang muncul di awal isi
     match = sum(1 for w in kata_judul if w in isi_awal)
-    # Minimal 30% kata judul muncul di awal isi
     rasio = match / len(kata_judul) if kata_judul else 0
-    if rasio < 0.3:
+    if rasio < 0.35:
         return ('judul & isi tidak nyambung (kemiripan '
                 + str(int(rasio * 100)) + '%)')
     return None
@@ -1779,7 +1809,7 @@ def cek_bukan_berita(judul, isi):
 
 # AKHIR PART 3A
 
-# PART 3B - BAGIAN 1 DARI 2 - V6.16.5
+# PART 3B - BAGIAN 1 DARI 2 - V6.16.6
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -2122,33 +2152,19 @@ def cari_gambar_pexels(deskripsi):
         print('       Pexels gagal: ' + str(e)[:60])
     return ''
 
+# ═══ V6.16.6: AI GAMBAR DINONAKTIFKAN ═══
 WORKER_GAMBAR_URL = 'https://kramanews-generate-image.denytriono-btm.workers.dev'
+GAMBAR_AI_AKTIF = False  # V6.16.6: matikan dulu
 
 def generate_gambar_ai(deskripsi):
-    if not deskripsi:
+    """V6.16.6: dinonaktifkan. Return '' selalu."""
+    if not GAMBAR_AI_AKTIF:
         return ''
-    try:
-        r = requests.post(WORKER_GAMBAR_URL,
-            headers={'Content-Type': 'application/json'},
-            json={'prompt': deskripsi},
-            timeout=30)
-        if not r.ok:
-            print('       AI gambar HTTP ' + str(r.status_code) + ' - lewati.')
-            return ''
-        data = r.json()
-        url = (data.get('image') or '').strip()
-        if not url:
-            print('       AI gambar kosong - lewati.')
-            return ''
-        if url.startswith('data:'):
-            print('       AI gambar gagal upload ke Supabase - lewati.')
-            return ''
-        return url
-    except Exception as e:
-        print('       AI gambar gagal: ' + str(e)[:60])
-        return ''
+    # (kode lama disimpan tapi tidak dipanggil)
+    return ''
 
 def cari_gambar_otomatis(deskripsi, judul_berita):
+    """V6.16.6: 2 tier - Pexels → Wikimedia. AI dinonaktifkan."""
     img = cari_gambar_pexels(deskripsi)
     if img:
         return img, 'pexels'
@@ -2156,8 +2172,8 @@ def cari_gambar_otomatis(deskripsi, judul_berita):
     img = cari_gambar_wikimedia(deskripsi)
     if img:
         return img, 'wikimedia'
-    print('       Wikimedia kosong - fallback AI generate...')
-    return generate_gambar_ai(deskripsi), 'ai'
+    print('       Wikimedia kosong - fallback Picsum (AI dinonaktifkan V6.16.6).')
+    return '', 'picsum'
 
 _GAMBAR_TERPAKAI_CACHE = None
 
@@ -2188,7 +2204,7 @@ def catat_gambar_terpakai(url):
     if url:
         muat_gambar_terpakai().add(url)
 
-# V6.16.5: ai_write tambah validator judul-isi nyambung
+# ═══ V6.16.6: ai_write - MAX_LOOP 5, koreksi nama skip kalau materi pendek ═══
 def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
     obj = None
     materi_asli = user_content
@@ -2202,7 +2218,11 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
     MAX_KONEKSI_RETRY = 2
     MAX_NAMA_KOREKSI = 1
     MAX_FRASA_KOREKSI = 1
-    MAX_LOOP = 7
+    MAX_LOOP = 5
+    # V6.16.6: kalau materi pendek (<300 kata), skip koreksi nama
+    materi_pendek = len(materi_sumber or '') < 1200
+    if materi_pendek:
+        MAX_NAMA_KOREKSI = 0
     FRASA_TOLAK_AI = [
         'materi tidak tersedia',
         'materi sumber tidak tersedia',
@@ -2252,7 +2272,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
         judul_masalah = None
         if not judul_materi_dikoreksi and materi_sumber:
             judul_masalah = cek_judul_vs_materi(judul_c, materi_sumber)
-        # V6.16.5: cek judul-isi nyambung
         judul_isi_masalah = None
         if not judul_isi_dikoreksi:
             judul_isi_masalah = cek_judul_isi_nyambung(judul_c, isi_c)
@@ -2286,7 +2305,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
                 '- Isi berita JANGAN DIUBAH.\n'
                 '- Jawab HANYA JSON valid dengan format yang sama.')
             continue
-        # V6.16.5: koreksi judul-isi tidak nyambung (prioritas)
         if judul_isi_masalah and not judul_isi_dikoreksi:
             judul_isi_dikoreksi = True
             print('       Koreksi judul-isi: ' + judul_isi_masalah[:80])
@@ -2308,9 +2326,9 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
             user_content = (
                 'TULISANMU SEBELUMNYA DITOLAK SISTEM karena: ' + judul_masalah + '.\n\n'
                 'ATURAN: Judul dan isi HANYA boleh bicara topik yang ADA '
-                'di materi. DILARANG menambah nama orang/lembaga/tempat baru.\n\n'
-                'CATATAN: Kata kerja/umum (Dukung, Pertama, Kirim, Uji) '
-                'BOLEH muncul walau tidak ada di materi.\n\n'
+                'di materi. DILARANG menambah nama orang baru.\n\n'
+                'CATATAN: Kata benda/kerja umum (Pesawat, Konvensi, Kirim, '
+                'Uji) BOLEH muncul walau tidak ada di materi.\n\n'
                 'Berikut MATERI SUMBER ASLI:\n'
                 '==========================================\n'
                 + materi_asli + '\n'
@@ -2387,25 +2405,23 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
                 raise Exception('diblokir anti-dobel-6jam: mirip "' + t[:40] + '"')
     else:
         print('       Topik besar terdeteksi - gate 6jam dilewati.')
-    # V6.16.5: cek judul-isi nyambung (final)
     ji_final = cek_judul_isi_nyambung(judul, isi)
     if ji_final:
-        raise Exception('DITOLAK V6.16.5 - ' + ji_final[:80])
-    # V6.16.5: cek judul vs materi (final)
+        raise Exception('DITOLAK V6.16.6 - ' + ji_final[:80])
     if materi_sumber:
         jm_final = cek_judul_vs_materi(judul, materi_sumber)
         if jm_final:
-            raise Exception('DITOLAK V6.16.5 - ' + jm_final[:80])
+            raise Exception('DITOLAK V6.16.6 - ' + jm_final[:80])
     nama_final = cek_narasumber_tanpa_nama(isi, kategori)
     if nama_final:
-        raise Exception('DITOLAK V6.16.5 - narasumber tanpa nama ('
+        raise Exception('DITOLAK V6.16.6 - narasumber tanpa nama ('
                         + nama_final[:60] + ')')
     gambar_terlarang = cek_deskripsi_gambar(gambar)
     if gambar_terlarang:
         raise Exception('diblokir filter gambar: ' + gambar_terlarang[:60])
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
     if jiplak:
-        raise Exception('diblokir ANTI-JIPLAK V6.16.5: kalimat tersalin: "'
+        raise Exception('diblokir ANTI-JIPLAK V6.16.6: kalimat tersalin: "'
                         + jiplak[:70] + '"')
     return judul, isi, ringkasan, waktu, gambar
 
@@ -2489,7 +2505,7 @@ def ai_rewrite_multi(items, kategori_target=''):
     return ai_write(user, timeout=180, materi_sumber=semua_materi, kategori=kategori_target)
 
 # AKHIR PART 3B BAGIAN 1
-# PART 3B - BAGIAN 2 DARI 2 - V6.16.3
+# PART 3B - BAGIAN 2 DARI 2 - V6.16.6
 
 def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
                 breaking=False, deskripsi_gambar=''):
@@ -2503,16 +2519,17 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
     if deskripsi_gambar:
         img_final, sumber_gambar = cari_gambar_otomatis(deskripsi_gambar, judul)
         if img_final:
-            # V6.16.3: skip vision untuk Wikimedia (sudah terkurasi)
             if sumber_gambar == 'wikimedia':
-                print('   Gambar Wikimedia - skip vision (V6.16.3).')
-            else:
-                print('   Gambar baru ditemukan - cek vision...')
+                print('   Gambar Wikimedia - skip vision.')
+            elif sumber_gambar == 'pexels':
+                print('   Gambar Pexels - cek vision...')
                 if not gambar_lolos_blur_gate(img_final, judul):
                     img_final = ''
+            else:
+                print('   Gambar ' + sumber_gambar + ' - skip vision.')
     if not img_final:
         img_final = 'https://picsum.photos/seed/kn' + str(int(datetime.now().timestamp())) + '/800/500'
-        print('   Fallback Picsum dipakai (gambar AI kosong).')
+        print('   Fallback Picsum dipakai.')
     payload = {
         'title': judul, 'excerpt': ringkasan, 'content': isi_bersih,
         'category': cat, 'author': AUTHOR_NAME,
@@ -2555,7 +2572,7 @@ def vision_nilai_gambar(img_url, judul_berita):
                                   '(5) Blur, rusak, iklan, placeholder, logo = skor 1-4. '
                                   '(6) Gambar sesuai tema, tajam, bebas hewan/alas kaki = skor 8-10. '
                                   'Jawab HANYA JSON: {"skor": <angka>} '
-                                  'KRAMAV6163MARKER')},
+                                  'KRAMAV6166MARKER')},
                         {'type': 'image_url',
                          'image_url': {'url': 'data:image/jpeg;base64,' + b64}}
                     ]}
