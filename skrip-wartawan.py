@@ -520,7 +520,7 @@ HUNT = {
 }
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.16.0
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.16.1
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -606,7 +606,6 @@ def judul_topik_besar(judul):
     j = (judul or '').lower()
     return any(k in j for k in TOPIK_BESAR_GATE)
 
-# ═══ V6.16.0: kata kunci turnamen — paksa kategori olahraga ═══
 KATA_TURNAMEN_OLAHRAGA = [
     'fifa', 'aff', 'uefa', 'afc', 'piala dunia', 'world cup',
     'sea games', 'asian games', 'olimpiade', 'olympic',
@@ -634,7 +633,50 @@ JUDUL_6JAM = []
 DOBEL_6JAM_MIN_KATA = 2
 _GAMBAR_TERPAKAI_CACHE = None
 
+# ═══ V6.16.1: resolusi_link_google DIPERBAIKI ═══
+# Bug V6.16.0: regex ambil URL pertama yang match — malah dapat
+# "http://www.w3.org/2000/svg" dari SVG di dalam HTML Google News.
+# Fix: blacklist domain non-berita + validasi path.
+DOMAIN_NON_BERITA = [
+    'www.w3.org', 'w3.org',
+    'schema.org', 'ogp.me', 'purl.org',
+    'gstatic.com', 'googleapis.com', 'googleusercontent.com',
+    'fonts.googleapis.com', 'fonts.gstatic.com',
+    'cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'unpkg.com',
+    'facebook.com', 'twitter.com', 'instagram.com',
+    'youtube.com', 'tiktok.com',
+    'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
+    'googletagmanager.com', 'google-analytics.com',
+    'accounts.google.com', 'consent.google.com', 'policies.google.com',
+    'support.google.com', 'myaccount.google.com',
+]
+
+def _url_valid_berita(u):
+    """V6.16.1: validasi URL berita — harus domain portal, bukan file statis."""
+    if not u:
+        return False
+    low = u.lower().strip()
+    if not low.startswith(('http://', 'https://')):
+        return False
+    for blok in DOMAIN_NON_BERITA:
+        if blok in low:
+            return False
+    # Wajib punya path minimal
+    m = re.match(r'^https?://[^/]+(/.*)?$', low)
+    if not m or not m.group(1):
+        return False
+    # Wajib ada ekstensi portal (.com/.id/.net/.co/.org/dll) ATAU subdomain berita
+    if not re.search(r'\.(com|id|net|co|org|tv|info|news|co\.id|or\.id|go\.id|ac\.id|my\.id|sch\.id)\b', low):
+        return False
+    # Tolak file statis
+    if low.endswith(('.svg', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.ico',
+                     '.css', '.js', '.woff', '.woff2', '.ttf', '.eot')):
+        return False
+    return True
+
 def resolusi_link_google(url):
+    """V6.16.1: resolusi URL Google News → URL berita asli.
+    Blacklist domain non-berita (w3.org, gstatic, dll) + validasi path."""
     try:
         if 'news.google.com' not in url:
             return url
@@ -643,20 +685,15 @@ def resolusi_link_google(url):
         if not r.ok:
             return url
         html = r.text or ''
-        m = re.search(
-            r'href="(https?://(?!(?:www\.)?(?:google|accounts|consent|policies|support)\.)[^"]+\.(?:com|id|net|co|org|tv|co\.id|or\.id|go\.id|ac\.id)[^"]*)"',
-            html
-        )
-        if m:
+        # Prioritas 1: cari di tag <a href> — hanya URL berita valid
+        for m in re.finditer(r'href="(https?://[^"]+)"', html):
             kandidat = m.group(1)
-            if 'google' not in kandidat.lower():
+            if _url_valid_berita(kandidat):
                 return kandidat
-        for m in re.finditer(
-            r'https?://(?!(?:www\.)?(?:google|accounts|consent|policies|support)\.)[A-Za-z0-9\.\-]+\.(?:com|id|net|co|org|tv|co\.id|or\.id|go\.id|ac\.id)(?:/[^\s"\'<>\\]*)?',
-            html
-        ):
+        # Prioritas 2: cari URL mentah di body
+        for m in re.finditer(r'https?://[A-Za-z0-9\.\-]+(?:/[^\s"\'<>\\]*)?', html):
             kandidat = m.group(0)
-            if 'google' not in kandidat.lower() and 'gstatic' not in kandidat.lower():
+            if _url_valid_berita(kandidat):
                 return kandidat
         return url
     except Exception:
@@ -731,6 +768,11 @@ def scrape_artikel(url):
         print('       Skip scraping (domain 403 konsisten) - ' + url[:60])
         return ''
     url_asli = resolusi_link_google(url)
+    # V6.16.1: kalau hasil resolusi masih domain non-berita, jangan coba scrape
+    if not _url_valid_berita(url_asli) and 'news.google.com' not in url_asli:
+        print('       URL hasil resolusi tidak valid (non-berita) - skip: ' + url_asli[:60])
+        STAT_SCRAPE['skip'] += 1
+        return ''
     hasil = ''
     try:
         headers = {
@@ -887,7 +929,7 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu AI Wartawan profesional KramaNews Indonesia.
-KRAMAV616MARKER - V6.16.0
+KRAMAV616MARKER - V6.16.1
 
 GAYA BAHASA (ANTI-JIPLAK):
 - Tulis dengan kalimatmu sendiri, struktur beda dari materi.
@@ -1620,10 +1662,8 @@ def cek_bukan_berita(judul, isi):
 
 # AKHIR PART 3A
 
-# PART 3B - SUMBER HARIAN, AI WRITE, API FOOTBALL, REWRITE - V6.16.0
-# BAGIAN 1 DARI 2
+# PART 3B - BAGIAN 1 DARI 2 - V6.16.1
 
-# ═══ SUMBER KESEHATAN HARIAN ═══
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
         return None, None
@@ -1729,11 +1769,13 @@ def _gram_set(teks, n):
     return set(tuple(kata[i:i+n]) for i in range(len(kata) - n + 1)) if len(kata) >= n else set()
 
 def cek_jiplak(materi_sumber, isi_ai):
+    """V6.16.1: materi gabungan (title+RSS) naikkan threshold jadi 15 kata
+    (dulu 10) karena kata-katanya memang dari portal sumber."""
     if not materi_sumber or not isi_ai:
         return None
-    n_kata = 10
+    n_kata = 15  # V6.16.1: naik dari 10
     if len(materi_sumber) < 500:
-        n_kata = 20
+        n_kata = 25  # V6.16.1: naik dari 20
     sumber_grams = _gram_set(materi_sumber, n_kata)
     if not sumber_grams:
         return None
@@ -1748,7 +1790,6 @@ def _paksa_dateline_indonesia(isi):
         return 'INDONESIA - ' + isi[m.end():]
     return 'INDONESIA - ' + (isi or '')
 
-# ═══ API FOOTBALL HELPER ═══
 LIGA_API_FOOTBALL = {
     'eng.1': 39, 'esp.1': 140, 'ita.1': 135, 'ger.1': 78,
     'fra.1': 61, 'ned.1': 88, 'uefa.champions': 2, 'uefa.europa': 3,
@@ -1880,7 +1921,6 @@ def api_skor_football(liga_code, hari_mundur=2):
                 continue
     return list(dict.fromkeys(hasil))
 
-# ═══ BLOK GAMBAR ═══
 KATA_HEWAN_FILE = [
     'wolf', 'serigala', 'dog', 'anjing', 'cat_', '-cat-', 'kucing',
     'bird', 'burung', 'egret', 'heron', 'eagle', 'hawk', 'owl',
@@ -2034,7 +2074,6 @@ def catat_gambar_terpakai(url):
     if url:
         muat_gambar_terpakai().add(url)
 
-# ═══ AI WRITE dengan validator V6.16.0 ═══
 def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
     obj = None
     materi_asli = user_content
@@ -2144,8 +2183,7 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
                 '- BENAR: "Manchester United"\n'
                 '- SALAH: "Bank Amerika"\n'
                 '- BENAR: "Bank of America"\n\n'
-                'Perbaiki: tulis nama lembaga dalam bahasa ASLINYA. Boleh '
-                'tambah terjemahan dalam tanda kurung.\n'
+                'Perbaiki: tulis nama lembaga dalam bahasa ASLINYA.\n'
                 'Jawab HANYA JSON valid dengan format yang sama.')
             continue
         break
@@ -2181,14 +2219,14 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
         print('       Topik besar terdeteksi - gate 6jam dilewati.')
     nama_final = cek_narasumber_tanpa_nama(isi, kategori)
     if nama_final:
-        raise Exception('DITOLAK V6.16.0 - narasumber tanpa nama ('
+        raise Exception('DITOLAK V6.16.1 - narasumber tanpa nama ('
                         + nama_final[:60] + ')')
     gambar_terlarang = cek_deskripsi_gambar(gambar)
     if gambar_terlarang:
         raise Exception('diblokir filter gambar: ' + gambar_terlarang[:60])
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
     if jiplak:
-        raise Exception('diblokir ANTI-JIPLAK V6.16.0: kalimat tersalin: "'
+        raise Exception('diblokir ANTI-JIPLAK V6.16.1: kalimat tersalin: "'
                         + jiplak[:70] + '"')
     return judul, isi, ringkasan, waktu, gambar
 
@@ -2270,7 +2308,7 @@ def ai_rewrite_multi(items, kategori_target=''):
     return ai_write(user, timeout=180, materi_sumber=semua_materi, kategori=kategori_target)
 
 # AKHIR PART 3B BAGIAN 1
-# PART 3B - BAGIAN 2 DARI 2
+# PART 3B - BAGIAN 2 DARI 2 - V6.16.1
 
 def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
                 breaking=False, deskripsi_gambar=''):
@@ -2478,7 +2516,6 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
     return out
 
 def espn_klasemen(liga_code, nama_liga):
-    """V6.16.0: fallback ESPN klasmen, output 7 kolom (M/D/K/P)."""
     try:
         if liga_code.startswith('basketball'):
             r = requests.get(ESPN_SITE + 'basketball/nba/standings',
@@ -3081,7 +3118,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.16.0
+# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.16.1
 
 def sesi_breaking(today_urls, seen):
     made = 0
@@ -3646,7 +3683,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.16.0)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.16.1)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3686,7 +3723,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.16.0 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.16.1 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3700,7 +3737,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.16.0'
+FILE_VERSI      = 'V6.16.1'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
