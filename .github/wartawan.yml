@@ -1,29 +1,21 @@
 name: AI Wartawan KramaNews
 
 # ══════════════════════════════════════════════════════
-#  WARTAWAN.YML — V6.8 (KRAMAV68MARKER)
-#  Perubahan dari V6.7:
-#   + FIX cron PASAR MODAL: dulu 10:30 WITA (sisa era jendela lama),
-#     sekarang 12:00 & 18:00 WITA = 04:00 & 10:00 UTC — cocok dengan
-#     jendela baru di skrip-wartawan.py V6.11.0+ (now.hour in (12,18)
-#     and now.minute < 25).
-#   Jadwal ramai (07-21 WITA) tidak berubah; jendela pasar modal
-#   sebenarnya sudah ikut tertangkap cron ramai, tapi cron khusus
-#   ini menjaga presisi 1x tepat di menit 00.
+#  WARTAWAN.YML — V6.9
+#  Perubahan dari V6.8:
+#   + Tambah FOOTBALL_API_KEY di env (untuk klasmen M/D/K/P
+#     dari api-sports.io). Tanpa ini, klasmen fallback ke ESPN.
 #  ATURAN EMAS: FILE INI TIDAK PERNAH BERISI KUNCI ASLI.
 # ══════════════════════════════════════════════════════
 
 on:
   schedule:
     # ═══ RAMAI (07:00-21:59 WITA): 4x/jam — menit 7/22/37/52 ═══
-    # 23 UTC + 0-13 UTC
     - cron: '7,22,37,52 23 * * *'
     - cron: '7,22,37,52 0-13 * * *'
     # ═══ PASAR MODAL 12:00 & 18:00 WITA = 04:00 & 10:00 UTC ═══
     - cron: '0 4,10 * * *'
-    # ═══ JAM TENANG (22:00-06:59 WITA): tiap 120 MENIT (V6.7 hemat)
-    # 14 UTC = 22:00 WITA → 16 UTC = 00:00 → 18 UTC = 02:00
-    # → 20 UTC = 04:00 → 22 UTC = 06:00 (terakhir jam tenang)
+    # ═══ JAM TENANG (22:00-06:59 WITA): tiap 120 MENIT ═══
     - cron: '7 14,16,18,20,22 * * *'
   workflow_dispatch:
 
@@ -52,3 +44,4 @@ jobs:
           SUPABASE_PUBLISHABLE: ${{ secrets.SUPABASE_PUBLISHABLE }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           ADMIN_OPS_SECRET: ${{ secrets.ADMIN_OPS_SECRET }}
+          FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
