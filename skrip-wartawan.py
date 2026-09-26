@@ -3321,7 +3321,6 @@ def sesi_breaking(today_urls, seen):
         if sudah_serupa(judul):
             print('   Hasil AI mirip judul yang sudah ada - skip.')
             continue
-        # V6.16.3: pastikan slot masih ada sebelum insert
         if len(get_breaking_list()) >= BREAKING_MAX_SLOT:
             print('   Slot breaking penuh - stop.')
             break
@@ -3347,9 +3346,7 @@ def kategori_breaking(c, tip):
     return 'nasional'
 
 def _pasar_modal_sesi():
-    """V6.16.3: gate 12:00-17:59 WITA. Skip Sabtu & Minggu (pasar tutup)."""
     now = datetime.now(WITA)
-    # V6.16.3: skip akhir pekan
     if now.weekday() >= 5:
         return None
     jam = now.hour
@@ -3624,6 +3621,13 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
         if sebelum != len(cand):
             print('   (' + cat + ') ' + str(sebelum - len(cand))
                   + ' kandidat turnamen olahraga dibuang (ke olahraga).')
+        # V6.16.3: buang kandidat yang sebenarnya otomotif
+        sebelum2 = len(cand)
+        cand = [c for c in cand
+                if not adalah_konten_otomotif(c['title'] + ' ' + c['summary'])]
+        if sebelum2 != len(cand):
+            print('   (' + cat + ') ' + str(sebelum2 - len(cand))
+                  + ' kandidat otomotif dibuang (ke otomotif).')
     # V6.16.3: filter teknologi - buang yang sebenarnya otomotif
     if cat == 'teknologi':
         sebelum = len(cand)
@@ -3778,7 +3782,6 @@ def sesi_kategori(today_urls, seen):
         dom_oto, sumber_oto = sumber_otomotif_hari_ini(jam)
         if not dom_oto:
             sumber_oto = None
-    # V6.16.3: skip kategori ekonomi kalau pasar modal sudah terbit hari ini
     pasar_modal_skip = False
     if kuota.get('ekonomi') and datetime.now(WITA).weekday() < 5:
         if pasar_modal_sudah_terbit('Tengah') or pasar_modal_sudah_terbit('Penutupan'):
