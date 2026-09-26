@@ -520,7 +520,7 @@ HUNT = {
 }
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.16.3
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT - V6.16.4
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -623,7 +623,7 @@ def adalah_turnamen_olahraga(teks):
     t = (teks or '').lower()
     return any(k in t for k in KATA_TURNAMEN_OLAHRAGA)
 
-# ═══ V6.16.3: kata yang WAJIB ada supaya berita bisa masuk kategori olahraga ═══
+# V6.16.4: kata wajib olahraga - hapus 'cc ' dan 'cc)' yang rawan false positive
 KATA_WAJIB_OLAHRAGA = [
     'bola', 'sepak bola', 'sepakbola', 'football', 'soccer',
     'basket', 'nba', 'wnba', 'ibl',
@@ -639,23 +639,19 @@ KATA_WAJIB_OLAHRAGA = [
 ]
 
 def adalah_konten_olahraga(teks):
-    """V6.16.3: cek apakah teks benar-benar berita olahraga.
-    Dipakai untuk memfilter fallback olahraga agar tidak ambil
-    berita non-olahraga (misal kasus korupsi pejabat)."""
     t = (teks or '').lower()
     return any(k in t for k in KATA_WAJIB_OLAHRAGA)
 
-# ═══ V6.16.3: kata kunci kategori otomotif (dipakai filter kategori) ═══
 KATA_KUNCI_OTOMOTIF = [
     'mobil', 'motor', 'skutik', 'matic', 'bebek', 'sport touring',
-    'kendaraan listrik', 'mobil listrik', 'motor listrik', 'ev ',
+    'kendaraan listrik', 'mobil listrik', 'motor listrik',
     'tesla', 'byd', 'geely', 'nissan', 'toyota', 'honda', 'yamaha',
     'suzuki', 'mitsubishi', 'hyundai', 'kia', 'wuling', 'chery',
     'bmw', 'mercedes', 'audi', 'volkswagen', 'ford', 'chevrolet',
     'facelift', 'sedan', 'suv', 'mpv', 'pickup', 'hatchback',
     'spesifikasi mobil', 'spesifikasi motor', 'harga mobil', 'harga motor',
     'test drive', 'review mobil', 'review motor', 'modifikasi',
-    'mesin mobil', 'mesin motor', 'cc ', 'cc)', 'cc.',
+    'mesin mobil', 'mesin motor',
 ]
 
 def adalah_konten_otomotif(teks):
@@ -955,7 +951,7 @@ def tanggal_publikasi_str(entry):
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu AI Wartawan profesional KramaNews Indonesia.
-KRAMAV6163MARKER - V6.16.3
+KRAMAV6164MARKER - V6.16.4
 
 GAYA BAHASA (ANTI-JIPLAK):
 - Tulis dengan kalimatmu sendiri, struktur beda dari materi.
@@ -969,22 +965,20 @@ GAYA BAHASA (ANTI-JIPLAK):
 - Istilah resmi (nama lembaga/jabatan) boleh disalin persis.
 
 DILARANG MENAMBAH FAKTA DI LUAR MATERI (SANGAT KERAS):
-Semua nama orang, nama lembaga, angka, pernyataan, tempat, kejadian
-WAJIB ada di materi sumber. DILARANG menambah entitas baru.
+Semua NAMA ORANG, NAMA LEMBAGA spesifik, NAMA TEMPAT spesifik, ANGKA,
+dan PERNYATAAN WAJIB ada di materi sumber. DILARANG menambah entitas baru.
 
 Contoh SALAH:
 - Materi: "13 personel Taliban tewas di perbatasan"
 - Tulisan AI: "Pakistan Klaim 13 Personel Taliban Tewas, KABUL BANTAH"
 - SALAH karena "Kabul Bantah" tidak ada di materi.
 
-Contoh SALAH LAIN:
-- Materi: "Badai Nolo mendekati Hawaii"
-- Tulisan AI: "Menteri Imipas Cek Lapas Cibinong"
-- SALAH TOTAL — topik berbeda.
+CATATAN PENTING: Kata sifat, kata kerja, kata umum BUKAN "fakta baru".
+Kata seperti "Dukung", "Pertama", "Siber", "Burden", "Penting" itu boleh
+muncul di judul walau tidak ada di materi — itu bagian gaya bahasa.
 
 WAJIB: Judul dan isi HANYA boleh bicara topik yang ada di materi.
-Kalau materi tidak sebut nama, jangan tambah. Kalau materi tidak
-sebut angka, jangan tambah.
+Kalau materi tidak sebut nama orang spesifik, jangan tambah.
 
 ATURAN NAMA ORANG (SANGAT KERAS):
 Setiap pejabat/tokoh yang disebut WAJIB ada NAMANYA. Ini berlaku untuk
@@ -999,8 +993,6 @@ Contoh SALAH vs BENAR:
   memperkuat literasi digital..."
 - SALAH: "Bawaslu Tarakan menyatakan penyediaan fasilitas..."
 - BENAR: "Ketua Bawaslu Tarakan, [nama lengkap], menyatakan..."
-- SALAH: "KPP Pratama Palangkaraya menegaskan pembinaan..."
-- BENAR: "Kepala KPP Pratama Palangkaraya, [nama lengkap], menegaskan..."
 - SALAH: "Kodam VI/Mulawarman menegaskan..."
 - BENAR: "Panglima Kodam VI/Mulawarman, Mayjen TNI [nama lengkap],
   menegaskan..."
@@ -1068,7 +1060,6 @@ PERHATIAN KHUSUS KATEGORI:
 - "Kemendikbud", "literasi digital sekolah" => nasional.
 - "Geely", "BYD", "Tesla", "Nissan", "Toyota", dll tentang MOBIL/
   MOTOR/LISTRIK => OTOMOTIF (bukan teknologi).
-- "Mobil listrik China" => otomotif (bukan teknologi).
 - "Hilirisasi nikel" => ekonomi.
 - Review mobil/motor => otomotif.
 
@@ -1099,7 +1090,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
     
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR - V6.16.3
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR - V6.16.4
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1700,47 +1691,35 @@ def cek_nama_lembaga_diterjemahkan(judul, isi):
                     + m.group(0) + '"')
     return None
 
-# ═══ V6.16.3: Validator judul breaking tidak sesuai materi ═══
+# ═══ V6.16.4: Validator judul vs materi DIPERBAIKI ═══
+# Yang DIBLOKIR: nama orang (2+ kata Kapital berurutan), nama lembaga/tempat
+#   spesifik yang TIDAK ada di materi
+# Yang DIBOLEHKAN: kata umum/sifat/kerja walau tidak ada di materi
 def cek_judul_vs_materi(judul, materi_sumber):
-    """Cek apakah judul AI mengandung entitas yang TIDAK ada di materi.
-    Fokus: nama orang, nama tempat besar, angka."""
+    """V6.16.4: fokus blokir NAMA ORANG & NAMA LEMBAGA spesifik.
+    Kata umum/sifat (Dukung, Pertama, Penting) TIDAK diblokir."""
     if not judul or not materi_sumber:
         return None
     materi_low = materi_sumber.lower()
-    judul_low = judul.lower()
-    # Ambil kata Kapital dari judul (nama orang/tempat)
-    kata_judul = set(re.findall(r'\b[A-Z][a-z]{3,}\b', judul))
-    kata_materi = set(re.findall(r'\b[A-Z][a-z]{3,}\b', materi_sumber))
-    # Kata yang umum, boleh muncul tanpa ada di materi
-    kata_umum = {
-        'Indonesia', 'Jakarta', 'Pemerintah', 'Presiden', 'Menteri',
-        'Nasional', 'Daerah', 'Internasional', 'Warta', 'KramaNews',
-        'Breaking', 'News', 'Hari', 'Tahun', 'Bulan', 'Pekan',
-        'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu',
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
-        'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    # Cek nama orang: 2+ kata Kapital berurutan
+    pola_nama = re.compile(r'\b[A-Z][a-z]{2,}\s+[A-Z][a-z]{2,}\b')
+    nama_di_judul = pola_nama.findall(judul)
+    # Kata umum 2-kata yang bukan nama (frasa Indonesia wajar)
+    frasa_umum = {
+        'Program Pemerintah', 'Burden Sharing', 'Skema Burden',
+        'Konvensi Siber', 'Siber Pertama', 'Pertama PBB',
     }
-    # Nama tempat besar (boleh muncul tanpa ada di materi — biasanya AI paham)
-    tempat_besar = {
-        'Amerika', 'China', 'India', 'Rusia', 'Jepang', 'Korea',
-        'Malaysia', 'Thailand', 'Vietnam', 'Singapura', 'Filipina',
-        'Australia', 'Inggris', 'Jerman', 'Prancis', 'Spanyol',
-        'Italia', 'Belanda', 'Turki', 'Mesir', 'Iran', 'Irak',
-        'Israel', 'Palestina', 'Ukraina', 'Pakistan', 'Afghanistan',
-        'Taliban', 'Hamas', 'NATO', 'PBB', 'ASEAN', 'FIFA', 'UEFA',
-    }
-    # Cek nama orang/tempat di judul yang tidak ada di materi
-    entitas_baru = []
-    for k in kata_judul:
-        if k in kata_umum or k in tempat_besar:
+    for nama in nama_di_judul:
+        if nama in frasa_umum:
             continue
-        if k not in kata_materi:
-            # Cek substring (kadang nama di materi ada tapi ada imbuhan)
-            if k.lower() not in materi_low:
-                entitas_baru.append(k)
-    if entitas_baru:
-        return ('judul memuat nama yang tidak ada di materi: '
-                + ', '.join(entitas_baru[:3]))
+        if nama.lower() not in materi_low:
+            # Cek satu-satu kata
+            bagian = nama.split()
+            if not any(b.lower() in materi_low for b in bagian):
+                # Cek apakah jelas nama orang/lembaga/tempat asing
+                # Heuristik: kalau bukan kata Indonesia umum, blokir
+                return ('judul memuat nama yang tidak ada di materi: '
+                        + nama)
     return None
 
 KATA_BUKAN_BERITA = [
@@ -1763,7 +1742,7 @@ def cek_bukan_berita(judul, isi):
 
 # AKHIR PART 3A
 
-# PART 3B - BAGIAN 1 DARI 2 - V6.16.3
+# PART 3B - BAGIAN 1 DARI 2 - V6.16.4
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -1820,11 +1799,13 @@ def sumber_teknologi_hari_ini(jam):
     print('   TEKNOLOGI hari ini (jam ' + str(jam) + '): ' + dom['nama'])
     return dom, sumber
 
+# V6.16.4: POLA_LARANG - hapus "materi yang tersedia" & "dikabarkan"
+# yang bikin AI bingung dan tolak berita.
 POLA_LARANG = [
     'belum dikonfirmasi waktu', 'waktu kejadian belum',
     'belum dikonfirmasi kapan',
     'menurut informasi yang diterima', 'diduga kuat',
-    'kabarnya', 'dikabarkan',
+    'kabarnya',
     'identitas narasumber',
     'tidak disebutkan dalam laporan',
     'tidak disebutkan secara eksplisit',
@@ -1832,7 +1813,6 @@ POLA_LARANG = [
     'tanpa menyebut nama pejabat',
     'dalam laporan yang beredar',
     'dalam laporan yang dihimpun',
-    'materi yang tersedia',
     'tidak dapat dipastikan',
     'keterangan disampaikan tanpa',
     'seorang pengusaha', 'seorang pengamat', 'seorang pejabat tinggi',
@@ -2133,9 +2113,8 @@ def generate_gambar_ai(deskripsi):
         print('       AI gambar gagal: ' + str(e)[:60])
         return ''
 
-# ═══ V6.16.3: skip vision untuk gambar Wikimedia (sudah terkurasi) ═══
 def cari_gambar_otomatis(deskripsi, judul_berita):
-    """V6.16.3: return (url, sumber). Sumber 'wikimedia' -> skip vision."""
+    """V6.16.4: return (url, sumber). Sumber 'wikimedia' -> skip vision."""
     img = cari_gambar_pexels(deskripsi)
     if img:
         return img, 'pexels'
@@ -2175,12 +2154,12 @@ def catat_gambar_terpakai(url):
     if url:
         muat_gambar_terpakai().add(url)
 
+# V6.16.4: ai_write - MAX_LOOP 6, koreksi frasa max 1x, blokir AI tolak
+# karena bingung ("materi tidak tersedia")
 def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
-    """V6.16.3: MAX_NAMA_KOREKSI = 1 (dulu 2). Loop maks 8 (dulu 15).
-    Temperature 0.8 -> 0.5 di percobaan 1. Plus validator judul vs materi."""
     obj = None
     materi_asli = user_content
-    frasa_dikoreksi = False
+    frasa_dikoreksi = 0
     dateline_dikoreksi = False
     nama_dikoreksi = 0
     lembaga_dikoreksi = False
@@ -2188,11 +2167,19 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
     koneksi_retry = 0
     MAX_KONEKSI_RETRY = 2
     MAX_NAMA_KOREKSI = 1
-    MAX_LOOP = 8
+    MAX_FRASA_KOREKSI = 1
+    MAX_LOOP = 6
+    # V6.16.4: frasa tolak AI yang bikin bingung - treat sebagai koreksi
+    FRASA_TOLAK_AI = [
+        'materi tidak tersedia',
+        'materi sumber tidak tersedia',
+        'materi tidak relevan',
+        'tidak dapat menulis',
+        'tidak ada materi',
+    ]
     percobaan = 0
     while percobaan < MAX_LOOP:
         percobaan += 1
-        # V6.16.3: temperature lebih rendah di percobaan 1
         temp = 0.5 if percobaan == 1 else 0.3
         try:
             obj = _panggil_deepseek(user_content, temp)
@@ -2205,8 +2192,21 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
             print('       Panggilan AI gagal (' + str(e)[:60] + ') - retry koneksi '
                   + str(koneksi_retry) + '/' + str(MAX_KONEKSI_RETRY) + '...')
             continue
-        if str(obj.get('tolak', '')).strip():
-            raise BeritaLama(str(obj.get('tolak'))[:100])
+        # V6.16.4: cek AI tolak karena bingung, bukan karena materi tidak valid
+        tolak_msg = str(obj.get('tolak', '')).strip()
+        if tolak_msg:
+            tl = tolak_msg.lower()
+            if any(f in tl for f in FRASA_TOLAK_AI) and percobaan < MAX_LOOP:
+                print('       AI tolak bingung ("' + tolak_msg[:50] + '") - '
+                      'minta tulis ulang (percobaan ' + str(percobaan) + ')')
+                user_content = (
+                    'CATATAN: MATERI SUMBER TERSEDIA di atas. '
+                    'TULIS ULANG berita sesuai SEMUA aturan. '
+                    'Jangan tolak. Materi sumber ada di pesan sebelumnya.\n\n'
+                    'MATERI SUMBER:\n' + materi_sumber[:3000] + '\n\n'
+                    'Tulis berita JSON valid.')
+                continue
+            raise BeritaLama(tolak_msg[:100])
         isi_c = obj.get('isi', '').strip()
         judul_c = obj.get('judul', '').strip()
         frasa = _frasa_tertangkap(isi_c)
@@ -2217,13 +2217,13 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
         lembaga_masalah = None
         if not lembaga_dikoreksi:
             lembaga_masalah = cek_nama_lembaga_diterjemahkan(judul_c, isi_c)
-        # V6.16.3: cek judul vs materi
         judul_masalah = None
         if not judul_materi_dikoreksi and materi_sumber:
             judul_masalah = cek_judul_vs_materi(judul_c, materi_sumber)
-        if frasa and not frasa_dikoreksi:
-            frasa_dikoreksi = True
-            print('       Koreksi frasa: "' + frasa + '"...')
+        if frasa and frasa_dikoreksi < MAX_FRASA_KOREKSI:
+            frasa_dikoreksi += 1
+            print('       Koreksi frasa #' + str(frasa_dikoreksi) + ': "'
+                  + frasa + '"...')
             user_content = (
                 'TULISANMU SEBELUMNYA DITOLAK SISTEM karena memuat frasa '
                 'terlarang: "' + frasa + '".\n\n'
@@ -2256,14 +2256,16 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
             user_content = (
                 'TULISANMU SEBELUMNYA DITOLAK SISTEM karena: ' + judul_masalah + '.\n\n'
                 'ATURAN: Judul dan isi HANYA boleh bicara topik yang ADA '
-                'di materi. DILARANG menambah nama/entitas baru.\n\n'
+                'di materi. DILARANG menambah nama orang/lembaga/tempat baru.\n\n'
+                'CATATAN: Kata sifat/kerja/umum (Dukung, Pertama, Penting) '
+                'BOLEH muncul walau tidak ada di materi.\n\n'
                 'Berikut MATERI SUMBER ASLI:\n'
                 '==========================================\n'
                 + materi_asli + '\n'
                 '==========================================\n\n'
                 'TULIS ULANG berita DENGAN JUDUL & ISI yang hanya bicara '
-                'topik di materi. Hapus semua nama/entitas yang tidak ada '
-                'di materi.\n'
+                'topik di materi. Hapus semua nama orang/lembaga/tempat '
+                'yang tidak ada di materi.\n'
                 'Jawab HANYA JSON valid dengan format yang sama.')
             continue
         if nama_masalah and nama_dikoreksi < MAX_NAMA_KOREKSI:
@@ -2280,8 +2282,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
                 '- SALAH: "KPP Pratama Palangkaraya menegaskan pembinaan..."\n'
                 '- BENAR: "Kepala KPP Pratama Palangkaraya, [nama lengkap], '
                 'menegaskan pembinaan..."\n'
-                '- SALAH: "KPPN Tarakan menyebutkan..."\n'
-                '- BENAR: "Kepala KPPN Tarakan, [nama lengkap], menyebutkan..."\n'
                 '- SALAH: "Kodam VI/Mulawarman menegaskan..."\n'
                 '- BENAR: "Panglima Kodam VI/Mulawarman, Mayjen TNI [nama lengkap], '
                 'menegaskan..."\n'
@@ -2341,21 +2341,21 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori=''):
                 raise Exception('diblokir anti-dobel-6jam: mirip "' + t[:40] + '"')
     else:
         print('       Topik besar terdeteksi - gate 6jam dilewati.')
-    # V6.16.3: validasi judul vs materi (final)
+    # V6.16.4: validasi judul vs materi (final) - hanya nama orang/lembaga
     if materi_sumber:
         jm_final = cek_judul_vs_materi(judul, materi_sumber)
         if jm_final:
-            raise Exception('DITOLAK V6.16.3 - ' + jm_final[:80])
+            raise Exception('DITOLAK V6.16.4 - ' + jm_final[:80])
     nama_final = cek_narasumber_tanpa_nama(isi, kategori)
     if nama_final:
-        raise Exception('DITOLAK V6.16.3 - narasumber tanpa nama ('
+        raise Exception('DITOLAK V6.16.4 - narasumber tanpa nama ('
                         + nama_final[:60] + ')')
     gambar_terlarang = cek_deskripsi_gambar(gambar)
     if gambar_terlarang:
         raise Exception('diblokir filter gambar: ' + gambar_terlarang[:60])
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
     if jiplak:
-        raise Exception('diblokir ANTI-JIPLAK V6.16.3: kalimat tersalin: "'
+        raise Exception('diblokir ANTI-JIPLAK V6.16.4: kalimat tersalin: "'
                         + jiplak[:70] + '"')
     return judul, isi, ringkasan, waktu, gambar
 
@@ -2391,7 +2391,7 @@ def ai_rewrite_single(c, kategori_target=''):
             '- GELAR AKADEMIK: ikut kalau ada di materi.\n'
             '- NAMA LEMBAGA: JANGAN diterjemahkan.\n'
             '- JUDUL DAN ISI: HANYA topik yang ada di materi. DILARANG '
-            'menambah nama/entitas yang tidak ada di materi.\n'
+            'menambah nama orang/lembaga/tempat baru.\n'
             '- PERSEN: selalu simbol %.\n'
             '- deskripsi_gambar: 3-6 kata kunci DARI ELEMEN UTAMA BERITA.\n'
             '- Tulis ulang dengan kalimatmu sendiri.\n'
@@ -3275,7 +3275,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.16.3
+# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.16.4
 
 def sesi_breaking(today_urls, seen):
     made = 0
@@ -3621,14 +3621,12 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
         if sebelum != len(cand):
             print('   (' + cat + ') ' + str(sebelum - len(cand))
                   + ' kandidat turnamen olahraga dibuang (ke olahraga).')
-        # V6.16.3: buang kandidat yang sebenarnya otomotif
         sebelum2 = len(cand)
         cand = [c for c in cand
                 if not adalah_konten_otomotif(c['title'] + ' ' + c['summary'])]
         if sebelum2 != len(cand):
             print('   (' + cat + ') ' + str(sebelum2 - len(cand))
                   + ' kandidat otomotif dibuang (ke otomotif).')
-    # V6.16.3: filter teknologi - buang yang sebenarnya otomotif
     if cat == 'teknologi':
         sebelum = len(cand)
         cand = [c for c in cand
@@ -3855,7 +3853,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.16.3)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.16.4)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3895,7 +3893,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.16.3 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.16.4 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3909,7 +3907,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.16.3'
+FILE_VERSI      = 'V6.16.4'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
