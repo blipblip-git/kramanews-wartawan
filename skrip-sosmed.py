@@ -14,7 +14,7 @@ from datetime import datetime, timezone, timedelta
 FB_PAGE_TOKEN   = os.environ.get('FB_PAGE_TOKEN', '')
 FB_PAGE_ID      = os.environ.get('FB_PAGE_ID', '')
 IG_TOKEN        = os.environ.get('IG_PAGE_TOKEN', '')
-SUPABASE_URL    = 'https://imcvijgtydjjpotlaltv.supabase.co'
+SUPABASE_URL    = 'https://imcvijgytdjjpotlaltv.supabase.co'
 SUPABASE_ANON   = os.environ.get('SUPABASE_PUBLISHABLE', '')
 SUPABASE_SERVICE = os.environ.get('SUPABASE_SERVICE', '')
 SITE_URL        = 'https://kramanews.my.id'
