@@ -85,6 +85,26 @@ HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
             'Agustus', 'September', 'Oktober', 'November', 'Desember']
 
+# ═══ V6.16.10: HARI LIBUR BURSA 2026 (pasar modal libur) ═══
+LIBUR_BURSA_2026 = {
+    '2026-01-01', '2026-01-16',
+    '2026-02-16', '2026-02-17',
+    '2026-03-18', '2026-03-19', '2026-03-20', '2026-03-23', '2026-03-24',
+    '2026-04-03',
+    '2026-05-01', '2026-05-14', '2026-05-15', '2026-05-27', '2026-05-28',
+    '2026-06-01', '2026-06-16',
+    '2026-08-17', '2026-08-25',
+    '2026-12-24', '2026-12-25', '2026-12-31',
+}
+
+def pasar_modal_libur_hari_ini():
+    """V6.16.10: cek apakah hari ini Sabtu/Minggu ATAU libur bursa."""
+    now = datetime.now(WITA)
+    if now.weekday() >= 5:
+        return True
+    tgl = now.date().strftime('%Y-%m-%d')
+    return tgl in LIBUR_BURSA_2026
+
 def GN(q, lang='id', label=None, when='1d'):
     if lang == 'en':
         url = ('https://news.google.com/rss/search?q=' + quote_plus(q + ' when:' + when)
@@ -115,6 +135,8 @@ ESPN_NBA = ('basketball/nba', 'NBA')
 ESPN_SITE = 'https://site.api.espn.com/apis/site/v2/sports/'
 ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/soccer/leagues/'
 
+# ═══ V6.16.10: JADWAL - ekonomi tetap 5x/hari (6, 11, 12, 18, 19) ═══
+# Jam 12 & 18: pasar modal (Sen-Jum non-libur) ATAU ekonomi biasa (weekend/libur)
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1},
@@ -122,13 +144,13 @@ JADWAL_JAM = {
     9:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1},
     10: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'kesehatan': 1},
     11: {'nasional': 1, 'daerah': 2, 'ekonomi': 1, 'olahraga': 1},
-    12: {'nasional': 1, 'daerah': 2},
+    12: {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     13: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'olahraga': 1},
     14: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1},
     15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1},
     16: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'otomotif': 1},
     17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1},
-    18: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'teknologi': 1},
+    18: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'teknologi': 1, 'ekonomi': 1},
     19: {'nasional': 1, 'olahraga': 1, 'ekonomi': 1},
     20: {'otomotif': 1, 'olahraga': 1, 'kesehatan': 1},
 }
@@ -513,15 +535,19 @@ TOPIK_BESAR_GATE = [
     'pemilu', 'pilpres', 'pilkada',
 ]
 
-# ═══ V6.16.10: SPAM JUDUL — live streaming, TV channel, dll ═══
-SPAM_JUDUL_LIVE = [
-    '【', 'livestream', 'live stream', 'live free', 'watch online',
-    'tv channel', 'live]', '#live', 'live tv', 'streaming live',
+# ═══ V6.16.10: filter spam judul live streaming ═══
+KATA_SPAM_JUDUL = [
+    '【', '】', 'livestream', 'live stream', 'live free',
+    'tv channel', 'watch online', 'live streaming',
+    'free tv', 'kualitas hd', 'link live', 'nonton live',
 ]
 
-def judul_spam_live(judul):
+def judul_spam(judul):
     j = (judul or '').lower()
-    return any(k in j for k in SPAM_JUDUL_LIVE)
+    for k in KATA_SPAM_JUDUL:
+        if k in j:
+            return True
+    return False
 
 # AKHIR PART 1
 # PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT
@@ -603,19 +629,6 @@ DUNIA_KRITIS = [
     'resignation', 'overthrown', 'state of emergency', 'killed',
 ]
 
-TOPIK_BESAR_GATE = [
-    'tsunami', 'gempa', 'erupsi', 'gunung meletus', 'banjir bandang',
-    'banjir', 'flood', 'tanah longsor', 'longsor', 'kebakaran',
-    'karhutla', 'kebakaran hutan', 'kecelakaan', 'ledakan', 'tabrakan',
-    'hurricane', 'typhoon', 'cyclone', 'wildfire', 'earthquake',
-    'perang', 'war', 'invasi', 'missile', 'nuclear',
-    'asian games', 'sea games', 'piala dunia', 'world cup',
-    'olimpiade', 'olympic', 'piala asia', 'asian cup',
-    'piala eropa', 'euro 202', 'copa america',
-    'nba finals', 'liga champions final',
-    'pemilu', 'pilpres', 'pilkada',
-]
-
 def judul_topik_besar(judul):
     j = (judul or '').lower()
     return any(k in j for k in TOPIK_BESAR_GATE)
@@ -631,7 +644,6 @@ KATA_TURNAMEN_OLAHRAGA = [
     'badminton', 'bulu tangkis', 'bwf',
     'voli', 'volleyball', 'fivb',
     'motogp', 'formula 1', 'f1',
-    'uefa nations', 'nations league',
 ]
 
 def adalah_turnamen_olahraga(teks):
@@ -650,8 +662,6 @@ KATA_WAJIB_OLAHRAGA = [
     'pertandingan', 'laga', 'skor', 'klasemen', 'gol',
     'olimpiade', 'olympic', 'sea games', 'asian games',
     'stadion', 'kick-off', 'kick off',
-    'uefa nations', 'nations league', 'uefa',
-    'aff cup', 'piala aff', 'fifa asean', 'aff',
 ]
 
 def adalah_konten_olahraga(teks):
@@ -800,31 +810,23 @@ def _bersihkan_html_artikel(html):
     return re.sub(r'\s+', ' ', ' '.join(baris_ok)).strip()[:6000]
 
 _CACHE_SCRAPE = {}
-_CACHE_SCRAPE_JUDUL = {}
 
-def scrape_artikel(url, judul=''):
+def scrape_artikel(url):
     if not url:
         return ''
-    if judul and judul in _CACHE_SCRAPE_JUDUL:
-        print('       Scraping cache-judul hit - ' + judul[:50])
-        return _CACHE_SCRAPE_JUDUL[judul]
     if url in _CACHE_SCRAPE:
-        print('       Scraping cache-url hit - ' + url[:60])
+        print('       Scraping cache hit - ' + url[:60])
         return _CACHE_SCRAPE[url]
     if domain_skip_scrape(url):
         STAT_SCRAPE['skip'] += 1
         print('       Skip scraping (domain 403 konsisten) - ' + url[:60])
         _CACHE_SCRAPE[url] = ''
-        if judul:
-            _CACHE_SCRAPE_JUDUL[judul] = ''
         return ''
     url_asli = resolusi_link_google(url)
     if not _url_valid_berita(url_asli) and 'news.google.com' not in url_asli:
         print('       URL hasil resolusi tidak valid (non-berita) - skip: ' + url_asli[:60])
         STAT_SCRAPE['skip'] += 1
         _CACHE_SCRAPE[url] = ''
-        if judul:
-            _CACHE_SCRAPE_JUDUL[judul] = ''
         return ''
     hasil = ''
     try:
@@ -838,8 +840,6 @@ def scrape_artikel(url, judul=''):
             hasil = _bersihkan_html_artikel(r.text or '')
             if len(hasil) >= SCRAPE_MIN_KARAKTER:
                 _CACHE_SCRAPE[url] = hasil
-                if judul:
-                    _CACHE_SCRAPE_JUDUL[judul] = hasil
                 return hasil
         print('       Langsung scrape pendek: ' + str(len(hasil)) + ' kar - ' + url_asli[:60])
     except Exception as e:
@@ -847,23 +847,17 @@ def scrape_artikel(url, judul=''):
     hasil = scrape_via_jina(url_asli)
     if hasil:
         _CACHE_SCRAPE[url] = hasil
-        if judul:
-            _CACHE_SCRAPE_JUDUL[judul] = hasil
         return hasil
     if url_asli != url:
         hasil = scrape_via_jina(url)
         if hasil:
             _CACHE_SCRAPE[url] = hasil
-            if judul:
-                _CACHE_SCRAPE_JUDUL[judul] = hasil
             return hasil
     _CACHE_SCRAPE[url] = ''
-    if judul:
-        _CACHE_SCRAPE_JUDUL[judul] = ''
     return ''
 
 def ambil_materi_kaya(c):
-    scraped = scrape_artikel(c.get('link', ''), c.get('title', ''))
+    scraped = scrape_artikel(c.get('link', ''))
     if scraped and len(scraped) >= SCRAPE_MIN_KARAKTER:
         STAT_SCRAPE['ok'] += 1
         print('       Scraping artikel asli: ' + str(len(scraped)) + ' karakter')
@@ -1034,6 +1028,13 @@ Kalau materi sebut gelar (S.E., M.Si., Dr., Ir., dr., dll), WAJIB ikut.
 DILARANG: "seorang pejabat", "seorang pengamat", "seorang tokoh",
 atribusi ke institusi SAJA tanpa nama (berita dalam negeri).
 
+PENGECUALIAN KHUSUS KESEHATAN (PENTING):
+Untuk berita kategori kesehatan, aturan nama pakar DILONGGARKAN.
+Boleh sebut "pakar gizi dari Kemenkes", "dokter spesialis anak di
+RSCM", "psikolog klinis", "ahli kesehatan masyarakat" TANPA nama
+lengkap. Yang WAJIB adalah SUMBER INSTITUSI (Kemenkes, WHO, IDI,
+perhimpunan dokter, rumah sakit resmi). DILARANG mengarang nama orang.
+
 VARIASI KUTIPAN:
 "kata [jabatan + nama]", "ujar [jabatan + nama]", "menurut [jabatan + nama]".
 
@@ -1090,8 +1091,9 @@ PANJANG: target kata diberikan di pesan user. Dilarang menggembung.
 JUDUL: maks 10 kata. Dilarang janjikan jadwal/klasemen/hasil/harga
 bila isi tidak memuat datanya.
 
-KHUSUS KESEHATAN: utamakan edukasi pakar. Bila tidak ada nama pakar
-di materi, PAKAI nama pakar terkenal yang kamu YAKIN, ATAU tolak.
+KHUSUS KESEHATAN: utamakan edukasi. Bila tidak ada nama pakar
+di materi, sebut pakar/institusi tanpa nama lengkap (lihat
+PENGECUALIAN KHUSUS KESEHATAN). DILARANG mengarang nama orang.
 
 KHUSUS OTOMOTIF: fokus ke kendaraan/produk (spesifikasi, harga,
 review). Jangan bahas teknologi AI/baterai secara mendalam.
@@ -1252,26 +1254,6 @@ def gn_split(title):
         if len(parts[1]) < 40:
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
-
-# ═══ V6.16.13: filter judul spam live streaming ═══
-KATA_SPAM_JUDUL = [
-    '【', '】', '[live]', '(live)',
-    'livestream', 'live stream', 'live streaming',
-    'live free', 'free tv', 'tv channel', 'watch online',
-    'link live', 'link streaming', 'nonton live',
-    'siaran langsung gratis', 'free watch', 'hd stream',
-]
-
-def cek_judul_spam(judul):
-    j = (judul or '').lower()
-    for k in KATA_SPAM_JUDUL:
-        if k in j:
-            return 'judul spam live streaming: "' + k + '"'
-    return None
-
-_CACHE_SCRAPE = {}
-# ═══ V6.16.13: cache scraping by judul (bukan cuma URL) ═══
-_CACHE_SCRAPE_JUDUL = {}
 
 def collect_candidates(sources, today_urls, seen, max_umur_jam=None):
     if max_umur_jam is None:
@@ -1660,10 +1642,14 @@ def _ada_nama_orang_sebelum(teks, posisi):
         return True
     return False
 
+# ═══ V6.16.10: cek_narasumber_tanpa_nama - khusus kesehatan dilonggarkan ═══
 def cek_narasumber_tanpa_nama(isi, kategori=''):
     if not isi:
         return None
     if kategori in ('internasional', 'internasional_asean', 'internasional_tt'):
+        return None
+    # V6.16.10: kesehatan evergreen - narasumber boleh tanpa nama lengkap
+    if kategori == 'kesehatan':
         return None
     teks = isi
     for pangkat in PANGKAT_TNI_POLRI:
@@ -1908,13 +1894,14 @@ def tentukan_kategori_dari_isi(judul, isi):
         return 'daerah'
     return 'nasional'
 
-# ═══ V6.16.13: cek_topik_ai_vs_materi — cek judul_materi saja, threshold 0.05 ═══
 def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi):
     if not judul_ai or not judul_materi:
         return None
-    teks_cek = judul_materi
-    kata_en = len(re.findall(r'\b(the|and|of|to|in|for|on|with|from|that|this|is|are|was|were|has|have|will|would|could|should|be|been|as|at|by|an|or|but|not|its|it)\b', teks_cek.lower()))
-    total_kata = len(re.findall(r'\b[a-zA-Z]{3,}\b', teks_cek))
+    # Deteksi materi dominan bahasa Inggris: cek di judul + awal summary
+    teks_materi = (judul_materi or '') + ' ' + (summary_materi or '')[:300]
+    kata_en = len(re.findall(r'\b(the|and|of|to|in|for|on|with|from|that|this|is|are|was|were|has|have|will|would|could|should|be|been|as|at|by|an|or|but|not|its|it|a|i)\b', teks_materi.lower()))
+    total_kata = len(re.findall(r'\b[a-zA-Z]{2,}\b', teks_materi))
+    # V6.16.10: threshold 0.05 - materi asing dilewati
     if total_kata > 0 and kata_en / max(total_kata, 1) > 0.05:
         return None
     def kata_inti(s):
@@ -1924,7 +1911,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi):
                    'will been are was were their they about after'.split())
         return set(re.findall(r'[a-z0-9]{4,}', (s or '').lower())) - STOP
     k_ai = kata_inti(judul_ai)
-    k_mat = kata_inti(judul_materi) | kata_inti((summary_materi or '')[:500])
+    k_mat = kata_inti(judul_materi) | kata_inti(summary_materi[:500])
     if not k_ai or not k_mat:
         return None
     irisan = k_ai & k_mat
@@ -1979,6 +1966,12 @@ def sumber_kesehatan_hari_ini(jam):
         sumber.append(GN(q, lang, 'GN Kesehatan: ' + dom['nama'], when='180d'))
     sumber.append(RSSF('https://health.kompas.com/rss', 'Kompas Health'))
     sumber.append(RSSF('https://feeds.bbci.co.uk/news/health/rss.xml', 'BBC Health'))
+    # V6.16.10: tambah sumber edukasi kesehatan tanpa nama pakar
+    sumber.append(GN('tips kesehatan dokter', 'id', 'GN Tips Kesehatan', when='30d'))
+    sumber.append(GN('edukasi kesehatan masyarakat', 'id', 'GN Edukasi Kesehatan', when='30d'))
+    sumber.append(RSSF('https://www.halodoc.com/artikel/feed', 'Halodoc'))
+    sumber.append(RSSF('https://www.alodokter.com/feed', 'Alodokter'))
+    sumber.append(RSSF('https://hellosehat.com/feed/', 'HelloSehat'))
     print('   KESEHATAN hari ini (jam ' + str(jam) + '): ' + dom['nama'])
     return dom, sumber
 
@@ -2354,7 +2347,6 @@ def catat_gambar_terpakai(url):
     if url:
         muat_gambar_terpakai().add(url)
 
-# ═══ V6.16.13: ai_write — prompt koreksi WAJIB sertakan materi sumber ═══
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
              judul_materi='', summary_materi=''):
     obj = None
@@ -2423,13 +2415,13 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         if masalah_gabung and not koreksi_gabung_dipakai:
             koreksi_gabung_dipakai = True
             print('       Koreksi gabungan 1x: ' + ' | '.join(masalah_gabung)[:100])
-            materi_untuk_koreksi = materi_sumber[:5000] if materi_sumber else materi_asli[:5000]
+            # V6.16.10: sertakan materi sumber di prompt koreksi
             user_content = (
                 'TULISANMU SEBELUMNYA DITOLAK SISTEM karena:\n- '
                 + '\n- '.join(masalah_gabung) + '\n\n'
-                'Berikut MATERI SUMBER ASLI (WAJIB jadi acuan):\n'
+                'Berikut MATERI SUMBER ASLI:\n'
                 '==========================================\n'
-                + materi_untuk_koreksi + '\n'
+                + (materi_sumber or materi_asli) + '\n'
                 '==========================================\n\n'
                 'TULIS ULANG berita yang sama dengan ATURAN KETAT:\n'
                 '- HAPUS semua frasa terlarang di atas.\n'
@@ -2659,8 +2651,7 @@ def ai_rewrite_teknologi_single(c, dom):
             '- Tulis ulang kalimatmu sendiri.')
     return ai_write(user, materi_sumber=materi, kategori='teknologi',
                     judul_materi=c.get('title', ''),
-                    summary_materi=c.get('summary', ''),
-                    sumber=c.get('source', ''))
+                    summary_materi=c.get('summary', ''))
 
 def ai_rewrite_teknologi_multi(items, dom):
     k = konteks_waktu()
@@ -2669,13 +2660,10 @@ def ai_rewrite_teknologi_multi(items, dom):
     semua_materi = ''
     semua_judul = []
     semua_summary = []
-    sumber_utama = ''
     for i, it in enumerate(items[:3], 1):
         materi, kaya = ambil_materi_kaya(it)
         if it.get('tgl_pub') and not tgl:
             tgl = it['tgl_pub']
-        if not sumber_utama:
-            sumber_utama = it.get('source', '')
         semua_judul.append(it.get('title', ''))
         semua_summary.append(it.get('summary', '')[:300])
         bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title'] + '\nIsi: ' + materi[:1500])
@@ -2703,8 +2691,7 @@ def ai_rewrite_teknologi_multi(items, dom):
             '- deskripsi_gambar tanpa manusia/hewan/alas kaki/ibadah.\n'
             '- Jangan sebut media sumber.')
     return ai_write(user, timeout=180, materi_sumber=semua_materi, kategori='teknologi',
-                    judul_materi=judul_materi_gabung, summary_materi=summary_materi_gabung,
-                    sumber=sumber_utama)
+                    judul_materi=judul_materi_gabung, summary_materi=summary_materi_gabung)
 
 def _espn_get(path):
     try:
@@ -3406,7 +3393,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.16.13
+# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.16.10
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3430,13 +3417,6 @@ def sesi_breaking(today_urls, seen):
         return 0
     cand_dom = collect_candidates(BREAKING_DOMESTIK_FEEDS, today_urls, seen,
                                   max_umur_jam=30)
-    # V6.16.13: filter spam judul
-    sebelum_spam = len(cand_dom)
-    cand_dom = [c for c in cand_dom
-                if cek_judul_spam(c['title']) is None]
-    if sebelum_spam != len(cand_dom):
-        print('   ' + str(sebelum_spam - len(cand_dom))
-              + ' kandidat spam live streaming dibuang.')
     skor_dom = sorted([(c, skor_domestik(c['title'], c['summary'])) for c in cand_dom],
                       key=lambda x: -x[1])
     if skor_dom:
@@ -3446,12 +3426,6 @@ def sesi_breaking(today_urls, seen):
     print('   Kandidat breaking domestik layak: ' + str(len(skor_dom)))
     cand_dun = collect_candidates(BREAKING_DUNIA_FEEDS, today_urls, seen,
                                   max_umur_jam=30)
-    sebelum_spam2 = len(cand_dun)
-    cand_dun = [c for c in cand_dun
-                if cek_judul_spam(c['title']) is None]
-    if sebelum_spam2 != len(cand_dun):
-        print('   ' + str(sebelum_spam2 - len(cand_dun))
-              + ' kandidat spam dunia dibuang.')
     skor_dun = sorted([(c, skor_dunia(c['title'], c['summary'])) for c in cand_dun],
                       key=lambda x: -x[1])
     skor_dun = [x for x in skor_dun if x[1] >= SKOR_BREAKING_MIN]
@@ -3508,7 +3482,8 @@ def kategori_breaking(c, tip):
 
 def _pasar_modal_sesi():
     now = datetime.now(WITA)
-    if now.weekday() >= 5:
+    # V6.16.10: pakai pasar_modal_libur_hari_ini() - Sabtu/Minggu + libur bursa
+    if pasar_modal_libur_hari_ini():
         return None
     jam = now.hour
     if not (12 <= jam < 18):
@@ -3769,6 +3744,15 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
     if not cand:
         print('   (' + cat + ') Tidak ada kandidat segar.')
         return False
+    # V6.16.10: filter spam judul
+    sebelum_spam = len(cand)
+    cand = [c for c in cand if not judul_spam(c['title'])]
+    if sebelum_spam != len(cand):
+        print('   (' + cat + ') ' + str(sebelum_spam - len(cand))
+              + ' judul spam dibuang.')
+    if not cand:
+        print('   (' + cat + ') Semua kandidat spam - skip.')
+        return False
     if cat == 'internasional_tt':
         cand = [c for c in cand
                 if teks_mengandung(c['title'] + ' ' + c['summary'], KATA_TT)]
@@ -3818,12 +3802,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
         if sebelum != len(cand):
             print('   (ekonomi) ' + str(sebelum - len(cand))
                   + ' kandidat tanpa kata ekonomi dibuang.')
-    # V6.16.13: filter spam judul untuk semua kategori
-    sebelum_spam = len(cand)
-    cand = [c for c in cand if cek_judul_spam(c['title']) is None]
-    if sebelum_spam != len(cand):
-        print('   (' + cat + ') ' + str(sebelum_spam - len(cand))
-              + ' kandidat spam live streaming dibuang.')
     if wajib_regional and cat == 'olahraga':
         n_reg = sum(1 for c in cand
                     if teks_mengandung(c['title'] + ' ' + c['summary'],
@@ -3980,15 +3958,8 @@ def sesi_kategori(today_urls, seen):
         dom_oto, sumber_oto = sumber_otomotif_hari_ini(jam)
         if not dom_oto:
             sumber_oto = None
-    pasar_modal_skip = False
-    if kuota.get('ekonomi') and datetime.now(WITA).weekday() < 5:
-        if pasar_modal_sudah_terbit('Tengah') or pasar_modal_sudah_terbit('Penutupan'):
-            print('   Kategori ekonomi dilewati - pasar modal sudah terbit hari ini.')
-            pasar_modal_skip = True
     total = 0
     for cat, n in kuota.items():
-        if cat == 'ekonomi' and pasar_modal_skip:
-            continue
         prio = utamakan_topik if cat == 'nasional' else None
         sumber = None
         domain_tek = None
@@ -4056,7 +4027,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.16.13)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.16.10)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -4096,7 +4067,7 @@ def main_sekali():
     run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.16.13 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.16.10 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4110,7 +4081,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.16.13'
+FILE_VERSI      = 'V6.16.10'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
