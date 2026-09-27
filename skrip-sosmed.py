@@ -1,7 +1,7 @@
-# KRAMANEWS — SKRIP SOSMED V1.9.2 (FB + INSTAGRAM)
-# V1.9.2: mode_fb round-robin per kategori (1 daerah + 4 kategori lain)
-# Warisan V1.9.1: BOLD_MAP programatik, x-admin-secret, mode_web null-aman,
-# IG kebal NULL, foto wajib IG, maks 2/run 6/hari, retry 504, ?baca=ID
+# KRAMANEWS — SKRIP SOSMED V1.10 (FB + INSTAGRAM)
+# V1.10: 5x/hari tiap 3 jam — 2 Tarakan + 1 Kaltara lain + 1 Nasional + 1 Internasional
+# V1.10: supabase_update pakai SUPABASE_SERVICE (admin-ops sudah JWT-only)
+# V1.10: IG ikut aturan sama (5 slot), fallback kalau kosong
 
 import requests
 import os
@@ -11,23 +11,21 @@ import json
 import re
 from datetime import datetime, timezone, timedelta
 
-FB_PAGE_TOKEN = os.environ.get('FB_PAGE_TOKEN', '')
-FB_PAGE_ID    = os.environ.get('FB_PAGE_ID', '')
-IG_TOKEN      = os.environ.get('IG_PAGE_TOKEN', '')
-ADMIN_SECRET  = os.environ.get('ADMIN_OPS_SECRET', '')
-SUPABASE_URL  = 'https://imcvijgytdjjpotlaltv.supabase.co'
-SUPABASE_ANON = os.environ.get('SUPABASE_PUBLISHABLE', '')
-SITE_URL      = 'https://kramanews.my.id'
+FB_PAGE_TOKEN   = os.environ.get('FB_PAGE_TOKEN', '')
+FB_PAGE_ID      = os.environ.get('FB_PAGE_ID', '')
+IG_TOKEN        = os.environ.get('IG_PAGE_TOKEN', '')
+SUPABASE_URL    = 'https://imcvijgtydjjpotlaltv.supabase.co'
+SUPABASE_ANON   = os.environ.get('SUPABASE_PUBLISHABLE', '')
+SUPABASE_SERVICE = os.environ.get('SUPABASE_SERVICE', '')
+SITE_URL        = 'https://kramanews.my.id'
 
 WITA = timezone(timedelta(hours=8))
-IG_DAILY_MAX = 6
-IG_PER_RUN   = 2
 
 KATEGORI_LABEL = {
     'nasional': 'Nasional', 'daerah': 'Daerah',
     'internasional': 'Internasional', 'ekonomi': 'Ekonomi',
     'olahraga': 'Olahraga', 'teknologi': 'Teknologi',
-    'hiburan': 'Hiburan', 'kesehatan': 'Kesehatan',
+    'otomotif': 'Otomotif', 'kesehatan': 'Kesehatan',
 }
 
 HASHTAG_KATEGORI = {
@@ -37,16 +35,25 @@ HASHTAG_KATEGORI = {
     'ekonomi': '#Ekonomi',
     'olahraga': '#Olahraga',
     'teknologi': '#Teknologi',
-    'hiburan': '#Hiburan',
+    'otomotif': '#Otomotif',
     'kesehatan': '#Kesehatan',
 }
 
 KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
-                 'tana tidung', 'sesayap', 'juata']
+                 'tana tidung', 'sesayap', 'juata', 'tanjung selor']
 
-def is_kaltara(n):
+def is_tarakan(n):
+    teks = ' '.join(str(n.get(k) or '') for k in ('title', 'dateline', 'excerpt', 'content')).lower()
+    return 'tarakan' in teks
+
+def is_kaltara_lain(n):
+    if is_tarakan(n):
+        return False
     teks = ' '.join(str(n.get(k) or '') for k in ('title', 'dateline', 'excerpt', 'content')).lower()
     return any(w in teks for w in KALTARA_WORDS)
+
+def is_kaltara(n):
+    return is_tarakan(n) or is_kaltara_lain(n)
 
 BOLD_MAP = {}
 for _i, _ch in enumerate('ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
@@ -82,24 +89,23 @@ def supabase_get_safe(query):
         raise Exception('Supabase GET ' + str(r.status_code) + ': ' + r.text[:150])
     return r.json() or []
 
+# ═══ V1.10: update langsung ke Supabase pakai SERVICE_ROLE ═══
 def supabase_update(article_id, payload):
+    if not SUPABASE_SERVICE:
+        raise Exception('SUPABASE_SERVICE belum ada di Secrets')
     def do_update():
-        return requests.post(
-            SUPABASE_URL + '/functions/v1/admin-ops',
-            headers={'apikey': SUPABASE_ANON,
-                     'Authorization': 'Bearer ' + SUPABASE_ANON,
-                     'x-admin-secret': ADMIN_SECRET,
-                     'Content-Type': 'application/json'},
-            json={'action': 'update', 'id': article_id, 'payload': payload},
+        return requests.patch(
+            SUPABASE_URL + '/rest/v1/articles?id=eq.' + str(article_id),
+            headers={'apikey': SUPABASE_SERVICE,
+                     'Authorization': 'Bearer ' + SUPABASE_SERVICE,
+                     'Content-Type': 'application/json',
+                     'Prefer': 'return=minimal'},
+            json=payload,
             timeout=30)
     r = retry(do_update, 'Supabase UPDATE')
-    try:
-        data = r.json()
-    except Exception:
-        raise Exception('Edge HTTP ' + str(r.status_code) + ': ' + r.text[:150])
-    if not r.ok or data.get('error'):
-        raise Exception(str(data.get('error') or ('HTTP ' + str(r.status_code))))
-    return data.get('data')
+    if not r.ok:
+        raise Exception('Update ' + str(r.status_code) + ': ' + r.text[:150])
+    return True
 
 def ambil_teaser(content, kalimat=3):
     bersih = re.sub(r'\s+', ' ', content or '').strip()
@@ -156,49 +162,36 @@ def post_fb(n):
     else:
         return fb_post_feed(pesan, SITE_URL + '/?baca=' + str(n.get('id')))
 
-def mode_fb():
-    print('📘 MODE FB — round-robin (1 daerah + 4 kategori lain)...')
-
-    rows = supabase_get_safe(
-        'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking'
-        '&status=eq.published&posted_fb=eq.false'
-        '&order=created_at.desc&limit=50')
-
-    if not rows:
-        print('✅ Tidak ada berita baru yang perlu diposting. Selesai.')
-        return
-
-    KATEGORI_LAIN = ['nasional', 'internasional', 'ekonomi', 'olahraga',
-                     'teknologi', 'hiburan', 'kesehatan']
-
+# ═══ V1.10: pilih 5 berita — 2 Tarakan + 1 Kaltara lain + 1 Nas + 1 Int ═══
+def pilih_5_berita(rows):
     terpilih = []
     id_terpilih = set()
 
-    kaltara = [n for n in rows if n.get('category') == 'daerah' and is_kaltara(n)]
-    daerah_lain = [n for n in rows if n.get('category') == 'daerah' and not is_kaltara(n)]
-    if kaltara:
-        terpilih.append(kaltara[0])
-        id_terpilih.add(kaltara[0]['id'])
-    elif daerah_lain:
-        terpilih.append(daerah_lain[0])
-        id_terpilih.add(daerah_lain[0]['id'])
-    else:
-        for n in rows:
-            if n['id'] not in id_terpilih and n.get('category') != 'daerah':
-                terpilih.append(n)
-                id_terpilih.add(n['id'])
-                break
+    # Slot 1 & 2: Tarakan (maksimal 2)
+    tarakan = [n for n in rows if is_tarakan(n)]
+    for n in tarakan[:2]:
+        terpilih.append(n)
+        id_terpilih.add(n['id'])
 
-    for kat in KATEGORI_LAIN:
-        if len(terpilih) >= 5:
-            break
-        kandidat = [n for n in rows
-                    if n['id'] not in id_terpilih
-                    and n.get('category') == kat]
-        if kandidat:
-            terpilih.append(kandidat[0])
-            id_terpilih.add(kandidat[0]['id'])
+    # Slot 3: Kaltara lain (1)
+    kaltara_lain = [n for n in rows if is_kaltara_lain(n) and n['id'] not in id_terpilih]
+    if kaltara_lain:
+        terpilih.append(kaltara_lain[0])
+        id_terpilih.add(kaltara_lain[0]['id'])
 
+    # Slot 4: Nasional (1)
+    nasional = [n for n in rows if n.get('category') == 'nasional' and n['id'] not in id_terpilih]
+    if nasional:
+        terpilih.append(nasional[0])
+        id_terpilih.add(nasional[0]['id'])
+
+    # Slot 5: Internasional (1)
+    internasional = [n for n in rows if n.get('category') == 'internasional' and n['id'] not in id_terpilih]
+    if internasional:
+        terpilih.append(internasional[0])
+        id_terpilih.add(internasional[0]['id'])
+
+    # Fallback: kalau kurang dari 5, ambil dari kategori apa saja
     if len(terpilih) < 5:
         for n in rows:
             if len(terpilih) >= 5:
@@ -207,19 +200,41 @@ def mode_fb():
                 terpilih.append(n)
                 id_terpilih.add(n['id'])
 
+    return terpilih[:5]
+
+def mode_fb():
+    print('📘 MODE FB — 5 slot: 2 Tarakan + 1 Kaltara lain + 1 Nas + 1 Int...')
+
+    rows = supabase_get_safe(
+        'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking'
+        '&status=eq.published&posted_fb=eq.false'
+        '&order=created_at.desc&limit=80')
+
+    if not rows:
+        print('✅ Tidak ada berita baru. Selesai.')
+        return
+
+    terpilih = pilih_5_berita(rows)
+
     if not terpilih:
         print('✅ Tidak ada kandidat. Selesai.')
         return
 
-    print('📋 Terpilih ' + str(len(terpilih)) + ' berita untuk diposting:')
+    print('📋 Terpilih ' + str(len(terpilih)) + ' berita:')
     for n in terpilih:
-        print('   • [' + (n.get('category') or '?') + '] ' + (n.get('title') or '')[:60])
+        if is_tarakan(n):
+            label = 'TARAKAN'
+        elif is_kaltara_lain(n):
+            label = 'KALTARA'
+        else:
+            label = (n.get('category') or '?').upper()
+        print('   • [' + label + '] ' + (n.get('title') or '')[:60])
 
     ok = 0
     for n in terpilih:
-        if n.get('breaking'):
-            print('🚨 BREAKING: ' + (n.get('title') or '')[:60])
-        elif n.get('category') == 'daerah' and is_kaltara(n):
+        if is_tarakan(n):
+            print('🏝️ TARAKAN: ' + (n.get('title') or '')[:60])
+        elif is_kaltara_lain(n):
             print('🏝️ KALTARA: ' + (n.get('title') or '')[:60])
         else:
             print('📤 [' + (n.get('category') or '?') + ']: ' + (n.get('title') or '')[:60])
@@ -289,69 +304,49 @@ def buat_pesan_ig(n):
     return '\n'.join(lines)[:2200]
 
 def mode_ig():
-    print('📸 MODE IG — antrean auto-post Instagram (@krama.news)...')
+    print('📸 MODE IG — 5 slot: 2 Tarakan + 1 Kaltara lain + 1 Nas + 1 Int...')
     if not IG_TOKEN:
         print('⏭️ IG_PAGE_TOKEN belum ada di Secrets — IG dilewati.')
         return
 
     try:
-        sudah_rows = supabase_get_safe(
-            'articles?select=created_at&posted_ig=eq.true&order=created_at.desc&limit=50')
-    except Exception:
-        sudah_rows = []
-    today = datetime.now(WITA).date()
-    hari_ini = 0
-    for r in sudah_rows:
-        try:
-            d = datetime.fromisoformat(str(r['created_at']).replace('Z', '+00:00')).astimezone(WITA).date()
-            if d == today:
-                hari_ini += 1
-        except Exception:
-            pass
-    sisa_kuota = IG_DAILY_MAX - hari_ini
-    if sisa_kuota <= 0:
-        print('✅ Kuota harian IG tercapai (' + str(hari_ini) + '/' + str(IG_DAILY_MAX)
-              + ') — akun muda harus sopan. Selesai.')
-        return
-
-    try:
         rows = supabase_get_safe(
             'articles?select=id,title,excerpt,content,category,img,dateline,posted_ig,breaking'
-            '&status=eq.published'
-            '&order=created_at.desc&limit=15')
+            '&status=eq.published&posted_ig=eq.false'
+            '&order=created_at.desc&limit=80')
     except Exception as e:
         print('❌ Gagal ambil antrean IG: ' + str(e)[:120])
         return
 
     if not rows:
-        print('✅ Tidak ada berita sama sekali. Selesai.')
+        print('✅ Tidak ada berita baru untuk IG. Selesai.')
         return
 
-    kandidat = [n for n in rows if belum_post_ig(n)]
-    if not kandidat:
-        print('✅ Semua 15 berita terbaru sudah diposting ke IG. Selesai.')
-        return
-
-    prio = [n for n in kandidat if is_kaltara(n) and ada_img(n)]
-    lain = [n for n in kandidat if (not is_kaltara(n)) and ada_img(n)]
-    tanpa_img = [n for n in kandidat if not ada_img(n)]
-    urutan = prio + lain
-
-    if prio:
-        print('🏝️ ' + str(len(prio)) + ' berita KALTARA/TARAKAN diprioritaskan di IG:')
-        for n in prio[:2]:
-            print('   • ' + (n.get('title') or '')[:60])
-    if tanpa_img:
-        print('ℹ️ ' + str(len(tanpa_img)) + ' berita tanpa gambar dilewati IG (IG wajib foto — FB tetap posting).')
-
-    antre = urutan[:min(IG_PER_RUN, sisa_kuota)]
-    if not antre:
+    # IG wajib gambar
+    rows_berimg = [n for n in rows if ada_img(n)]
+    if not rows_berimg:
         print('✅ Tidak ada kandidat IG bergambar. Selesai.')
         return
 
+    terpilih = pilih_5_berita(rows_berimg)
+
+    if not terpilih:
+        print('✅ Tidak ada kandidat IG. Selesai.')
+        return
+
+    print('📋 Terpilih ' + str(len(terpilih)) + ' berita IG:')
+    for n in terpilih:
+        if is_tarakan(n):
+            label = 'TARAKAN'
+        elif is_kaltara_lain(n):
+            label = 'KALTARA'
+        else:
+            label = (n.get('category') or '?').upper()
+        print('   • [' + label + '] ' + (n.get('title') or '')[:60])
+
     ok = 0
-    for n in antre:
-        label = '🚨 BREAKING' if n.get('breaking') else ('🏝️ KALTARA' if is_kaltara(n) else '📸 POSTING')
+    for n in terpilih:
+        label = '🏝️ TARAKAN' if is_tarakan(n) else ('🏝️ KALTARA' if is_kaltara_lain(n) else '📸 POSTING')
         print(label + ': ' + (n.get('title') or '')[:60])
         try:
             ig_post_photo(n['img'].strip(), buat_pesan_ig(n))
@@ -368,50 +363,21 @@ def mode_ig():
                 print('      → update Secret IG_PAGE_TOKEN (copy-paste!)')
         time.sleep(3)
 
-    print('🏁 Mode IG selesai — ' + str(ok) + ' post terkirim (hari ini: '
-          + str(hari_ini + ok) + '/' + str(IG_DAILY_MAX) + ').')
-
-def mode_web():
-    print('🌐 MODE WEB — tandai berita unggulan per kategori...')
-    total = 0
-    cats = list(KATEGORI_LABEL.keys())
-    for cat in cats:
-        try:
-            rows = supabase_get_safe(
-                'articles?select=id,title,category,updated_at,featured'
-                '&status=eq.published&category=eq.' + cat +
-                '&breaking=eq.false'
-                '&order=created_at.desc&limit=5')
-        except Exception as e:
-            print('   ⚠️ ' + cat + ': ' + str(e)[:100])
-            continue
-        kandidat = [n for n in rows if not n.get('featured')]
-        if kandidat:
-            n = kandidat[0]
-            try:
-                supabase_update(n['id'], {'featured': True})
-                print('   ⭐ ' + cat + ': ' + (n.get('title') or '')[:60])
-                total += 1
-            except Exception as e:
-                print('   ⚠️ ' + cat + ': ' + str(e)[:100])
-    print('🏁 Mode Web selesai — ' + str(total) + ' berita ditandai.')
+    print('🏁 Mode IG selesai — ' + str(ok) + ' post terkirim.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.9.2 — FB + INSTAGRAM')
+    print('📣 KRAMANEWS SOSMED V1.10 — FB + INSTAGRAM (5x/hari)')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
     if not SUPABASE_ANON:
         print('❌ SUPABASE_PUBLISHABLE belum ada di Secrets!')
         return
-    if not ADMIN_SECRET:
-        print('❌ ADMIN_OPS_SECRET belum ada di Secrets!')
+    if not SUPABASE_SERVICE:
+        print('❌ SUPABASE_SERVICE belum ada di Secrets!')
         return
-    if '--web' in sys.argv:
-        mode_web()
-    else:
-        mode_fb()
-        mode_ig()
+    mode_fb()
+    mode_ig()
 
 if __name__ == '__main__':
     main()

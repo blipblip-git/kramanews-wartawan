@@ -2,16 +2,15 @@ name: KramaNews Sosmed Auto-Post
 
 on:
   schedule:
-    # ═══ KALIBRASI WITA (UTC+8) — waktu Tarakan ═══
-    # V1.1: menit digeser dari 0/20/30/40 ke 7/22/37/52
-    # (menit 00 paling padat di GitHub Actions → sering telat/dilewati)
-    # ═══ TIAP 15 MENIT — JAM SIBUK (09:00-21:59 WITA = 01-13 UTC) ═══
-    - cron: '7,22,37,52 1-13 * * *'
-    # ═══ TIAP 30 MENIT — JAM TENANG (22:00-08:59 WITA) ═══
-    # 14-15 UTC = 22-23 WITA | 16-23 UTC = 00-07 WITA | 0 UTC = 08 WITA
-    - cron: '7,37 14-15 * * *'
-    - cron: '7,37 16-23 * * *'
-    - cron: '7,37 0 * * *'
+    # ═══ V1.2: 5x/hari, tiap 3 jam ═══
+    # Jam WITA: 06:00, 09:00, 12:00, 15:00, 18:00
+    # Jam UTC (WITA-8): 22:00, 01:00, 04:00, 07:00, 10:00
+    # Menit digeser ke 7 (menit 0 paling padat di GitHub Actions)
+    - cron: '7 22 * * *'   # 06:07 WITA
+    - cron: '7 1 * * *'    # 09:07 WITA
+    - cron: '7 4 * * *'    # 12:07 WITA
+    - cron: '7 7 * * *'    # 15:07 WITA
+    - cron: '7 10 * * *'   # 18:07 WITA
   workflow_dispatch:
 
 jobs:
@@ -28,5 +27,5 @@ jobs:
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           SUPABASE_PUBLISHABLE: ${{ secrets.SUPABASE_PUBLISHABLE }}
+          SUPABASE_SERVICE: ${{ secrets.SUPABASE_SERVICE }}
           IG_PAGE_TOKEN: ${{ secrets.IG_PAGE_TOKEN }}
-          ADMIN_OPS_SECRET: ${{ secrets.ADMIN_OPS_SECRET }}
