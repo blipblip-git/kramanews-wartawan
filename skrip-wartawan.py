@@ -1077,52 +1077,22 @@ FORMAT JAWABAN - HANYA JSON valid:
     
 # PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR
 
-SUPABASE_SERVICE = os.environ.get('SUPABASE_SERVICE', '')
-
-# ═══ V6.16.11: edge_call pakai REST langsung + SUPABASE_SERVICE ═══
 def edge_call(payload_json):
-    if not SUPABASE_SERVICE:
-        raise Exception('SUPABASE_SERVICE kosong - cek Secrets GitHub')
-    action = payload_json.get('action', '')
-    id_ = payload_json.get('id', None)
-    payload = payload_json.get('payload', None)
-    headers = {
-        'apikey': SUPABASE_SERVICE,
-        'Authorization': 'Bearer ' + SUPABASE_SERVICE,
-        'Content-Type': 'application/json',
-    }
+    if not ADMIN_SECRET:
+        raise Exception('ADMIN_OPS_SECRET kosong - cek Secrets GitHub')
+    r = requests.post(EDGE_URL,
+        headers={'apikey': SUPABASE_PUBLISHABLE,
+                 'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE,
+                 'x-admin-secret': ADMIN_SECRET,
+                 'Content-Type': 'application/json'},
+        json=payload_json, timeout=30)
     try:
-        if action == 'insert':
-            headers['Prefer'] = 'return=representation'
-            r = requests.post(REST_URL, headers=headers,
-                              json=payload, timeout=30)
-            if not r.ok:
-                raise Exception('insert HTTP ' + str(r.status_code) + ': ' + r.text[:120])
-            data = r.json()
-            return data[0] if isinstance(data, list) and data else data
-        if action == 'update':
-            headers['Prefer'] = 'return=representation'
-            r = requests.patch(REST_URL + '?id=eq.' + str(id_), headers=headers,
-                               json=payload, timeout=30)
-            if not r.ok:
-                raise Exception('update HTTP ' + str(r.status_code) + ': ' + r.text[:120])
-            data = r.json()
-            return data[0] if isinstance(data, list) and data else data
-        if action == 'delete':
-            r = requests.delete(REST_URL + '?id=eq.' + str(id_), headers=headers,
-                                timeout=30)
-            if not r.ok:
-                raise Exception('delete HTTP ' + str(r.status_code) + ': ' + r.text[:120])
-            return None
-        if action == 'read-all':
-            r = requests.get(REST_URL + '?select=*&order=created_at.desc&limit=200',
-                             headers=headers, timeout=30)
-            if not r.ok:
-                raise Exception('read-all HTTP ' + str(r.status_code) + ': ' + r.text[:120])
-            return r.json()
-        raise Exception('unknown action: ' + action)
-    except requests.exceptions.RequestException as e:
-        raise Exception('Network error: ' + str(e)[:120])
+        data = r.json()
+    except Exception:
+        raise Exception('HTTP ' + str(r.status_code) + ': ' + r.text[:120])
+    if not r.ok or data.get('error'):
+        raise Exception(str(data.get('error') or ('HTTP ' + str(r.status_code))))
+    return data.get('data')
 
 def rest_get(query):
     r = requests.get(REST_URL + query,
@@ -3397,7 +3367,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.16.11
+# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.16.9
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -4028,7 +3998,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.16.11)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.16.9)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -4060,15 +4030,15 @@ def main_sekali():
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
         print('Kunci belum lengkap! Cek Secrets GitHub: DEEPSEEK_KEY, SUPABASE_PUBLISHABLE')
         return
-    if not SUPABASE_SERVICE:
-        print('SUPABASE_SERVICE belum ada di Secrets GitHub!')
+    if not ADMIN_SECRET:
+        print('ADMIN_OPS_SECRET belum ada di Secrets GitHub!')
         return
-    print('Kunci gerbang REST: OK')
+    print('Kunci gerbang admin-ops: OK')
     print('API Football key: ' + ('OK' if FOOTBALL_API_KEY else 'KOSONG (fallback ke ESPN)'))
     run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.16.11 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.16.9 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4082,7 +4052,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.16.11'
+FILE_VERSI      = 'V6.16.9'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
