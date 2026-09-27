@@ -85,7 +85,6 @@ HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
             'Agustus', 'September', 'Oktober', 'November', 'Desember']
 
-# ═══ V6.16.10: HARI LIBUR BURSA 2026 (pasar modal libur) ═══
 LIBUR_BURSA_2026 = {
     '2026-01-01', '2026-01-16',
     '2026-02-16', '2026-02-17',
@@ -98,7 +97,6 @@ LIBUR_BURSA_2026 = {
 }
 
 def pasar_modal_libur_hari_ini():
-    """V6.16.10: cek apakah hari ini Sabtu/Minggu ATAU libur bursa."""
     now = datetime.now(WITA)
     if now.weekday() >= 5:
         return True
@@ -135,8 +133,7 @@ ESPN_NBA = ('basketball/nba', 'NBA')
 ESPN_SITE = 'https://site.api.espn.com/apis/site/v2/sports/'
 ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/soccer/leagues/'
 
-# ═══ V6.16.10: JADWAL - ekonomi tetap 5x/hari (6, 11, 12, 18, 19) ═══
-# Jam 12 & 18: pasar modal (Sen-Jum non-libur) ATAU ekonomi biasa (weekend/libur)
+# ═══ V6.16.10: JADWAL - jam 12 & 18 TIDAK ada ekonomi (pasar modal / runtime) ═══
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1},
@@ -144,13 +141,13 @@ JADWAL_JAM = {
     9:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1},
     10: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'kesehatan': 1},
     11: {'nasional': 1, 'daerah': 2, 'ekonomi': 1, 'olahraga': 1},
-    12: {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
+    12: {'nasional': 1, 'daerah': 2},
     13: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'olahraga': 1},
     14: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1},
     15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1},
     16: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'otomotif': 1},
     17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1},
-    18: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'teknologi': 1, 'ekonomi': 1},
+    18: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'teknologi': 1},
     19: {'nasional': 1, 'olahraga': 1, 'ekonomi': 1},
     20: {'otomotif': 1, 'olahraga': 1, 'kesehatan': 1},
 }
@@ -535,7 +532,6 @@ TOPIK_BESAR_GATE = [
     'pemilu', 'pilpres', 'pilkada',
 ]
 
-# ═══ V6.16.10: filter spam judul live streaming ═══
 KATA_SPAM_JUDUL = [
     '【', '】', 'livestream', 'live stream', 'live free',
     'tv channel', 'watch online', 'live streaming',
@@ -3482,7 +3478,6 @@ def kategori_breaking(c, tip):
 
 def _pasar_modal_sesi():
     now = datetime.now(WITA)
-    # V6.16.10: pakai pasar_modal_libur_hari_ini() - Sabtu/Minggu + libur bursa
     if pasar_modal_libur_hari_ini():
         return None
     jam = now.hour
@@ -3744,7 +3739,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
     if not cand:
         print('   (' + cat + ') Tidak ada kandidat segar.')
         return False
-    # V6.16.10: filter spam judul
     sebelum_spam = len(cand)
     cand = [c for c in cand if not judul_spam(c['title'])]
     if sebelum_spam != len(cand):
@@ -3919,6 +3913,25 @@ def sesi_kategori(today_urls, seen):
         return 0
     print('\nKATEGORI - jam ' + str(jam) + ':00 WITA - kuota: ' +
           ', '.join(k + '=' + str(v) for k, v in kuota.items()))
+
+    # ═══ V6.16.10: logika ekonomi jam 12/18 ═══
+    libur = pasar_modal_libur_hari_ini()
+    is_pasar_modal_jam = (jam == 12 or jam == 18)
+    # Kalau jam 12/18 dan BUKAN libur bursa → ekonomi skip (pasar modal jalan)
+    # Kalau jam 12/18 dan libur bursa → ekonomi JALAN (pasar modal libur)
+    if is_pasar_modal_jam and not libur:
+        if 'ekonomi' in kuota:
+            print('   Jam ' + str(jam) + ' hari kerja - pasar modal jalan, '
+                  'ekonomi di-skip.')
+            kuota = {k: v for k, v in kuota.items() if k != 'ekonomi'}
+    elif is_pasar_modal_jam and libur:
+        # V6.16.10: weekend/libur - tambah ekonomi sebagai pengganti pasar modal
+        kuota = dict(kuota)
+        if 'ekonomi' not in kuota:
+            kuota['ekonomi'] = 1
+            print('   Jam ' + str(jam) + ' libur bursa - ekonomi masuk pengganti '
+                  'pasar modal.')
+
     utamakan_kaltara = False
     if kuota.get('daerah'):
         utamakan_kaltara = hitung_kaltara_hari_ini() < 2
