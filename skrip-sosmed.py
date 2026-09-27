@@ -89,7 +89,6 @@ def supabase_get_safe(query):
         raise Exception('Supabase GET ' + str(r.status_code) + ': ' + r.text[:150])
     return r.json() or []
 
-# ═══ V1.10: update langsung ke Supabase pakai SERVICE_ROLE ═══
 def supabase_update(article_id, payload):
     if not SUPABASE_SERVICE:
         raise Exception('SUPABASE_SERVICE belum ada di Secrets')
@@ -162,36 +161,30 @@ def post_fb(n):
     else:
         return fb_post_feed(pesan, SITE_URL + '/?baca=' + str(n.get('id')))
 
-# ═══ V1.10: pilih 5 berita — 2 Tarakan + 1 Kaltara lain + 1 Nas + 1 Int ═══
 def pilih_5_berita(rows):
     terpilih = []
     id_terpilih = set()
 
-    # Slot 1 & 2: Tarakan (maksimal 2)
     tarakan = [n for n in rows if is_tarakan(n)]
     for n in tarakan[:2]:
         terpilih.append(n)
         id_terpilih.add(n['id'])
 
-    # Slot 3: Kaltara lain (1)
     kaltara_lain = [n for n in rows if is_kaltara_lain(n) and n['id'] not in id_terpilih]
     if kaltara_lain:
         terpilih.append(kaltara_lain[0])
         id_terpilih.add(kaltara_lain[0]['id'])
 
-    # Slot 4: Nasional (1)
     nasional = [n for n in rows if n.get('category') == 'nasional' and n['id'] not in id_terpilih]
     if nasional:
         terpilih.append(nasional[0])
         id_terpilih.add(nasional[0]['id'])
 
-    # Slot 5: Internasional (1)
     internasional = [n for n in rows if n.get('category') == 'internasional' and n['id'] not in id_terpilih]
     if internasional:
         terpilih.append(internasional[0])
         id_terpilih.add(internasional[0]['id'])
 
-    # Fallback: kalau kurang dari 5, ambil dari kategori apa saja
     if len(terpilih) < 5:
         for n in rows:
             if len(terpilih) >= 5:
@@ -252,9 +245,6 @@ def mode_fb():
 def ada_img(n):
     u = (n.get('img') or '').strip()
     return bool(u) and not u.lower().endswith('.svg')
-
-def belum_post_ig(n):
-    return not n.get('posted_ig')
 
 def ig_post_photo(image_url, caption):
     r = requests.post(
@@ -322,7 +312,6 @@ def mode_ig():
         print('✅ Tidak ada berita baru untuk IG. Selesai.')
         return
 
-    # IG wajib gambar
     rows_berimg = [n for n in rows if ada_img(n)]
     if not rows_berimg:
         print('✅ Tidak ada kandidat IG bergambar. Selesai.')
