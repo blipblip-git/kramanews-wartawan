@@ -2305,9 +2305,8 @@ def catat_gambar_terpakai(url):
     if url:
         muat_gambar_terpakai().add(url)
 
-# ═══ V6.16.10: ai_write - tambah parameter sumber & validasi narasumber baru ═══
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
-             judul_materi='', summary_materi='', sumber=''):
+             judul_materi='', summary_materi=''):
     obj = None
     materi_asli = user_content
     koreksi_gabung_dipakai = False
@@ -2374,14 +2373,9 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         if masalah_gabung and not koreksi_gabung_dipakai:
             koreksi_gabung_dipakai = True
             print('       Koreksi gabungan 1x: ' + ' | '.join(masalah_gabung)[:100])
-            # V6.16.10: sertakan materi sumber asli di prompt koreksi
             user_content = (
                 'TULISANMU SEBELUMNYA DITOLAK SISTEM karena:\n- '
                 + '\n- '.join(masalah_gabung) + '\n\n'
-                'Berikut MATERI SUMBER ASLI:\n'
-                '==========================================\n'
-                + (materi_sumber or materi_asli)[:4000] + '\n'
-                '==========================================\n\n'
                 'TULIS ULANG berita yang sama dengan ATURAN KETAT:\n'
                 '- HAPUS semua frasa terlarang di atas.\n'
                 '- DATELINE: hanya nama tempat di materi; kalau tidak ada = '
@@ -2427,11 +2421,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     if nama_final:
         raise Exception('DITOLAK - narasumber tanpa nama ('
                         + nama_final[:60] + ')')
-    # V6.16.10: validator narasumber wajib (nasional & daerah)
-    if kategori in ('nasional', 'daerah'):
-        ada_nars = cek_ada_narasumber_berita(isi, kategori, sumber)
-        if ada_nars:
-            raise Exception('DITOLAK - ' + ada_nars[:80])
     gambar_terlarang = cek_deskripsi_gambar(gambar)
     if gambar_terlarang:
         raise Exception('diblokir filter gambar: ' + gambar_terlarang[:60])
@@ -2487,8 +2476,7 @@ def ai_rewrite_single(c, kategori_target=''):
             '- Jangan sebut portal/media sumber.')
     return ai_write(user, materi_sumber=materi, kategori=kategori_target,
                     judul_materi=c.get('title', ''),
-                    summary_materi=c.get('summary', ''),
-                    sumber=c.get('source', ''))
+                    summary_materi=c.get('summary', ''))
 
 def ai_rewrite_multi(items, kategori_target=''):
     k = konteks_waktu()
@@ -2498,7 +2486,6 @@ def ai_rewrite_multi(items, kategori_target=''):
     semua_materi = ''
     semua_judul = []
     semua_summary = []
-    sumber_utama = ''
     for i, it in enumerate(items[:3], 1):
         materi, kaya = ambil_materi_kaya(it)
         if kaya:
@@ -2507,8 +2494,6 @@ def ai_rewrite_multi(items, kategori_target=''):
             total_len += len(it.get('summary', ''))
         if it.get('tgl_pub') and not tgl:
             tgl = it['tgl_pub']
-        if not sumber_utama:
-            sumber_utama = it.get('source', '')
         semua_judul.append(it.get('title', ''))
         semua_summary.append(it.get('summary', '')[:300])
         bagian.append('[MATERI ' + str(i) + ']\n'
@@ -2541,8 +2526,7 @@ def ai_rewrite_multi(items, kategori_target=''):
     return ai_write(user, timeout=180, materi_sumber=semua_materi,
                     kategori=kategori_target,
                     judul_materi=judul_materi_gabung,
-                    summary_materi=summary_materi_gabung,
-                    sumber=sumber_utama)
+                    summary_materi=summary_materi_gabung)
 
 # AKHIR PART 3B BAGIAN 1
 # PART 3B - BAGIAN 2 DARI 2
