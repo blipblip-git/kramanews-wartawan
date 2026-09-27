@@ -1077,22 +1077,52 @@ FORMAT JAWABAN - HANYA JSON valid:
     
 # PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR
 
+SUPABASE_SERVICE = os.environ.get('SUPABASE_SERVICE', '')
+
+# ═══ V6.16.11: edge_call pakai REST langsung + SUPABASE_SERVICE ═══
 def edge_call(payload_json):
-    if not ADMIN_SECRET:
-        raise Exception('ADMIN_OPS_SECRET kosong - cek Secrets GitHub')
-    r = requests.post(EDGE_URL,
-        headers={'apikey': SUPABASE_PUBLISHABLE,
-                 'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE,
-                 'x-admin-secret': ADMIN_SECRET,
-                 'Content-Type': 'application/json'},
-        json=payload_json, timeout=30)
+    if not SUPABASE_SERVICE:
+        raise Exception('SUPABASE_SERVICE kosong - cek Secrets GitHub')
+    action = payload_json.get('action', '')
+    id_ = payload_json.get('id', None)
+    payload = payload_json.get('payload', None)
+    headers = {
+        'apikey': SUPABASE_SERVICE,
+        'Authorization': 'Bearer ' + SUPABASE_SERVICE,
+        'Content-Type': 'application/json',
+    }
     try:
-        data = r.json()
-    except Exception:
-        raise Exception('HTTP ' + str(r.status_code) + ': ' + r.text[:120])
-    if not r.ok or data.get('error'):
-        raise Exception(str(data.get('error') or ('HTTP ' + str(r.status_code))))
-    return data.get('data')
+        if action == 'insert':
+            headers['Prefer'] = 'return=representation'
+            r = requests.post(REST_URL, headers=headers,
+                              json=payload, timeout=30)
+            if not r.ok:
+                raise Exception('insert HTTP ' + str(r.status_code) + ': ' + r.text[:120])
+            data = r.json()
+            return data[0] if isinstance(data, list) and data else data
+        if action == 'update':
+            headers['Prefer'] = 'return=representation'
+            r = requests.patch(REST_URL + '?id=eq.' + str(id_), headers=headers,
+                               json=payload, timeout=30)
+            if not r.ok:
+                raise Exception('update HTTP ' + str(r.status_code) + ': ' + r.text[:120])
+            data = r.json()
+            return data[0] if isinstance(data, list) and data else data
+        if action == 'delete':
+            r = requests.delete(REST_URL + '?id=eq.' + str(id_), headers=headers,
+                                timeout=30)
+            if not r.ok:
+                raise Exception('delete HTTP ' + str(r.status_code) + ': ' + r.text[:120])
+            return None
+        if action == 'read-all':
+            r = requests.get(REST_URL + '?select=*&order=created_at.desc&limit=200',
+                             headers=headers, timeout=30)
+            if not r.ok:
+                raise Exception('read-all HTTP ' + str(r.status_code) + ': ' + r.text[:120])
+            return r.json()
+        raise Exception('unknown action: ' + action)
+    except requests.exceptions.RequestException as e:
+        raise Exception('Network error: ' + str(e)[:120])
 
 def rest_get(query):
     r = requests.get(REST_URL + query,
@@ -1223,7 +1253,8 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# ═══ V6.16.10: filter spam live streaming di collect_candidates ═══
+_CACHE_SCRAPE = {}
+
 def collect_candidates(sources, today_urls, seen, max_umur_jam=None):
     if max_umur_jam is None:
         max_umur_jam = MAX_UMUR_BERITA_JAM
@@ -1241,8 +1272,6 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None):
             if u is not None and u > max_umur_jam:
                 continue
             title = entry.get('title', '')
-            if judul_spam_live(title):
-                continue
             summary = get_material(entry)
             if not title or not summary:
                 continue
@@ -1253,8 +1282,6 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None):
                 title = t2
                 if portal and portal != 'Google News':
                     sname = portal
-            if judul_spam_live(title):
-                continue
             out.append({'title': title, 'summary': summary, 'link': link,
                         'source': sname, 'entry': entry,
                         'tgl_pub': tanggal_publikasi_str(entry)})
@@ -1660,46 +1687,6 @@ def cek_narasumber_tanpa_nama(isi, kategori=''):
             return ('"menurut ' + inst + '" tanpa nama pejabat')
     return None
 
-# ═══ V6.16.10: validator baru - wajib ada narasumber untuk nasional & daerah ═══
-def cek_ada_narasumber_berita(isi, kategori='', sumber=''):
-    if not isi:
-        return None
-    # Kecualikan kategori yang tidak butuh narasumber
-    if kategori in ('internasional', 'internasional_asean', 'internasional_tt',
-                    'olahraga', 'ekonomi'):
-        return None
-    # Kecualikan sumber data mesin
-    SUMBER_MESIN = ['ESPN Data', 'ESPN Data NBA', 'Pasar Modal Tengah',
-                    'Pasar Modal Penutupan', 'Event Besar Dunia',
-                    'Rangkuman Olahraga', 'Rangkuman NBA', 'Pasar Modal',
-                    'Yahoo Finance', 'IDX Yahoo Finance']
-    s = (sumber or '').strip()
-    if s and any(m.lower() in s.lower() for m in SUMBER_MESIN):
-        return None
-    # Cari minimal 1 indikasi narasumber
-    pola_nama_orang = re.compile(r'\b[A-Z][a-z]+\s+(?:[A-Z]\.\s*)?[A-Z][a-z]+\b')
-    pola_jabatan_nama = re.compile(
-        r'\b(menteri|presiden|wakil presiden|gubernur|wakil gubernur|'
-        r'walikota|wakil walikota|bupati|wakil bupati|kapolres|kapolda|'
-        r'kapolsek|dandim|danramil|kasat|kepala dinas|kepala badan|'
-        r'kepala kantor|ketua|wakil ketua|direktur|dirut|komisaris|'
-        r'pakar|dokter|profesor|guru besar|pengamat|peneliti|'
-        r'jenderal|letjen|mayjen|brigjen|kolonel|letkol|akbp|akp|kompol|'
-        r'kombes)\s+[A-Z]',
-        re.IGNORECASE
-    )
-    pola_kutipan = re.compile(
-        r'\b(kata|ujar|tutur|tegas|menurut|ungkap|jelas|terang)\s+[A-Z]',
-        re.IGNORECASE
-    )
-    if pola_nama_orang.search(isi):
-        return None
-    if pola_jabatan_nama.search(isi):
-        return None
-    if pola_kutipan.search(isi):
-        return None
-    return ('berita ' + kategori + ' wajib ada narasumber (nama pejabat/pakar)')
-
 KATA_BUKAN_BERITA = [
     'zodiak', 'horoskop', 'ramalan bintang', 'ramalan cinta',
     'ramalan nasib', 'ramalan zodiak', 'shio', 'primbon',
@@ -1895,14 +1882,6 @@ def tentukan_kategori_dari_isi(judul, isi):
             if re.search(r'\b' + re.escape(lem) + r'\b', t):
                 is_indo = True
                 break
-    # V6.16.10: cek dateline kota Indonesia
-    if not is_indo:
-        m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+', isi or '')
-        if m:
-            dp = m.group(1).strip().lower()
-            kota = dp.split(',')[0].strip()
-            if kota == 'indonesia' or kota in KOTA_INDONESIA_DATELINE:
-                is_indo = True
     if not is_indo:
         return None
     is_lokal = any(re.search(r'\b' + re.escape(k) + r'\b', t)
@@ -1911,16 +1890,13 @@ def tentukan_kategori_dari_isi(judul, isi):
         return 'daerah'
     return 'nasional'
 
-# ═══ V6.16.10: cek_topik_ai_vs_materi - pakai JUDUL MATERI saja, deteksi bahasa Inggris ═══
 def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi):
     if not judul_ai or not judul_materi:
         return None
-    # Deteksi bahasa Inggris dari JUDUL materi saja
-    jm = (judul_materi or '').lower()
-    kata_en_judul = len(re.findall(r'\b(the|and|of|to|in|for|on|with|from|that|this|is|are|was|were|has|have|will|would|could|should|be|been|as|at|by|an|or|but|not|its|it|after|before|next|breakthrough|reunite|lead|tally)\b', jm))
-    total_kata_judul = len(re.findall(r'\b[a-zA-Z]{2,}\b', jm))
-    if total_kata_judul > 0 and kata_en_judul / max(total_kata_judul, 1) > 0.40:
-        # Judul materi dominan Inggris - validator dilewati
+    teks_materi = (judul_materi or '') + ' ' + (summary_materi or '')
+    kata_en = len(re.findall(r'\b(the|and|of|to|in|for|on|with|from|that|this|is|are|was|were|has|have|will|would|could|should|be|been|as|at|by|an|or|but|not|its|it)\b', teks_materi.lower()))
+    total_kata = len(re.findall(r'\b[a-zA-Z]{3,}\b', teks_materi))
+    if total_kata > 0 and kata_en / max(total_kata, 1) > 0.10:
         return None
     def kata_inti(s):
         STOP = set('yang dan di ke dari untuk pada dengan dalam ini itu '
@@ -1929,7 +1905,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi):
                    'will been are was were their they about after'.split())
         return set(re.findall(r'[a-z0-9]{4,}', (s or '').lower())) - STOP
     k_ai = kata_inti(judul_ai)
-    k_mat = kata_inti(judul_materi) | kata_inti((summary_materi or '')[:500])
+    k_mat = kata_inti(judul_materi) | kata_inti(summary_materi[:500])
     if not k_ai or not k_mat:
         return None
     irisan = k_ai & k_mat
@@ -3421,7 +3397,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.16.10
+# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.16.11
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3652,8 +3628,7 @@ def sesi_pasar_modal(today_urls, seen):
             'terakhir ' + jam_str + ' WITA, ' + tanggal + '."')
     print('   AI menulis laporan pasar modal (' + sesi + ')...')
     try:
-        judul, isi, ringkasan, waktu, gambar = ai_write(
-            user, kategori='ekonomi', sumber='Pasar Modal ' + sesi)
+        judul, isi, ringkasan, waktu, gambar = ai_write(user, kategori='ekonomi')
     except BeritaLama as bl:
         print('   Ditolak AI: ' + str(bl)[:60]); return 0
     except Exception as e:
@@ -3894,9 +3869,7 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
         kategori_final = KATEGORI_DB.get(cat, cat)
         kategori_paksa = tentukan_kategori_dari_isi(judul, isi)
         if kategori_paksa and cat in ('internasional', 'internasional_asean',
-                                       'internasional_tt', 'ekonomi',
-                                       'teknologi', 'kesehatan', 'otomotif',
-                                       'olahraga'):
+                                       'internasional_tt', 'ekonomi'):
             print('   Kategori dipaksa dari isi: ' + cat
                   + ' -> ' + kategori_paksa)
             kategori_final = kategori_paksa
@@ -4055,7 +4028,7 @@ def sesi_kategori(today_urls, seen):
 def run_session():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.16.10)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.16.11)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -4087,15 +4060,15 @@ def main_sekali():
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
         print('Kunci belum lengkap! Cek Secrets GitHub: DEEPSEEK_KEY, SUPABASE_PUBLISHABLE')
         return
-    if not ADMIN_SECRET:
-        print('ADMIN_OPS_SECRET belum ada di Secrets GitHub!')
+    if not SUPABASE_SERVICE:
+        print('SUPABASE_SERVICE belum ada di Secrets GitHub!')
         return
-    print('Kunci gerbang admin-ops: OK')
+    print('Kunci gerbang REST: OK')
     print('API Football key: ' + ('OK' if FOOTBALL_API_KEY else 'KOSONG (fallback ke ESPN)'))
     run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.16.10 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.16.11 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4109,7 +4082,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.16.10'
+FILE_VERSI      = 'V6.16.11'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
