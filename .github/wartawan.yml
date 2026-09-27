@@ -1,10 +1,10 @@
 name: AI Wartawan KramaNews
 
 # ══════════════════════════════════════════════════════
-#  WARTAWAN.YML — V6.9
-#  Perubahan dari V6.8:
-#   + Tambah FOOTBALL_API_KEY di env (untuk klasmen M/D/K/P
-#     dari api-sports.io). Tanpa ini, klasmen fallback ke ESPN.
+#  WARTAWAN.YML — V6.10
+#  Perubahan dari V6.9:
+#   + Tambah SUPABASE_SERVICE di env (untuk insert/update
+#     REST langsung, karena admin-ops sudah JWT-only).
 #  ATURAN EMAS: FILE INI TIDAK PERNAH BERISI KUNCI ASLI.
 # ══════════════════════════════════════════════════════
 
@@ -42,6 +42,7 @@ jobs:
         env:
           DEEPSEEK_KEY: ${{ secrets.DEEPSEEK_KEY }}
           SUPABASE_PUBLISHABLE: ${{ secrets.SUPABASE_PUBLISHABLE }}
+          SUPABASE_SERVICE: ${{ secrets.SUPABASE_SERVICE }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           ADMIN_OPS_SECRET: ${{ secrets.ADMIN_OPS_SECRET }}
           FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
