@@ -1,4 +1,14 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER
+# ══════════════════════════════════════════════════════
+#  SKRIP-WARTAWAN.PY V6.17.1 — UTUH
+#  Gabungan Part 1 + 2 + 3A + 3B-1 + 3B-2 + 4A + 4B
+#  Perubahan dari V6.17.0:
+#   - Pasar modal: 1x/sesi (Tengah=14:00, Penutupan=18:00)
+#   - _format_harga_yahoo: kirim harga awal + akhir + persen
+#   - _format_kurs_usdidr: kirim harga awal + akhir + persen
+#   - pasar_modal_sudah_terbit: cek by sesi + hari ini
+#   - Prompt pasar modal: dateline JAKARTA, INDONESIA + harga awal→akhir→persen
+#   - _pasar_modal_sesi: window tepat 13-17 (Tengah) & 17-22 (Penutupan)
+# ══════════════════════════════════════════════════════
 
 import requests
 import json
@@ -45,54 +55,42 @@ SCRAPER_TIMEOUT         = 12
 SCRAPE_MIN_KARAKTER     = 600
 JINA_READER             = 'https://r.jina.ai/'
 GAMBAR_MIN_LEBAR        = 400
-
-BLUR_SKOR_MINIMUM  = 5
-VISION_TIMEOUT     = 30
-
-MATCH_MIN_KATA     = 2
-MATCH_MIN_RASIO    = 0.50
-
-DOMAIN_SKIP_SCRAPE = ['berita.tarakankota.go.id']
+BLUR_SKOR_MINIMUM       = 5
+VISION_TIMEOUT          = 30
+MATCH_MIN_KATA          = 2
+MATCH_MIN_RASIO         = 0.50
+DOMAIN_SKIP_SCRAPE      = ['berita.tarakankota.go.id']
 
 UMUR_BERITA_PER_KATEGORI = {
-    'nasional': 30,
-    'daerah': 30,
-    'internasional_asean': 30,
-    'internasional_tt': 30,
-    'internasional': 30,
-    'olahraga': 30,
-    'ekonomi': 48,
-    'teknologi': 72,
-    'kesehatan': 180 * 24,
-    'otomotif': 180 * 24,
+    'nasional': 30, 'daerah': 30, 'internasional_asean': 30,
+    'internasional_tt': 30, 'internasional': 30, 'olahraga': 30,
+    'ekonomi': 48, 'teknologi': 72,
+    'kesehatan': 180 * 24, 'otomotif': 180 * 24,
 }
 
 KATEGORI_EVERGREEN = ['kesehatan', 'otomotif']
 
-KATA_BARAT_USA     = ['amerika', 'u.s', 'washington', 'trump', 'biden', 'new york', 'california', 'texas']
-KATA_BARAT_RUSIA   = ['rusia', 'russia', 'moskow', 'moscow', 'putin', 'ukraina', 'ukraine']
-KATA_BARAT_EROPA   = ['eropa', 'europe', 'jerman', 'germany', 'perancis', 'france', 'inggris',
-                      'britain', 'italia', 'italy', 'spanyol', 'spain', 'paris', 'berlin', 'london']
-KATA_TT            = ['timur tengah', 'middle east', 'gaza', 'israel', 'palestina', 'iran',
-                      'iraq', 'suriah', 'syria', 'saudi', 'yaman', 'yemen', 'uni emirat',
-                      'emirates', 'qatar', 'kuwait', 'libanon', 'jordan', 'turki']
-KATA_ASEAN         = ['asean', 'malaysia', 'thailand', 'vietnam', 'filipina', 'philippines',
-                      'singapura', 'singapore', 'indonesia', 'myanmar', 'kamboja', 'cambodia',
-                      'laos', 'brunei', 'timor leste', 'jakarta', 'bangkok', 'manila',
-                      'kuala lumpur', 'hanoi']
+KATA_BARAT_USA   = ['amerika', 'u.s', 'washington', 'trump', 'biden', 'new york', 'california', 'texas']
+KATA_BARAT_RUSIA = ['rusia', 'russia', 'moskow', 'moscow', 'putin', 'ukraina', 'ukraine']
+KATA_BARAT_EROPA = ['eropa', 'europe', 'jerman', 'germany', 'perancis', 'france', 'inggris',
+                    'britain', 'italia', 'italy', 'spanyol', 'spain', 'paris', 'berlin', 'london']
+KATA_TT          = ['timur tengah', 'middle east', 'gaza', 'israel', 'palestina', 'iran',
+                    'iraq', 'suriah', 'syria', 'saudi', 'yaman', 'yemen', 'uni emirat',
+                    'emirates', 'qatar', 'kuwait', 'libanon', 'jordan', 'turki']
+KATA_ASEAN       = ['asean', 'malaysia', 'thailand', 'vietnam', 'filipina', 'philippines',
+                    'singapura', 'singapore', 'indonesia', 'myanmar', 'kamboja', 'cambodia',
+                    'laos', 'brunei', 'timor leste', 'jakarta', 'bangkok', 'manila',
+                    'kuala lumpur', 'hanoi']
 
 HARI_ID  = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
             'Agustus', 'September', 'Oktober', 'November', 'Desember']
 
 LIBUR_BURSA_2026 = {
-    '2026-01-01', '2026-01-16',
-    '2026-02-16', '2026-02-17',
+    '2026-01-01', '2026-01-16', '2026-02-16', '2026-02-17',
     '2026-03-18', '2026-03-19', '2026-03-20', '2026-03-23', '2026-03-24',
-    '2026-04-03',
-    '2026-05-01', '2026-05-14', '2026-05-15', '2026-05-27', '2026-05-28',
-    '2026-06-01', '2026-06-16',
-    '2026-08-17', '2026-08-25',
+    '2026-04-03', '2026-05-01', '2026-05-14', '2026-05-15', '2026-05-27',
+    '2026-05-28', '2026-06-01', '2026-06-16', '2026-08-17', '2026-08-25',
     '2026-12-24', '2026-12-25', '2026-12-31',
 }
 
@@ -116,18 +114,18 @@ def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
 ESPN_LIGA_TOP = [
-    ('eng.1',        'Premier League (Inggris)'),
-    ('esp.1',        'La Liga (Spanyol)'),
-    ('ita.1',        'Serie A (Italia)'),
-    ('ger.1',        'Bundesliga (Jerman)'),
-    ('fra.1',        'Ligue 1 (Prancis)'),
+    ('eng.1', 'Premier League (Inggris)'),
+    ('esp.1', 'La Liga (Spanyol)'),
+    ('ita.1', 'Serie A (Italia)'),
+    ('ger.1', 'Bundesliga (Jerman)'),
+    ('fra.1', 'Ligue 1 (Prancis)'),
     ('uefa.champions', 'Liga Champions'),
-    ('uefa.europa',  'Liga Europa'),
+    ('uefa.europa', 'Liga Europa'),
 ]
 ESPN_LIGA_LAIN = [
-    ('ned.1',        'Eredivisie (Belanda)'),
+    ('ned.1', 'Eredivisie (Belanda)'),
     ('uefa.europa.conf', 'Liga Conference'),
-    ('idn.1',        'Liga 1 (Indonesia)'),
+    ('idn.1', 'Liga 1 (Indonesia)'),
 ]
 ESPN_NBA = ('basketball/nba', 'NBA')
 ESPN_SITE = 'https://site.api.espn.com/apis/site/v2/sports/'
@@ -154,9 +152,8 @@ JADWAL_JAM = {
 TOPIK_NASIONAL_WAJIB = [
     ['makan bergizi gratis', 'mbg'],
     ['koperasi desa merah putih', 'kdmp'],
-    ['menteri meresmikan', 'kunjungan kerja menteri',
-     'menteri mengunjungi', 'menteri meninjau',
-     'program menteri', 'kementerian meresmikan'],
+    ['menteri meresmikan', 'kunjungan kerja menteri', 'menteri mengunjungi',
+     'menteri meninjau', 'program menteri', 'kementerian meresmikan'],
 ]
 
 KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
@@ -168,18 +165,12 @@ UA_LIST = [
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
 ]
 
-GAMBAR_SAMPAH_KATA = [
-    'logo', 'icon', 'banner', 'ads', 'advert', 'sponsor',
-    'placeholder', 'default', 'noimage', 'avatar',
-    'profile', 'favicon', 'sprite', 'watermark', 'blank', 'pixel',
-]
-GAMBAR_SAMPAH_POLA = [
-    'icon_', 'no-image',
-    'thumb_100', 'thumb_150', 'thumb_200',
-    '/100x', '/150x', '/200x',
-    '100x100', '150x150', '200x200',
-    '100-', '150-', '200-',
-]
+GAMBAR_SAMPAH_KATA = ['logo', 'icon', 'banner', 'ads', 'advert', 'sponsor',
+                      'placeholder', 'default', 'noimage', 'avatar', 'profile',
+                      'favicon', 'sprite', 'watermark', 'blank', 'pixel']
+GAMBAR_SAMPAH_POLA = ['icon_', 'no-image', 'thumb_100', 'thumb_150', 'thumb_200',
+                      '/100x', '/150x', '/200x', '100x100', '150x150', '200x200',
+                      '100-', '150-', '200-']
 
 GAMBAR_LARANG_KATA = [
     'animal', 'dog', 'cat', 'bird', 'monkey', 'elephant', 'tiger', 'lion',
@@ -189,52 +180,43 @@ GAMBAR_LARANG_KATA = [
     'rabbit', 'deer', 'bear', 'wolf', 'fox', 'eagle', 'parrot', 'owl',
     'kucing', 'anjing', 'burung', 'ular', 'kuda', 'sapi', 'ayam', 'bebek',
     'kambing', 'harimau', 'singa', 'gajah', 'monyet', 'buaya', 'ikan',
-    'pet', 'wildlife', 'fauna', 'orangutan', 'komodo',
-    'leopard', 'jaguar', 'cheetah', 'puma', 'lynx', 'panther',
-    'puppy', 'kitten', 'hound', 'terrier', 'retriever', 'shepherd',
-    'falcon', 'hawk', 'sparrow', 'pigeon', 'parakeet', 'peacock',
-    'hamster', 'guinea', 'ferret', 'hedgehog', 'squirrel',
-    'stag', 'boar', 'bison', 'yak', 'llama', 'alpaca', 'otter',
-    'badger', 'beaver', 'raccoon', 'skunk', 'koala', 'kangaroo',
-    'panda', 'penguin', 'dolphin', 'seal_', 'walrus', 'octopus',
-    'crab', 'lobster', 'shrimp', 'jellyfish', 'starfish',
-    'dinosaur', 'dragon', 'unicorn',
-    'mosque', 'masjid', 'church', 'gereja', 'cathedral', 'temple',
-    'pura', 'vihara', 'pagoda', 'synagogue', 'shrine', 'monastery',
-    'worship', 'ibadah',
-    'human', 'people', 'person', 'crowd', 'portrait', 'woman', 'women',
-    'girl', 'child', 'children', 'soldier', 'manusia', 'warga',
-    'kerumunan', 'wajah',
-    'shoes', 'shoe', 'sneaker', 'sneakers', 'sandal', 'sandals',
-    'slipper', 'slippers', 'footwear', 'high heels', 'stiletto',
-    'sendal', 'sepatu',
+    'pet', 'wildlife', 'fauna', 'orangutan', 'komodo', 'leopard', 'jaguar',
+    'cheetah', 'puma', 'lynx', 'panther', 'puppy', 'kitten', 'hound',
+    'terrier', 'retriever', 'shepherd', 'falcon', 'hawk', 'sparrow',
+    'pigeon', 'parakeet', 'peacock', 'hamster', 'guinea', 'ferret',
+    'hedgehog', 'squirrel', 'stag', 'boar', 'bison', 'yak', 'llama',
+    'alpaca', 'otter', 'badger', 'beaver', 'raccoon', 'skunk', 'koala',
+    'kangaroo', 'panda', 'penguin', 'dolphin', 'seal_', 'walrus',
+    'octopus', 'crab', 'lobster', 'shrimp', 'jellyfish', 'starfish',
+    'dinosaur', 'dragon', 'unicorn', 'mosque', 'masjid', 'church', 'gereja',
+    'cathedral', 'temple', 'pura', 'vihara', 'pagoda', 'synagogue',
+    'shrine', 'monastery', 'worship', 'ibadah', 'human', 'people', 'person',
+    'crowd', 'portrait', 'woman', 'women', 'girl', 'child', 'children',
+    'soldier', 'manusia', 'warga', 'kerumunan', 'wajah', 'shoes', 'shoe',
+    'sneaker', 'sneakers', 'sandal', 'sandals', 'slipper', 'slippers',
+    'footwear', 'high heels', 'stiletto', 'sendal', 'sepatu',
 ]
 
-KATA_ANALISIS = ['analisis', 'soroti', 'opini', 'tinjauan',
-                 'analysis', 'opinion', 'editorial']
-
+KATA_ANALISIS = ['analisis', 'soroti', 'opini', 'tinjauan', 'analysis', 'opinion', 'editorial']
 JANJI_JADWAL  = ['jadwal', 'schedule']
 JANJI_TABEL   = ['klasemen', 'standing', 'ranking', 'peringkat']
 JANJI_ANGKA   = ['hasil', 'skor', 'result']
-JANJI_HARGA = ['harga', 'tarif', 'biaya', 'berapa', 'sewa', 'gaji']
-
-KATA_HARGA_LONGGAR = ['naik', 'turun', 'melonjak', 'anjlok', 'drastis',
-                      'meroket', 'terjun', 'menguat', 'melemah']
+JANJI_HARGA   = ['harga', 'tarif', 'biaya', 'berapa', 'sewa', 'gaji']
+KATA_HARGA_LONGGAR = ['naik', 'turun', 'melonjak', 'anjlok', 'drastis', 'meroket',
+                      'terjun', 'menguat', 'melemah']
 
 KATA_HEWAN_SLUG = [
-    'dog', 'puppy', 'cat', 'kitten', 'bird', 'monkey', 'elephant',
-    'tiger', 'lion', 'leopard', 'jaguar', 'cheetah', 'puma', 'lynx',
-    'panther', 'snake', 'crocodile', 'lizard', 'frog', 'fish',
-    'shark', 'whale', 'insect', 'butterfly', 'bee', 'spider',
-    'rat', 'mouse', 'horse', 'cow', 'goat', 'sheep', 'pig',
-    'chicken', 'rooster', 'duck', 'goose', 'rabbit', 'deer',
-    'bear', 'wolf', 'fox', 'eagle', 'parrot', 'owl', 'hamster',
-    'ferret', 'hedgehog', 'squirrel', 'stag', 'boar', 'bison',
-    'otter', 'badger', 'beaver', 'raccoon', 'koala', 'kangaroo',
-    'panda', 'penguin', 'dolphin', 'walrus', 'octopus', 'crab',
-    'lobster', 'shrimp', 'jellyfish', 'dinosaur', 'zoo', 'safari',
-    'wildlife', 'fauna', 'anjing', 'kucing', 'burung', 'ular',
-    'kuda', 'sapi', 'ayam', 'bebek', 'kambing', 'harimau',
+    'dog', 'puppy', 'cat', 'kitten', 'bird', 'monkey', 'elephant', 'tiger',
+    'lion', 'leopard', 'jaguar', 'cheetah', 'puma', 'lynx', 'panther',
+    'snake', 'crocodile', 'lizard', 'frog', 'fish', 'shark', 'whale',
+    'insect', 'butterfly', 'bee', 'spider', 'rat', 'mouse', 'horse', 'cow',
+    'goat', 'sheep', 'pig', 'chicken', 'rooster', 'duck', 'goose', 'rabbit',
+    'deer', 'bear', 'wolf', 'fox', 'eagle', 'parrot', 'owl', 'hamster',
+    'ferret', 'hedgehog', 'squirrel', 'stag', 'boar', 'bison', 'otter',
+    'badger', 'beaver', 'raccoon', 'koala', 'kangaroo', 'panda', 'penguin',
+    'dolphin', 'walrus', 'octopus', 'crab', 'lobster', 'shrimp', 'jellyfish',
+    'dinosaur', 'zoo', 'safari', 'wildlife', 'fauna', 'anjing', 'kucing',
+    'burung', 'ular', 'kuda', 'sapi', 'ayam', 'bebek', 'kambing', 'harimau',
     'singa', 'gajah', 'monyet', 'buaya', 'ikan', 'serigala',
 ]
 
@@ -275,7 +257,6 @@ DOMAIN_KESEHATAN = [
         ('senior health tips doctor', 'en'),
     ]},
 ]
-
 JAM_KESEHATAN = {10: 0, 15: 1, 20: 2}
 
 DOMAIN_OTOMOTIF = [
@@ -310,68 +291,40 @@ DOMAIN_OTOMOTIF = [
         ('aksesori mobil baru', 'id'),
     ]},
 ]
-
 JAM_OTOMOTIF = {9: 0, 16: 1, 20: 2}
 
 DOMAIN_TEKNOLOGI = [
-    {'nama': 'Gadget & Smartphone', 'aturan':
-        ('Berita HARUS BANYAK, boleh hingga 2 halaman. WAJIB memuat '
-         'SEBANYAK mungkin gadget/baru yang ada di materi sekaligus. '
-         'SPESIFIKASI setiap gadget WAJIB lengkap (layar, chipset, '
-         'RAM, kamera, baterai, sistem operasi - sesuai yang tertulis '
-         'di materi). Estimasi harga WAJIB disebut jika ada di materi.'),
-     'query': [
+    {'nama': 'Gadget & Smartphone', 'aturan': 'Berita HARUS BANYAK, boleh hingga 2 halaman. WAJIB memuat SEBANYAK mungkin gadget/baru yang ada di materi sekaligus. SPESIFIKASI setiap gadget WAJIB lengkap (layar, chipset, RAM, kamera, baterai, sistem operasi - sesuai yang tertulis di materi). Estimasi harga WAJIB disebut jika ada di materi.', 'query': [
         ('smartphone launch spesifikasi harga', 'id'),
         ('gadget baru rilis Indonesia', 'id'),
         ('new smartphone launch specs price', 'en'),
     ]},
-    {'nama': 'AI & Kecerdasan Buatan', 'aturan':
-        ('Berita HARUS PANJANG dan LENGKAP, hingga 2 halaman. '
-         'WAJIB membahas perkembangan AI TERKINI SELURUH DUNIA yang '
-         'ada di materi: pemain barunya, kapabilitasnya, dampaknya, '
-         'angka & tanggal persis dari materi.'),
-     'query': [
+    {'nama': 'AI & Kecerdasan Buatan', 'aturan': 'Berita HARUS PANJANG dan LENGKAP, hingga 2 halaman. WAJIB membahas perkembangan AI TERKINI SELURUH DUNIA yang ada di materi: pemain barunya, kapabilitasnya, dampaknya, angka & tanggal persis dari materi.', 'query': [
         ('artificial intelligence development', 'en'),
         ('AI Indonesia terkini', 'id'),
         ('kecerdasan buatan terbaru', 'id'),
     ]},
-    {'nama': 'Aplikasi & Internet', 'aturan':
-        ('Berita HARUS LENGKAP dan BANYAK - gabungkan semua materi '
-         'aplikasi/internet yang tersedia menjadi satu berita kaya.'),
-     'query': [
+    {'nama': 'Aplikasi & Internet', 'aturan': 'Berita HARUS LENGKAP dan BANYAK - gabungkan semua materi aplikasi/internet yang tersedia menjadi satu berita kaya.', 'query': [
         ('aplikasi baru populer', 'id'),
         ('fitur media sosial terbaru', 'id'),
         ('internet Indonesia kecepatan', 'id'),
     ]},
-    {'nama': 'Startup & Ekonomi Digital', 'aturan':
-        ('Berita HARUS LENGKAP dan BANYAK - pendanaan, valuasi, '
-         'ekspansi, e-commerce, fintech: semua angka WAJIB persis '
-         'dari materi.'),
-     'query': [
+    {'nama': 'Startup & Ekonomi Digital', 'aturan': 'Berita HARUS LENGKAP dan BANYAK - pendanaan, valuasi, ekspansi, e-commerce, fintech: semua angka WAJIB persis dari materi.', 'query': [
         ('startup Indonesia pendanaan', 'id'),
         ('e-commerce fintech Indonesia', 'id'),
         ('startup funding tech asia', 'en'),
     ]},
-    {'nama': 'Keamanan Digital', 'aturan':
-        ('Jika materi keamanan digital KURANG, BOLEH menambahkan '
-         'berita teknologi lainnya yang ada di materi sumber agar '
-         'berita tetap kaya (isi silang khusus domain ini).'),
-     'query': [
+    {'nama': 'Keamanan Digital', 'aturan': 'Jika materi keamanan digital KURANG, BOLEH menambahkan berita teknologi lainnya yang ada di materi sumber agar berita tetap kaya (isi silang khusus domain ini).', 'query': [
         ('kebocoran data keamanan', 'id'),
         ('scam online modus', 'id'),
         ('cyber security breach', 'en'),
     ]},
-    {'nama': 'Inovasi & Sains Teknologi', 'aturan':
-        ('Berita HARUS LENGKAP dan BANYAK - inovasi, riset, luar '
-         'angkasa, kendaraan listrik: semua yang ada di materi '
-         'dibahas menyeluruh.'),
-     'query': [
+    {'nama': 'Inovasi & Sains Teknologi', 'aturan': 'Berita HARUS LENGKAP dan BANYAK - inovasi, riset, luar angkasa, kendaraan listrik: semua yang ada di materi dibahas menyeluruh.', 'query': [
         ('kendaraan listrik teknologi', 'id'),
         ('space technology innovation', 'en'),
         ('inovasi teknologi riset', 'id'),
     ]},
 ]
-
 JAM_TEKNOLOGI = {8: 0, 13: 1, 18: 2}
 
 HUNT = {
@@ -527,15 +480,12 @@ TOPIK_BESAR_GATE = [
     'asian games', 'sea games', 'piala dunia', 'world cup',
     'olimpiade', 'olympic', 'piala asia', 'asian cup',
     'piala eropa', 'euro 202', 'copa america',
-    'nba finals', 'liga champions final',
-    'pemilu', 'pilpres', 'pilkada',
+    'nba finals', 'liga champions final', 'pemilu', 'pilpres', 'pilkada',
 ]
 
-KATA_SPAM_JUDUL = [
-    '【', '】', 'livestream', 'live stream', 'live free',
-    'tv channel', 'watch online', 'live streaming',
-    'free tv', 'kualitas hd', 'link live', 'nonton live',
-]
+KATA_SPAM_JUDUL = ['【', '】', 'livestream', 'live stream', 'live free',
+                   'tv channel', 'watch online', 'live streaming',
+                   'free tv', 'kualitas hd', 'link live', 'nonton live']
 
 def judul_spam(judul):
     j = (judul or '').lower()
@@ -543,9 +493,6 @@ def judul_spam(judul):
         if k in j:
             return True
     return False
-
-# AKHIR PART 1
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -606,10 +553,9 @@ DOM_KRITIS = [
     'pesawat jatuh', 'pesawat hilang', 'kecelakaan pesawat', 'pesawat tergelincir',
     'pembunuhan', 'dibunuh', 'ditemukan mati', 'penembakan', 'ledakan', 'bom meledak',
     'perampokan bersenjata', 'rampok bank', 'ott kpk', 'ditangkap kpk',
-    'tersangka korupsi', 'tertangkap tangan',
-    'reshuffle', 'pergantian menteri', 'menteri diganti', 'menteri meninggal',
-    'menteri wafat', 'menteri ditangkap', 'menteri tersangka',
-    'presiden meninggal', 'wapres meninggal',
+    'tersangka korupsi', 'tertangkap tangan', 'reshuffle', 'pergantian menteri',
+    'menteri diganti', 'menteri meninggal', 'menteri wafat', 'menteri ditangkap',
+    'menteri tersangka', 'presiden meninggal', 'wapres meninggal',
     'kerusuhan', 'ricuh', 'bentrok massa', 'demo besar', 'demonstrasi besar',
     'massa membakar', 'membakar massal', 'tawuran besar',
 ]
@@ -629,16 +575,13 @@ def judul_topik_besar(judul):
     return any(k in j for k in TOPIK_BESAR_GATE)
 
 KATA_TURNAMEN_OLAHRAGA = [
-    'fifa', 'aff', 'uefa', 'afc', 'piala dunia', 'world cup',
-    'sea games', 'asian games', 'olimpiade', 'olympic',
-    'piala asia', 'asian cup', 'piala aff', 'aff cup',
-    'fifa asean cup', 'piala eropa', 'euro 202', 'copa america',
-    'liga champions', 'champions league', 'europa league',
+    'fifa', 'aff', 'uefa', 'afc', 'piala dunia', 'world cup', 'sea games',
+    'asian games', 'olimpiade', 'olympic', 'piala asia', 'asian cup',
+    'piala aff', 'aff cup', 'fifa asean cup', 'piala eropa', 'euro 202',
+    'copa america', 'liga champions', 'champions league', 'europa league',
     'premier league', 'la liga', 'serie a', 'bundesliga', 'ligue 1',
-    'eredivisie', 'nba', 'wnba', 'ibl',
-    'badminton', 'bulu tangkis', 'bwf',
-    'voli', 'volleyball', 'fivb',
-    'motogp', 'formula 1', 'f1',
+    'eredivisie', 'nba', 'wnba', 'ibl', 'badminton', 'bulu tangkis', 'bwf',
+    'voli', 'volleyball', 'fivb', 'motogp', 'formula 1', 'f1',
 ]
 
 def adalah_turnamen_olahraga(teks):
@@ -646,16 +589,12 @@ def adalah_turnamen_olahraga(teks):
     return any(k in t for k in KATA_TURNAMEN_OLAHRAGA)
 
 KATA_WAJIB_OLAHRAGA = [
-    'bola', 'sepak bola', 'sepakbola', 'football', 'soccer',
-    'basket', 'nba', 'wnba', 'ibl',
-    'badminton', 'bulu tangkis', 'bwf',
-    'voli', 'volleyball', 'fivb',
-    'tenis', 'tennis', 'atp', 'wta',
-    'motogp', 'formula 1', 'f1', 'balap',
-    'liga', 'piala', 'turnamen', 'kejuaraan', 'kompetisi',
-    'timnas', 'atlet', 'pemain', 'klub', 'klub sepak',
-    'pertandingan', 'laga', 'skor', 'klasemen', 'gol',
-    'olimpiade', 'olympic', 'sea games', 'asian games',
+    'bola', 'sepak bola', 'sepakbola', 'football', 'soccer', 'basket', 'nba',
+    'wnba', 'ibl', 'badminton', 'bulu tangkis', 'bwf', 'voli', 'volleyball',
+    'fivb', 'tenis', 'tennis', 'atp', 'wta', 'motogp', 'formula 1', 'f1',
+    'balap', 'liga', 'piala', 'turnamen', 'kejuaraan', 'kompetisi', 'timnas',
+    'atlet', 'pemain', 'klub', 'klub sepak', 'pertandingan', 'laga', 'skor',
+    'klasemen', 'gol', 'olimpiade', 'olympic', 'sea games', 'asian games',
     'stadion', 'kick-off', 'kick off',
 ]
 
@@ -665,14 +604,13 @@ def adalah_konten_olahraga(teks):
 
 KATA_KUNCI_OTOMOTIF = [
     'mobil', 'motor', 'skutik', 'matic', 'bebek', 'sport touring',
-    'kendaraan listrik', 'mobil listrik', 'motor listrik',
-    'tesla', 'byd', 'geely', 'nissan', 'toyota', 'honda', 'yamaha',
-    'suzuki', 'mitsubishi', 'hyundai', 'kia', 'wuling', 'chery',
-    'bmw', 'mercedes', 'audi', 'volkswagen', 'ford', 'chevrolet',
-    'facelift', 'sedan', 'suv', 'mpv', 'pickup', 'hatchback',
-    'spesifikasi mobil', 'spesifikasi motor', 'harga mobil', 'harga motor',
-    'test drive', 'review mobil', 'review motor', 'modifikasi',
-    'mesin mobil', 'mesin motor',
+    'kendaraan listrik', 'mobil listrik', 'motor listrik', 'tesla', 'byd',
+    'geely', 'nissan', 'toyota', 'honda', 'yamaha', 'suzuki', 'mitsubishi',
+    'hyundai', 'kia', 'wuling', 'chery', 'bmw', 'mercedes', 'audi',
+    'volkswagen', 'ford', 'chevrolet', 'facelift', 'sedan', 'suv', 'mpv',
+    'pickup', 'hatchback', 'spesifikasi mobil', 'spesifikasi motor',
+    'harga mobil', 'harga motor', 'test drive', 'review mobil', 'review motor',
+    'modifikasi', 'mesin mobil', 'mesin motor',
 ]
 
 def adalah_konten_otomotif(teks):
@@ -683,24 +621,20 @@ class BeritaLama(Exception):
     pass
 
 STAT_SCRAPE = {'ok': 0, 'gagal': 0, 'skip': 0}
-
 JUDUL_TERPAKAI = []
 JUDUL_6JAM = []
 DOBEL_6JAM_MIN_KATA = 4
 _GAMBAR_TERPAKAI_CACHE = None
 
 DOMAIN_NON_BERITA = [
-    'www.w3.org', 'w3.org',
-    'schema.org', 'ogp.me', 'purl.org',
-    'gstatic.com', 'googleapis.com', 'googleusercontent.com',
-    'fonts.googleapis.com', 'fonts.gstatic.com',
-    'cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'unpkg.com',
-    'facebook.com', 'twitter.com', 'instagram.com',
-    'youtube.com', 'tiktok.com',
+    'www.w3.org', 'w3.org', 'schema.org', 'ogp.me', 'purl.org', 'gstatic.com',
+    'googleapis.com', 'googleusercontent.com', 'fonts.googleapis.com',
+    'fonts.gstatic.com', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'unpkg.com',
+    'facebook.com', 'twitter.com', 'instagram.com', 'youtube.com', 'tiktok.com',
     'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
-    'googletagmanager.com', 'google-analytics.com',
-    'accounts.google.com', 'consent.google.com', 'policies.google.com',
-    'support.google.com', 'myaccount.google.com',
+    'googletagmanager.com', 'google-analytics.com', 'accounts.google.com',
+    'consent.google.com', 'policies.google.com', 'support.google.com',
+    'myaccount.google.com',
 ]
 
 def _url_valid_berita(u):
@@ -1019,6 +953,7 @@ DATELINE (SANGAT PENTING):
 - WAJIB tulis dateline KOTA/PROVINSI spesifik, bukan cuma "INDONESIA".
 - Contoh BENAR:
   - "JAKARTA, DKI JAKARTA - ..." (berita nasional pusat)
+  - "JAKARTA, INDONESIA - ..." (berita pasar modal)
   - "YOGYAKARTA, DI YOGYAKARTA - ..." (berita lokal Jogja)
   - "SURABAYA, JAWA TIMUR - ..." (berita lokal Surabaya)
   - "LONDON, INGGRIS - ..." (berita asing)
@@ -1059,10 +994,6 @@ FORMAT JAWABAN - HANYA JSON valid:
  "deskripsi_gambar": "visual keywords",
  "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """)"}
 """
-
-# AKHIR PART 2
-    
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1324,131 +1255,51 @@ def deteksi_dua_topik(judul, isi):
     return None
 
 VARIAN_KOTA_EN_ID = {
-    'korea selatan': ['south korea', 'korea'],
-    'korea': ['korea selatan', 'south korea', 'north korea'],
-    'korea utara': ['north korea'],
-    'inggris': ['england', 'uk', 'britain', 'united kingdom'],
-    'jerman': ['germany'],
-    'perancis': ['france'],
-    'spanyol': ['spain'],
-    'italia': ['italy'],
-    'belanda': ['netherlands', 'holland'],
-    'yunani': ['greece'],
-    'turki': ['turkey', 'turkiye'],
-    'mesir': ['egypt'],
-    'jepang': ['japan'],
-    'cina': ['china'],
-    'india': ['india'],
-    'rusia': ['russia'],
-    'ukraina': ['ukraine'],
-    'iran': ['iran'],
-    'irak': ['iraq'],
-    'suriah': ['syria'],
-    'yaman': ['yemen'],
-    'arab saudi': ['saudi arabia'],
-    'uni emirat arab': ['united arab emirates', 'uae'],
-    'qatar': ['qatar'],
-    'filipina': ['philippines'],
-    'vietnam': ['vietnam'],
-    'thailand': ['thailand'],
-    'malaysia': ['malaysia'],
-    'singapura': ['singapore'],
-    'myanmar': ['myanmar'],
-    'kamboja': ['cambodia'],
-    'laos': ['laos'],
-    'australia': ['australia'],
+    'korea selatan': ['south korea', 'korea'], 'korea': ['korea selatan', 'south korea', 'north korea'],
+    'korea utara': ['north korea'], 'inggris': ['england', 'uk', 'britain', 'united kingdom'],
+    'jerman': ['germany'], 'perancis': ['france'], 'spanyol': ['spain'], 'italia': ['italy'],
+    'belanda': ['netherlands', 'holland'], 'yunani': ['greece'], 'turki': ['turkey', 'turkiye'],
+    'mesir': ['egypt'], 'jepang': ['japan'], 'cina': ['china'], 'india': ['india'],
+    'rusia': ['russia'], 'ukraina': ['ukraine'], 'iran': ['iran'], 'irak': ['iraq'],
+    'suriah': ['syria'], 'yaman': ['yemen'], 'arab saudi': ['saudi arabia'],
+    'uni emirat arab': ['united arab emirates', 'uae'], 'qatar': ['qatar'],
+    'filipina': ['philippines'], 'vietnam': ['vietnam'], 'thailand': ['thailand'],
+    'malaysia': ['malaysia'], 'singapura': ['singapore'], 'myanmar': ['myanmar'],
+    'kamboja': ['cambodia'], 'laos': ['laos'], 'australia': ['australia'],
     'amerika serikat': ['united states', 'us', 'usa', 'america'],
-    'brasilia': ['brazil'],
-    'argentina': ['argentina'],
-    'seoul': ['seoul'],
-    'beijing': ['beijing'],
-    'tokyo': ['tokyo'],
-    'london': ['london'],
-    'paris': ['paris'],
-    'moskow': ['moscow'],
-    'washington': ['washington'],
-    'new york': ['new york'],
-    'kongo': ['congo'],
-    'ceko': ['czech', 'czechia'],
-    'kroasia': ['croatia'],
-    'afrika selatan': ['south africa'],
-    'selandia baru': ['new zealand'],
-    'taiwan': ['taiwan'],
-    'hongaria': ['hungary'],
-    'polandia': ['poland'],
-    'swedia': ['sweden'],
-    'norwegia': ['norway'],
-    'finlandia': ['finland'],
-    'denmark': ['denmark'],
-    'portugal': ['portugal'],
-    'belgia': ['belgium'],
-    'swiss': ['switzerland'],
-    'austria': ['austria'],
-    'irlandia': ['ireland'],
-    'skotlandia': ['scotland'],
-    'kanada': ['canada'],
-    'meksiko': ['mexico'],
-    'brasil': ['brazil'],
-    'chile': ['chile'],
-    'peru': ['peru'],
-    'kolombia': ['colombia'],
-    'venezuela': ['venezuela'],
-    'nigeria': ['nigeria'],
-    'kenya': ['kenya'],
-    'ethiopia': ['ethiopia'],
-    'ghana': ['ghana'],
-    'maroko': ['morocco'],
-    'aljazair': ['algeria'],
-    'tunisia': ['tunisia'],
-    'libya': ['libya'],
-    'sudan': ['sudan'],
-    'somalia': ['somalia'],
-    'pakistan': ['pakistan'],
-    'afghanistan': ['afghanistan'],
-    'bangladesh': ['bangladesh'],
-    'srilanka': ['sri lanka'],
-    'nepal': ['nepal'],
-    'kazakhstan': ['kazakhstan'],
-    'uzbekistan': ['uzbekistan'],
-    'bangkok': ['bangkok'],
-    'nor\'easter': ['noreaster', "nor'easter"],
-    'grand canyon': ['grand canyon'],
-    'north carolina': ['north carolina'],
-    'south carolina': ['south carolina'],
-    'california': ['california'],
-    'texas': ['texas'],
-    'florida': ['florida'],
-    'new jersey': ['new jersey'],
-    'virginia': ['virginia'],
-    'arizona': ['arizona'],
-    'nevada': ['nevada'],
-    'colorado': ['colorado'],
-    'utah': ['utah'],
-    'ohio': ['ohio'],
-    'michigan': ['michigan'],
-    'illinois': ['illinois'],
-    'wisconsin': ['wisconsin'],
-    'minnesota': ['minnesota'],
-    'new york city': ['new york city', 'nyc'],
-    'nyc': ['nyc', 'new york city'],
-    'buffalo': ['buffalo'],
-    'phoenix': ['phoenix'],
-    'seattle': ['seattle'],
-    'portland': ['portland'],
-    'denver': ['denver'],
-    'miami': ['miami'],
-    'atlanta': ['atlanta'],
-    'boston': ['boston'],
-    'chicago': ['chicago'],
-    'houston': ['houston'],
-    'dallas': ['dallas'],
-    'philadelphia': ['philadelphia'],
-    'san francisco': ['san francisco'],
-    'los angeles': ['los angeles'],
-    'sydney': ['sydney'],
-    'melbourne': ['melbourne'],
-    'auckland': ['auckland'],
-    'wellington': ['wellington'],
+    'brasilia': ['brazil'], 'argentina': ['argentina'], 'seoul': ['seoul'],
+    'beijing': ['beijing'], 'tokyo': ['tokyo'], 'london': ['london'], 'paris': ['paris'],
+    'moskow': ['moscow'], 'washington': ['washington'], 'new york': ['new york'],
+    'kongo': ['congo'], 'ceko': ['czech', 'czechia'], 'kroasia': ['croatia'],
+    'afrika selatan': ['south africa'], 'selandia baru': ['new zealand'],
+    'taiwan': ['taiwan'], 'hongaria': ['hungary'], 'polandia': ['poland'],
+    'swedia': ['sweden'], 'norwegia': ['norway'], 'finlandia': ['finland'],
+    'denmark': ['denmark'], 'portugal': ['portugal'], 'belgia': ['belgium'],
+    'swiss': ['switzerland'], 'austria': ['austria'], 'irlandia': ['ireland'],
+    'skotlandia': ['scotland'], 'kanada': ['canada'], 'meksiko': ['mexico'],
+    'brasil': ['brazil'], 'chile': ['chile'], 'peru': ['peru'],
+    'kolombia': ['colombia'], 'venezuela': ['venezuela'], 'nigeria': ['nigeria'],
+    'kenya': ['kenya'], 'ethiopia': ['ethiopia'], 'ghana': ['ghana'],
+    'maroko': ['morocco'], 'aljazair': ['algeria'], 'tunisia': ['tunisia'],
+    'libya': ['libya'], 'sudan': ['sudan'], 'somalia': ['somalia'],
+    'pakistan': ['pakistan'], 'afghanistan': ['afghanistan'],
+    'bangladesh': ['bangladesh'], 'srilanka': ['sri lanka'], 'nepal': ['nepal'],
+    'kazakhstan': ['kazakhstan'], 'uzbekistan': ['uzbekistan'],
+    'bangkok': ['bangkok'], 'nor\'easter': ['noreaster', "nor'easter"],
+    'grand canyon': ['grand canyon'], 'north carolina': ['north carolina'],
+    'south carolina': ['south carolina'], 'california': ['california'],
+    'texas': ['texas'], 'florida': ['florida'], 'new jersey': ['new jersey'],
+    'virginia': ['virginia'], 'arizona': ['arizona'], 'nevada': ['nevada'],
+    'colorado': ['colorado'], 'utah': ['utah'], 'ohio': ['ohio'],
+    'michigan': ['michigan'], 'illinois': ['illinois'], 'wisconsin': ['wisconsin'],
+    'minnesota': ['minnesota'], 'new york city': ['new york city', 'nyc'],
+    'nyc': ['nyc', 'new york city'], 'buffalo': ['buffalo'], 'phoenix': ['phoenix'],
+    'seattle': ['seattle'], 'portland': ['portland'], 'denver': ['denver'],
+    'miami': ['miami'], 'atlanta': ['atlanta'], 'boston': ['boston'],
+    'chicago': ['chicago'], 'houston': ['houston'], 'dallas': ['dallas'],
+    'philadelphia': ['philadelphia'], 'san francisco': ['san francisco'],
+    'los angeles': ['los angeles'], 'sydney': ['sydney'], 'melbourne': ['melbourne'],
+    'auckland': ['auckland'], 'wellington': ['wellington'],
 }
 
 def _varian_cocok(kota, sumber):
@@ -1458,90 +1309,41 @@ def _varian_cocok(kota, sumber):
     return any(v in sumber for v in varian)
 
 IBU_KOTA_NEGARA = {
-    'jakarta': ['indonesia', 'jakarta'],
-    'london': ['inggris', 'uk', 'britain', 'england'],
-    'washington': ['amerika', 'us', 'usa', 'united states'],
-    'tokyo': ['jepang', 'japan'],
-    'beijing': ['china', 'tiongkok', 'cina'],
-    'seoul': ['korea', 'south korea'],
-    'pyongyang': ['north korea', 'korea utara'],
-    'moscow': ['rusia', 'russia'],
-    'paris': ['perancis', 'france'],
-    'berlin': ['jerman', 'germany'],
-    'rome': ['italia', 'italy'],
-    'roma': ['italia', 'italy'],
-    'madrid': ['spanyol', 'spain'],
-    'canberra': ['australia'],
-    'ottawa': ['kanada', 'canada'],
-    'brasilia': ['brasil', 'brazil'],
-    'buenos aires': ['argentina'],
-    'mexico city': ['meksiko', 'mexico'],
-    'new delhi': ['india'],
-    'islamabad': ['pakistan'],
-    'dhaka': ['bangladesh'],
-    'bangkok': ['thailand'],
-    'hanoi': ['vietnam'],
-    'manila': ['filipina', 'philippines'],
-    'kuala lumpur': ['malaysia'],
-    'singapore': ['singapura', 'singapore'],
-    'naypyidaw': ['myanmar'],
-    'phnom penh': ['kamboja', 'cambodia'],
-    'vientiane': ['laos'],
-    'bandar seri begawan': ['brunei'],
-    'dili': ['timor leste'],
-    'cairo': ['mesir', 'egypt'],
-    'riyadh': ['arab saudi', 'saudi'],
-    'abu dhabi': ['uni emirat arab', 'uae'],
-    'doha': ['qatar'],
-    'kuwait city': ['kuwait'],
-    'amman': ['jordan'],
-    'beirut': ['libanon', 'lebanon'],
-    'damascus': ['suriah', 'syria'],
-    'baghdad': ['irak', 'iraq'],
-    'tehran': ['iran'],
-    'ankara': ['turki', 'turkey'],
-    'jerusalem': ['israel'],
-    'gaza': ['palestina', 'palestine'],
-    'kyiv': ['ukraina', 'ukraine'],
-    'kiev': ['ukraina', 'ukraine'],
-    'athens': ['yunani', 'greece'],
-    'lisbon': ['portugal'],
-    'amsterdam': ['belanda', 'netherlands'],
-    'brussels': ['belgia', 'belgium'],
-    'bern': ['swiss', 'switzerland'],
-    'vienna': ['austria'],
-    'warsaw': ['polandia', 'poland'],
-    'prague': ['ceko', 'czech'],
-    'budapest': ['hongaria', 'hungary'],
-    'stockholm': ['swedia', 'sweden'],
-    'oslo': ['norwegia', 'norway'],
-    'helsinki': ['finlandia', 'finland'],
-    'copenhagen': ['denmark'],
-    'dublin': ['irlandia', 'ireland'],
-    'edinburgh': ['skotlandia', 'scotland'],
-    'pretoria': ['afrika selatan', 'south africa'],
-    'cape town': ['afrika selatan', 'south africa'],
-    'lagos': ['nigeria'],
-    'nairobi': ['kenya'],
-    'addis ababa': ['ethiopia'],
-    'accra': ['ghana'],
-    'rabat': ['maroko', 'morocco'],
-    'algiers': ['aljazair', 'algeria'],
-    'tunis': ['tunisia'],
-    'tripoli': ['libya'],
-    'khartoum': ['sudan'],
-    'mogadishu': ['somalia'],
-    'kabul': ['afghanistan'],
-    'colombo': ['srilanka', 'sri lanka'],
-    'kathmandu': ['nepal'],
-    'astana': ['kazakhstan'],
-    'tashkent': ['uzbekistan'],
-    'sydney': ['australia'],
-    'melbourne': ['australia'],
-    'auckland': ['selandia baru', 'new zealand'],
-    'wellington': ['selandia baru', 'new zealand'],
-    'nagoya': ['jepang', 'japan'],
-    'osaka': ['jepang', 'japan'],
+    'jakarta': ['indonesia', 'jakarta'], 'london': ['inggris', 'uk', 'britain', 'england'],
+    'washington': ['amerika', 'us', 'usa', 'united states'], 'tokyo': ['jepang', 'japan'],
+    'beijing': ['china', 'tiongkok', 'cina'], 'seoul': ['korea', 'south korea'],
+    'pyongyang': ['north korea', 'korea utara'], 'moscow': ['rusia', 'russia'],
+    'paris': ['perancis', 'france'], 'berlin': ['jerman', 'germany'],
+    'rome': ['italia', 'italy'], 'roma': ['italia', 'italy'], 'madrid': ['spanyol', 'spain'],
+    'canberra': ['australia'], 'ottawa': ['kanada', 'canada'], 'brasilia': ['brasil', 'brazil'],
+    'buenos aires': ['argentina'], 'mexico city': ['meksiko', 'mexico'],
+    'new delhi': ['india'], 'islamabad': ['pakistan'], 'dhaka': ['bangladesh'],
+    'bangkok': ['thailand'], 'hanoi': ['vietnam'], 'manila': ['filipina', 'philippines'],
+    'kuala lumpur': ['malaysia'], 'singapore': ['singapura', 'singapore'],
+    'naypyidaw': ['myanmar'], 'phnom penh': ['kamboja', 'cambodia'],
+    'vientiane': ['laos'], 'bandar seri begawan': ['brunei'], 'dili': ['timor leste'],
+    'cairo': ['mesir', 'egypt'], 'riyadh': ['arab saudi', 'saudi'],
+    'abu dhabi': ['uni emirat arab', 'uae'], 'doha': ['qatar'], 'kuwait city': ['kuwait'],
+    'amman': ['jordan'], 'beirut': ['libanon', 'lebanon'], 'damascus': ['suriah', 'syria'],
+    'baghdad': ['irak', 'iraq'], 'tehran': ['iran'], 'ankara': ['turki', 'turkey'],
+    'jerusalem': ['israel'], 'gaza': ['palestina', 'palestine'],
+    'kyiv': ['ukraina', 'ukraine'], 'kiev': ['ukraina', 'ukraine'],
+    'athens': ['yunani', 'greece'], 'lisbon': ['portugal'],
+    'amsterdam': ['belanda', 'netherlands'], 'brussels': ['belgia', 'belgium'],
+    'bern': ['swiss', 'switzerland'], 'vienna': ['austria'], 'warsaw': ['polandia', 'poland'],
+    'prague': ['ceko', 'czech'], 'budapest': ['hongaria', 'hungary'],
+    'stockholm': ['swedia', 'sweden'], 'oslo': ['norwegia', 'norway'],
+    'helsinki': ['finlandia', 'finland'], 'copenhagen': ['denmark'],
+    'dublin': ['irlandia', 'ireland'], 'edinburgh': ['skotlandia', 'scotland'],
+    'pretoria': ['afrika selatan', 'south africa'], 'cape town': ['afrika selatan', 'south africa'],
+    'lagos': ['nigeria'], 'nairobi': ['kenya'], 'addis ababa': ['ethiopia'],
+    'accra': ['ghana'], 'rabat': ['maroko', 'morocco'], 'algiers': ['aljazair', 'algeria'],
+    'tunis': ['tunisia'], 'tripoli': ['libya'], 'khartoum': ['sudan'],
+    'mogadishu': ['somalia'], 'kabul': ['afghanistan'], 'colombo': ['srilanka', 'sri lanka'],
+    'kathmandu': ['nepal'], 'astana': ['kazakhstan'], 'tashkent': ['uzbekistan'],
+    'sydney': ['australia'], 'melbourne': ['australia'],
+    'auckland': ['selandia baru', 'new zealand'], 'wellington': ['selandia baru', 'new zealand'],
+    'nagoya': ['jepang', 'japan'], 'osaka': ['jepang', 'japan'],
 }
 
 def cek_dateline(isi, user_content):
@@ -1628,16 +1430,15 @@ def cek_janji_judul(judul, isi):
 KATA_LARANG_GAMBAR_HARD = [
     'animal', 'dog', 'cat', 'bird', 'monkey', 'elephant', 'tiger', 'lion',
     'snake', 'crocodile', 'lizard', 'frog', 'fish', 'shark', 'whale',
-    'insect', 'butterfly', 'bee', 'spider', 'rat', 'mouse', 'horse',
-    'cow', 'goat', 'sheep', 'pig', 'chicken', 'rooster', 'duck', 'goose',
-    'rabbit', 'deer', 'bear', 'wolf', 'fox', 'eagle', 'parrot', 'owl',
-    'kucing', 'anjing', 'burung', 'ular', 'kuda', 'sapi', 'ayam', 'bebek',
-    'kambing', 'harimau', 'singa', 'gajah', 'monyet', 'buaya', 'ikan',
-    'mosque', 'masjid', 'church', 'gereja', 'cathedral', 'temple',
-    'pura', 'vihara', 'pagoda', 'shrine', 'monastery',
-    'shoes', 'shoe', 'sneaker', 'sneakers', 'sandal', 'sandals',
-    'slipper', 'slippers', 'footwear', 'high heels', 'stiletto',
-    'sendal', 'sepatu',
+    'insect', 'butterfly', 'bee', 'spider', 'rat', 'mouse', 'horse', 'cow',
+    'goat', 'sheep', 'pig', 'chicken', 'rooster', 'duck', 'goose', 'rabbit',
+    'deer', 'bear', 'wolf', 'fox', 'eagle', 'parrot', 'owl', 'kucing',
+    'anjing', 'burung', 'ular', 'kuda', 'sapi', 'ayam', 'bebek', 'kambing',
+    'harimau', 'singa', 'gajah', 'monyet', 'buaya', 'ikan',
+    'mosque', 'masjid', 'church', 'gereja', 'cathedral', 'temple', 'pura',
+    'vihara', 'pagoda', 'shrine', 'monastery',
+    'shoes', 'shoe', 'sneaker', 'sneakers', 'sandal', 'sandals', 'slipper',
+    'slippers', 'footwear', 'high heels', 'stiletto', 'sendal', 'sepatu',
 ]
 
 def cek_deskripsi_gambar(deskripsi):
@@ -1706,38 +1507,33 @@ def skor_dunia(title, summary):
 PANGKAT_TNI_POLRI = [
     'jenderal', 'letnan jenderal', 'letjen', 'mayor jenderal', 'mayjen',
     'brigadir jenderal', 'brigjen', 'kolonel', 'letnan kolonel', 'letkol',
-    'mayor', 'kapten', 'lettu', 'letda', 'letnan', 'pembantu letnan',
-    'pelda', 'pelton', 'peltu', 'sersan', 'kopral', 'prajurit',
-    'akbp', 'akp', 'iptu', 'ipda', 'bripka', 'brigpol', 'bripda',
-    'komisaris besar', 'kombes', 'ajun komisaris besar',
-    'komisaris', 'kompol', 'ajun komisaris',
+    'mayor', 'kapten', 'lettu', 'letda', 'letnan', 'pembantu letnan', 'pelda',
+    'pelton', 'peltu', 'sersan', 'kopral', 'prajurit', 'akbp', 'akp', 'iptu',
+    'ipda', 'bripka', 'brigpol', 'bripda', 'komisaris besar', 'kombes',
+    'ajun komisaris besar', 'komisaris', 'kompol', 'ajun komisaris',
     'inspektur', 'inspektur polisi satu', 'inspektur polisi dua',
-    'ajun inspektur',
-    'bharada', 'bharatu', 'bharaka', 'abrip',
+    'ajun inspektur', 'bharada', 'bharatu', 'bharaka', 'abrip',
 ]
 
 INSTITUSI_PUSAT_LEBIH_LONGGAR = [
-    'kementerian', 'kemenko', 'kemen',
-    'bank indonesia', 'ojk', 'kpk', 'bnpb', 'basarnas',
-    'bulog', 'pertamina', 'pln', 'telkom',
+    'kementerian', 'kemenko', 'kemen', 'bank indonesia', 'ojk', 'kpk',
+    'bnpb', 'basarnas', 'bulog', 'pertamina', 'pln', 'telkom',
 ]
 
 INSTITUSI_LOKAL_BUTUH_NAMA = [
-    'dinas', 'badan', 'kantor', 'lembaga', 'komisi',
-    'pemkot', 'pemkab', 'pemprov',
-    'polres', 'polsek', 'polda', 'kodam', 'korem', 'kodim', 'koramil',
-    'kejaksaan', 'kejari', 'kejati', 'pengadilan',
-    'bawaslu', 'kpu', 'kppu', 'kppn', 'kpp', 'bpjs',
-    'perum', 'peruri', 'pelindo', 'angkasa pura',
+    'dinas', 'badan', 'kantor', 'lembaga', 'komisi', 'pemkot', 'pemkab',
+    'pemprov', 'polres', 'polsek', 'polda', 'kodam', 'korem', 'kodim',
+    'koramil', 'kejaksaan', 'kejari', 'kejati', 'pengadilan', 'bawaslu',
+    'kpu', 'kppu', 'kppn', 'kpp', 'bpjs', 'perum', 'peruri', 'pelindo',
+    'angkasa pura',
 ]
 
 INSTITUSI_BUTUH_NAMA = INSTITUSI_LOKAL_BUTUH_NAMA + INSTITUSI_PUSAT_LEBIH_LONGGAR
 
 KATA_KERJA_NARASUMBER = [
-    'mengatakan', 'menyatakan', 'menjelaskan', 'menuturkan',
-    'mengungkapkan', 'mengimbau', 'menghimbau', 'meminta',
-    'menegaskan', 'menambahkan', 'mengatakan bahwa',
-    'menyampaikan', 'menekankan', 'mengajak', 'memastikan',
+    'mengatakan', 'menyatakan', 'menjelaskan', 'menuturkan', 'mengungkapkan',
+    'mengimbau', 'menghimbau', 'meminta', 'menegaskan', 'menambahkan',
+    'mengatakan bahwa', 'menyampaikan', 'menekankan', 'mengajak', 'memastikan',
     'berbicara', 'menegaskan bahwa', 'menyebut', 'menyebutkan',
     'menjelaskan bahwa', 'menuturkan bahwa',
 ]
@@ -1750,10 +1546,8 @@ def _ada_nama_orang_sebelum(teks, posisi):
         return True
     return False
 
-KOTA_LOKAL_KALTARA = [
-    'tarakan', 'nunukan', 'bulungan', 'malinau',
-    'tana tidung', 'tanjung selor', 'sesayap', 'sebatik',
-]
+KOTA_LOKAL_KALTARA = ['tarakan', 'nunukan', 'bulungan', 'malinau',
+                      'tana tidung', 'tanjung selor', 'sesayap', 'sebatik']
 
 def _adalah_berita_kaltara(judul, isi):
     gab = ((judul or '') + ' ' + (isi or '')).lower()
@@ -1782,25 +1576,14 @@ def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
         m = pola.search(teks)
         if m:
             if not _ada_nama_orang_sebelum(teks, m.start()):
-                return ('pangkat TNI/Polri "' + pangkat
-                        + '" muncul tanpa nama orang')
+                return ('pangkat TNI/Polri "' + pangkat + '" muncul tanpa nama orang')
         pola2 = re.compile(
             r'\b' + re.escape(pangkat) + r'\s*,\s*('
             + '|'.join(re.escape(k) for k in KATA_KERJA_NARASUMBER) + r')\b',
             re.IGNORECASE
         )
         if pola2.search(teks):
-            return ('pangkat TNI/Polri "' + pangkat
-                    + '" diikuti koma langsung kata kerja (tanpa nama)')
-    for inst in INSTITUSI_PUSAT_LEBIH_LONGGAR:
-        pola = re.compile(
-            r'\b' + re.escape(inst) + r'\b[^\.]{0,60}?\s+('
-            + '|'.join(re.escape(k) for k in KATA_KERJA_NARASUMBER) + r')\b',
-            re.IGNORECASE
-        )
-        m = pola.search(teks)
-        if m:
-            continue
+            return ('pangkat TNI/Polri "' + pangkat + '" diikuti koma langsung kata kerja (tanpa nama)')
     for inst in INSTITUSI_LOKAL_BUTUH_NAMA:
         pola = re.compile(
             r'\b' + re.escape(inst) + r'\b[^\.]{0,60}?\s+('
@@ -1810,8 +1593,7 @@ def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
         m = pola.search(teks)
         if m:
             if not _ada_nama_orang_sebelum(teks, m.start()):
-                return ('institusi "' + inst
-                        + '" muncul tanpa nama pejabat')
+                return ('institusi "' + inst + '" muncul tanpa nama pejabat')
     for inst in INSTITUSI_LOKAL_BUTUH_NAMA:
         pola3 = re.compile(
             r'\bmenurut\s+' + re.escape(inst) + r'\b[^\.]{0,30}?[,\.]',
@@ -1822,10 +1604,9 @@ def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
     return None
 
 KATA_BUKAN_BERITA = [
-    'zodiak', 'horoskop', 'ramalan bintang', 'ramalan cinta',
-    'ramalan nasib', 'ramalan zodiak', 'shio', 'primbon',
-    'arti mimpi', 'artinya mimpi', 'pertanda baik', 'pertanda buruk',
-    'keberuntungan hari ini', 'peruntungan',
+    'zodiak', 'horoskop', 'ramalan bintang', 'ramalan cinta', 'ramalan nasib',
+    'ramalan zodiak', 'shio', 'primbon', 'arti mimpi', 'artinya mimpi',
+    'pertanda baik', 'pertanda buruk', 'keberuntungan hari ini', 'peruntungan',
 ]
 
 def cek_bukan_berita(judul, isi):
@@ -1840,133 +1621,107 @@ def cek_bukan_berita(judul, isi):
     return False
 
 KATA_LUAR_NEGERI_WAJIB = [
-    'amerika', 'united states', ' u.s', 'usa', 'washington', 'trump',
-    'biden', 'putin', 'rusia', 'russia', 'moskow', 'moscow',
-    'ukraina', 'ukraine', 'eropa', 'europe', 'jerman', 'germany',
-    'perancis', 'france', 'inggris', 'britain', 'united kingdom',
-    'italia', 'italy', 'spanyol', 'spain', 'paris', 'berlin', 'london',
-    'timur tengah', 'middle east', 'gaza', 'israel', 'palestina',
-    'iran', 'iraq', 'suriah', 'syria', 'saudi', 'yaman', 'yemen',
-    'uni emirat', 'emirates', 'qatar', 'kuwait', 'libanon', 'jordan',
-    'turki', 'turkey', 'mesir', 'egypt', 'jepang', 'japan', 'china',
-    'tiongkok', 'korea', 'seoul', 'pyongyang', 'india', 'delhi',
-    'australia', 'kanada', 'canada', 'meksiko', 'mexico', 'brasil',
-    'brazil', 'argentina', 'afrika', 'africa', 'nigeria', 'kenya',
-    'pbb', 'united nations', 'nato', 'asean', 'who', 'unicef',
-    'bank dunia', 'world bank', 'imf', 'g20', 'g7', 'brics',
-    'pemilu amerika', 'us election', 'parlemen eropa',
-    'uni eropa', 'european union', 'taiwan',
+    'amerika', 'united states', ' u.s', 'usa', 'washington', 'trump', 'biden',
+    'putin', 'rusia', 'russia', 'moskow', 'moscow', 'ukraina', 'ukraine',
+    'eropa', 'europe', 'jerman', 'germany', 'perancis', 'france', 'inggris',
+    'britain', 'united kingdom', 'italia', 'italy', 'spanyol', 'spain',
+    'paris', 'berlin', 'london', 'timur tengah', 'middle east', 'gaza',
+    'israel', 'palestina', 'iran', 'iraq', 'suriah', 'syria', 'saudi',
+    'yaman', 'yemen', 'uni emirat', 'emirates', 'qatar', 'kuwait', 'libanon',
+    'jordan', 'turki', 'turkey', 'mesir', 'egypt', 'jepang', 'japan', 'china',
+    'tiongkok', 'korea', 'seoul', 'pyongyang', 'india', 'delhi', 'australia',
+    'kanada', 'canada', 'meksiko', 'mexico', 'brasil', 'brazil', 'argentina',
+    'afrika', 'africa', 'nigeria', 'kenya', 'pbb', 'united nations', 'nato',
+    'asean', 'who', 'unicef', 'bank dunia', 'world bank', 'imf', 'g20', 'g7',
+    'brics', 'pemilu amerika', 'us election', 'parlemen eropa', 'uni eropa',
+    'european union', 'taiwan',
 ]
 
 KATA_ASEAN_WAJIB = [
-    'asean', 'malaysia', 'thailand', 'vietnam', 'filipina',
-    'philippines', 'singapura', 'singapore', 'myanmar',
-    'kamboja', 'cambodia', 'laos', 'brunei', 'timor leste',
-    'jakarta', 'bangkok', 'manila', 'kuala lumpur', 'hanoi',
-    'indonesia',
+    'asean', 'malaysia', 'thailand', 'vietnam', 'filipina', 'philippines',
+    'singapura', 'singapore', 'myanmar', 'kamboja', 'cambodia', 'laos',
+    'brunei', 'timor leste', 'jakarta', 'bangkok', 'manila', 'kuala lumpur',
+    'hanoi', 'indonesia',
 ]
 
 KATA_EKONOMI_WAJIB = [
-    'ihsg', 'idx', 'bursa', 'saham', 'obligasi', 'reksa dana',
-    'bank indonesia', 'bi rate', 'suku bunga', 'inflasi', 'deflasi',
-    'pdb', 'gdp', 'pertumbuhan ekonomi', 'resesi', 'kurs', 'rupiah',
-    'dolar', 'usd', 'idr', 'ekspor', 'impor', 'neraca dagang',
-    'apbn', 'apbd', 'pajak', 'bea cukai', 'subsidi',
-    'ojk', 'kemenkeu', 'menteri keuangan', 'sri mulyani',
-    'umkm', 'startup', 'investasi', 'penanaman modal', 'asing',
-    'ipo', 'emiten', 'dividen', 'kapitalisasi', 'wall street',
-    'dow jones', 'nasdaq', 's&p', 'ftse', 'nikkei', 'hang seng',
-    'minyak mentah', 'brent', 'wti', 'emas', 'komoditas',
-    'perdagangan', 'pasar modal', 'pasar uang', 'fintech',
-    'kripto', 'bitcoin', 'ethereum', 'blockchain',
-    'pertamina', 'pln', 'telkom', 'bank bumn', 'bank swasta',
-    'kredit', 'pinjaman', 'utang', 'defisit', 'surplus',
-    'harga pangan', 'harga beras', 'harga cabai', 'bulog',
-    'penjualan ritel', 'konsumsi rumah tangga', 'daya beli',
-    'harga', 'petani', 'pangan', 'konsumen', 'pedagang',
-    'produksi', 'distribusi', 'industri', 'pertanian',
-    'perikanan', 'tambak', 'sawah', 'nelayan', 'ternak',
-    'perkebunan', 'sapi', 'beras', 'cabai', 'bawang',
-    'gula', 'minyak goreng', 'telur', 'ayam', 'daging',
-    'pasar tradisional', 'pasar modern', 'ritel', 'grosir',
-    'pengusaha', 'dagang', 'bisnis', 'usaha', 'toko',
-    'bumn', 'koperasi', 'pajak', 'bea', 'cukai', 'tarif',
-    'tbg', 'pendapatan', 'belanja', 'anggaran', 'fiskal',
-    'moneter', 'bank sentral', 'bank', 'kartu kredit',
-    'kpr', 'leasing', 'asuransi', 'jasa keuangan',
+    'ihsg', 'idx', 'bursa', 'saham', 'obligasi', 'reksa dana', 'bank indonesia',
+    'bi rate', 'suku bunga', 'inflasi', 'deflasi', 'pdb', 'gdp',
+    'pertumbuhan ekonomi', 'resesi', 'kurs', 'rupiah', 'dolar', 'usd', 'idr',
+    'ekspor', 'impor', 'neraca dagang', 'apbn', 'apbd', 'pajak', 'bea cukai',
+    'subsidi', 'ojk', 'kemenkeu', 'menteri keuangan', 'sri mulyani', 'umkm',
+    'startup', 'investasi', 'penanaman modal', 'asing', 'ipo', 'emiten',
+    'dividen', 'kapitalisasi', 'wall street', 'dow jones', 'nasdaq', 's&p',
+    'ftse', 'nikkei', 'hang seng', 'minyak mentah', 'brent', 'wti', 'emas',
+    'komoditas', 'perdagangan', 'pasar modal', 'pasar uang', 'fintech',
+    'kripto', 'bitcoin', 'ethereum', 'blockchain', 'pertamina', 'pln', 'telkom',
+    'bank bumn', 'bank swasta', 'kredit', 'pinjaman', 'utang', 'defisit',
+    'surplus', 'harga pangan', 'harga beras', 'harga cabai', 'bulog',
+    'penjualan ritel', 'konsumsi rumah tangga', 'daya beli', 'harga', 'petani',
+    'pangan', 'konsumen', 'pedagang', 'produksi', 'distribusi', 'industri',
+    'pertanian', 'perikanan', 'tambak', 'sawah', 'nelayan', 'ternak',
+    'perkebunan', 'sapi', 'beras', 'cabai', 'bawang', 'gula', 'minyak goreng',
+    'telur', 'ayam', 'daging', 'pasar tradisional', 'pasar modern', 'ritel',
+    'grosir', 'pengusaha', 'dagang', 'bisnis', 'usaha', 'toko', 'bumn',
+    'koperasi', 'pajak', 'bea', 'cukai', 'tarif', 'tbg', 'pendapatan',
+    'belanja', 'anggaran', 'fiskal', 'moneter', 'bank sentral', 'bank',
+    'kartu kredit', 'kpr', 'leasing', 'asuransi', 'jasa keuangan',
 ]
 
 KATA_POLITIK_HUKUM_LOKAL = [
-    'tersangka', 'korupsi', 'kpk', 'kejaksaan', 'pengadilan',
-    'sidang', 'dakwaan', 'hukuman', 'pidana', 'penjara', 'ditahan',
-    'dpr', 'presiden', 'menteri', 'gubernur', 'walikota', 'bupati',
-    'pileg', 'pilpres', 'pilkada', 'partai', 'kampanye',
-    'demonstrasi', 'unjuk rasa', 'kerusuhan',
-    'kalapas', 'lapas', 'rutan', 'narapidana', 'warga binaan',
-    'dinonaktifkan', 'dicopot', 'diberhentikan', 'dilantik',
+    'tersangka', 'korupsi', 'kpk', 'kejaksaan', 'pengadilan', 'sidang',
+    'dakwaan', 'hukuman', 'pidana', 'penjara', 'ditahan', 'dpr', 'presiden',
+    'menteri', 'gubernur', 'walikota', 'bupati', 'pileg', 'pilpres', 'pilkada',
+    'partai', 'kampanye', 'demonstrasi', 'unjuk rasa', 'kerusuhan', 'kalapas',
+    'lapas', 'rutan', 'narapidana', 'warga binaan', 'dinonaktifkan', 'dicopot',
+    'diberhentikan', 'dilantik',
 ]
 
 NAMA_TOKOH_INDONESIA = [
-    'prabowo', 'gibran', 'jokowi', 'joko widodo', 'megawati',
-    'anies', 'anies baswedan', 'ganjar', 'ganjar pranowo',
-    'ridwan kamil', 'ahok', 'basuki tjahaja',
-    'sri mulya', 'sri mulyani', 'mahfud', 'mahfud md',
-    'erick thohir', 'agus yudhoyono', 'sby', 'susilo bambang',
-    'puan maharani', 'bambang soesatyo', 'bamsoet',
-    'listyo sigit', 'sigit listyo', 'yudo margono',
-    'abdul muhaimin', 'muhaimin iskandar', 'cak imin',
-    'airlangga hartarto', 'luhut', 'luhut pandjaitan',
-    'tito karnavian', 'budi gunawan', 'bahlil',
-    'bahlil lahadalia', 'dito ariotedjo', 'sandiaga',
-    'sandiaga uno', 'yassierli', 'abdul mu\'ti',
-    'abdul muti', 'nadiem', 'nadiem makarim',
-    'khoirul anam', 'hadi tjahjanto', 'agum gumelar',
-    'agus gumiwang', 'budi karya', 'budi karya sumadi',
-    'sakti wahyu trenggono', 'trenggono',
-    'agus harimurti yudhoyono', 'ahy',
-    'zulkifli hasan', 'zulhas', 'sufmi dasco',
-    'dasco', 'ahmad muzani', 'muzani',
-    'yandri susanto', 'muhammad yusril', 'yusril ihza',
-    'pratikno', 'sekretaris negara', 'menteri sekretaris negara',
-    'setyo novanto', 'setyo', 'irsyad yusuf',
-    'muhammad tohir', 'gus ipul', 'saifullah yusuf',
-    'sri mulyani indrawati', 'menteri keuangan',
-    'kapolri', 'panglima tni',
-    'ma\'ruf amin', 'maruf amin',
-    'jenderal agus subiyanto', 'agus subiyanto',
+    'prabowo', 'gibran', 'jokowi', 'joko widodo', 'megawati', 'anies',
+    'anies baswedan', 'ganjar', 'ganjar pranowo', 'ridwan kamil', 'ahok',
+    'basuki tjahaja', 'sri mulya', 'sri mulyani', 'mahfud', 'mahfud md',
+    'erick thohir', 'agus yudhoyono', 'sby', 'susilo bambang', 'puan maharani',
+    'bambang soesatyo', 'bamsoet', 'listyo sigit', 'sigit listyo',
+    'yudo margono', 'abdul muhaimin', 'muhaimin iskandar', 'cak imin',
+    'airlangga hartarto', 'luhut', 'luhut pandjaitan', 'tito karnavian',
+    'budi gunawan', 'bahlil', 'bahlil lahadalia', 'dito ariotedjo',
+    'sandiaga', 'sandiaga uno', 'yassierli', 'abdul mu\'ti', 'abdul muti',
+    'nadiem', 'nadiem makarim', 'khoirul anam', 'hadi tjahjanto',
+    'agum gumelar', 'agus gumiwang', 'budi karya', 'budi karya sumadi',
+    'sakti wahyu trenggono', 'trenggono', 'agus harimurti yudhoyono', 'ahy',
+    'zulkifli hasan', 'zulhas', 'sufmi dasco', 'dasco', 'ahmad muzani',
+    'muzani', 'yandri susanto', 'muhammad yusril', 'yusril ihza', 'pratikno',
+    'sekretaris negara', 'menteri sekretaris negara', 'setyo novanto', 'setyo',
+    'irsyad yusuf', 'muhammad tohir', 'gus ipul', 'saifullah yusuf',
+    'sri mulyani indrawati', 'menteri keuangan', 'kapolri', 'panglima tni',
+    'ma\'ruf amin', 'maruf amin', 'jenderal agus subiyanto', 'agus subiyanto',
     'ibnu saud', 'rahman', 'khairul', 'amrullah',
 ]
 
 LEMBAGA_INDONESIA = [
-    'kpk', 'dpr', 'mpr', 'dpd', 'dprd',
-    'kemenkeu', 'kemendag', 'kemenhub', 'kemendikbud',
-    'kemenkes', 'kemnaker', 'kemenkumham', 'kemensos',
-    'kemenag', 'kemenparekraf', 'kemenlu', 'kemenhan',
-    'kemendagri', 'kemenko', 'kemenpppa', 'kemenpora',
-    'polri', 'tni', 'kejagung', 'kejaksaan agung',
-    'mahkamah agung', 'mahkamah konstitusi', 'mk',
-    'bawaslu', 'kpu', 'ojk', 'bank indonesia', 'bi',
-    'bpk', 'bpn', 'bnpb', 'basarnas', 'bpom', 'bssn',
-    'bin', 'wantannas', 'setkab', 'setneg',
-    'perpres', 'inpres', 'keppres',
+    'kpk', 'dpr', 'mpr', 'dpd', 'dprd', 'kemenkeu', 'kemendag', 'kemenhub',
+    'kemendikbud', 'kemenkes', 'kemnaker', 'kemenkumham', 'kemensos', 'kemenag',
+    'kemenparekraf', 'kemenlu', 'kemenhan', 'kemendagri', 'kemenko',
+    'kemenpppa', 'kemenpora', 'polri', 'tni', 'kejagung', 'kejaksaan agung',
+    'mahkamah agung', 'mahkamah konstitusi', 'mk', 'bawaslu', 'kpu', 'ojk',
+    'bank indonesia', 'bi', 'bpk', 'bpn', 'bnpb', 'basarnas', 'bpom', 'bssn',
+    'bin', 'wantannas', 'setkab', 'setneg', 'perpres', 'inpres', 'keppres',
 ]
 
 KOTA_INDONESIA_DATELINE = [
-    'jakarta', 'surabaya', 'bandung', 'semarang', 'yogyakarta',
-    'medan', 'palembang', 'makassar', 'denpasar', 'balikpapan',
-    'samarinda', 'pontianak', 'banjarmasin', 'palangka raya',
-    'manado', 'ambon', 'jayapura', 'kupang', 'mataram',
-    'tarakan', 'tanjung selor', 'nunukan', 'malinau',
-    'bulungan', 'tana tidung', 'bogor', 'depok', 'tangerang',
-    'bekasi', 'malang', 'solo', 'surakarta', 'pekanbaru',
-    'padang', 'bengkulu', 'lampung', 'bandar lampung',
-    'batam', 'gorontalo', 'palu', 'kendari', 'mamuju',
+    'jakarta', 'surabaya', 'bandung', 'semarang', 'yogyakarta', 'medan',
+    'palembang', 'makassar', 'denpasar', 'balikpapan', 'samarinda',
+    'pontianak', 'banjarmasin', 'palangka raya', 'manado', 'ambon',
+    'jayapura', 'kupang', 'mataram', 'tarakan', 'tanjung selor', 'nunukan',
+    'malinau', 'bulungan', 'tana tidung', 'bogor', 'depok', 'tangerang',
+    'bekasi', 'malang', 'solo', 'surakarta', 'pekanbaru', 'padang', 'bengkulu',
+    'lampung', 'bandar lampung', 'batam', 'gorontalo', 'palu', 'kendari', 'mamuju',
 ]
 
 KATA_LOKAL_KALTARA = [
-    'tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
-    'tana tidung', 'sesayap', 'juata', 'tanjung selor',
-    'sebatik', 'kayu putih',
+    'tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau', 'tana tidung',
+    'sesayap', 'juata', 'tanjung selor', 'sebatik', 'kayu putih',
 ]
 
 def cek_kategori_cocok(kategori_target, teks):
@@ -1995,12 +1750,9 @@ def _kpk_konteks_indonesia(teks):
     t = (teks or '').lower()
     if 'kpk' not in t:
         return False
-    konteks = [
-        'kpk indonesia', 'komisi pemberantasan korupsi',
-        'kpk ri', 'kpk republik indonesia',
-        'kpk tangkap', 'kpk periksa', 'kpk sidik',
-        'kpk jerat', 'kpk tetapkan',
-    ]
+    konteks = ['kpk indonesia', 'komisi pemberantasan korupsi', 'kpk ri',
+               'kpk republik indonesia', 'kpk tangkap', 'kpk periksa',
+               'kpk sidik', 'kpk jerat', 'kpk tetapkan']
     for k in konteks:
         if k in t:
             return True
@@ -2022,24 +1774,20 @@ def cek_kategori_dari_isi(isi, judul, kategori_target):
     t = gab.lower()
     for tokoh in NAMA_TOKOH_INDONESIA:
         if re.search(r'\b' + re.escape(tokoh) + r'\b', t):
-            return ('isi AI memuat tokoh Indonesia "' + tokoh
-                    + '" tapi target kategori internasional')
+            return ('isi AI memuat tokoh Indonesia "' + tokoh + '" tapi target kategori internasional')
     for lem in LEMBAGA_INDONESIA:
         if lem == 'kpk':
             if _kpk_konteks_indonesia(t):
-                return ('isi AI memuat lembaga Indonesia "kpk" '
-                        'dengan konteks Indonesia tapi target internasional')
+                return ('isi AI memuat lembaga Indonesia "kpk" dengan konteks Indonesia tapi target internasional')
             continue
         if re.search(r'\b' + re.escape(lem) + r'\b', t):
-            return ('isi AI memuat lembaga Indonesia "' + lem
-                    + '" tapi target kategori internasional')
+            return ('isi AI memuat lembaga Indonesia "' + lem + '" tapi target kategori internasional')
     m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+', isi or '')
     if m:
         dp = m.group(1).strip().lower()
         kota = dp.split(',')[0].strip()
         if kota in KOTA_INDONESIA_DATELINE:
-            return ('dateline "' + kota
-                    + '" kota Indonesia tapi target kategori internasional')
+            return ('dateline "' + kota + '" kota Indonesia tapi target kategori internasional')
     return None
 
 def tentukan_kategori_dari_isi(judul, isi):
@@ -2064,86 +1812,79 @@ def tentukan_kategori_dari_isi(judul, isi):
     return 'nasional'
 
 KATA_UMUM_EN = set([
-    'the', 'and', 'for', 'with', 'from', 'that', 'this', 'have', 'will',
-    'been', 'are', 'was', 'were', 'their', 'they', 'about', 'after',
-    'into', 'over', 'than', 'then', 'them', 'these', 'those', 'through',
-    'under', 'while', 'where', 'when', 'what', 'which', 'who', 'whom',
-    'whose', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more',
-    'most', 'other', 'some', 'such', 'only', 'own', 'same', 'too', 'very',
-    'can', 'just', 'should', 'now', 'new', 'old', 'first', 'last', 'long',
-    'great', 'little', 'even', 'much', 'many', 'said', 'says', 'say',
-    'told', 'tell', 'tells', 'get', 'got', 'make', 'made', 'makes',
-    'take', 'took', 'taken', 'give', 'gave', 'given', 'come', 'came',
-    'go', 'went', 'gone', 'see', 'saw', 'seen', 'know', 'knew', 'known',
-    'think', 'thought', 'want', 'wanted', 'use', 'used', 'find', 'found',
-    'work', 'worked', 'call', 'called', 'try', 'tried', 'ask', 'asked',
-    'need', 'needed', 'feel', 'felt', 'become', 'became', 'leave', 'left',
-    'put', 'mean', 'meant', 'keep', 'kept', 'let', 'begin', 'began',
-    'begun', 'seem', 'seemed', 'help', 'helped', 'talk', 'talked',
-    'turn', 'turned', 'start', 'started', 'show', 'showed', 'shown',
-    'hear', 'heard', 'play', 'played', 'run', 'ran', 'move', 'moved',
-    'live', 'lived', 'believe', 'believed', 'bring', 'brought', 'happen',
-    'happened', 'write', 'wrote', 'written', 'provide', 'provided',
-    'sit', 'sat', 'stand', 'stood', 'lose', 'lost', 'pay', 'paid',
-    'meet', 'met', 'include', 'included', 'continue', 'continued',
-    'set', 'learn', 'learned', 'change', 'changed', 'lead', 'led',
-    'understand', 'understood', 'watch', 'watched', 'follow', 'followed',
-    'stop', 'stopped', 'create', 'created', 'speak', 'spoke', 'spoken',
-    'read', 'spend', 'spent', 'grow', 'grew', 'grown', 'open', 'opened',
-    'walk', 'walked', 'win', 'won', 'offer', 'offered', 'remember',
-    'remembered', 'love', 'loved', 'consider', 'considered', 'appear',
-    'appeared', 'buy', 'bought', 'wait', 'waited', 'serve', 'served',
+    'the', 'and', 'for', 'with', 'from', 'that', 'this', 'have', 'will', 'been',
+    'are', 'was', 'were', 'their', 'they', 'about', 'after', 'into', 'over',
+    'than', 'then', 'them', 'these', 'those', 'through', 'under', 'while',
+    'where', 'when', 'what', 'which', 'who', 'whom', 'whose', 'why', 'how',
+    'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some',
+    'such', 'only', 'own', 'same', 'too', 'very', 'can', 'just', 'should',
+    'now', 'new', 'old', 'first', 'last', 'long', 'great', 'little', 'even',
+    'much', 'many', 'said', 'says', 'say', 'told', 'tell', 'tells', 'get',
+    'got', 'make', 'made', 'makes', 'take', 'took', 'taken', 'give', 'gave',
+    'given', 'come', 'came', 'go', 'went', 'gone', 'see', 'saw', 'seen',
+    'know', 'knew', 'known', 'think', 'thought', 'want', 'wanted', 'use',
+    'used', 'find', 'found', 'work', 'worked', 'call', 'called', 'try',
+    'tried', 'ask', 'asked', 'need', 'needed', 'feel', 'felt', 'become',
+    'became', 'leave', 'left', 'put', 'mean', 'meant', 'keep', 'kept', 'let',
+    'begin', 'began', 'begun', 'seem', 'seemed', 'help', 'helped', 'talk',
+    'talked', 'turn', 'turned', 'start', 'started', 'show', 'showed', 'shown',
+    'hear', 'heard', 'play', 'played', 'run', 'ran', 'move', 'moved', 'live',
+    'lived', 'believe', 'believed', 'bring', 'brought', 'happen', 'happened',
+    'write', 'wrote', 'written', 'provide', 'provided', 'sit', 'sat', 'stand',
+    'stood', 'lose', 'lost', 'pay', 'paid', 'meet', 'met', 'include',
+    'included', 'continue', 'continued', 'set', 'learn', 'learned', 'change',
+    'changed', 'lead', 'led', 'understand', 'understood', 'watch', 'watched',
+    'follow', 'followed', 'stop', 'stopped', 'create', 'created', 'speak',
+    'spoke', 'spoken', 'read', 'spend', 'spent', 'grow', 'grew', 'grown',
+    'open', 'opened', 'walk', 'walked', 'win', 'won', 'offer', 'offered',
+    'remember', 'remembered', 'love', 'loved', 'consider', 'considered',
+    'appear', 'appeared', 'buy', 'bought', 'wait', 'waited', 'serve', 'served',
     'die', 'died', 'send', 'sent', 'expect', 'expected', 'build', 'built',
     'stay', 'stayed', 'fall', 'fell', 'fallen', 'cut', 'reach', 'reached',
-    'kill', 'killed', 'remain', 'remained', 'suggest', 'suggested',
-    'raise', 'raised', 'pass', 'passed', 'sell', 'sold', 'require',
-    'required', 'report', 'reported', 'decide', 'decided', 'pull', 'pulled',
-    'man', 'men', 'woman', 'women', 'child', 'children', 'people', 'person',
-    'day', 'days', 'year', 'years', 'time', 'times', 'week', 'weeks',
-    'month', 'months', 'hour', 'hours', 'minute', 'minutes', 'morning',
-    'evening', 'night', 'today', 'tomorrow', 'yesterday', 'world', 'country',
-    'countries', 'city', 'cities', 'town', 'state', 'states', 'place',
-    'places', 'way', 'ways', 'thing', 'things', 'part', 'parts', 'number',
-    'numbers', 'group', 'groups', 'company', 'companies', 'government',
-    'governments', 'president', 'minister', 'official', 'officials',
-    'police', 'army', 'military', 'soldier', 'soldiers', 'leader', 'leaders',
-    'member', 'members', 'family', 'families', 'friend', 'friends', 'home',
-    'house', 'school', 'hospital', 'office', 'business', 'money', 'market',
-    'markets', 'price', 'prices', 'cost', 'costs', 'tax', 'taxes', 'bank',
-    'banks', 'trade', 'war', 'peace', 'attack', 'attacks', 'fire', 'flood',
-    'floods', 'storm', 'storms', 'quake', 'quakes', 'earthquake', 'earthquakes',
-    'crash', 'crashes', 'accident', 'accidents', 'death', 'deaths', 'dead',
-    'injured', 'missing', 'victim', 'victims', 'suspect', 'suspects', 'crime',
-    'criminal', 'case', 'cases', 'court', 'trial', 'judge', 'lawyer',
-    'officer', 'officers', 'spokesman', 'spokeswoman',
-    'million', 'billion', 'thousand', 'hundred', 'percent', 'one', 'two',
-    'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
-    'eleven', 'twelve', 'twenty', 'thirty', 'forty', 'fifty', 'sixty',
+    'kill', 'killed', 'remain', 'remained', 'suggest', 'suggested', 'raise',
+    'raised', 'pass', 'passed', 'sell', 'sold', 'require', 'required',
+    'report', 'reported', 'decide', 'decided', 'pull', 'pulled', 'man', 'men',
+    'woman', 'women', 'child', 'children', 'people', 'person', 'day', 'days',
+    'year', 'years', 'time', 'times', 'week', 'weeks', 'month', 'months',
+    'hour', 'hours', 'minute', 'minutes', 'morning', 'evening', 'night',
+    'today', 'tomorrow', 'yesterday', 'world', 'country', 'countries', 'city',
+    'cities', 'town', 'state', 'states', 'place', 'places', 'way', 'ways',
+    'thing', 'things', 'part', 'parts', 'number', 'numbers', 'group', 'groups',
+    'company', 'companies', 'government', 'governments', 'president',
+    'minister', 'official', 'officials', 'police', 'army', 'military',
+    'soldier', 'soldiers', 'leader', 'leaders', 'member', 'members', 'family',
+    'families', 'friend', 'friends', 'home', 'house', 'school', 'hospital',
+    'office', 'business', 'money', 'market', 'markets', 'price', 'prices',
+    'cost', 'costs', 'tax', 'taxes', 'bank', 'banks', 'trade', 'war', 'peace',
+    'attack', 'attacks', 'fire', 'flood', 'floods', 'storm', 'storms', 'quake',
+    'quakes', 'earthquake', 'earthquakes', 'crash', 'crashes', 'accident',
+    'accidents', 'death', 'deaths', 'dead', 'injured', 'missing', 'victim',
+    'victims', 'suspect', 'suspects', 'crime', 'criminal', 'case', 'cases',
+    'court', 'trial', 'judge', 'lawyer', 'officer', 'officers', 'spokesman',
+    'spokeswoman', 'million', 'billion', 'thousand', 'hundred', 'percent',
+    'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+    'ten', 'eleven', 'twelve', 'twenty', 'thirty', 'forty', 'fifty', 'sixty',
     'seventy', 'eighty', 'ninety', 'first', 'second', 'third', 'fourth',
-    'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth',
-    'says', 'reports', 'news', 'latest', 'update', 'updates',
-    'breaking', 'live', 'video', 'photos', 'photo', 'image', 'images',
-    'north', 'south', 'east', 'west', 'central', 'upper', 'lower',
-    'northern', 'southern', 'eastern', 'western', 'middle',
-    'international', 'national', 'local', 'global', 'regional',
-    'weekend', 'season', 'annual', 'monthly', 'daily',
-    'biggest', 'largest', 'smallest', 'highest', 'lowest', 'best', 'worst',
-    'top', 'major', 'minor', 'key', 'main', 'primary', 'secondary',
+    'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'says',
+    'reports', 'news', 'latest', 'update', 'updates', 'breaking', 'live',
+    'video', 'photos', 'photo', 'image', 'images', 'north', 'south', 'east',
+    'west', 'central', 'upper', 'lower', 'northern', 'southern', 'eastern',
+    'western', 'middle', 'international', 'national', 'local', 'global',
+    'regional', 'weekend', 'season', 'annual', 'monthly', 'daily', 'biggest',
+    'largest', 'smallest', 'highest', 'lowest', 'best', 'worst', 'top',
+    'major', 'minor', 'key', 'main', 'primary', 'secondary',
 ])
 
 NAMA_DIRI_UMUM = set([
-    'asean', 'pbb', 'nato', 'who', 'unicef', 'unesco', 'imf',
-    'g20', 'g7', 'brics', 'apec', 'opec', 'wto', 'fao', 'ilo',
-    'wfp', 'unhcr', 'icrc', 'amnesty', 'greenpeace', 'wwf',
-    'fifa', 'uefa', 'afc', 'bwf', 'fivb', 'itf', 'atp', 'wta',
-    'nba', 'wnba', 'f1', 'motogp', 'ibl',
-    'world bank', 'bank dunia', 'european union', 'uni eropa',
-    'african union', 'arab league', 'liga arab', 'gcc',
-    'asean+3', 'apta', 'rcep', 'cptpp',
-    'lockheed', 'lockheed martin', 'boeing', 'airbus',
-    'nasa', 'spacex', 'tesla', 'apple', 'google', 'microsoft', 'meta',
-    'openai', 'anthropic', 'nvidia', 'intel', 'samsung',
-    'huawei', 'xiaomi', 'tiktok', 'bytedance',
+    'asean', 'pbb', 'nato', 'who', 'unicef', 'unesco', 'imf', 'g20', 'g7',
+    'brics', 'apec', 'opec', 'wto', 'fao', 'ilo', 'wfp', 'unhcr', 'icrc',
+    'amnesty', 'greenpeace', 'wwf', 'fifa', 'uefa', 'afc', 'bwf', 'fivb',
+    'itf', 'atp', 'wta', 'nba', 'wnba', 'f1', 'motogp', 'ibl', 'world bank',
+    'bank dunia', 'european union', 'uni eropa', 'african union',
+    'arab league', 'liga arab', 'gcc', 'asean+3', 'apta', 'rcep', 'cptpp',
+    'lockheed', 'lockheed martin', 'boeing', 'airbus', 'nasa', 'spacex',
+    'tesla', 'apple', 'google', 'microsoft', 'meta', 'openai', 'anthropic',
+    'nvidia', 'intel', 'samsung', 'huawei', 'xiaomi', 'tiktok', 'bytedance',
     'covid', 'covid-19',
 ])
 
@@ -2194,12 +1935,9 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi):
     kata_ai_4 = set(re.findall(r'[a-z]{4,}', teks_ai.lower())) - KATA_STOP_DOBEL
     if len(kata_materi_4 & kata_ai_4) >= 2:
         return None
-    return ('judul AI tidak nyambung materi: tidak ada irisan '
-            'nama diri/angka/kata kunci')
+    return ('judul AI tidak nyambung materi: tidak ada irisan nama diri/angka/kata kunci')
 
-# AKHIR PART 3A
-
-# PART 3B - BAGIAN 1 DARI 2
+# ═══ BAGIAN 3B-1 ═══
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -2262,21 +2000,14 @@ def sumber_teknologi_hari_ini(jam):
     return dom, sumber
 
 POLA_LARANG = [
-    'belum dikonfirmasi waktu', 'waktu kejadian belum',
-    'belum dikonfirmasi kapan',
-    'menurut informasi yang diterima', 'diduga kuat',
-    'kabarnya',
-    'identitas narasumber',
-    'tidak disebutkan dalam laporan',
-    'tidak disebutkan secara eksplisit',
-    'tanpa menyebut nama',
-    'tanpa menyebut nama pejabat',
-    'dalam laporan yang beredar',
-    'dalam laporan yang dihimpun',
-    'tidak dapat dipastikan',
-    'keterangan disampaikan tanpa',
-    'seorang pengusaha', 'seorang pengamat', 'seorang pejabat tinggi',
-    'seorang tokoh', 'seorang bos', 'seorang pejabat',
+    'belum dikonfirmasi waktu', 'waktu kejadian belum', 'belum dikonfirmasi kapan',
+    'menurut informasi yang diterima', 'diduga kuat', 'kabarnya',
+    'identitas narasumber', 'tidak disebutkan dalam laporan',
+    'tidak disebutkan secara eksplisit', 'tanpa menyebut nama',
+    'tanpa menyebut nama pejabat', 'dalam laporan yang beredar',
+    'dalam laporan yang dihimpun', 'tidak dapat dipastikan',
+    'keterangan disampaikan tanpa', 'seorang pengusaha', 'seorang pengamat',
+    'seorang pejabat tinggi', 'seorang tokoh', 'seorang bos', 'seorang pejabat',
 ]
 
 def _frasa_tertangkap(isi):
@@ -2311,13 +2042,12 @@ def _gram_set(teks, n):
 
 FRASA_UMUM_JIPLAK = [
     'kalau kita ingin', 'jika kita ingin', 'untuk menghasilkan',
-    'generasi yang', 'masa depan', 'anak anak kita',
-    'pada dasarnya', 'oleh karena itu', 'dengan demikian',
-    'sebagai kesimpulan', 'pada akhirnya', 'tidak hanya',
-    'di sisi lain', 'di samping itu', 'selain itu',
-    'yang bagus yang', 'yang cerdas yang', 'yang hebat yang',
-    'yang unggul', 'yang berkualitas', 'yang sehat yang',
-    'perlu kita', 'harus kita', 'mari kita',
+    'generasi yang', 'masa depan', 'anak anak kita', 'pada dasarnya',
+    'oleh karena itu', 'dengan demikian', 'sebagai kesimpulan',
+    'pada akhirnya', 'tidak hanya', 'di sisi lain', 'di samping itu',
+    'selain itu', 'yang bagus yang', 'yang cerdas yang', 'yang hebat yang',
+    'yang unggul', 'yang berkualitas', 'yang sehat yang', 'perlu kita',
+    'harus kita', 'mari kita',
 ]
 
 def _frasa_umum(gram_tuple):
@@ -2350,17 +2080,16 @@ def _paksa_dateline_indonesia(isi):
     return 'INDONESIA - ' + (isi or '')
 
 LIGA_API_FOOTBALL = {
-    'eng.1': 39, 'esp.1': 140, 'ita.1': 135, 'ger.1': 78,
-    'fra.1': 61, 'ned.1': 88, 'uefa.champions': 2, 'uefa.europa': 3,
+    'eng.1': 39, 'esp.1': 140, 'ita.1': 135, 'ger.1': 78, 'fra.1': 61,
+    'ned.1': 88, 'uefa.champions': 2, 'uefa.europa': 3,
     'uefa.europa.conf': 848, 'idn.1': 274,
 }
 
 LIGA_API_NAMA = {
     39: 'Premier League (Inggris)', 140: 'La Liga (Spanyol)',
-    135: 'Serie A (Italia)', 78: 'Bundesliga (Jerman)',
-    61: 'Ligue 1 (Prancis)', 88: 'Eredivisie (Belanda)',
-    2: 'Liga Champions', 3: 'Liga Europa', 848: 'Liga Conference',
-    274: 'Liga 1 (Indonesia)',
+    135: 'Serie A (Italia)', 78: 'Bundesliga (Jerman)', 61: 'Ligue 1 (Prancis)',
+    88: 'Eredivisie (Belanda)', 2: 'Liga Champions', 3: 'Liga Europa',
+    848: 'Liga Conference', 274: 'Liga 1 (Indonesia)',
 }
 
 def _musim_sekarang():
@@ -2395,9 +2124,7 @@ def api_klasmen_football(liga_code):
     liga_id = LIGA_API_FOOTBALL.get(liga_code)
     if not liga_id:
         return '', ''
-    data = football_api_get('/standings', {
-        'league': liga_id, 'season': _musim_sekarang(),
-    })
+    data = football_api_get('/standings', {'league': liga_id, 'season': _musim_sekarang()})
     if not data:
         return '', ''
     resp = data.get('response') or []
@@ -2481,19 +2208,17 @@ def api_skor_football(liga_code, hari_mundur=3):
         tanggal += timedelta(days=1)
     return list(dict.fromkeys(hasil))
 
-KATA_HEWAN_FILE = [
-    'wolf', 'serigala', 'dog', 'anjing', 'cat_', '-cat-', 'kucing',
-    'bird', 'burung', 'egret', 'heron', 'eagle', 'hawk', 'owl',
-    'monkey', 'monyet', 'orangutan', 'komodo', 'tiger', 'harimau',
-    'lion', 'singa', 'elephant', 'gajah', 'bear', 'beruang', 'deer',
-    'rusa', 'fox', 'rubah', 'snake', 'ular', 'crocodile', 'buaya',
-    'lizard', 'kadal', 'frog', 'katak', 'fish', 'ikan', 'shark',
-    'hiu', 'whale', 'paus', 'dolphin', 'lumba', 'insect', 'serangga',
-    'butterfly', 'kupu', 'spider', 'labah', 'rat', 'tikus', 'mouse-',
-    'horse', 'kuda', 'cow', 'sapi', 'goat', 'kambing', 'sheep',
-    'chicken', 'ayam', 'duck', 'bebek', 'goose', 'rabbit', 'kelinci',
-    'zoo', 'safari', 'wildlife', 'fauna',
-]
+KATA_HEWAN_FILE = ['wolf', 'serigala', 'dog', 'anjing', 'cat_', '-cat-', 'kucing',
+                   'bird', 'burung', 'egret', 'heron', 'eagle', 'hawk', 'owl',
+                   'monkey', 'monyet', 'orangutan', 'komodo', 'tiger', 'harimau',
+                   'lion', 'singa', 'elephant', 'gajah', 'bear', 'beruang',
+                   'deer', 'rusa', 'fox', 'rubah', 'snake', 'ular', 'crocodile',
+                   'buaya', 'lizard', 'kadal', 'frog', 'katak', 'fish', 'ikan',
+                   'shark', 'hiu', 'whale', 'paus', 'dolphin', 'lumba', 'insect',
+                   'serangga', 'butterfly', 'kupu', 'spider', 'labah', 'rat',
+                   'tikus', 'mouse-', 'horse', 'kuda', 'cow', 'sapi', 'goat',
+                   'kambing', 'sheep', 'chicken', 'ayam', 'duck', 'bebek',
+                   'goose', 'rabbit', 'kelinci', 'zoo', 'safari', 'wildlife', 'fauna']
 
 def _url_berbau_hewan(url):
     low = (url or '').lower()
@@ -2623,13 +2348,8 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     koneksi_retry = 0
     MAX_KONEKSI_RETRY = 1
     MAX_LOOP = 1
-    FRASA_TOLAK_AI = [
-        'materi tidak tersedia',
-        'materi sumber tidak tersedia',
-        'materi tidak relevan',
-        'tidak dapat menulis',
-        'tidak ada materi',
-    ]
+    FRASA_TOLAK_AI = ['materi tidak tersedia', 'materi sumber tidak tersedia',
+                      'materi tidak relevan', 'tidak dapat menulis', 'tidak ada materi']
     percobaan = 0
     while percobaan < MAX_LOOP:
         percobaan += 1
@@ -2649,21 +2369,18 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         if tolak_msg:
             tl = tolak_msg.lower()
             if any(f in tl for f in FRASA_TOLAK_AI) and percobaan < MAX_LOOP:
-                print('       AI tolak bingung ("' + tolak_msg[:50] + '") - '
-                      'minta tulis ulang')
+                print('       AI tolak bingung ("' + tolak_msg[:50] + '") - minta tulis ulang')
                 user_content = (
                     'CATATAN: MATERI SUMBER TERSEDIA di atas. '
-                    'TULIS ULANG berita sesuai SEMUA aturan. '
-                    'Jangan tolak. Materi sumber ada di pesan sebelumnya.\n\n'
+                    'TULIS ULANG berita sesuai SEMUA aturan. Jangan tolak. '
+                    'Materi sumber ada di pesan sebelumnya.\n\n'
                     'MATERI SUMBER:\n' + materi_sumber[:2000] + '\n\n'
                     'Tulis berita JSON valid.')
                 continue
             raise BeritaLama(tolak_msg[:100])
         break
-
     if obj is None:
         raise Exception('AI tidak menghasilkan output valid')
-
     judul = perbaiki_persen(obj.get('judul', '').strip())
     isi = perbaiki_persen(obj.get('isi', '').strip())
     ringkasan = perbaiki_persen(obj.get('ringkasan', '').strip())
@@ -2671,54 +2388,40 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         print('       Persen auto-fix diterapkan.')
     waktu = (obj.get('waktu_kejadian') or '').strip()
     gambar = (obj.get('deskripsi_gambar') or '').strip()
-
     frasa_akhir = _frasa_tertangkap(isi)
     if frasa_akhir:
         raise Exception('diblokir pemeriksa: ' + str(frasa_akhir)[:50])
-
     alasan_janji = cek_janji_judul(judul, isi)
     if alasan_janji:
         raise Exception('diblokir promise-check: ' + alasan_janji)
-
     dua_topik = deteksi_dua_topik(judul, isi)
     if dua_topik:
         raise Exception('diblokir anti-2-topik: ' + dua_topik[:60])
-
     cek_dl = cek_dateline(isi, materi_asli)
     if cek_dl:
         raise Exception('diblokir dateline: ' + cek_dl[:60])
-
     if not judul_topik_besar(judul):
         for t in JUDUL_6JAM:
             if len(kata_inti(judul) & kata_inti(t)) >= DOBEL_6JAM_MIN_KATA:
                 raise Exception('diblokir anti-dobel-6jam: mirip "' + t[:40] + '"')
     else:
         print('       Topik besar terdeteksi - gate 6jam dilewati.')
-
     nama_final = cek_narasumber_tanpa_nama(isi, kategori, judul)
     if nama_final:
-        raise Exception('DITOLAK - narasumber tanpa nama ('
-                        + nama_final[:60] + ')')
-
+        raise Exception('DITOLAK - narasumber tanpa nama (' + nama_final[:60] + ')')
     gambar_terlarang = cek_deskripsi_gambar(gambar)
     if gambar_terlarang:
         raise Exception('diblokir filter gambar: ' + gambar_terlarang[:60])
-
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
     if jiplak:
-        raise Exception('diblokir ANTI-JIPLAK: kalimat tersalin: "'
-                        + jiplak[:70] + '"')
-
+        raise Exception('diblokir ANTI-JIPLAK: kalimat tersalin: "' + jiplak[:70] + '"')
     if wajib_topik and judul_materi:
-        topik_masalah = cek_topik_ai_vs_materi(
-            judul, isi, judul_materi, summary_materi or materi_sumber)
+        topik_masalah = cek_topik_ai_vs_materi(judul, isi, judul_materi, summary_materi or materi_sumber)
         if topik_masalah:
             raise Exception('DITOLAK - ' + topik_masalah[:80])
-
     kateg_masalah = cek_kategori_dari_isi(isi, judul, kategori)
     if kateg_masalah:
         raise Exception('DITOLAK - ' + kateg_masalah[:80])
-
     return judul, isi, ringkasan, waktu, gambar
 
 def target_kata(materi_len):
@@ -2780,8 +2483,7 @@ def ai_rewrite_multi(items, kategori_target=''):
             tgl = it['tgl_pub']
         semua_judul.append(it.get('title', ''))
         semua_summary.append(it.get('summary', '')[:300])
-        bagian.append('[MATERI ' + str(i) + ']\n'
-                      'Judul: ' + it['title'] + '\nIsi: ' + materi[:1200])
+        bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title'] + '\nIsi: ' + materi[:1200])
         semua_materi += ' ' + materi
     judul_materi_gabung = ' | '.join(semua_judul)
     summary_materi_gabung = ' '.join(semua_summary)
@@ -2813,9 +2515,7 @@ def ai_rewrite_multi(items, kategori_target=''):
                     summary_materi=summary_materi_gabung,
                     wajib_topik=True)
 
-# AKHIR PART 3B BAGIAN 1
-
-# PART 3B - BAGIAN 2 DARI 2
+# ═══ BAGIAN 3B-2 ═══
 
 def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
                 breaking=False, deskripsi_gambar=''):
@@ -2835,10 +2535,8 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
         print('   Fallback Picsum dipakai.')
     payload = {
         'title': judul, 'excerpt': ringkasan, 'content': isi_bersih,
-        'category': cat, 'author': AUTHOR_NAME,
-        'img': img_final,
-        'dateline': dateline,
-        'source_name': source_name, 'source_url': link,
+        'category': cat, 'author': AUTHOR_NAME, 'img': img_final,
+        'dateline': dateline, 'source_name': source_name, 'source_url': link,
         'written_by': 'ai', 'status': status,
     }
     if breaking:
@@ -2936,8 +2634,7 @@ def ai_rewrite_teknologi_multi(items, dom):
 
 def _espn_get(path):
     try:
-        r = requests.get(ESPN_SITE + path, headers={'User-Agent': random.choice(UA_LIST)},
-                         timeout=15)
+        r = requests.get(ESPN_SITE + path, headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
         if not r.ok:
             return None
         return r.json()
@@ -2956,8 +2653,7 @@ def espn_skor_rentang(liga_code, hari_mundur=4):
         else:
             base = ('soccer/scoreboard/_/league/' + liga_code +
                     '?dates=' + t0.strftime(fmt) + '-' + t1.strftime(fmt))
-        r = requests.get(ESPN_SITE + base,
-                         headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
+        r = requests.get(ESPN_SITE + base, headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
         if not r.ok:
             return out
         data = r.json()
@@ -2987,8 +2683,7 @@ def espn_klasemen(liga_code, nama_liga):
             r = requests.get(ESPN_SITE + 'basketball/nba/standings',
                              headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
         else:
-            r = requests.get(ESPN_CORE + liga_code +
-                             '/standings?season=2026',
+            r = requests.get(ESPN_CORE + liga_code + '/standings?season=2026',
                              headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
         if not r.ok:
             return '', ''
@@ -3007,12 +2702,7 @@ def espn_klasemen(liga_code, nama_liga):
                 entries.append(e)
         baris = []
         for st in entries:
-            pos = None
-            poin = None
-            main = None
-            mn = None
-            dr = None
-            kl = None
+            pos = None; poin = None; main = None; mn = None; dr = None; kl = None
             for stat in st.get('stats', []):
                 tipe = stat.get('type') or stat.get('name') or ''
                 val = stat.get('value')
@@ -3031,14 +2721,12 @@ def espn_klasemen(liga_code, nama_liga):
             tim = st.get('team', {}).get('displayName', '?')
             if pos is None:
                 continue
-            baris.append((
-                int(pos), tim,
-                int(main) if main is not None else 0,
-                int(mn) if mn is not None else 0,
-                int(dr) if dr is not None else 0,
-                int(kl) if kl is not None else 0,
-                int(poin) if poin is not None else 0
-            ))
+            baris.append((int(pos), tim,
+                          int(main) if main is not None else 0,
+                          int(mn) if mn is not None else 0,
+                          int(dr) if dr is not None else 0,
+                          int(kl) if kl is not None else 0,
+                          int(poin) if poin is not None else 0))
         if not baris:
             return '', ''
         baris.sort()
@@ -3054,42 +2742,26 @@ def espn_klasemen(liga_code, nama_liga):
     except Exception:
         return '', ''
 
-# AKHIR PART 3B
-# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS
+# ═══ BAGIAN 4A ═══
 
 KALENDER_EVENT = [
-    {'nama': 'Asian Games Aichi-Nagoya 2026',
-     'mulai': '2026-09-19', 'selesai': '2026-10-04',
-     'query': [
-        ('klasmen medali asian games 2026', 'id'),
-        ('perolehan medali indonesia asian games', 'id'),
-        ('asian games 2026 hasil hari ini', 'id'),
-        ('asian games nagoya medal tally', 'en'),
-     ]},
-    {'nama': 'Asian Para Games 2026',
-     'mulai': '2026-10-18', 'selesai': '2026-10-25',
-     'query': [
-        ('klasmen medali asian para games', 'id'),
-        ('indonesia medali asian para games', 'id'),
-     ]},
-    {'nama': 'SEA Games Thailand 2026',
-     'mulai': '2026-12-09', 'selesai': '2026-12-20',
-     'query': [
-        ('klasmen medali sea games 2026', 'id'),
-        ('indonesia medali sea games thailand', 'id'),
-        ('sea games 2026 hasil', 'id'),
-     ]},
-    {'nama': 'ASEAN Para Games 2027',
-     'mulai': '2027-01-20', 'selesai': '2027-01-27',
-     'query': [
-        ('klasmen medali asean para games', 'id'),
-     ]},
-    {'nama': 'Winter Olympics Milano-Cortina 2026',
-     'mulai': '2027-02-06', 'selesai': '2027-02-22',
-     'query': [
-        ('winter olympics 2026 medal tally', 'en'),
-        ('winter olympics hasil', 'id'),
-     ]},
+    {'nama': 'Asian Games Aichi-Nagoya 2026', 'mulai': '2026-09-19', 'selesai': '2026-10-04',
+     'query': [('klasmen medali asian games 2026', 'id'),
+               ('perolehan medali indonesia asian games', 'id'),
+               ('asian games 2026 hasil hari ini', 'id'),
+               ('asian games nagoya medal tally', 'en')]},
+    {'nama': 'Asian Para Games 2026', 'mulai': '2026-10-18', 'selesai': '2026-10-25',
+     'query': [('klasmen medali asian para games', 'id'),
+               ('indonesia medali asian para games', 'id')]},
+    {'nama': 'SEA Games Thailand 2026', 'mulai': '2026-12-09', 'selesai': '2026-12-20',
+     'query': [('klasmen medali sea games 2026', 'id'),
+               ('indonesia medali sea games thailand', 'id'),
+               ('sea games 2026 hasil', 'id')]},
+    {'nama': 'ASEAN Para Games 2027', 'mulai': '2027-01-20', 'selesai': '2027-01-27',
+     'query': [('klasmen medali asean para games', 'id')]},
+    {'nama': 'Winter Olympics Milano-Cortina 2026', 'mulai': '2027-02-06', 'selesai': '2027-02-22',
+     'query': [('winter olympics 2026 medal tally', 'en'),
+               ('winter olympics hasil', 'id')]},
 ]
 
 def event_besara_aktif():
@@ -3124,8 +2796,7 @@ ATURAN_KOMPETISI_WAJIB = (
 
 def _tulis_dari_kandidat(c, source_nama, breaking=False, kategori_target='olahraga'):
     try:
-        judul, isi, ringkasan, waktu, gambar = ai_rewrite_single(
-            c, kategori_target=kategori_target)
+        judul, isi, ringkasan, waktu, gambar = ai_rewrite_single(c, kategori_target=kategori_target)
         insert_news(judul, isi, ringkasan, 'olahraga', '',
                     c.get('link', ''), source_nama, 'published',
                     breaking=breaking, deskripsi_gambar=gambar)
@@ -3139,24 +2810,19 @@ def _tulis_dari_kandidat(c, source_nama, breaking=False, kategori_target='olahra
 def _tulis_event_besar(cand, aktif, breaking=True):
     bagian = []
     for i, c in enumerate(cand[:8], 1):
-        bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + c['title']
-                      + '\nIsi: ' + c['summary'][:1000])
+        bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + c['title'] + '\nIsi: ' + c['summary'][:1000])
     nama_event = ' & '.join(e['nama'] for e in aktif)
     k = konteks_waktu()
-    user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: '
-            + k['kemarin'] + ')\n'
-            'TUGAS KHUSUS: SATU berita EVENT BESAR BERLANGSUNG: '
-            + nama_event + '.\n\n'
+    user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
+            'TUGAS KHUSUS: SATU berita EVENT BESAR BERLANGSUNG: ' + nama_event + '.\n\n'
             'MATERI TERKINI:\n\n' + '\n\n'.join(bagian) + '\n\n'
             'ATURAN WAJIB EVENT BESAR:\n'
             '- WAJIB menampilkan KLASMEN MEDALI sementara (peringkat, '
             'emas/perak/perunggu) bila materi memuatnya - minimal 5 '
-            'negara teratas + POSISI INDONESIA (atau negara yang '
-            'dibahas).\n'
+            'negara teratas + POSISI INDONESIA (atau negara yang dibahas).\n'
             '- WAJIB menampilkan HASIL/medali yang diraih hari ini '
             'bila materi memuatnya.\n'
-            '- Angka medali/tanggal WAJIB persis dari materi; DILARANG '
-            'mengarang.\n'
+            '- Angka medali/tanggal WAJIB persis dari materi; DILARANG mengarang.\n'
             '- Jika materi TIDAK memuat klasmen medali sama sekali, '
             'laporkan pencapaian terbaru atlet/event yang disebut.\n'
             '- Dateline: dari materi atau "INDONESIA - ".\n'
@@ -3167,11 +2833,9 @@ def _tulis_event_besar(cand, aktif, breaking=True):
             '- deskripsi_gambar: tema stadion/medali/atletik 3-6 kata - '
             'TANPA hewan, manusia, alas kaki.\n'
             '- Jangan sebut media sumber.')
-    print('   AI menulis rekap event besar (' + str(len(cand[:8]))
-          + ' materi)...')
+    print('   AI menulis rekap event besar (' + str(len(cand[:8])) + ' materi)...')
     try:
-        judul, isi, ringkasan, waktu, gambar = ai_write(
-            user, kategori='olahraga')
+        judul, isi, ringkasan, waktu, gambar = ai_write(user, kategori='olahraga')
     except BeritaLama as bl:
         print('   Ditolak AI: ' + str(bl)[:60]); return 0
     except Exception as e:
@@ -3181,8 +2845,7 @@ def _tulis_event_besar(cand, aktif, breaking=True):
     try:
         insert_news(judul, isi, ringkasan, 'olahraga', '',
                     cand[0].get('link', ''), 'Event Besar Dunia',
-                    'published', breaking=breaking,
-                    deskripsi_gambar=gambar)
+                    'published', breaking=breaking, deskripsi_gambar=gambar)
         print('   EVENT BESAR TERBIT: ' + judul[:60])
         return 1
     except Exception as e:
@@ -3201,8 +2864,7 @@ def olahraga_sudah_terbit_dengan_data(sumber='ESPN Data', jam=6):
 def olahraga_sudah_terbit_hari_ini(sumber):
     try:
         now_wita = datetime.now(WITA)
-        awal_hari = datetime(now_wita.year, now_wita.month, now_wita.day,
-                             0, 0, 0, tzinfo=WITA)
+        awal_hari = datetime(now_wita.year, now_wita.month, now_wita.day, 0, 0, 0, tzinfo=WITA)
         batas = awal_hari.astimezone(timezone.utc).isoformat()
         rows = rest_get('?select=id&source_name=eq.' + quote_plus(sumber)
                         + '&created_at=gte.' + batas)
@@ -3211,17 +2873,14 @@ def olahraga_sudah_terbit_hari_ini(sumber):
         return False
 
 KATA_REGIONAL_OLAHRAGA = [
-    'indonesia', 'timnas', 'pssi', 'liga 1', 'tarakan', 'kaltara',
-    'asean', 'aff', 'sea games', 'asian games', 'olimpiade', 'olympic',
-    'badminton', 'bulu tangkis', 'voli', 'volly', 'volleyball', 'bola voli',
-    'basket', 'ibl', 'tenis', 'motogp', 'mandalika', 'f1', 'formula 1',
-    'jepang', 'korea', 'thailand', 'malaysia', 'vietnam', 'singapura',
-    'filipina', 'china', 'india', 'asia', 'piala dunia', 'fifa',
-    'liga champions', 'uefa', 'eropa',
-    'premier league', 'champions league', 'europa league', 'la liga',
-    'serie a', 'bundesliga', 'ligue 1', 'eredivisie', 'world cup',
-    'europe', 'european', 'singapore', 'philippines', 'japan',
-    'nba',
+    'indonesia', 'timnas', 'pssi', 'liga 1', 'tarakan', 'kaltara', 'asean', 'aff',
+    'sea games', 'asian games', 'olimpiade', 'olympic', 'badminton', 'bulu tangkis',
+    'voli', 'volly', 'volleyball', 'bola voli', 'basket', 'ibl', 'tenis', 'motogp',
+    'mandalika', 'f1', 'formula 1', 'jepang', 'korea', 'thailand', 'malaysia',
+    'vietnam', 'singapura', 'filipina', 'china', 'india', 'asia', 'piala dunia',
+    'fifa', 'liga champions', 'uefa', 'eropa', 'premier league', 'champions league',
+    'europa league', 'la liga', 'serie a', 'bundesliga', 'ligue 1', 'eredivisie',
+    'world cup', 'europe', 'european', 'singapore', 'philippines', 'japan', 'nba',
 ]
 
 SUMBER_RANGKUMAN_UMUM = [
@@ -3244,11 +2903,9 @@ SUMBER_RANGKUMAN_UMUM = [
 def rangkuman_umum_sudah_terbit_hari_ini():
     try:
         now_wita = datetime.now(WITA)
-        awal_hari = datetime(now_wita.year, now_wita.month, now_wita.day,
-                             0, 0, 0, tzinfo=WITA)
+        awal_hari = datetime(now_wita.year, now_wita.month, now_wita.day, 0, 0, 0, tzinfo=WITA)
         batas = awal_hari.astimezone(timezone.utc).isoformat()
-        rows = rest_get('?select=id&source_name=eq.'
-                        + quote_plus('Rangkuman Olahraga')
+        rows = rest_get('?select=id&source_name=eq.' + quote_plus('Rangkuman Olahraga')
                         + '&created_at=gte.' + batas)
         return len(rows) > 0
     except Exception:
@@ -3262,20 +2919,15 @@ def sesi_rangkuman_umum(today_urls, seen):
     if rangkuman_umum_sudah_terbit_hari_ini():
         print('   Rangkuman umum sudah terbit HARI INI - skip.')
         return 0
-    cand = collect_candidates(SUMBER_RANGKUMAN_UMUM, today_urls, seen,
-                              max_umur_jam=30)
+    cand = collect_candidates(SUMBER_RANGKUMAN_UMUM, today_urls, seen, max_umur_jam=30)
     if not cand:
         print('   Tidak ada kandidat olahraga segar - skip aman.')
         return 0
-    regional = [c for c in cand
-                if teks_mengandung(c['title'] + ' ' + c['summary'],
-                                   KATA_REGIONAL_OLAHRAGA)]
+    regional = [c for c in cand if teks_mengandung(c['title'] + ' ' + c['summary'], KATA_REGIONAL_OLAHRAGA)]
     sebelum_tolak = len(regional)
-    regional = [c for c in regional
-                if not tolak_amerika_lokal(c['title'] + ' ' + c['summary'])]
+    regional = [c for c in regional if not tolak_amerika_lokal(c['title'] + ' ' + c['summary'])]
     if sebelum_tolak != len(regional):
-        print('   ' + str(sebelum_tolak - len(regional))
-              + ' kandidat Amerika-lokal dibuang.')
+        print('   ' + str(sebelum_tolak - len(regional)) + ' kandidat Amerika-lokal dibuang.')
     if not regional:
         print('   Tidak ada kandidat yang lolos filter regional - skip.')
         return 0
@@ -3292,8 +2944,7 @@ def sesi_rangkuman_umum(today_urls, seen):
             continue
         if sudah_serupa(top['title']):
             continue
-        print('\n   [rangkuman umum] menulis: ' + top['title'][:70]
-              + ' (+' + str(len(items) - 1) + ' materi lain)')
+        print('\n   [rangkuman umum] menulis: ' + top['title'][:70] + ' (+' + str(len(items) - 1) + ' materi lain)')
         try:
             k = konteks_waktu()
             bagian = []
@@ -3303,12 +2954,10 @@ def sesi_rangkuman_umum(today_urls, seen):
                 materi, kaya = ambil_materi_kaya(it)
                 semua_judul.append(it.get('title', ''))
                 semua_summary.append(it.get('summary', '')[:300])
-                bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title']
-                              + '\nIsi: ' + materi[:1200])
+                bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title'] + '\nIsi: ' + materi[:1200])
             judul_materi_gabung = ' | '.join(semua_judul)
             summary_materi_gabung = ' '.join(semua_summary)
-            user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: '
-                    + k['kemarin'] + ')\n'
+            user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
                     'TUGAS KHUSUS: RANGKUMAN OLAHRAGA (SATU judul, BANYAK '
                     'event/hasil/laporan sekaligus).\n\n'
                     + '\n\n'.join(bagian) + '\n\n'
@@ -3324,17 +2973,13 @@ def sesi_rangkuman_umum(today_urls, seen):
                     '- Jangan sebut media sumber.')
             judul, isi, ringkasan, waktu, gambar = ai_write(
                 user, kategori='olahraga',
-                judul_materi=judul_materi_gabung,
-                summary_materi=summary_materi_gabung)
+                judul_materi=judul_materi_gabung, summary_materi=summary_materi_gabung)
         except BeritaLama as bl:
-            print('   Ditolak AI: ' + str(bl)[:60])
-            continue
+            print('   Ditolak AI: ' + str(bl)[:60]); continue
         except Exception as e:
-            print('   ' + str(e)[:90])
-            continue
+            print('   ' + str(e)[:90]); continue
         if sudah_serupa(judul):
-            print('   Hasil AI dobel - skip.')
-            continue
+            print('   Hasil AI dobel - skip.'); continue
         try:
             img_url = get_image(top.get('entry'))
             if img_url and gambar_sudah_dipakai(img_url):
@@ -3364,8 +3009,7 @@ def buat_materi_rangkuman_eropa():
             n_espn = len(skor_espn)
             for s in skor_espn:
                 skor_semua.append(nama.split(' (')[0] + ': ' + s)
-            print('   ' + nama.split(' (')[0] + ': API 0 - ESPN '
-                  + str(n_espn) + ' laga')
+            print('   ' + nama.split(' (')[0] + ': API 0 - ESPN ' + str(n_espn) + ' laga')
         if skor_api:
             print('   ' + nama.split(' (')[0] + ': API ' + str(n_api) + ' laga')
         blok_api, teks_api = api_klasmen_football(code)
@@ -3383,11 +3027,11 @@ def buat_materi_rangkuman_eropa():
     print('   Total laga terkumpul: ' + str(len(skor_semua))
           + ' - klasmen: ' + str(len(klasemen_blok)) + ' blok')
     bagian = []
-    bagian.append('HASIL LAGA TERAKHIR LIGA TOP EROPA (ANGKA RESMI MESIN - '
-                  'SALIN PERSIS):\n' + '\n'.join(skor_semua))
+    bagian.append('HASIL LAGA TERAKHIR LIGA TOP EROPA (ANGKA RESMI MESIN - SALIN PERSIS):\n'
+                  + '\n'.join(skor_semua))
     if klasemen_teks:
-        bagian.append('KLASMEN (ANGKA RESMI MESIN - WAJIB disalin ke blok '
-                      '[KLASMEN]):\n' + '\n'.join(klasemen_teks[:4]))
+        bagian.append('KLASMEN (ANGKA RESMI MESIN - WAJIB disalin ke blok [KLASMEN]):\n'
+                      + '\n'.join(klasemen_teks[:4]))
     if klasemen_blok:
         bagian.append('BLOK KLASMEN SIAP-RENDER (WAJIB disalin APA ADUNA di '
                       'akhir isi berita, jangan diubah, jangan digandakan):\n'
@@ -3405,12 +3049,10 @@ def buat_materi_rangkuman_nba():
     bagian.append('HASIL LAGA NBA TERAKHIR (ANGKA RESMI MESIN - SALIN PERSIS):\n'
                   + '\n'.join(skor_semua))
     if teks:
-        bagian.append('KLASMEN NBA (ANGKA RESMI MESIN - WAJIB disalin ke blok '
-                      '[KLASMEN]):\n' + teks)
+        bagian.append('KLASMEN NBA (ANGKA RESMI MESIN - WAJIB disalin ke blok [KLASMEN]):\n' + teks)
     if blok:
         bagian.append('BLOK KLASMEN SIAP-RENDER (WAJIB disalin APA ADUNA di '
-                      'akhir isi berita, jangan diubah, jangan digandakan):\n'
-                      + blok)
+                      'akhir isi berita, jangan diubah, jangan digandakan):\n' + blok)
     return '\n\n'.join(bagian)
 
 def _tulis_event_besar_dari_cand(today_urls, seen, aktif):
@@ -3430,36 +3072,29 @@ def sesi_olahraga_api(jenis):
         if olahraga_sudah_terbit_hari_ini('ESPN Data'):
             print('   ESPN sudah terbit HARI INI - skip.')
             return 1
-
         print('   TAHAP 1: API Football Liga Top Eropa...')
         materi = buat_materi_rangkuman_eropa()
         if materi:
             k = konteks_waktu()
-            user = (
-                'TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: '
-                + k['kemarin'] + ')\n'
-                'TUGAS: LAPORAN HASIL LIGA TOP EROPA + KLASMEN SEMENTARA.\n'
-                'GAYA: MINIM KATA.\n\n'
-                + materi + '\n\n'
-                'FORMAT WAJIB:\n'
-                '1. Buka 1 kalimat: "Inilah hasil Liga Eropa dan klasmen sementara:"\n'
-                '2. Daftar SKOR pertandingan.\n'
-                '3. SALIN APA ADUNA semua blok [KLASMEN]...[/KLASMEN].\n'
-                '4. DILARANG narasi bertele-tele.\n'
-                '5. Dateline: "INDONESIA - ".\n'
-                '6. Judul maks 10 kata: sebut "Hasil Liga Eropa".\n'
-                '7. deskripsi_gambar: tema stadion/bola.\n'
-                '8. Jangan sebut sumber data.')
+            user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
+                    'TUGAS: LAPORAN HASIL LIGA TOP EROPA + KLASMEN SEMENTARA.\n'
+                    'GAYA: MINIM KATA.\n\n' + materi + '\n\n'
+                    'FORMAT WAJIB:\n'
+                    '1. Buka 1 kalimat: "Inilah hasil Liga Eropa dan klasmen sementara:"\n'
+                    '2. Daftar SKOR pertandingan.\n'
+                    '3. SALIN APA ADUNA semua blok [KLASMEN]...[/KLASMEN].\n'
+                    '4. DILARANG narasi bertele-tele.\n'
+                    '5. Dateline: "INDONESIA - ".\n'
+                    '6. Judul maks 10 kata: sebut "Hasil Liga Eropa".\n'
+                    '7. deskripsi_gambar: tema stadion/bola.\n'
+                    '8. Jangan sebut sumber data.')
             print('   AI menulis dari data API Football...')
             try:
-                judul, isi, ringkasan, waktu, gambar = ai_write(
-                    user, kategori='olahraga', wajib_topik=False)
+                judul, isi, ringkasan, waktu, gambar = ai_write(user, kategori='olahraga', wajib_topik=False)
             except BeritaLama as bl:
-                print('   Ditolak AI: ' + str(bl)[:60])
-                materi = None
+                print('   Ditolak AI: ' + str(bl)[:60]); materi = None
             except Exception as e:
-                print('   ' + str(e)[:90])
-                materi = None
+                print('   ' + str(e)[:90]); materi = None
             if materi:
                 try:
                     insert_news(judul, isi, ringkasan, 'olahraga', '',
@@ -3470,7 +3105,6 @@ def sesi_olahraga_api(jenis):
                     return 1
                 except Exception as e:
                     print('   Insert gagal: ' + str(e)[:80])
-
         print('   TAHAP 2: event besar aktif...')
         aktif = event_besara_aktif()
         if aktif:
@@ -3480,7 +3114,6 @@ def sesi_olahraga_api(jenis):
                 return 1
         else:
             print('   Tidak ada event besar aktif.')
-
         print('   TAHAP 3: berita bola apa saja...')
         today_urls = get_today_state()
         seen = set()
@@ -3499,17 +3132,13 @@ def sesi_olahraga_api(jenis):
             RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
         ]
         cand = collect_candidates(SUMBER_BOLA, today_urls, seen, max_umur_jam=30)
-        bola = [c for c in cand
-                if teks_mengandung(c['title'] + ' ' + c['summary'],
-                                   ['bola', 'liga', 'sepak', 'football',
-                                    'soccer', 'premier', 'champions',
-                                    'bundesliga', 'serie a', 'la liga'])]
+        bola = [c for c in cand if teks_mengandung(c['title'] + ' ' + c['summary'],
+                ['bola', 'liga', 'sepak', 'football', 'soccer', 'premier',
+                 'champions', 'bundesliga', 'serie a', 'la liga'])]
         if bola:
-            hasil = _tulis_dari_kandidat(bola[0], 'Olahraga Pagi',
-                                         breaking=False)
+            hasil = _tulis_dari_kandidat(bola[0], 'Olahraga Pagi', breaking=False)
             if hasil == 1:
                 return 1
-
         print('   TAHAP 4: olahraga umum (fallback terakhir)...')
         today_urls = get_today_state()
         seen = set()
@@ -3527,16 +3156,12 @@ def sesi_olahraga_api(jenis):
             RSSF('https://www.bola.net/feed', 'Bola.net'),
         ]
         cand = collect_candidates(SUMBER_OLGA_UMUM, today_urls, seen, max_umur_jam=30)
-        cand = [c for c in cand
-                if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
-        cand = [c for c in cand
-                if not is_berita_politik_hukum(c['title'] + ' ' + c.get('summary', ''))]
+        cand = [c for c in cand if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
+        cand = [c for c in cand if not is_berita_politik_hukum(c['title'] + ' ' + c.get('summary', ''))]
         if cand:
-            hasil = _tulis_dari_kandidat(cand[0], 'Olahraga Pagi',
-                                         breaking=False)
+            hasil = _tulis_dari_kandidat(cand[0], 'Olahraga Pagi', breaking=False)
             if hasil == 1:
                 return 1
-
         print('   Tidak ada berita olahraga apa pun - skip.')
         return 0
 
@@ -3545,35 +3170,28 @@ def sesi_olahraga_api(jenis):
         if olahraga_sudah_terbit_hari_ini('ESPN Data NBA'):
             print('   ESPN NBA sudah terbit HARI INI - skip.')
             return 1
-
         print('   TAHAP 1: NBA...')
         materi = buat_materi_rangkuman_nba()
         if materi:
             k = konteks_waktu()
-            user = (
-                'TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: '
-                + k['kemarin'] + ')\n'
-                'TUGAS: LAPORAN HASIL NBA + KLASMEN SEMENTARA.\n'
-                'GAYA: MINIM KATA.\n\n'
-                + materi + '\n\n' + ATURAN_KOMPETISI_WAJIB +
-                'FORMAT WAJIB:\n'
-                '1. Buka 1 kalimat: "Inilah hasil NBA dan klasmen sementara:"\n'
-                '2. Daftar SKOR pertandingan.\n'
-                '3. SALIN APA ADUNA blok [KLASMEN]...[/KLASMEN].\n'
-                '4. Dateline: "INDONESIA - ".\n'
-                '5. Judul maks 10 kata.\n'
-                '6. deskripsi_gambar: tema bola basket.\n'
-                '7. Jangan sebut sumber data.')
+            user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
+                    'TUGAS: LAPORAN HASIL NBA + KLASMEN SEMENTARA.\n'
+                    'GAYA: MINIM KATA.\n\n' + materi + '\n\n' + ATURAN_KOMPETISI_WAJIB +
+                    'FORMAT WAJIB:\n'
+                    '1. Buka 1 kalimat: "Inilah hasil NBA dan klasmen sementara:"\n'
+                    '2. Daftar SKOR pertandingan.\n'
+                    '3. SALIN APA ADUNA blok [KLASMEN]...[/KLASMEN].\n'
+                    '4. Dateline: "INDONESIA - ".\n'
+                    '5. Judul maks 10 kata.\n'
+                    '6. deskripsi_gambar: tema bola basket.\n'
+                    '7. Jangan sebut sumber data.')
             print('   AI menulis dari data NBA...')
             try:
-                judul, isi, ringkasan, waktu, gambar = ai_write(
-                    user, kategori='olahraga', wajib_topik=False)
+                judul, isi, ringkasan, waktu, gambar = ai_write(user, kategori='olahraga', wajib_topik=False)
             except BeritaLama as bl:
-                print('   Ditolak AI: ' + str(bl)[:60])
-                materi = None
+                print('   Ditolak AI: ' + str(bl)[:60]); materi = None
             except Exception as e:
-                print('   ' + str(e)[:90])
-                materi = None
+                print('   ' + str(e)[:90]); materi = None
             if materi:
                 try:
                     insert_news(judul, isi, ringkasan, 'olahraga', '',
@@ -3584,7 +3202,6 @@ def sesi_olahraga_api(jenis):
                     return 1
                 except Exception as e:
                     print('   Insert gagal: ' + str(e)[:80])
-
         print('   TAHAP 2: berita NBA/WNBA...')
         today_urls = get_today_state()
         seen = set()
@@ -3596,17 +3213,12 @@ def sesi_olahraga_api(jenis):
             GN('berita NBA', 'id', 'GN NBA Berita ID'),
         ]
         cand = collect_candidates(SUMBER_NBA, today_urls, seen, max_umur_jam=30)
-        cand = [c for c in cand
-                if teks_mengandung(c['title'] + ' ' + c['summary'],
-                                   ['nba', 'wnba'])]
-        cand = [c for c in cand
-                if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
+        cand = [c for c in cand if teks_mengandung(c['title'] + ' ' + c['summary'], ['nba', 'wnba'])]
+        cand = [c for c in cand if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
         if cand:
-            hasil = _tulis_dari_kandidat(cand[0], 'Rangkuman NBA',
-                                         breaking=False)
+            hasil = _tulis_dari_kandidat(cand[0], 'Rangkuman NBA', breaking=False)
             if hasil == 1:
                 return 1
-
         print('   TAHAP 3: olahraga umum (fallback)...')
         today_urls = get_today_state()
         seen = set()
@@ -3617,33 +3229,25 @@ def sesi_olahraga_api(jenis):
             RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
         ]
         cand = collect_candidates(SUMBER_OLGA_UMUM, today_urls, seen, max_umur_jam=30)
-        cand = [c for c in cand
-                if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
-        cand = [c for c in cand
-                if not is_berita_politik_hukum(c['title'] + ' ' + c.get('summary', ''))]
+        cand = [c for c in cand if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
+        cand = [c for c in cand if not is_berita_politik_hukum(c['title'] + ' ' + c.get('summary', ''))]
         if cand:
-            hasil = _tulis_dari_kandidat(cand[0], 'Olahraga Siang',
-                                         breaking=False)
+            hasil = _tulis_dari_kandidat(cand[0], 'Olahraga Siang', breaking=False)
             if hasil == 1:
                 return 1
-
         print('   Tidak ada berita olahraga - skip.')
         return 0
-
     return 0
 
-# AKHIR PART 4A
-
-# PART 4B - SESI BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.17.0
+# ═══ BAGIAN 4B — V6.17.1 ═══
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
     KATA_POLITIK_HUKUM = [
-        'tersangka', 'korupsi', 'kpk', 'kejaksaan', 'pengadilan',
-        'sidang', 'dakwaan', 'hukuman', 'pidana', 'penjara', 'ditahan',
-        'dpr', 'presiden', 'menteri', 'gubernur', 'walikota', 'bupati',
-        'pileg', 'pilpres', 'pilkada', 'partai', 'kampanye',
-        'demonstrasi', 'unjuk rasa', 'kerusuhan',
+        'tersangka', 'korupsi', 'kpk', 'kejaksaan', 'pengadilan', 'sidang',
+        'dakwaan', 'hukuman', 'pidana', 'penjara', 'ditahan', 'dpr', 'presiden',
+        'menteri', 'gubernur', 'walikota', 'bupati', 'pileg', 'pilpres', 'pilkada',
+        'partai', 'kampanye', 'demonstrasi', 'unjuk rasa', 'kerusuhan',
     ]
     for k in KATA_POLITIK_HUKUM:
         if re.search(r'\b' + re.escape(k) + r'\b', t):
@@ -3656,19 +3260,14 @@ def sesi_breaking(today_urls, seen):
     print('\nBREAKING - slot tersedia: ' + str(slots) + '/' + str(BREAKING_MAX_SLOT))
     if slots <= 0:
         return 0
-    cand_dom = collect_candidates(BREAKING_DOMESTIK_FEEDS, today_urls, seen,
-                                  max_umur_jam=30)
-    skor_dom = sorted([(c, skor_domestik(c['title'], c['summary'])) for c in cand_dom],
-                      key=lambda x: -x[1])
+    cand_dom = collect_candidates(BREAKING_DOMESTIK_FEEDS, today_urls, seen, max_umur_jam=30)
+    skor_dom = sorted([(c, skor_domestik(c['title'], c['summary'])) for c in cand_dom], key=lambda x: -x[1])
     if skor_dom:
-        print('   Top 3 skor domestik: ' + ', '.join(
-            str(int(s)) for _, s in skor_dom[:3]))
+        print('   Top 3 skor domestik: ' + ', '.join(str(int(s)) for _, s in skor_dom[:3]))
     skor_dom = [x for x in skor_dom if x[1] >= SKOR_BREAKING_MIN_DOM]
     print('   Kandidat breaking domestik layak: ' + str(len(skor_dom)))
-    cand_dun = collect_candidates(BREAKING_DUNIA_FEEDS, today_urls, seen,
-                                  max_umur_jam=30)
-    skor_dun = sorted([(c, skor_dunia(c['title'], c['summary'])) for c in cand_dun],
-                      key=lambda x: -x[1])
+    cand_dun = collect_candidates(BREAKING_DUNIA_FEEDS, today_urls, seen, max_umur_jam=30)
+    skor_dun = sorted([(c, skor_dunia(c['title'], c['summary'])) for c in cand_dun], key=lambda x: -x[1])
     skor_dun = [x for x in skor_dun if x[1] >= SKOR_BREAKING_MIN]
     print('   Kandidat breaking dunia layak: ' + str(len(skor_dun)))
     semua_pilihan = []
@@ -3726,17 +3325,16 @@ def _pasar_modal_sesi():
     if pasar_modal_libur_hari_ini():
         return None
     jam = now.hour
-    if not (12 <= jam < 18):
-        return None
-    if jam < 16:
+    if 13 <= jam < 17:
         return 'Tengah'
-    return 'Penutupan'
+    if 17 <= jam < 22:
+        return 'Penutupan'
+    return None
 
 def pasar_modal_sudah_terbit(sesi):
     try:
         now_wita = datetime.now(WITA)
-        awal_hari_wita = datetime(now_wita.year, now_wita.month, now_wita.day,
-                                  0, 0, 0, tzinfo=WITA)
+        awal_hari_wita = datetime(now_wita.year, now_wita.month, now_wita.day, 0, 0, 0, tzinfo=WITA)
         batas = awal_hari_wita.astimezone(timezone.utc).isoformat()
         sumber = 'Pasar Modal ' + str(sesi)
         rows = rest_get('?select=id&source_name=eq.' + quote_plus(sumber)
@@ -3764,7 +3362,7 @@ def _ambil_harga_yahoo(simbol):
         perubahan = None
         if sebelum and sebelum != 0:
             perubahan = (harga - sebelum) / sebelum * 100
-        return {'harga': harga, 'perubahan': perubahan}
+        return {'harga': harga, 'sebelum': sebelum, 'perubahan': perubahan}
     except Exception:
         return None
 
@@ -3782,36 +3380,42 @@ def _ambil_kurs_usdidr():
             data = r.json()
             idr = (data.get('rates') or {}).get('IDR')
             if idr:
-                return {'harga': float(idr), 'perubahan': None}
+                return {'harga': float(idr), 'sebelum': None, 'perubahan': None}
     except Exception:
         pass
     return None
 
 def _format_harga_yahoo(simbol, nama, prefix='', suffix=''):
     d = _ambil_harga_yahoo(simbol)
-    if not d:
+    if not d or d.get('harga') is None:
         return None
     harga = d['harga']
-    if harga is None:
-        return None
+    sebelum = d.get('sebelum')
     if harga >= 1000:
-        s = prefix + format(int(round(harga)), ',').replace(',', '.') + suffix
+        s_akhir = prefix + format(int(round(harga)), ',').replace(',', '.') + suffix
+        s_awal = prefix + format(int(round(sebelum)), ',').replace(',', '.') + suffix if sebelum else '-'
     else:
-        s = prefix + format(harga, '.2f').replace('.', ',') + suffix
-    if d['perubahan'] is not None:
+        s_akhir = prefix + format(harga, '.2f').replace('.', ',') + suffix
+        s_awal = prefix + format(sebelum, '.2f').replace('.', ',') + suffix if sebelum else '-'
+    persen = ''
+    if d.get('perubahan') is not None:
         tanda = '+' if d['perubahan'] >= 0 else ''
-        s += ' (' + tanda + format(d['perubahan'], '.2f').replace('.', ',') + '%)'
-    return s
+        persen = ' (' + tanda + format(d['perubahan'], '.2f').replace('.', ',') + '%)'
+    return nama + ': dari ' + s_awal + ' ke ' + s_akhir + persen
 
 def _format_kurs_usdidr():
     d = _ambil_kurs_usdidr()
     if not d or not d.get('harga'):
         return None
-    s = 'Rp ' + format(int(round(d['harga'])), ',').replace(',', '.')
+    harga = d['harga']
+    sebelum = d.get('sebelum')
+    s_akhir = 'Rp ' + format(int(round(harga)), ',').replace(',', '.')
+    s_awal = 'Rp ' + format(int(round(sebelum)), ',').replace(',', '.') if sebelum else '-'
+    persen = ''
     if d.get('perubahan') is not None:
         tanda = '+' if d['perubahan'] >= 0 else ''
-        s += ' (' + tanda + format(d['perubahan'], '.2f').replace('.', ',') + '%)'
-    return s
+        persen = ' (' + tanda + format(d['perubahan'], '.2f').replace('.', ',') + '%)'
+    return 'Kurs USD/IDR: dari ' + s_awal + ' ke ' + s_akhir + persen
 
 def sesi_pasar_modal(today_urls, seen):
     sesi = _pasar_modal_sesi()
@@ -3826,19 +3430,19 @@ def sesi_pasar_modal(today_urls, seen):
     baris = []
     s = _format_harga_yahoo('^JKSE', 'IHSG', '', '')
     if s:
-        baris.append('- IHSG: ' + s)
+        baris.append('- ' + s)
     s = _format_kurs_usdidr()
     if s:
-        baris.append('- Kurs USD/IDR: ' + s)
+        baris.append('- ' + s)
     s = _format_harga_yahoo('CL=F', 'Minyak WTI', '$', '/barel')
     if s:
-        baris.append('- Minyak WTI: ' + s)
+        baris.append('- ' + s)
     s = _format_harga_yahoo('BZ=F', 'Minyak Brent', '$', '/barel')
     if s:
-        baris.append('- Minyak Brent: ' + s)
+        baris.append('- ' + s)
     s = _format_harga_yahoo('TIO=F', 'Biji Besi (Iron Ore)', '$', '/ton')
     if s:
-        baris.append('- Biji Besi (Iron Ore): ' + s)
+        baris.append('- ' + s)
 
     if not baris:
         print('   Semua data harga kosong - skip.')
@@ -3854,9 +3458,12 @@ def sesi_pasar_modal(today_urls, seen):
             + '\n'.join(baris) + '\n\n'
             'Aturan:\n'
             '- Judul maks 10 kata: sebut IHSG + arah pergerakan atau ringkas pasar.\n'
-            '- Dateline: "JAKARTA, DKI JAKARTA - ".\n'
+            '- Dateline: WAJIB "JAKARTA, INDONESIA - ".\n'
             '- Panjang: 200-350 kata (4-6 paragraf).\n'
             '- Sajikan data dalam bentuk laporan naratif ringkas, bukan sekadar daftar.\n'
+            '- WAJIB sebut HARGA AWAL dan HARGA AKHIR untuk setiap instrumen. '
+            'Kalau harga awal tidak tersedia, hitung dari harga akhir dan persentase '
+            'yang ada.\n'
             '- DILARANG mengarang angka di luar data di atas.\n'
             '- DILARANG menebak sebab-akibat pergerakan (cukup laporkan angka).\n'
             '- PERSEN: selalu simbol %.\n'
@@ -3865,8 +3472,7 @@ def sesi_pasar_modal(today_urls, seen):
             'terakhir ' + jam_str + ' WITA, ' + tanggal + '."')
     print('   AI menulis laporan pasar modal (' + sesi + ')...')
     try:
-        judul, isi, ringkasan, waktu, gambar = ai_write(user, kategori='ekonomi',
-                                                         wajib_topik=False)
+        judul, isi, ringkasan, waktu, gambar = ai_write(user, kategori='ekonomi', wajib_topik=False)
     except BeritaLama as bl:
         print('   Ditolak AI: ' + str(bl)[:60]); return 0
     except Exception as e:
@@ -3888,9 +3494,8 @@ def sesi_pasar_modal(today_urls, seen):
 KATEGORI_DB = {
     'nasional': 'nasional', 'daerah': 'daerah',
     'internasional_asean': 'internasional', 'internasional_tt': 'internasional',
-    'internasional': 'internasional',
-    'ekonomi': 'ekonomi', 'olahraga': 'olahraga', 'teknologi': 'teknologi',
-    'otomotif': 'otomotif', 'kesehatan': 'kesehatan',
+    'internasional': 'internasional', 'ekonomi': 'ekonomi', 'olahraga': 'olahraga',
+    'teknologi': 'teknologi', 'otomotif': 'otomotif', 'kesehatan': 'kesehatan',
 }
 
 def teks_mengandung(teks, kata_list):
@@ -3941,38 +3546,32 @@ def hitung_topik_hari_ini(kata_list):
     return n
 
 def kelompok_kaltara(items):
-    teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '')
-                    for it in items).lower()
+    teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
     return any(w in teks for w in KALTARA_WORDS)
 
 def kelompok_topik(items, kata_list):
-    teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '')
-                    for it in items).lower()
+    teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
     return teks_mengandung(teks, kata_list)
 
 def kelompok_regional_olahraga(items):
-    teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '')
-                    for it in items).lower()
+    teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
     return teks_mengandung(teks, KATA_REGIONAL_OLAHRAGA)
 
 def tolak_amerika_lokal(teks):
     t = (teks or '').lower()
     KATA_OLAHRAGA_TOLAK = [
         'nfl', 'mlb', 'nhl', 'wnba', 'mls', 'ncaa', 'cfb', 'super bowl',
-        'world series', 'stanley cup',
-        'seahawks', 'patriots', 'cowboys', 'packers', 'chiefs', '49ers',
-        'bills', 'dolphins', 'eagles', 'ravens', 'bengals',
-        'yankees', 'dodgers', 'red sox', 'mets', 'cubs', 'astros',
-        'bruins', 'maple leafs', 'penguins',
-        'lakers', 'celtics', 'warriors', 'knicks', 'bulls nba',
-        'heat nba', 'suns nba', 'mavericks', 'nuggets nba',
-        'bucks nba', 'sixers', 'spurs nba', 'raptors nba',
+        'world series', 'stanley cup', 'seahawks', 'patriots', 'cowboys',
+        'packers', 'chiefs', '49ers', 'bills', 'dolphins', 'eagles', 'ravens',
+        'bengals', 'yankees', 'dodgers', 'red sox', 'mets', 'cubs', 'astros',
+        'bruins', 'maple leafs', 'penguins', 'lakers', 'celtics', 'warriors',
+        'knicks', 'bulls nba', 'heat nba', 'suns nba', 'mavericks',
+        'nuggets nba', 'bucks nba', 'sixers', 'spurs nba', 'raptors nba',
         'college football', 'college basketball', 'march madness',
-        'northwestern', 'indiana hoosiers', 'south dakota',
-        'big ten', 'sec football', 'pac-12',
-        'oregon', 'maps credit union', 'athlete of the week',
-        'credit union', 'high school', 'prep sports', 'varsity',
-        'vote athlete', 'player of the week',
+        'northwestern', 'indiana hoosiers', 'south dakota', 'big ten',
+        'sec football', 'pac-12', 'oregon', 'maps credit union',
+        'athlete of the week', 'credit union', 'high school', 'prep sports',
+        'varsity', 'vote athlete', 'player of the week',
     ]
     for k in KATA_OLAHRAGA_TOLAK:
         if re.search(r'\b' + re.escape(k) + r'\b', t):
@@ -3991,73 +3590,51 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
     sebelum_spam = len(cand)
     cand = [c for c in cand if not judul_spam(c['title'])]
     if sebelum_spam != len(cand):
-        print('   (' + cat + ') ' + str(sebelum_spam - len(cand))
-              + ' judul spam dibuang.')
+        print('   (' + cat + ') ' + str(sebelum_spam - len(cand)) + ' judul spam dibuang.')
     if not cand:
         print('   (' + cat + ') Semua kandidat spam - skip.')
         return False
     if cat == 'internasional_tt':
-        cand = [c for c in cand
-                if teks_mengandung(c['title'] + ' ' + c['summary'], KATA_TT)]
+        cand = [c for c in cand if teks_mengandung(c['title'] + ' ' + c['summary'], KATA_TT)]
         if not cand:
             print('   (tt) Tidak ada kandidat Timur Tengah segar.')
             return False
     if cat in ('internasional', 'internasional_asean', 'internasional_tt'):
         sebelum = len(cand)
-        cand = [c for c in cand
-                if not adalah_turnamen_olahraga(c['title'] + ' ' + c['summary'])]
+        cand = [c for c in cand if not adalah_turnamen_olahraga(c['title'] + ' ' + c['summary'])]
         if sebelum != len(cand):
-            print('   (' + cat + ') ' + str(sebelum - len(cand))
-                  + ' kandidat turnamen olahraga dibuang (ke olahraga).')
+            print('   (' + cat + ') ' + str(sebelum - len(cand)) + ' kandidat turnamen olahraga dibuang (ke olahraga).')
         sebelum2 = len(cand)
-        cand = [c for c in cand
-                if not adalah_konten_otomotif(c['title'] + ' ' + c['summary'])]
+        cand = [c for c in cand if not adalah_konten_otomotif(c['title'] + ' ' + c['summary'])]
         if sebelum2 != len(cand):
-            print('   (' + cat + ') ' + str(sebelum2 - len(cand))
-                  + ' kandidat otomotif dibuang (ke otomotif).')
+            print('   (' + cat + ') ' + str(sebelum2 - len(cand)) + ' kandidat otomotif dibuang (ke otomotif).')
         if cat == 'internasional_asean':
             sebelum_asean = len(cand)
-            cand = [c for c in cand
-                    if teks_mengandung(c['title'] + ' ' + c['summary'],
-                                       KATA_ASEAN_WAJIB)]
+            cand = [c for c in cand if teks_mengandung(c['title'] + ' ' + c['summary'], KATA_ASEAN_WAJIB)]
             if sebelum_asean != len(cand):
-                print('   (' + cat + ') ' + str(sebelum_asean - len(cand))
-                      + ' kandidat tanpa kata kunci asean dibuang.')
+                print('   (' + cat + ') ' + str(sebelum_asean - len(cand)) + ' kandidat tanpa kata kunci asean dibuang.')
         sebelum3 = len(cand)
-        cand = [c for c in cand
-                if cek_kategori_cocok(cat,
-                                      c['title'] + ' ' + c['summary']) is None]
+        cand = [c for c in cand if cek_kategori_cocok(cat, c['title'] + ' ' + c['summary']) is None]
         if sebelum3 != len(cand):
-            print('   (' + cat + ') ' + str(sebelum3 - len(cand))
-                  + ' kandidat tanpa kata luar negeri dibuang.')
+            print('   (' + cat + ') ' + str(sebelum3 - len(cand)) + ' kandidat tanpa kata luar negeri dibuang.')
     if cat == 'teknologi':
         sebelum = len(cand)
-        cand = [c for c in cand
-                if not adalah_konten_otomotif(c['title'] + ' ' + c['summary'])]
+        cand = [c for c in cand if not adalah_konten_otomotif(c['title'] + ' ' + c['summary'])]
         if sebelum != len(cand):
-            print('   (' + cat + ') ' + str(sebelum - len(cand))
-                  + ' kandidat otomotif dibuang (ke otomotif).')
+            print('   (' + cat + ') ' + str(sebelum - len(cand)) + ' kandidat otomotif dibuang (ke otomotif).')
     if cat == 'ekonomi':
         sebelum = len(cand)
-        cand = [c for c in cand
-                if cek_kategori_cocok('ekonomi',
-                                      c['title'] + ' ' + c['summary']) is None]
+        cand = [c for c in cand if cek_kategori_cocok('ekonomi', c['title'] + ' ' + c['summary']) is None]
         if sebelum != len(cand):
-            print('   (ekonomi) ' + str(sebelum - len(cand))
-                  + ' kandidat tanpa kata ekonomi dibuang.')
+            print('   (ekonomi) ' + str(sebelum - len(cand)) + ' kandidat tanpa kata ekonomi dibuang.')
     if wajib_regional and cat == 'olahraga':
-        n_reg = sum(1 for c in cand
-                    if teks_mengandung(c['title'] + ' ' + c['summary'],
-                                       KATA_REGIONAL_OLAHRAGA))
-        print('   (' + cat + ') Kandidat regional: ' + str(n_reg) + '/' + str(len(cand))
-              + ' (diprioritaskan, tidak wajib).')
+        n_reg = sum(1 for c in cand if teks_mengandung(c['title'] + ' ' + c['summary'], KATA_REGIONAL_OLAHRAGA))
+        print('   (' + cat + ') Kandidat regional: ' + str(n_reg) + '/' + str(len(cand)) + ' (diprioritaskan, tidak wajib).')
     if cat == 'olahraga':
         sebelum_tolak = len(cand)
-        cand = [c for c in cand
-                if not tolak_amerika_lokal(c['title'] + ' ' + c['summary'])]
+        cand = [c for c in cand if not tolak_amerika_lokal(c['title'] + ' ' + c['summary'])]
         if sebelum_tolak != len(cand):
-            print('   (' + cat + ') ' + str(sebelum_tolak - len(cand))
-                  + ' kandidat Amerika-lokal dibuang.')
+            print('   (' + cat + ') ' + str(sebelum_tolak - len(cand)) + ' kandidat Amerika-lokal dibuang.')
     if not cand:
         print('   (' + cat + ') Semua kandidat habis setelah filter - skip.')
         return False
@@ -4106,21 +3683,17 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                 else:
                     judul, isi, ringkasan, waktu, gambar = ai_rewrite_teknologi_single(top, domain_tek)
             elif len(items) > 1:
-                judul, isi, ringkasan, waktu, gambar = ai_rewrite_multi(
-                    items, kategori_target=cat)
+                judul, isi, ringkasan, waktu, gambar = ai_rewrite_multi(items, kategori_target=cat)
             else:
-                judul, isi, ringkasan, waktu, gambar = ai_rewrite_single(
-                    top, kategori_target=cat)
+                judul, isi, ringkasan, waktu, gambar = ai_rewrite_single(top, kategori_target=cat)
         except BeritaLama as bl:
             print('   Ditolak AI: ' + str(bl)[:60]); continue
         except Exception as e:
             print('   ' + str(e)[:90]); continue
         kategori_final = KATEGORI_DB.get(cat, cat)
         kategori_paksa = tentukan_kategori_dari_isi(judul, isi)
-        if kategori_paksa and cat in ('internasional', 'internasional_asean',
-                                       'internasional_tt', 'ekonomi'):
-            print('   Kategori dipaksa dari isi: ' + cat
-                  + ' -> ' + kategori_paksa)
+        if kategori_paksa and cat in ('internasional', 'internasional_asean', 'internasional_tt', 'ekonomi'):
+            print('   Kategori dipaksa dari isi: ' + cat + ' -> ' + kategori_paksa)
             kategori_final = kategori_paksa
         if sudah_serupa(judul):
             print('   Hasil AI dobel dengan judul yang sudah ada - skip.')
@@ -4162,21 +3735,17 @@ def sesi_kategori(today_urls, seen):
         return 0
     print('\nKATEGORI - jam ' + str(jam) + ':00 WITA - kuota: ' +
           ', '.join(k + '=' + str(v) for k, v in kuota.items()))
-
     libur = pasar_modal_libur_hari_ini()
-    is_pasar_modal_jam = (jam == 12 or jam == 18)
+    is_pasar_modal_jam = (jam == 14 or jam == 18)
     if is_pasar_modal_jam and not libur:
         if 'ekonomi' in kuota:
-            print('   Jam ' + str(jam) + ' hari kerja - pasar modal jalan, '
-                  'ekonomi di-skip.')
+            print('   Jam ' + str(jam) + ' hari kerja - pasar modal jalan, ekonomi di-skip.')
             kuota = {k: v for k, v in kuota.items() if k != 'ekonomi'}
     elif is_pasar_modal_jam and libur:
         kuota = dict(kuota)
         if 'ekonomi' not in kuota:
             kuota['ekonomi'] = 1
-            print('   Jam ' + str(jam) + ' libur bursa - ekonomi masuk pengganti '
-                  'pasar modal.')
-
+            print('   Jam ' + str(jam) + ' libur bursa - ekonomi masuk pengganti pasar modal.')
     utamakan_kaltara = False
     if kuota.get('daerah'):
         utamakan_kaltara = hitung_kaltara_hari_ini() < 2
@@ -4197,8 +3766,7 @@ def sesi_kategori(today_urls, seen):
                     nama.append('KDMP')
                 else:
                     nama.append('Kegiatan Menteri')
-            print('   Topik wajib nasional belum terpenuhi: ' + ' & '.join(nama)
-                  + ' - kandidatnya didahulukan.')
+            print('   Topik wajib nasional belum terpenuhi: ' + ' & '.join(nama) + ' - kandidatnya didahulukan.')
     sumber_kesehatan = None
     if kuota.get('kesehatan'):
         dom_kes, sumber_kesehatan = sumber_kesehatan_hari_ini(jam)
@@ -4260,11 +3828,8 @@ def sesi_kategori(today_urls, seen):
             if jam in (11, 17):
                 aktif = event_besara_aktif()
                 if aktif:
-                    print('   EVENT BESAR AKTIF: '
-                          + ' & '.join(e['nama'] for e in aktif)
-                          + ' - diprioritaskan.')
-                    if _tulis_event_besar_dari_cand(
-                            today_urls, seen, aktif) == 1:
+                    print('   EVENT BESAR AKTIF: ' + ' & '.join(e['nama'] for e in aktif) + ' - diprioritaskan.')
+                    if _tulis_event_besar_dari_cand(today_urls, seen, aktif) == 1:
                         total += 1
                         continue
                 for _ in range(n):
@@ -4283,10 +3848,9 @@ def sesi_kategori(today_urls, seen):
     return total
 
 def sesi_breaking_saja():
-    """V6.17.0: jalankan cuma breaking."""
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.0)')
+    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.1)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -4311,10 +3875,9 @@ def sesi_breaking_saja():
     return n_brk
 
 def sesi_kategori_saja():
-    """V6.17.0: jalankan kategori + rangkuman + pasar modal (tanpa breaking)."""
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.0)')
+    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.1)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -4345,7 +3908,7 @@ def run_session():
     """Fallback: jalankan semua (untuk kompatibilitas)."""
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.0)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.1)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -4390,7 +3953,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.0 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.1 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4404,7 +3967,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.0'
+FILE_VERSI      = 'V6.17.1'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B

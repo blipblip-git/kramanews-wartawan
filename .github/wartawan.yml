@@ -1,12 +1,11 @@
 name: AI Wartawan KramaNews
 
 # ══════════════════════════════════════════════════════
-#  WARTAWAN.YML — V6.11
-#  Perubahan dari V6.10:
-#   - Breaking dipisah ke wartawan-breaking.yml
-#   - File ini cuma jalankan KATEGORI + RANGKUMAN + PASAR MODAL
-#   - Jam sibuk: 06:07-19:37 WITA (2x/jam)
-#   - Jam tenang: tidak ada kategori (breaking sendiri yang jalan)
+#  WARTAWAN.YML — V6.12
+#  Perubahan dari V6.11:
+#   - Pasar modal digeser: 12:00 → 14:00 WITA (Tengah) & 18:00 (Penutupan)
+#   - Cron pasar modal: '0 4,10 * * *' → '0 6,10 * * *'
+#   - Tidak ada perubahan lain (kategori tetap 06:07–19:37 WITA, 2x/jam)
 #  ATURAN EMAS: FILE INI TIDAK PERNAH BERISI KUNCI ASLI.
 # ══════════════════════════════════════════════════════
 
@@ -18,8 +17,8 @@ on:
     # 07:07-19:37 WITA = 23:07 (hari sebelumnya) - 11:37 UTC
     - cron: '7,37 23 * * *'      # 07:07, 07:37 WITA
     - cron: '7,37 0-11 * * *'    # 08:07-19:37 WITA (2x/jam, 12 jam)
-    # ═══ PASAR MODAL 12:00 & 18:00 WITA = 04:00 & 10:00 UTC ═══
-    - cron: '0 4,10 * * *'
+    # ═══ V6.12: PASAR MODAL 14:00 & 18:00 WITA = 06:00 & 10:00 UTC ═══
+    - cron: '0 6,10 * * *'
   workflow_dispatch:
 
 jobs:

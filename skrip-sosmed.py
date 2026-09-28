@@ -1,7 +1,6 @@
 # KRAMANEWS — SKRIP SOSMED V1.11 (FB + INSTAGRAM)
-# V1.11: 5 siklus x 1 berita/hari (06:07, 09:07, 12:07, 15:07, 18:07 WITA)
+# V1.11: 5 siklus x 1 berita/hari (06:17, 09:17, 12:17, 15:17, 18:17 WITA)
 # V1.11: rotasi slot per jam: Tarakan -> Kaltara -> Nasional -> Internasional -> Bebas
-# V1.11: fallback 1 kategori lain kalau slot utama kosong (hindari Internasional ke-2)
 
 import requests
 import os
@@ -14,7 +13,7 @@ from datetime import datetime, timezone, timedelta
 FB_PAGE_TOKEN   = os.environ.get('FB_PAGE_TOKEN', '')
 FB_PAGE_ID      = os.environ.get('FB_PAGE_ID', '')
 IG_TOKEN        = os.environ.get('IG_PAGE_TOKEN', '')
-SUPABASE_URL    = 'https://imcvijgtydjjpotlaltv.supabase.co'
+SUPABASE_URL    = 'https://imcvijgytdjjpotlaltv.supabase.co'
 SUPABASE_ANON   = os.environ.get('SUPABASE_PUBLISHABLE', '')
 SUPABASE_SERVICE = os.environ.get('SUPABASE_SERVICE', '')
 SITE_URL        = 'https://kramanews.my.id'
@@ -161,14 +160,13 @@ def post_fb(n):
     else:
         return fb_post_feed(pesan, SITE_URL + '/?baca=' + str(n.get('id')))
 
-# ═══ V1.11: tentukan slot berdasarkan jam WITA ═══
 def slot_saat_ini():
-    """Rotasi slot per jam:
+    """V1.11: rotasi slot per jam:
     06:07 WITA -> TARAKAN
     09:07 WITA -> KALTARA
     12:07 WITA -> NASIONAL
     15:07 WITA -> INTERNASIONAL
-    18:07 WITA -> BEBAS (tarakan/kaltara/nas/int/ekonomi/olahraga/teknologi/otomotif/kesehatan)
+    18:07 WITA -> BEBAS
     """
     jam = datetime.now(WITA).hour
     if 5 <= jam < 8:
@@ -183,7 +181,6 @@ def slot_saat_ini():
         return 'bebas'
 
 def pilih_berita_untuk_slot(rows, slot):
-    """Pilih SATU berita untuk slot ini. Fallback ke kategori lain kalau kosong."""
     id_terpakai = set()
 
     def ambil(pred):
@@ -207,11 +204,7 @@ def pilih_berita_untuk_slot(rows, slot):
     if pilihan:
         return pilihan
 
-    # Fallback: cari kategori lain (bukan yang sudah jadi slot utama)
-    prioritas_fallback = ['daerah', 'nasional', 'ekonomi', 'olahraga',
-                          'teknologi', 'otomotif', 'kesehatan', 'internasional']
     if slot == 'tarakan':
-        # Coba Kaltara lain dulu, lalu fallback umum
         pilihan = ambil(is_kaltara_lain)
         if pilihan:
             return pilihan
@@ -220,12 +213,13 @@ def pilih_berita_untuk_slot(rows, slot):
         if pilihan:
             return pilihan
 
+    prioritas_fallback = ['daerah', 'nasional', 'ekonomi', 'olahraga',
+                          'teknologi', 'otomotif', 'kesehatan', 'internasional']
     for kat in prioritas_fallback:
         pilihan = ambil(lambda n, k=kat: n.get('category') == k)
         if pilihan:
             return pilihan
 
-    # Terakhir: apa saja
     pilihan = ambil(lambda n: True)
     return pilihan
 
