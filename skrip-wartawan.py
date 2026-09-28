@@ -551,15 +551,63 @@ DOM_KRITIS = [
     'massa membakar', 'membakar massal', 'tawuran besar',
 ]
 
-DUNIA_KRITIS = [
-    'missile', 'airstrike', 'air strike', 'invasion', 'nuclear', 'nuklir',
-    'assassination', 'coup', 'uprising', 'civil war', 'terror attack',
-    'suicide bombing', 'explosion', 'explodes', 'mass shooting', 'stabbing attack',
-    'hurricane', 'typhoon', 'cyclone', 'wildfire', 'flood', 'landslide',
-    'volcano', 'eruption', 'tsunami warning', 'volcanic eruption',
-    'plane crash', 'ferry sinks', 'train derailment', 'derailed',
-    'resignation', 'overthrown', 'state of emergency', 'killed',
+# V6.17.5: KRITERIA BREAKING INTERNASIONAL — hanya kategori BERAT
+# (A) Bencana alam, (B) Kecelakaan, (C) Geopolitik/Militer,
+# (D) Politik/Hukum, (E) Ekonomi/Keuangan, (F) Teknologi, (G) Wabah
+BREAKING_INT_KRITIS = [
+    # A. BENCANA ALAM
+    'banjir besar', 'major flood', 'flash flood', 'devastating flood',
+    'tsunami', 'tsunami warning',
+    'gempa bumi', 'earthquake', 'magnitude',
+    'angin topan', 'typhoon', 'hurricane', 'cyclone', 'super typhoon',
+    'letusan gunung', 'volcanic eruption', 'volcano',
+    'kebakaran hutan', 'wildfire', 'forest fire',
+    'tanah longsor', 'landslide',
+
+    # B. KECELAKAAN (massal)
+    'pesawat jatuh', 'plane crash', 'air crash', 'aircraft crash',
+    'pesawat hilang', 'plane missing',
+    'kapal tenggelam', 'ferry sinks', 'ship sinks', 'boat capsizes',
+    'kapal terbakar', 'ferry fire', 'ship fire',
+    'kereta anjlok', 'train derailment', 'train crash', 'train collision',
+
+    # C. GEOPOLITIK & MILITER
+    'perang', 'war', 'invasi', 'invasion', 'deklarasi perang',
+    'serangan rudal', 'missile strike', 'missile attack', 'rocket attack',
+    'rudal', 'missile', 'roket',
+    'kudeta', 'coup', 'military coup',
+    'uji coba nuklir', 'nuclear test',
+    'serangan teroris', 'terror attack', 'terrorist attack',
+    'gencatan senjata', 'ceasefire', 'peace deal', 'peace agreement',
+    'sanksi ekonomi', 'economic sanctions',
+
+    # D. POLITIK & HUKUM
+    'presiden meninggal', 'president dies', 'president dead',
+    'pm meninggal', 'prime minister dies',
+    'presiden mundur', 'president resigns', 'president steps down',
+    'pembunuhan pejabat', 'assassination',
+    'penculikan pejabat', 'kidnapping',
+    'presiden terpilih', 'elected president', 'wins election',
+    'referendum', 'independence referendum',
+    'pejabat ditangkap', 'official arrested', 'minister arrested',
+    'bandar narkoba', 'drug lord arrested', 'drug kingpin',
+
+    # E. EKONOMI & KEUANGAN
+    'krisis mata uang', 'currency crisis', 'devaluation',
+    'bank runtuh', 'bank collapse', 'bank fails',
+    'kebangkrutan negara', 'default', 'sovereign default',
+    'perang dagang', 'trade war', 'tariff war',
+    'opec', 'opec+',
+
+    # F. TEKNOLOGI & SAINS
+    'peluncuran roket berawak', 'crewed launch', 'manned launch',
+    'nasa launch', 'spacex launch', 'cnsa launch',
+
+    # G. WABAH
+    'pandemi', 'pandemic', 'who emergency', 'global health emergency',
 ]
+
+DUNIA_KRITIS = BREAKING_INT_KRITIS
 
 def judul_topik_besar(judul):
     j = (judul or '').lower()
@@ -3238,7 +3286,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.17.4
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.17.5
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3253,34 +3301,73 @@ def is_berita_politik_hukum(teks):
             return True
     return False
 
-def _iso_z(dt):
-    """V6.17.4: format ISO dengan akhiran Z (wajib untuk Supabase REST)."""
-    return dt.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+def _jam_breaking_aktif():
+    """V6.17.5: Breaking cuma jalan 06:07-22:07 WITA. Di luar itu stop (kecuali darurat)."""
+    jam = datetime.now(WITA).hour
+    return 6 <= jam < 22
+
+def _darurat_malam(judul, summary):
+    """V6.17.5: Topik darurat yang tetap lolos breaking malam."""
+    t = ((judul or '') + ' ' + (summary or '')).lower()
+    DARURAT = [
+        'tsunami', 'gempa bumi', 'earthquake', 'magnitude',
+        'erupsi', 'gunung meletus', 'volcanic eruption',
+        'perang', 'war', 'invasi', 'invasion',
+        'serangan nuklir', 'nuclear attack', 'nuclear test',
+        'kudeta', 'coup',
+    ]
+    for k in DARURAT:
+        if k in t:
+            mag = ambil_magnitude(t)
+            if 'gempa' in t or 'earthquake' in t:
+                if mag is not None and mag < 6.0:
+                    continue
+            return True
+    return False
 
 def sesi_breaking(today_urls, seen):
+    """V6.17.5: Breaking cuma 1 slot, prioritas domestik, stop malam (kecuali darurat)."""
     made = 0
     slots = BREAKING_MAX_SLOT - len(get_breaking_list())
     print('\nBREAKING - slot tersedia: ' + str(slots) + '/' + str(BREAKING_MAX_SLOT))
     if slots <= 0:
         return 0
+
+    jam_aktif = _jam_breaking_aktif()
+    if not jam_aktif:
+        print('   ⏰ Di luar jam breaking (06:07-22:07 WITA). Cek darurat dulu...')
+
     cand_dom = collect_candidates(BREAKING_DOMESTIK_FEEDS, today_urls, seen, max_umur_jam=30)
     skor_dom = sorted([(c, skor_domestik(c['title'], c['summary'])) for c in cand_dom], key=lambda x: -x[1])
     if skor_dom:
         print('   Top 3 skor domestik: ' + ', '.join(str(int(s)) for _, s in skor_dom[:3]))
     skor_dom = [x for x in skor_dom if x[1] >= SKOR_BREAKING_MIN_DOM]
     print('   Kandidat breaking domestik layak: ' + str(len(skor_dom)))
+
     cand_dun = collect_candidates(BREAKING_DUNIA_FEEDS, today_urls, seen, max_umur_jam=30)
     skor_dun = sorted([(c, skor_dunia(c['title'], c['summary'])) for c in cand_dun], key=lambda x: -x[1])
     skor_dun = [x for x in skor_dun if x[1] >= SKOR_BREAKING_MIN]
     print('   Kandidat breaking dunia layak: ' + str(len(skor_dun)))
+
+    # V6.17.5: prioritas domestik dulu, baru dunia
     semua_pilihan = []
     for c, s in skor_dom:
         semua_pilihan.append((c, 'dom'))
     for c, s in skor_dun:
+        # Kalau malam: hanya darurat yang lolos
+        if not jam_aktif and not _darurat_malam(c['title'], c['summary']):
+            continue
         semua_pilihan.append((c, 'dun'))
+
+    # V6.17.5: kalau malam dan tidak ada darurat, skip total
+    if not jam_aktif and not semua_pilihan:
+        print('   ⏰ Malam + tidak ada darurat - skip breaking.')
+        return 0
+
     if not semua_pilihan:
         print('   Tidak ada kandidat breaking layak - skip.')
         return 0
+
     for c, tip in semua_pilihan:
         if made >= slots:
             break
@@ -3335,7 +3422,6 @@ def _pasar_modal_sesi():
     return None
 
 def pasar_modal_sudah_terbit(sesi):
-    """V6.17.4: cek ganda - by source_name (exact) ATAU judul prefix 'Pasar Keuangan' 2 jam terakhir."""
     try:
         now_wita = datetime.now(WITA)
         awal_hari_wita = datetime(now_wita.year, now_wita.month, now_wita.day, 0, 0, 0, tzinfo=WITA)
@@ -3885,7 +3971,7 @@ def sesi_kategori(today_urls, seen):
 def sesi_breaking_saja():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.4)')
+    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.5)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3912,7 +3998,7 @@ def sesi_breaking_saja():
 def sesi_kategori_saja():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.4)')
+    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.5)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3943,7 +4029,7 @@ def run_session():
     """Fallback: jalankan semua (untuk kompatibilitas)."""
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.4)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.5)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3988,7 +4074,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.4 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.5 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4002,7 +4088,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.4'
+FILE_VERSI      = 'V6.17.5'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
