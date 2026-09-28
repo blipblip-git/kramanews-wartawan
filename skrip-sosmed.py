@@ -1,7 +1,7 @@
-# KRAMANEWS — SKRIP SOSMED V1.10 (FB + INSTAGRAM)
-# V1.10: 5x/hari tiap 3 jam — 2 Tarakan + 1 Kaltara lain + 1 Nasional + 1 Internasional
-# V1.10: supabase_update pakai SUPABASE_SERVICE (admin-ops sudah JWT-only)
-# V1.10: IG ikut aturan sama (5 slot), fallback kalau kosong
+# KRAMANEWS — SKRIP SOSMED V1.11 (FB + INSTAGRAM)
+# V1.11: 5 siklus x 1 berita/hari (06:07, 09:07, 12:07, 15:07, 18:07 WITA)
+# V1.11: rotasi slot per jam: Tarakan -> Kaltara -> Nasional -> Internasional -> Bebas
+# V1.11: fallback 1 kategori lain kalau slot utama kosong (hindari Internasional ke-2)
 
 import requests
 import os
@@ -14,7 +14,7 @@ from datetime import datetime, timezone, timedelta
 FB_PAGE_TOKEN   = os.environ.get('FB_PAGE_TOKEN', '')
 FB_PAGE_ID      = os.environ.get('FB_PAGE_ID', '')
 IG_TOKEN        = os.environ.get('IG_PAGE_TOKEN', '')
-SUPABASE_URL    = 'https://imcvijgytdjjpotlaltv.supabase.co'
+SUPABASE_URL    = 'https://imcvijgtydjjpotlaltv.supabase.co'
 SUPABASE_ANON   = os.environ.get('SUPABASE_PUBLISHABLE', '')
 SUPABASE_SERVICE = os.environ.get('SUPABASE_SERVICE', '')
 SITE_URL        = 'https://kramanews.my.id'
@@ -161,42 +161,77 @@ def post_fb(n):
     else:
         return fb_post_feed(pesan, SITE_URL + '/?baca=' + str(n.get('id')))
 
-def pilih_5_berita(rows):
-    terpilih = []
-    id_terpilih = set()
+# ═══ V1.11: tentukan slot berdasarkan jam WITA ═══
+def slot_saat_ini():
+    """Rotasi slot per jam:
+    06:07 WITA -> TARAKAN
+    09:07 WITA -> KALTARA
+    12:07 WITA -> NASIONAL
+    15:07 WITA -> INTERNASIONAL
+    18:07 WITA -> BEBAS (tarakan/kaltara/nas/int/ekonomi/olahraga/teknologi/otomotif/kesehatan)
+    """
+    jam = datetime.now(WITA).hour
+    if 5 <= jam < 8:
+        return 'tarakan'
+    elif 8 <= jam < 11:
+        return 'kaltara'
+    elif 11 <= jam < 14:
+        return 'nasional'
+    elif 14 <= jam < 17:
+        return 'internasional'
+    else:
+        return 'bebas'
 
-    tarakan = [n for n in rows if is_tarakan(n)]
-    for n in tarakan[:2]:
-        terpilih.append(n)
-        id_terpilih.add(n['id'])
+def pilih_berita_untuk_slot(rows, slot):
+    """Pilih SATU berita untuk slot ini. Fallback ke kategori lain kalau kosong."""
+    id_terpakai = set()
 
-    kaltara_lain = [n for n in rows if is_kaltara_lain(n) and n['id'] not in id_terpilih]
-    if kaltara_lain:
-        terpilih.append(kaltara_lain[0])
-        id_terpilih.add(kaltara_lain[0]['id'])
-
-    nasional = [n for n in rows if n.get('category') == 'nasional' and n['id'] not in id_terpilih]
-    if nasional:
-        terpilih.append(nasional[0])
-        id_terpilih.add(nasional[0]['id'])
-
-    internasional = [n for n in rows if n.get('category') == 'internasional' and n['id'] not in id_terpilih]
-    if internasional:
-        terpilih.append(internasional[0])
-        id_terpilih.add(internasional[0]['id'])
-
-    if len(terpilih) < 5:
+    def ambil(pred):
         for n in rows:
-            if len(terpilih) >= 5:
-                break
-            if n['id'] not in id_terpilih:
-                terpilih.append(n)
-                id_terpilih.add(n['id'])
+            if n['id'] in id_terpakai:
+                continue
+            if pred(n):
+                return n
+        return None
 
-    return terpilih[:5]
+    pilihan = None
+    if slot == 'tarakan':
+        pilihan = ambil(is_tarakan)
+    elif slot == 'kaltara':
+        pilihan = ambil(is_kaltara_lain)
+    elif slot == 'nasional':
+        pilihan = ambil(lambda n: n.get('category') == 'nasional')
+    elif slot == 'internasional':
+        pilihan = ambil(lambda n: n.get('category') == 'internasional')
+
+    if pilihan:
+        return pilihan
+
+    # Fallback: cari kategori lain (bukan yang sudah jadi slot utama)
+    prioritas_fallback = ['daerah', 'nasional', 'ekonomi', 'olahraga',
+                          'teknologi', 'otomotif', 'kesehatan', 'internasional']
+    if slot == 'tarakan':
+        # Coba Kaltara lain dulu, lalu fallback umum
+        pilihan = ambil(is_kaltara_lain)
+        if pilihan:
+            return pilihan
+    if slot == 'kaltara':
+        pilihan = ambil(is_tarakan)
+        if pilihan:
+            return pilihan
+
+    for kat in prioritas_fallback:
+        pilihan = ambil(lambda n, k=kat: n.get('category') == k)
+        if pilihan:
+            return pilihan
+
+    # Terakhir: apa saja
+    pilihan = ambil(lambda n: True)
+    return pilihan
 
 def mode_fb():
-    print('📘 MODE FB — 5 slot: 2 Tarakan + 1 Kaltara lain + 1 Nas + 1 Int...')
+    slot = slot_saat_ini()
+    print('📘 MODE FB V1.11 — slot: ' + slot.upper() + ' (1 berita)')
 
     rows = supabase_get_safe(
         'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking'
@@ -207,40 +242,30 @@ def mode_fb():
         print('✅ Tidak ada berita baru. Selesai.')
         return
 
-    terpilih = pilih_5_berita(rows)
+    n = pilih_berita_untuk_slot(rows, slot)
 
-    if not terpilih:
+    if not n:
         print('✅ Tidak ada kandidat. Selesai.')
         return
 
-    print('📋 Terpilih ' + str(len(terpilih)) + ' berita:')
-    for n in terpilih:
-        if is_tarakan(n):
-            label = 'TARAKAN'
-        elif is_kaltara_lain(n):
-            label = 'KALTARA'
-        else:
-            label = (n.get('category') or '?').upper()
-        print('   • [' + label + '] ' + (n.get('title') or '')[:60])
+    if is_tarakan(n):
+        label = 'TARAKAN'
+    elif is_kaltara_lain(n):
+        label = 'KALTARA'
+    else:
+        label = (n.get('category') or '?').upper()
 
-    ok = 0
-    for n in terpilih:
-        if is_tarakan(n):
-            print('🏝️ TARAKAN: ' + (n.get('title') or '')[:60])
-        elif is_kaltara_lain(n):
-            print('🏝️ KALTARA: ' + (n.get('title') or '')[:60])
-        else:
-            print('📤 [' + (n.get('category') or '?') + ']: ' + (n.get('title') or '')[:60])
-        try:
-            post_fb(n)
-            supabase_update(n['id'], {'posted_fb': True})
-            ok += 1
-            print('   ✅ Terkirim ke Facebook Page!')
-        except Exception as e:
-            print('   ⚠️ Gagal: ' + str(e)[:150])
-        time.sleep(3)
+    print('📋 Terpilih 1 berita:')
+    print('   • [' + label + '] ' + (n.get('title') or '')[:70])
 
-    print('🏁 Mode FB selesai — ' + str(ok) + ' post terkirim.')
+    try:
+        post_fb(n)
+        supabase_update(n['id'], {'posted_fb': True})
+        print('   ✅ Terkirim ke Facebook Page!')
+    except Exception as e:
+        print('   ⚠️ Gagal: ' + str(e)[:150])
+
+    print('🏁 Mode FB selesai.')
 
 def ada_img(n):
     u = (n.get('img') or '').strip()
@@ -294,7 +319,8 @@ def buat_pesan_ig(n):
     return '\n'.join(lines)[:2200]
 
 def mode_ig():
-    print('📸 MODE IG — 5 slot: 2 Tarakan + 1 Kaltara lain + 1 Nas + 1 Int...')
+    slot = slot_saat_ini()
+    print('📸 MODE IG V1.11 — slot: ' + slot.upper() + ' (1 berita)')
     if not IG_TOKEN:
         print('⏭️ IG_PAGE_TOKEN belum ada di Secrets — IG dilewati.')
         return
@@ -317,45 +343,39 @@ def mode_ig():
         print('✅ Tidak ada kandidat IG bergambar. Selesai.')
         return
 
-    terpilih = pilih_5_berita(rows_berimg)
+    n = pilih_berita_untuk_slot(rows_berimg, slot)
 
-    if not terpilih:
+    if not n:
         print('✅ Tidak ada kandidat IG. Selesai.')
         return
 
-    print('📋 Terpilih ' + str(len(terpilih)) + ' berita IG:')
-    for n in terpilih:
-        if is_tarakan(n):
-            label = 'TARAKAN'
-        elif is_kaltara_lain(n):
-            label = 'KALTARA'
-        else:
-            label = (n.get('category') or '?').upper()
-        print('   • [' + label + '] ' + (n.get('title') or '')[:60])
+    if is_tarakan(n):
+        label = 'TARAKAN'
+    elif is_kaltara_lain(n):
+        label = 'KALTARA'
+    else:
+        label = (n.get('category') or '?').upper()
 
-    ok = 0
-    for n in terpilih:
-        label = '🏝️ TARAKAN' if is_tarakan(n) else ('🏝️ KALTARA' if is_kaltara_lain(n) else '📸 POSTING')
-        print(label + ': ' + (n.get('title') or '')[:60])
-        try:
-            ig_post_photo(n['img'].strip(), buat_pesan_ig(n))
-            supabase_update(n['id'], {'posted_ig': True})
-            ok += 1
-            print('   ✅ Terkirim ke Instagram @krama.news!')
-        except Exception as e:
-            pesan = str(e)
-            print('   ⚠️ Gagal: ' + pesan[:150])
-            if '190' in pesan or 'access_token' in pesan.lower() or 'token' in pesan.lower():
-                print('   ⚠️ Indikasi token IG kedaluwarsa — ulangi generate token:')
-                print('      developers.facebook.com → KramaNews Auto Post →')
-                print('      Penyiapan API dgn login Instagram → Tambahkan akun → Buat token')
-                print('      → update Secret IG_PAGE_TOKEN (copy-paste!)')
-        time.sleep(3)
+    print('📋 Terpilih 1 berita IG:')
+    print('   • [' + label + '] ' + (n.get('title') or '')[:70])
 
-    print('🏁 Mode IG selesai — ' + str(ok) + ' post terkirim.')
+    try:
+        ig_post_photo(n['img'].strip(), buat_pesan_ig(n))
+        supabase_update(n['id'], {'posted_ig': True})
+        print('   ✅ Terkirim ke Instagram @krama.news!')
+    except Exception as e:
+        pesan = str(e)
+        print('   ⚠️ Gagal: ' + pesan[:150])
+        if '190' in pesan or 'access_token' in pesan.lower() or 'token' in pesan.lower():
+            print('   ⚠️ Indikasi token IG kedaluwarsa — ulangi generate token:')
+            print('      developers.facebook.com → KramaNews Auto Post →')
+            print('      Penyiapan API dgn login Instagram → Tambahkan akun → Buat token')
+            print('      → update Secret IG_PAGE_TOKEN (copy-paste!)')
+
+    print('🏁 Mode IG selesai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.10 — FB + INSTAGRAM (5x/hari)')
+    print('📣 KRAMANEWS SOSMED V1.11 — FB + INSTAGRAM (5 siklus x 1 berita)')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
