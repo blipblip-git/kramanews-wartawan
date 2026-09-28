@@ -1,29 +1,19 @@
-name: AI Wartawan KramaNews
+name: AI Wartawan KramaNews - Breaking
 
 # ══════════════════════════════════════════════════════
-#  WARTAWAN.YML — V6.11
-#  Perubahan dari V6.10:
-#   - Breaking dipisah ke wartawan-breaking.yml
-#   - File ini cuma jalankan KATEGORI + RANGKUMAN + PASAR MODAL
-#   - Jam sibuk: 06:07-19:37 WITA (2x/jam)
-#   - Jam tenang: tidak ada kategori (breaking sendiri yang jalan)
-#  ATURAN EMAS: FILE INI TIDAK PERNAH BERISI KUNCI ASLI.
+#  WARTAWAN-BREAKING.YML — V1.0
+#  KHUSUS BREAKING — 1x/jam, 24 jam penuh
+#  Tidak cek kategori, tidak cek pasar modal.
 # ══════════════════════════════════════════════════════
 
 on:
   schedule:
-    # ═══ V6.11: JAM SIBUK (06:07-19:37 WITA) — 2x/jam, menit :07 & :37 ═══
-    # 06:07 WITA = 22:07 UTC (hari sebelumnya)
-    - cron: '7,37 22 * * *'      # 06:07, 06:37 WITA
-    # 07:07-19:37 WITA = 23:07 (hari sebelumnya) - 11:37 UTC
-    - cron: '7,37 23 * * *'      # 07:07, 07:37 WITA
-    - cron: '7,37 0-11 * * *'    # 08:07-19:37 WITA (2x/jam, 12 jam)
-    # ═══ PASAR MODAL 12:00 & 18:00 WITA = 04:00 & 10:00 UTC ═══
-    - cron: '0 4,10 * * *'
+    # ═══ V1.0: 1x/JAM, 24 JAM (menit :07) ═══
+    - cron: '7 * * * *'
   workflow_dispatch:
 
 jobs:
-  berburu:
+  breaking:
     runs-on: ubuntu-latest
     steps:
       - name: Ambil kode
@@ -40,8 +30,8 @@ jobs:
       - name: Cek versi & struktur file
         run: python cek_versi.py
 
-      - name: Wartawan berburu kategori
-        run: python3 skrip-wartawan.py --sekali --kategori
+      - name: Wartawan cek breaking
+        run: python3 skrip-wartawan.py --sekali --breaking
         env:
           DEEPSEEK_KEY: ${{ secrets.DEEPSEEK_KEY }}
           SUPABASE_PUBLISHABLE: ${{ secrets.SUPABASE_PUBLISHABLE }}
