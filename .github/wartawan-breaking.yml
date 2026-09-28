@@ -1,15 +1,14 @@
 name: AI Wartawan KramaNews - Breaking
 
 # ══════════════════════════════════════════════════════
-#  WARTAWAN-BREAKING.YML — V1.0
-#  KHUSUS BREAKING — 1x/jam, 24 jam penuh
-#  Tidak cek kategori, tidak cek pasar modal.
+#  WARTAWAN-BREAKING.YML — V1.1
+#  Perubahan dari V1.0:
+#   - Hapus cron GitHub (tidak reliable)
+#   - Pemicu pindah ke cron-job.org via workflow_dispatch
+#   - Isi jobs tetap sama (breaking 1x/jam)
 # ══════════════════════════════════════════════════════
 
 on:
-  schedule:
-    # ═══ V1.0: 1x/JAM, 24 JAM (menit :07) ═══
-    - cron: '7 * * * *'
   workflow_dispatch:
 
 jobs:
