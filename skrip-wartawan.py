@@ -132,11 +132,9 @@ JADWAL_JAM = {
     13: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'olahraga': 1},
     14: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1},
     15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1},
-    16: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'otomotif': 1},
-    17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1},
-    18: {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'teknologi': 1},
-    19: {'nasional': 1, 'olahraga': 1, 'ekonomi': 1},
-    20: {'otomotif': 1, 'olahraga': 1, 'kesehatan': 1},
+    16: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'kesehatan': 1},
+    17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1, 'ekonomi': 1},
+    18: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'olahraga': 1},
 }
 
 TOPIK_NASIONAL_WAJIB = [
@@ -247,7 +245,7 @@ DOMAIN_KESEHATAN = [
         ('senior health tips doctor', 'en'),
     ]},
 ]
-JAM_KESEHATAN = {10: 0, 15: 1, 20: 2}
+JAM_KESEHATAN = {10: 0, 15: 1, 16: 2}
 
 DOMAIN_OTOMOTIF = [
     {'nama': 'Mobil Baru & Rilis', 'query': [
@@ -281,7 +279,7 @@ DOMAIN_OTOMOTIF = [
         ('aksesori mobil baru', 'id'),
     ]},
 ]
-JAM_OTOMOTIF = {9: 0, 16: 1, 20: 2}
+JAM_OTOMOTIF = {9: 0, 16: 1}
 
 DOMAIN_TEKNOLOGI = [
     {'nama': 'Gadget & Smartphone', 'aturan': 'Berita HARUS BANYAK, boleh hingga 2 halaman. WAJIB memuat SEBANYAK mungkin gadget/baru yang ada di materi sekaligus. SPESIFIKASI setiap gadget WAJIB lengkap (layar, chipset, RAM, kamera, baterai, sistem operasi - sesuai yang tertulis di materi). Estimasi harga WAJIB disebut jika ada di materi.', 'query': [
@@ -485,7 +483,6 @@ def judul_spam(judul):
     return False
 
 # AKHIR PART 1
-
 # PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT
 
 BREAKING_DOMESTIK_FEEDS = [
@@ -3241,7 +3238,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.17.2
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.17.3
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3334,7 +3331,6 @@ def _pasar_modal_sesi():
     return None
 
 def pasar_modal_sudah_terbit(sesi):
-    """V6.17.2: cek ganda - by source_name (exact) ATAU judul prefix 'Pasar Keuangan' 2 jam terakhir."""
     try:
         now_wita = datetime.now(WITA)
         awal_hari_wita = datetime(now_wita.year, now_wita.month, now_wita.day, 0, 0, 0, tzinfo=WITA)
@@ -3872,7 +3868,7 @@ def sesi_kategori(today_urls, seen):
 def sesi_breaking_saja():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.2)')
+    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.3)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3899,7 +3895,7 @@ def sesi_breaking_saja():
 def sesi_kategori_saja():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.2)')
+    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.3)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3930,7 +3926,7 @@ def run_session():
     """Fallback: jalankan semua (untuk kompatibilitas)."""
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.2)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.3)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3975,7 +3971,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.2 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.3 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3989,7 +3985,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.2'
+FILE_VERSI      = 'V6.17.3'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
