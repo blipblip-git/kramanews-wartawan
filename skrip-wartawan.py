@@ -3238,7 +3238,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.17.3
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.17.4
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3252,6 +3252,10 @@ def is_berita_politik_hukum(teks):
         if re.search(r'\b' + re.escape(k) + r'\b', t):
             return True
     return False
+
+def _iso_z(dt):
+    """V6.17.4: format ISO dengan akhiran Z (wajib untuk Supabase REST)."""
+    return dt.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
 
 def sesi_breaking(today_urls, seen):
     made = 0
@@ -3331,10 +3335,11 @@ def _pasar_modal_sesi():
     return None
 
 def pasar_modal_sudah_terbit(sesi):
+    """V6.17.4: cek ganda - by source_name (exact) ATAU judul prefix 'Pasar Keuangan' 2 jam terakhir."""
     try:
         now_wita = datetime.now(WITA)
         awal_hari_wita = datetime(now_wita.year, now_wita.month, now_wita.day, 0, 0, 0, tzinfo=WITA)
-        batas = awal_hari_wita.astimezone(timezone.utc).isoformat()
+        batas = _iso_z(awal_hari_wita)
         sumber = 'Pasar Modal ' + str(sesi)
         rows = rest_get('?select=id&source_name=eq.' + quote_plus(sumber)
                         + '&created_at=gte.' + batas)
@@ -3342,17 +3347,17 @@ def pasar_modal_sudah_terbit(sesi):
             print('   [pasar_modal_sudah_terbit] ketemu via source_name: ' + sumber)
             return True
     except Exception as e:
-        print('   [pasar_modal_sudah_terbit] gagal cek source_name: ' + str(e)[:60])
+        print('   [pasar_modal_sudah_terbit] gagal cek source_name: ' + str(e)[:80])
     try:
         now_wita = datetime.now(WITA)
-        batas2 = (now_wita - timedelta(hours=2)).astimezone(timezone.utc).isoformat()
+        batas2 = _iso_z(now_wita - timedelta(hours=2))
         rows2 = rest_get('?select=id,title&category=eq.ekonomi&created_at=gte.'
                          + batas2 + '&title=ilike.' + quote_plus('%Pasar Keuangan%'))
         if len(rows2) > 0:
             print('   [pasar_modal_sudah_terbit] ketemu via judul "Pasar Keuangan" 2 jam terakhir.')
             return True
     except Exception as e:
-        print('   [pasar_modal_sudah_terbit] gagal cek judul: ' + str(e)[:60])
+        print('   [pasar_modal_sudah_terbit] gagal cek judul: ' + str(e)[:80])
     return False
 
 def _ambil_harga_yahoo(simbol):
@@ -3440,27 +3445,40 @@ def sesi_pasar_modal(today_urls, seen):
         return 0
 
     baris = []
+    instrumen_gagal = []
     s = _format_harga_yahoo('^JKSE', 'IHSG', '', '')
     if s:
         baris.append('- ' + s)
+    else:
+        instrumen_gagal.append('IHSG')
     s = _format_kurs_usdidr()
     if s:
         baris.append('- ' + s)
+    else:
+        instrumen_gagal.append('Kurs USD/IDR')
     s = _format_harga_yahoo('CL=F', 'Minyak WTI', '$', '/barel')
     if s:
         baris.append('- ' + s)
+    else:
+        instrumen_gagal.append('Minyak WTI')
     s = _format_harga_yahoo('BZ=F', 'Minyak Brent', '$', '/barel')
     if s:
         baris.append('- ' + s)
+    else:
+        instrumen_gagal.append('Minyak Brent')
     s = _format_harga_yahoo('TIO=F', 'Biji Besi (Iron Ore)', '$', '/ton')
     if s:
         baris.append('- ' + s)
+    else:
+        instrumen_gagal.append('Biji Besi')
 
     if not baris:
         print('   Semua data harga kosong - skip.')
         return 0
 
     print('   Instrumen berhasil di-fetch: ' + str(len(baris)) + '/5')
+    if instrumen_gagal:
+        print('   Instrumen GAGAL: ' + ', '.join(instrumen_gagal))
 
     tanggal = datetime.now(WITA).strftime('%d %B %Y')
     jam_str = datetime.now(WITA).strftime('%H:%M')
@@ -3475,8 +3493,7 @@ def sesi_pasar_modal(today_urls, seen):
             'Contoh: "IHSG Ditutup, Rupiah Rp 17.921, Brent Tembus US$100,84".\n'
             '- Dateline: WAJIB "JAKARTA, INDONESIA - ".\n'
             '- Panjang: 250-400 kata (5-7 paragraf).\n'
-            '- WAJIB bahas SEMUA instrumen di data di atas (IHSG, kurs, WTI, Brent, '
-            'biji besi) dalam SATU berita naratif.\n'
+            '- WAJIB bahas SEMUA instrumen di data di atas dalam SATU berita naratif.\n'
             '- WAJIB sebut HARGA AWAL dan HARGA AKHIR untuk setiap instrumen. '
             'Kalau harga awal tidak tersedia, hitung dari harga akhir dan persentase.\n'
             '- DILARANG mengarang angka di luar data di atas.\n'
@@ -3868,7 +3885,7 @@ def sesi_kategori(today_urls, seen):
 def sesi_breaking_saja():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.3)')
+    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.4)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3895,7 +3912,7 @@ def sesi_breaking_saja():
 def sesi_kategori_saja():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.3)')
+    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.4)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3926,7 +3943,7 @@ def run_session():
     """Fallback: jalankan semua (untuk kompatibilitas)."""
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.3)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.4)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3971,7 +3988,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.3 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.4 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3985,7 +4002,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.3'
+FILE_VERSI      = 'V6.17.4'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
