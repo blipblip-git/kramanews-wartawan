@@ -1,14 +1,4 @@
-# ══════════════════════════════════════════════════════
-#  SKRIP-WARTAWAN.PY V6.17.1 — UTUH
-#  Gabungan Part 1 + 2 + 3A + 3B-1 + 3B-2 + 4A + 4B
-#  Perubahan dari V6.17.0:
-#   - Pasar modal: 1x/sesi (Tengah=14:00, Penutupan=18:00)
-#   - _format_harga_yahoo: kirim harga awal + akhir + persen
-#   - _format_kurs_usdidr: kirim harga awal + akhir + persen
-#   - pasar_modal_sudah_terbit: cek by sesi + hari ini
-#   - Prompt pasar modal: dateline JAKARTA, INDONESIA + harga awal→akhir→persen
-#   - _pasar_modal_sesi: window tepat 13-17 (Tengah) & 17-22 (Penutupan)
-# ══════════════════════════════════════════════════════
+# PART 1 - KONFIGURASI, JADWAL & SUMBER
 
 import requests
 import json
@@ -493,6 +483,10 @@ def judul_spam(judul):
         if k in j:
             return True
     return False
+
+# AKHIR PART 1
+
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -994,6 +988,10 @@ FORMAT JAWABAN - HANYA JSON valid:
  "deskripsi_gambar": "visual keywords",
  "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """)"}
 """
+
+# AKHIR PART 2
+
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1937,7 +1935,9 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi):
         return None
     return ('judul AI tidak nyambung materi: tidak ada irisan nama diri/angka/kata kunci')
 
-# ═══ BAGIAN 3B-1 ═══
+# AKHIR PART 3A
+
+# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI, ESPN
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -2515,8 +2515,6 @@ def ai_rewrite_multi(items, kategori_target=''):
                     summary_materi=summary_materi_gabung,
                     wajib_topik=True)
 
-# ═══ BAGIAN 3B-2 ═══
-
 def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
                 breaking=False, deskripsi_gambar=''):
     m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+(.*)$', isi, re.DOTALL)
@@ -2742,7 +2740,9 @@ def espn_klasemen(liga_code, nama_liga):
     except Exception:
         return '', ''
 
-# ═══ BAGIAN 4A ═══
+# AKHIR PART 3B
+
+# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS
 
 KALENDER_EVENT = [
     {'nama': 'Asian Games Aichi-Nagoya 2026', 'mulai': '2026-09-19', 'selesai': '2026-10-04',
@@ -3239,7 +3239,9 @@ def sesi_olahraga_api(jenis):
         return 0
     return 0
 
-# ═══ BAGIAN 4B — V6.17.1 ═══
+# AKHIR PART 4A
+
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.17.2
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3332,6 +3334,7 @@ def _pasar_modal_sesi():
     return None
 
 def pasar_modal_sudah_terbit(sesi):
+    """V6.17.2: cek ganda - by source_name (exact) ATAU judul prefix 'Pasar Keuangan' 2 jam terakhir."""
     try:
         now_wita = datetime.now(WITA)
         awal_hari_wita = datetime(now_wita.year, now_wita.month, now_wita.day, 0, 0, 0, tzinfo=WITA)
@@ -3339,9 +3342,22 @@ def pasar_modal_sudah_terbit(sesi):
         sumber = 'Pasar Modal ' + str(sesi)
         rows = rest_get('?select=id&source_name=eq.' + quote_plus(sumber)
                         + '&created_at=gte.' + batas)
-        return len(rows) > 0
-    except Exception:
-        return False
+        if len(rows) > 0:
+            print('   [pasar_modal_sudah_terbit] ketemu via source_name: ' + sumber)
+            return True
+    except Exception as e:
+        print('   [pasar_modal_sudah_terbit] gagal cek source_name: ' + str(e)[:60])
+    try:
+        now_wita = datetime.now(WITA)
+        batas2 = (now_wita - timedelta(hours=2)).astimezone(timezone.utc).isoformat()
+        rows2 = rest_get('?select=id,title&category=eq.ekonomi&created_at=gte.'
+                         + batas2 + '&title=ilike.' + quote_plus('%Pasar Keuangan%'))
+        if len(rows2) > 0:
+            print('   [pasar_modal_sudah_terbit] ketemu via judul "Pasar Keuangan" 2 jam terakhir.')
+            return True
+    except Exception as e:
+        print('   [pasar_modal_sudah_terbit] gagal cek judul: ' + str(e)[:60])
+    return False
 
 def _ambil_harga_yahoo(simbol):
     try:
@@ -3448,6 +3464,8 @@ def sesi_pasar_modal(today_urls, seen):
         print('   Semua data harga kosong - skip.')
         return 0
 
+    print('   Instrumen berhasil di-fetch: ' + str(len(baris)) + '/5')
+
     tanggal = datetime.now(WITA).strftime('%d %B %Y')
     jam_str = datetime.now(WITA).strftime('%H:%M')
     k = konteks_waktu()
@@ -3457,13 +3475,14 @@ def sesi_pasar_modal(today_urls, seen):
             'dari data berikut:\n\n'
             + '\n'.join(baris) + '\n\n'
             'Aturan:\n'
-            '- Judul maks 10 kata: sebut IHSG + arah pergerakan atau ringkas pasar.\n'
+            '- Judul maks 12 kata: sebut IHSG + kurs rupiah + minimal 1 komoditas. '
+            'Contoh: "IHSG Ditutup, Rupiah Rp 17.921, Brent Tembus US$100,84".\n'
             '- Dateline: WAJIB "JAKARTA, INDONESIA - ".\n'
-            '- Panjang: 200-350 kata (4-6 paragraf).\n'
-            '- Sajikan data dalam bentuk laporan naratif ringkas, bukan sekadar daftar.\n'
+            '- Panjang: 250-400 kata (5-7 paragraf).\n'
+            '- WAJIB bahas SEMUA instrumen di data di atas (IHSG, kurs, WTI, Brent, '
+            'biji besi) dalam SATU berita naratif.\n'
             '- WAJIB sebut HARGA AWAL dan HARGA AKHIR untuk setiap instrumen. '
-            'Kalau harga awal tidak tersedia, hitung dari harga akhir dan persentase '
-            'yang ada.\n'
+            'Kalau harga awal tidak tersedia, hitung dari harga akhir dan persentase.\n'
             '- DILARANG mengarang angka di luar data di atas.\n'
             '- DILARANG menebak sebab-akibat pergerakan (cukup laporkan angka).\n'
             '- PERSEN: selalu simbol %.\n'
@@ -3479,6 +3498,9 @@ def sesi_pasar_modal(today_urls, seen):
         print('   ' + str(e)[:90]); return 0
     if sudah_serupa(judul):
         print('   Hasil AI dobel - skip.')
+        return 0
+    if pasar_modal_sudah_terbit(sesi):
+        print('   [race-check] pasar modal sudah terbit barusan - skip insert.')
         return 0
     try:
         insert_news(judul, isi, ringkasan, 'ekonomi', '',
@@ -3850,7 +3872,7 @@ def sesi_kategori(today_urls, seen):
 def sesi_breaking_saja():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.1)')
+    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.2)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3877,7 +3899,7 @@ def sesi_breaking_saja():
 def sesi_kategori_saja():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.1)')
+    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.2)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3908,7 +3930,7 @@ def run_session():
     """Fallback: jalankan semua (untuk kompatibilitas)."""
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.1)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.2)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -3953,7 +3975,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.1 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.2 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3967,7 +3989,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.1'
+FILE_VERSI      = 'V6.17.2'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
