@@ -2854,7 +2854,7 @@ def espn_klasemen(liga_code, nama_liga):
 
 # AKHIR PART 3B
 
-# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS - V6.17.8
+# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS
 
 KALENDER_EVENT = [
     {'nama': 'Asian Games Aichi-Nagoya 2026', 'mulai': '2026-09-19', 'selesai': '2026-10-04',
@@ -2907,7 +2907,6 @@ ATURAN_KOMPETISI_WAJIB = (
     '- PERSEN: selalu simbol % - dilarang kata "persen".\n'
 )
 
-# V6.17.8: ATURAN WAJIB OLAHRAGA KOMPETISI (skor + klasmen + medali)
 ATURAN_OLAHRAGA_KOMPETISI = (
     '- SYARAT WAJIB BERITA OLAHRAGA KOMPETISI (SANGAT PENTING):\n'
     '- WAJIB sebutkan SKOR AKHIR setiap pertandingan dengan ANGKA PERSIS.\n'
@@ -2936,7 +2935,7 @@ def _tulis_dari_kandidat(c, source_nama, breaking=False, kategori_target='olahra
         print('   Insert gagal: ' + str(e)[:80]); return 0
 
 def _tulis_event_besar(cand, aktif, breaking=True):
-    """V6.17.8: pakai ambil_materi_kaya (scraping) supaya medali/klasmen ikut."""
+    """Pakai ambil_materi_kaya (scraping) supaya medali/klasmen ikut."""
     bagian = []
     semua_materi = ''
     for i, c in enumerate(cand[:8], 1):
@@ -3165,7 +3164,7 @@ def buat_materi_rangkuman_eropa():
             klasemen_blok.append(blok_api)
             klasemen_teks.append(teks_api)
         else:
-            blok_esp, teks_esp = espn_klasemen(code, nama)
+            blok_esp, teks_esp = espn_klasmen(code, nama)
             if blok_esp:
                 klasemen_blok.append(blok_esp)
                 klasemen_teks.append(teks_esp)
@@ -3192,7 +3191,7 @@ def buat_materi_rangkuman_nba():
         skor_semua.append('NBA: ' + s)
     if not skor_semua:
         return None
-    blok, teks = espn_klasemen('basketball/nba', 'NBA')
+    blok, teks = espn_klasmen('basketball/nba', 'NBA')
     bagian = []
     bagian.append('HASIL LAGA NBA TERAKHIR (ANGKA RESMI MESIN - SALIN PERSIS):\n'
                   + '\n'.join(skor_semua))
@@ -3385,13 +3384,14 @@ def sesi_olahraga_api(jenis):
         if cand:
             hasil = _tulis_dari_kandidat(cand[0], 'Olahraga Siang', breaking=False)
             if hasil == 1:
-                return 1        print('   Tidak ada berita olahraga - skip.')
+                return 1
+        print('   Tidak ada berita olahraga - skip.')
         return 0
     return 0
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.17.8
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3406,18 +3406,17 @@ def is_berita_politik_hukum(teks):
             return True
     return False
 
-# V6.17.8: FIX - _iso_z didefinisikan di Part 4B
 def _iso_z(dt):
     """Format ISO dengan akhiran Z (wajib untuk Supabase REST)."""
     return dt.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
 
 def _jam_breaking_aktif():
-    """V6.17.8: Breaking cuma jalan 06:07-19:07 WITA. Di luar itu stop (kecuali darurat)."""
+    """Breaking cuma jalan 06:07-19:07 WITA. Di luar itu stop (kecuali darurat)."""
     jam = datetime.now(WITA).hour
     return 6 <= jam < 20
 
 def _darurat_malam(judul, summary):
-    """V6.17.8: Topik darurat yang tetap lolos breaking malam. Ketat - cuma 6 kondisi."""
+    """Topik darurat yang tetap lolos breaking malam. Ketat - cuma 6 kondisi."""
     t = ((judul or '') + ' ' + (summary or '')).lower()
 
     if 'gempa' in t or 'earthquake' in t:
@@ -3445,7 +3444,7 @@ def _darurat_malam(judul, summary):
     return False
 
 def sesi_breaking(today_urls, seen):
-    """V6.17.8: Breaking 1 slot, prioritas domestik, 06:07-19:07 WITA (malam stop, kecuali darurat)."""
+    """Breaking 1 slot, prioritas domestik, 06:07-19:07 WITA (malam stop, kecuali darurat)."""
     made = 0
     slots = BREAKING_MAX_SLOT - len(get_breaking_list())
     print('\nBREAKING - slot tersedia: ' + str(slots) + '/' + str(BREAKING_MAX_SLOT))
@@ -3538,7 +3537,7 @@ def _pasar_modal_sesi():
     return None
 
 def pasar_modal_sudah_terbit(sesi):
-    """V6.17.8: pakai _iso_z (sudah didefinisikan di atas)."""
+    """Pakai _iso_z (sudah didefinisikan di atas)."""
     try:
         now_wita = datetime.now(WITA)
         awal_hari_wita = datetime(now_wita.year, now_wita.month, now_wita.day, 0, 0, 0, tzinfo=WITA)
@@ -3563,7 +3562,6 @@ def pasar_modal_sudah_terbit(sesi):
         print('   [pasar_modal_sudah_terbit] gagal cek judul: ' + str(e)[:80])
     return False
 
-# V6.17.8: YAHOO FINANCE — retry + fallback Stooq
 YAHOO_SIMBOL_STOOQ = {
     '^JKSE': '^JKSE',
     'CL=F': 'CL.F',
@@ -3574,8 +3572,7 @@ YAHOO_SIMBOL_STOOQ = {
 }
 
 def _ambil_harga_yahoo(simbol, max_retry=3):
-    """V6.17.8: Yahoo Finance dengan retry + fallback Stooq."""
-    # Coba Yahoo dulu (retry 3x)
+    """Yahoo Finance dengan retry + fallback Stooq."""
     for coba in range(1, max_retry + 1):
         try:
             url = ('https://query1.finance.yahoo.com/v8/finance/chart/'
@@ -3610,7 +3607,6 @@ def _ambil_harga_yahoo(simbol, max_retry=3):
                   + str(e)[:50])
             time.sleep(2)
 
-    # Fallback Stooq
     stooq_sym = YAHOO_SIMBOL_STOOQ.get(simbol)
     if stooq_sym:
         try:
@@ -4140,7 +4136,7 @@ def sesi_kategori(today_urls, seen):
 def sesi_breaking_saja():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.8)')
+    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -4167,7 +4163,7 @@ def sesi_breaking_saja():
 def sesi_kategori_saja():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.8)')
+    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -4198,7 +4194,7 @@ def run_session():
     """Fallback: jalankan semua (untuk kompatibilitas)."""
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.8)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -4243,7 +4239,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.8 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.9 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4257,7 +4253,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.8'
+FILE_VERSI      = 'V6.17.9'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
