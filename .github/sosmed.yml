@@ -1,10 +1,10 @@
 name: KramaNews Sosmed Auto-Post
 
 # ══════════════════════════════════════════════════════
-#  SOSMED.YML — V1.5
-#  Perubahan dari V1.4:
-#   - Install Pillow (buat tempel judul di gambar)
-#   - FB: judul menempel di gambar + link auto di komentar
+#  SOSMED.YML — V1.6
+#  Perubahan dari V1.5:
+#   - Hapus install Pillow (tidak dipakai lagi di V1.13)
+#   - FB kirim gambar asli (tanpa tempel judul)
 # ══════════════════════════════════════════════════════
 
 on:
@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install requests Pillow
+      - run: pip install requests
       - run: python3 skrip-sosmed.py
         env:
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}

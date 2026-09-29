@@ -1,4 +1,5 @@
-# KRAMANEWS — SKRIP SOSMED V1.12 (FB + INSTAGRAM)
+# KRAMANEWS — SKRIP SOSMED V1.13 (FB + INSTAGRAM)
+# V1.13: hapus tempel judul (Pillow) - FB kirim gambar asli
 # V1.12: FB: judul menempel di gambar + link otomatis di komentar pertama
 # V1.11: 5 siklus x 1 berita/hari (06:17, 09:17, 12:17, 15:17, 18:17 WITA)
 # V1.11: rotasi slot per jam: Tarakan -> Kaltara -> Nasional -> Internasional -> Bebas
@@ -9,15 +10,7 @@ import time
 import sys
 import json
 import re
-import io
-import textwrap
 from datetime import datetime, timezone, timedelta
-
-try:
-    from PIL import Image, ImageDraw, ImageFont
-    PIL_ADA = True
-except ImportError:
-    PIL_ADA = False
 
 FB_PAGE_TOKEN   = os.environ.get('FB_PAGE_TOKEN', '')
 FB_PAGE_ID      = os.environ.get('FB_PAGE_ID', '')
@@ -119,98 +112,6 @@ def ambil_teaser(content, kalimat=3):
     kalimat_list = re.split(r'(?<=[.!?])\s+', bersih)
     return ' '.join(kalimat_list[:kalimat]).strip()
 
-# ═══ V1.12: TEMPEL JUDUL DI GAMBAR ═══
-
-def download_gambar(url):
-    try:
-        r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30, stream=True)
-        if not r.ok:
-            return None
-        data = r.content
-        if len(data) < 1000:
-            return None
-        return Image.open(io.BytesIO(data)).convert('RGB')
-    except Exception as e:
-        print('   ⚠️ Download gambar gagal: ' + str(e)[:80])
-        return None
-
-def cari_font_ukuran(ukuran):
-    kandidat = [
-        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
-        '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
-        '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf',
-    ]
-    for path in kandidat:
-        if os.path.exists(path):
-            try:
-                return ImageFont.truetype(path, ukuran)
-            except Exception:
-                continue
-    try:
-        return ImageFont.load_default()
-    except Exception:
-        return None
-
-def bungkus_teks(teks, max_karakter):
-    return textwrap.wrap(teks, width=max_karakter)
-
-def tempel_judul(gambar, judul):
-    """Tempel judul di bawah gambar dengan panel hitam semi-transparan."""
-    if not gambar or not judul:
-        return gambar
-    try:
-        W, H = gambar.size
-        if W < 200 or H < 200:
-            return gambar
-        max_karakter = max(20, int(W / 22))
-        baris = bungkus_teks(judul.strip(), max_karakter)[:4]
-        if not baris:
-            return gambar
-
-        ukuran_font = max(20, int(W / 26))
-        font = cari_font_ukuran(ukuran_font)
-        if font is None:
-            return gambar
-
-        line_height = int(ukuran_font * 1.35)
-        padding = int(ukuran_font * 0.7)
-        tinggi_panel = len(baris) * line_height + padding * 2
-
-        overlay = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-        draw_overlay = ImageDraw.Draw(overlay)
-        draw_overlay.rectangle(
-            [(0, H - tinggi_panel), (W, H)],
-            fill=(0, 0, 0, 190)
-        )
-        gambar = Image.alpha_composite(gambar.convert('RGBA'), overlay).convert('RGB')
-        draw = ImageDraw.Draw(gambar)
-
-        y = H - tinggi_panel + padding
-        for b in baris:
-            try:
-                bbox = draw.textbbox((0, 0), b, font=font)
-                lebar_teks = bbox[2] - bbox[0]
-            except Exception:
-                lebar_teks = len(b) * int(ukuran_font * 0.55)
-            x = (W - lebar_teks) // 2
-            if x < padding:
-                x = padding
-            try:
-                draw.text((x + 2, y + 2), b, font=font, fill=(0, 0, 0))
-                draw.text((x, y), b, font=font, fill=(255, 255, 255))
-            except Exception:
-                pass
-            y += line_height
-        return gambar
-    except Exception as e:
-        print('   ⚠️ Tempel judul gagal: ' + str(e)[:80])
-        return gambar
-
-def gambar_ke_bytes(gambar):
-    buf = io.BytesIO()
-    gambar.save(buf, format='JPEG', quality=85, optimize=True)
-    return buf.getvalue()
-
 # ═══ FB POST ═══
 
 def fb_post_photo(message, image_url):
@@ -220,17 +121,6 @@ def fb_post_photo(message, image_url):
         timeout=60)
     if not r.ok:
         raise Exception('FB photo ' + str(r.status_code) + ': ' + r.text[:200])
-    return r.json()
-
-def fb_post_photo_upload(message, gambar_bytes, nama_file):
-    """Upload gambar langsung (multipart) — buat gambar yang sudah ditempel judul."""
-    r = requests.post(
-        'https://graph.facebook.com/v21.0/' + FB_PAGE_ID + '/photos',
-        data={'caption': message, 'access_token': FB_PAGE_TOKEN},
-        files={'source': (nama_file, gambar_bytes, 'image/jpeg')},
-        timeout=120)
-    if not r.ok:
-        raise Exception('FB upload ' + str(r.status_code) + ': ' + r.text[:200])
     return r.json()
 
 def fb_post_feed(message, link):
@@ -243,7 +133,6 @@ def fb_post_feed(message, link):
     return r.json()
 
 def fb_komentar(post_id, pesan):
-    """V1.12: Auto komentar link di bawah postingan."""
     r = requests.post(
         'https://graph.facebook.com/v21.0/' + post_id + '/comments',
         data={'message': pesan, 'access_token': FB_PAGE_TOKEN},
@@ -281,29 +170,15 @@ def post_fb(n):
     link_artikel = SITE_URL + '/?baca=' + str(n.get('id'))
     post_id = None
 
-    if img and PIL_ADA:
-        gambar = download_gambar(img)
-        if gambar:
-            gambar = tempel_judul(gambar, n.get('title') or '')
-            try:
-                hasil = fb_post_photo_upload(pesan, gambar_ke_bytes(gambar), 'kramanews.jpg')
-                post_id = (hasil or {}).get('id') or (hasil or {}).get('post_id')
-                print('   🖼️ FB: gambar + judul ditempel, upload sukses.')
-            except Exception as e:
-                print('   ⚠️ Upload gambar+judul gagal: ' + str(e)[:100])
-                post_id = None
-        else:
-            print('   ⚠️ Gambar gagal diunduh, fallback ke URL.')
+    # V1.13: kirim gambar ASLI (tanpa tempel judul)
+    if img:
+        hasil = fb_post_photo(pesan, img)
+        post_id = (hasil or {}).get('id') or (hasil or {}).get('post_id')
+    else:
+        hasil = fb_post_feed(pesan, link_artikel)
+        post_id = (hasil or {}).get('id')
 
-    if not post_id:
-        if img:
-            hasil = fb_post_photo(pesan, img)
-            post_id = (hasil or {}).get('id') or (hasil or {}).get('post_id')
-        else:
-            hasil = fb_post_feed(pesan, link_artikel)
-            post_id = (hasil or {}).get('id')
-
-    # V1.12: auto komentar link
+    # Auto komentar link
     if post_id:
         try:
             pesan_komentar = '🔗 Baca selengkapnya: ' + link_artikel
@@ -374,7 +249,7 @@ def pilih_berita_untuk_slot(rows, slot):
 
 def mode_fb():
     slot = slot_saat_ini()
-    print('📘 MODE FB V1.12 — slot: ' + slot.upper() + ' (1 berita)')
+    print('📘 MODE FB V1.13 — slot: ' + slot.upper() + ' (1 berita)')
 
     rows = supabase_get_safe(
         'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking'
@@ -463,7 +338,7 @@ def buat_pesan_ig(n):
 
 def mode_ig():
     slot = slot_saat_ini()
-    print('📸 MODE IG V1.12 — slot: ' + slot.upper() + ' (1 berita)')
+    print('📸 MODE IG V1.13 — slot: ' + slot.upper() + ' (1 berita)')
     if not IG_TOKEN:
         print('⏭️ IG_PAGE_TOKEN belum ada di Secrets — IG dilewati.')
         return
@@ -518,9 +393,7 @@ def mode_ig():
     print('🏁 Mode IG selesai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.12 — FB + INSTAGRAM (5 siklus x 1 berita)')
-    if not PIL_ADA:
-        print('⚠️ Pillow belum terinstall — FB akan kirim gambar tanpa tempel judul.')
+    print('📣 KRAMANEWS SOSMED V1.13 — FB + INSTAGRAM (5 siklus x 1 berita)')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
