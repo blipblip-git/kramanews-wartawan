@@ -1,8 +1,7 @@
-# KRAMANEWS — SKRIP SOSMED V1.13 (FB + INSTAGRAM)
+# KRAMANEWS — SKRIP SOSMED V1.14 (FB + INSTAGRAM)
+# V1.14: 5 siklus baru - 06:17 Nasional, 09:17 Tarakan, 12:17 Kaltara,
+#        15:17 Tarakan, 18:17 Kaltara
 # V1.13: hapus tempel judul (Pillow) - FB kirim gambar asli
-# V1.12: FB: judul menempel di gambar + link otomatis di komentar pertama
-# V1.11: 5 siklus x 1 berita/hari (06:17, 09:17, 12:17, 15:17, 18:17 WITA)
-# V1.11: rotasi slot per jam: Tarakan -> Kaltara -> Nasional -> Internasional -> Bebas
 
 import requests
 import os
@@ -170,7 +169,6 @@ def post_fb(n):
     link_artikel = SITE_URL + '/?baca=' + str(n.get('id'))
     post_id = None
 
-    # V1.13: kirim gambar ASLI (tanpa tempel judul)
     if img:
         hasil = fb_post_photo(pesan, img)
         post_id = (hasil or {}).get('id') or (hasil or {}).get('post_id')
@@ -178,7 +176,6 @@ def post_fb(n):
         hasil = fb_post_feed(pesan, link_artikel)
         post_id = (hasil or {}).get('id')
 
-    # Auto komentar link
     if post_id:
         try:
             pesan_komentar = '🔗 Baca selengkapnya: ' + link_artikel
@@ -191,18 +188,20 @@ def post_fb(n):
 
 # ═══ SLOT & PILIH BERITA ═══
 
+# V1.14: Slot baru - 06:17 Nasional, 09:17 Tarakan, 12:17 Kaltara,
+#        15:17 Tarakan, 18:17 Kaltara
 def slot_saat_ini():
     jam = datetime.now(WITA).hour
     if 5 <= jam < 8:
-        return 'tarakan'
+        return 'nasional'      # 06:17
     elif 8 <= jam < 11:
-        return 'kaltara'
+        return 'tarakan'       # 09:17
     elif 11 <= jam < 14:
-        return 'nasional'
+        return 'kaltara'       # 12:17
     elif 14 <= jam < 17:
-        return 'internasional'
+        return 'tarakan'       # 15:17
     else:
-        return 'bebas'
+        return 'kaltara'       # 18:17
 
 def pilih_berita_untuk_slot(rows, slot):
     id_terpakai = set()
@@ -216,27 +215,31 @@ def pilih_berita_untuk_slot(rows, slot):
         return None
 
     pilihan = None
-    if slot == 'tarakan':
+
+    # V1.14: slot baru dengan fallback sesuai
+    if slot == 'nasional':
+        pilihan = ambil(lambda n: n.get('category') == 'nasional')
+        if not pilihan:
+            pilihan = ambil(is_kaltara)
+        if not pilihan:
+            pilihan = ambil(is_tarakan)
+    elif slot == 'tarakan':
         pilihan = ambil(is_tarakan)
+        if not pilihan:
+            pilihan = ambil(is_kaltara_lain)
+        if not pilihan:
+            pilihan = ambil(lambda n: n.get('category') == 'nasional')
     elif slot == 'kaltara':
         pilihan = ambil(is_kaltara_lain)
-    elif slot == 'nasional':
-        pilihan = ambil(lambda n: n.get('category') == 'nasional')
-    elif slot == 'internasional':
-        pilihan = ambil(lambda n: n.get('category') == 'internasional')
+        if not pilihan:
+            pilihan = ambil(is_tarakan)
+        if not pilihan:
+            pilihan = ambil(lambda n: n.get('category') == 'nasional')
 
     if pilihan:
         return pilihan
 
-    if slot == 'tarakan':
-        pilihan = ambil(is_kaltara_lain)
-        if pilihan:
-            return pilihan
-    if slot == 'kaltara':
-        pilihan = ambil(is_tarakan)
-        if pilihan:
-            return pilihan
-
+    # Fallback umum
     prioritas_fallback = ['daerah', 'nasional', 'ekonomi', 'olahraga',
                           'teknologi', 'otomotif', 'kesehatan', 'internasional']
     for kat in prioritas_fallback:
@@ -249,7 +252,7 @@ def pilih_berita_untuk_slot(rows, slot):
 
 def mode_fb():
     slot = slot_saat_ini()
-    print('📘 MODE FB V1.13 — slot: ' + slot.upper() + ' (1 berita)')
+    print('📘 MODE FB V1.14 — slot: ' + slot.upper() + ' (1 berita)')
 
     rows = supabase_get_safe(
         'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking'
@@ -338,7 +341,7 @@ def buat_pesan_ig(n):
 
 def mode_ig():
     slot = slot_saat_ini()
-    print('📸 MODE IG V1.13 — slot: ' + slot.upper() + ' (1 berita)')
+    print('📸 MODE IG V1.14 — slot: ' + slot.upper() + ' (1 berita)')
     if not IG_TOKEN:
         print('⏭️ IG_PAGE_TOKEN belum ada di Secrets — IG dilewati.')
         return
@@ -357,6 +360,7 @@ def mode_ig():
         return
 
     rows_berimg = [n for n in rows if ada_img(n)]
+    print('   Total antrean: ' + str(len(rows)) + ' - bergambar: ' + str(len(rows_berimg)))
     if not rows_berimg:
         print('✅ Tidak ada kandidat IG bergambar. Selesai.')
         return
@@ -393,7 +397,8 @@ def mode_ig():
     print('🏁 Mode IG selesai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.13 — FB + INSTAGRAM (5 siklus x 1 berita)')
+    print('📣 KRAMANEWS SOSMED V1.14 — FB + INSTAGRAM (5 siklus)')
+    print('   06:17 Nasional · 09:17 Tarakan · 12:17 Kaltara · 15:17 Tarakan · 18:17 Kaltara')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return

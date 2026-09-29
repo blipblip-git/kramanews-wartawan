@@ -544,7 +544,9 @@ DOM_KRITIS = [
     'massa membakar', 'membakar massal', 'tawuran besar',
 ]
 
+# V6.17.13: BREAKING_INT_KRITIS diperketat — buang yang terlalu umum
 BREAKING_INT_KRITIS = [
+    # A. BENCANA ALAM
     'banjir besar', 'major flood', 'flash flood', 'devastating flood',
     'tsunami', 'tsunami warning',
     'gempa bumi', 'earthquake', 'magnitude',
@@ -552,36 +554,46 @@ BREAKING_INT_KRITIS = [
     'letusan gunung', 'volcanic eruption', 'volcano',
     'kebakaran hutan', 'wildfire', 'forest fire',
     'tanah longsor', 'landslide',
+
+    # B. KECELAKAAN MASSAL
     'pesawat komersial jatuh', 'commercial plane crash',
     'airliner crash', 'passenger plane crash',
     'pesawat penumpang jatuh', 'pesawat hilang', 'plane missing',
     'kapal tenggelam', 'ferry sinks', 'ship sinks', 'boat capsizes',
     'kapal terbakar', 'ferry fire', 'ship fire',
     'kereta anjlok', 'train derailment', 'train crash', 'train collision',
-    'perang', 'war', 'invasi', 'invasion', 'deklarasi perang',
+
+    # C. GEOPOLITIK & MILITER (HARUS BERAT)
+    'deklarasi perang', 'declaration of war',
     'serangan rudal', 'missile strike', 'missile attack', 'rocket attack',
-    'rudal', 'missile', 'roket',
     'kudeta', 'coup', 'military coup',
-    'uji coba nuklir', 'nuclear test',
+    'uji coba nuklir', 'nuclear test', 'nuclear attack',
     'serangan teroris', 'terror attack', 'terrorist attack',
-    'gencatan senjata', 'ceasefire', 'peace deal', 'peace agreement',
-    'sanksi ekonomi', 'economic sanctions',
+    'gencatan senjata besar', 'ceasefire deal', 'peace deal', 'peace agreement',
+    'embargo minyak', 'oil embargo',
+
+    # D. POLITIK & HUKUM
     'presiden meninggal', 'president dies', 'president dead',
     'pm meninggal', 'prime minister dies',
     'presiden mundur', 'president resigns', 'president steps down',
     'pembunuhan pejabat', 'assassination',
     'penculikan pejabat', 'kidnapping',
     'presiden terpilih', 'elected president', 'wins election',
-    'referendum', 'independence referendum',
+    'referendum kemerdekaan', 'independence referendum',
     'pejabat ditangkap', 'official arrested', 'minister arrested',
     'bandar narkoba', 'drug lord arrested', 'drug kingpin',
+
+    # E. EKONOMI (HARUS BERAT)
     'krisis mata uang', 'currency crisis', 'devaluation',
     'bank runtuh', 'bank collapse', 'bank fails',
-    'kebangkrutan negara', 'default', 'sovereign default',
-    'perang dagang', 'trade war', 'tariff war',
-    'opec', 'opec+',
+    'kebangkrutan negara', 'sovereign default',
+    'opec memangkas', 'opec cuts',
+
+    # F. TEKNOLOGI & SAINS
     'peluncuran roket berawak', 'crewed launch', 'manned launch',
     'nasa launch', 'spacex launch', 'cnsa launch',
+
+    # G. WABAH
     'pandemi', 'pandemic', 'who emergency', 'global health emergency',
 ]
 
@@ -596,6 +608,14 @@ BREAKING_INT_TOLAK = [
     'plane crash drill', 'simulasi', 'latihan',
     'plane crash warning', 'memorial', 'peringatan',
     'anniversary', '30th anniversary', '40th anniversary',
+    # V6.17.13: tambah tolak untuk kasus ekonomi ringan
+    'larangan impor alkohol', 'alcohol import ban', 'liquor ban',
+    'larangan susu', 'dairy ban', 'milk ban',
+    'ban on alcohol', 'ban on dairy',
+    'tarif kecil', 'minor tariff', 'small tariff',
+    'sanksi ringan', 'minor sanctions',
+    'keluhan dagang', 'trade complaint',
+    'tarif baja', 'tarif aluminium', 'steel tariff', 'aluminum tariff',
 ]
 
 DUNIA_KRITIS = BREAKING_INT_KRITIS
@@ -979,7 +999,6 @@ def tanggal_publikasi_str(entry):
     except Exception:
         return None
 
-# V6.17.11: system prompt diringkas ~30%
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu AI Wartawan KramaNews Indonesia.
