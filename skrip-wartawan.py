@@ -1539,6 +1539,26 @@ def cek_deskripsi_gambar(deskripsi):
                 return 'deskripsi gambar memuat kata terlarang: ' + k
     return None
 
+# V6.17.14: Filter gambar hasil Pexels (URL) — hewan tidak boleh masuk
+def cek_url_gambar_hewan(url):
+    """Cek URL gambar hasil Pexels — kalau ada kata hewan, tolak."""
+    if not url:
+        return None
+    low = url.lower()
+    for k in KATA_HEWAN_SLUG:
+        if k.endswith('_') or k.endswith('-'):
+            if k in low:
+                return 'url gambar memuat kata hewan: ' + k
+        else:
+            if re.search(r'\b' + re.escape(k) + r'\b', low):
+                return 'url gambar memuat kata hewan: ' + k
+    # Khusus Pexels: foto sering pakai slug
+    for k in ['animal', 'puppy', 'kitten', 'wildlife', 'pet-', '-pet',
+              'dog-', '-dog', 'cat-', '-cat', 'bird-', '-bird']:
+        if k in low:
+            return 'url gambar memuat kata hewan: ' + k
+    return None
+
 def ambil_magnitude(teks):
     m = re.search(r'(?:magnitudo|magnitude)\s*(?:m)?\s*[:=]?\s*(\d{1,2}[.,]\d{1,2})', teks)
     if not m:
@@ -1573,6 +1593,10 @@ def skor_dunia(title, summary):
     t = (title + ' ' + summary).lower()
     if any(w in t for w in KATA_ANALISIS):
         return 0
+    # V6.17.14: tolak breaking internasional yang sifatnya ringan
+    for k in BREAKING_INT_TOLAK:
+        if k in t:
+            return 0
     skor = 0
     if 'earthquake' in t or 'gempa' in t:
         mag = ambil_magnitude(t)
@@ -1634,7 +1658,6 @@ def _adalah_berita_kaltara(judul, isi):
     return any(re.search(r'\b' + re.escape(k) + r'\b', gab)
                for k in KOTA_LOKAL_KALTARA)
 
-# V6.17.11: gate narasumber - kecualikan otomotif/teknologi/kesehatan
 def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
     if not isi:
         return None
@@ -1642,7 +1665,6 @@ def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
         return None
     if kategori == 'kesehatan':
         return None
-    # V6.17.11: otomotif/teknologi non-orang (daftar harga/review/tips) dikecualikan
     if kategori in ('otomotif', 'teknologi'):
         return None
     gab_kaltara = ((judul or '') + ' ' + (isi or '')).lower()
@@ -2336,7 +2358,8 @@ def cari_gambar_wikimedia(deskripsi):
                 kandidat.append(u)
         for u in kandidat:
             if not gambar_sampah(u) and not gambar_sudah_dipakai(u) \
-               and not _url_berbau_hewan(u):
+               and not _url_berbau_hewan(u) \
+               and not cek_url_gambar_hewan(u):
                 return u
         if kandidat:
             print('       Kandidat Wikimedia tak layak - tanpa gambar.')
@@ -2356,7 +2379,7 @@ def cari_gambar_pexels(deskripsi):
     try:
         r = requests.get(PEXELS_API,
             headers={'Authorization': kunci},
-            params={'query': deskripsi, 'per_page': 3, 'orientation': 'landscape'},
+            params={'query': deskripsi, 'per_page': 5, 'orientation': 'landscape'},
             timeout=20)
         if not r.ok:
             print('       Pexels HTTP ' + str(r.status_code) + ' - lewati.')
@@ -2366,11 +2389,17 @@ def cari_gambar_pexels(deskripsi):
             u = (foto.get('src', {}) or {}).get('large2x') or (foto.get('src', {}) or {}).get('large') or ''
             if u:
                 kandidat.append(u)
+        # V6.17.14: filter URL hewan sebelum dipakai
         for u in kandidat:
-            if not gambar_sampah(u) and not gambar_sudah_dipakai(u):
-                return u
+            if gambar_sampah(u) or gambar_sudah_dipakai(u):
+                continue
+            masalah_hewan = cek_url_gambar_hewan(u)
+            if masalah_hewan:
+                print('       Pexels URL hewan ditolak: ' + masalah_hewan[:60])
+                continue
+            return u
         if kandidat:
-            print('       Semua kandidat Pexels terpakai/sampah - fallback Wikimedia.')
+            print('       Semua kandidat Pexels terpakai/sampah/hewan - fallback Wikimedia.')
     except Exception as e:
         print('       Pexels gagal: ' + str(e)[:60])
     return ''
@@ -3301,8 +3330,10 @@ def _jam_breaking_aktif():
     return 6 <= jam < 20
 
 def _darurat_malam(judul, summary):
+    """V6.17.14: Diperketat - hanya darurat BENAR yang lolos malam."""
     t = ((judul or '') + ' ' + (summary or '')).lower()
 
+    # Gempa ≥6.0 SR
     if 'gempa' in t or 'earthquake' in t:
         mag = ambil_magnitude(t)
         if mag is not None and mag >= 6.0:
@@ -3310,19 +3341,30 @@ def _darurat_malam(judul, summary):
         if 'magnitude 6' in t or 'magnitudo 6' in t or 'magnitude 7' in t or 'magnitudo 7' in t or 'magnitude 8' in t or 'magnitudo 8' in t or 'magnitude 9' in t or 'magnitudo 9' in t:
             return True
 
+    # Tsunami
     if 'tsunami' in t:
         return True
 
+    # Perang/invasi
     if any(k in t for k in ('perang', 'war', 'invasi', 'invasion')):
         return True
 
+    # Nuklir
     if any(k in t for k in ('serangan nuklir', 'nuclear attack', 'nuclear test', 'uji nuklir', 'nuclear strike')):
         return True
 
+    # Kudeta
     if any(k in t for k in ('kudeta', 'coup')):
         return True
 
+    # Erupsi gunung
     if any(k in t for k in ('erupsi', 'gunung meletus', 'volcanic eruption')):
+        return True
+
+    # V6.17.14: Kebakaran hutan - HANYA yang AKTIF/MELUAS/BESAR (bukan analisis/peta)
+    if any(k in t for k in ('kebakaran hutan aktif', 'kebakaran hutan meluas',
+                             'kebakaran hutan besar', 'wildfire spreads',
+                             'wildfire rages', 'kebakaran hutan mengancam')):
         return True
 
     return False
@@ -3372,6 +3414,13 @@ def sesi_breaking(today_urls, seen):
         if sudah_serupa(c['title']):
             print('   Skip (dobel): ' + c['title'][:50])
             continue
+        # V6.17.14: skip "Potret/Sorotan/Foto/Galeri" - feature, bukan breaking
+        jdl_lower = (c.get('title') or '').lower()
+        if any(x in jdl_lower for x in ('potret', 'sorotan', 'foto-foto', 'galeri',
+                                         'in pictures', 'photos:', 'images:',
+                                         'see photos', 'in photos')):
+            print('   Skip (feature/potret, bukan breaking): ' + c['title'][:50])
+            continue
         label = 'BREAKING DOM' if tip == 'dom' else 'BREAKING DUNIA'
         print('\n   [' + label + '] ' + c['title'][:70])
         try:
@@ -3381,6 +3430,11 @@ def sesi_breaking(today_urls, seen):
             print('   Ditolak AI: ' + str(bl)[:60]); continue
         except Exception as e:
             print('   ' + str(e)[:90]); continue
+        # V6.17.14: Breaking harus punya lokasi spesifik (kota) di judul ATAU isi dateline
+        if tip == 'dom':
+            if not _breaking_ada_lokasi(judul, isi):
+                print('   DITOLAK - breaking tanpa lokasi spesifik: ' + judul[:50])
+                continue
         if sudah_serupa(judul):
             print('   Hasil AI mirip judul yang sudah ada - skip.')
             continue
@@ -3400,6 +3454,33 @@ def sesi_breaking(today_urls, seen):
             print('   Insert gagal: ' + str(e)[:80])
     return made
 
+# V6.17.14: Cek breaking domestik wajib ada lokasi (kota/kabupaten/provinsi Indonesia)
+def _breaking_ada_lokasi(judul, isi):
+    """Cek judul atau dateline isi ada nama kota/kabupaten/provinsi Indonesia."""
+    gab = ((judul or '') + ' ' + (isi or '')).lower()
+    # Cek kota Indonesia dari daftar
+    for kota in KOTA_INDONESIA_DATELINE:
+        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
+            return True
+    # Cek provinsi
+    provinsi = ['aceh', 'sumatera utara', 'sumut', 'sumatera barat', 'sumbar',
+                'riau', 'jambi', 'bengkulu', 'lampung', 'bangka belitung',
+                'kepulauan riau', 'jakarta', 'jawa barat', 'jabar',
+                'jawa tengah', 'jateng', 'yogyakarta', 'jogja', 'jawa timur',
+                'jatim', 'banten', 'bali', 'nusa tenggara barat', 'ntb',
+                'nusa tenggara timur', 'ntt', 'kalimantan barat', 'kalbar',
+                'kalimantan tengah', 'kalteng', 'kalimantan selatan', 'kalsel',
+                'kalimantan timur', 'kaltim', 'kalimantan utara', 'kaltara',
+                'sulawesi utara', 'sulut', 'sulawesi tengah', 'sulteng',
+                'sulawesi selatan', 'sulsel', 'sulawesi tenggara', 'sultra',
+                'gorontalo', 'sulawesi barat', 'sulbar', 'maluku',
+                'maluku utara', 'malut', 'papua', 'papua barat', 'papua selatan',
+                'papua tengah', 'papua pegunungan', 'papua barat daya']
+    for prov in provinsi:
+        if re.search(r'\b' + re.escape(prov) + r'\b', gab):
+            return True
+    return False
+
 def kategori_breaking(c, tip):
     if tip == 'dun':
         return 'internasional'
@@ -3408,7 +3489,7 @@ def kategori_breaking(c, tip):
         return 'internasional'
     return 'nasional'
 
-# V6.17.12: FUNGSI YAHOO DIHAPUS TOTAL, DIGANTI KURS DARI ER-API
+# V6.17.14: Yahoo dihapus, ganti er-api untuk kurs
 def _ambil_kurs_usdidr():
     """Kurs USD/IDR dari open.er-api.com (gratis, tanpa API key)."""
     try:
@@ -3433,8 +3514,6 @@ def _format_kurs_usdidr():
     s_akhir = 'Rp ' + format(int(round(harga)), ',').replace(',', '.')
     return 'Kurs USD/IDR: ' + s_akhir
 
-# V6.17.12: PASAR MODAL — tidak lagi sesi terpisah.
-# Fungsi sesi_pasar_modal() DIHAPUS. Data kurs + IHSG digabung ke ekonomi jam 17.
 def _data_pasar_untuk_ekonomi():
     """Ambil data kurs untuk disisipkan ke berita ekonomi jam 17."""
     data = []
@@ -3680,7 +3759,6 @@ def sesi_otomotif(today_urls, seen):
         return 1
     return 0
 
-# V6.17.12: Ekonomi jam 17 diperkaya data kurs
 def produksi_ekonomi_jam_17(cat, today_urls, seen, sumber_kustom=None):
     """Produksi ekonomi jam 17 — dengan data kurs ditambahkan."""
     jam = datetime.now(WITA).hour
@@ -3904,7 +3982,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.12 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.14 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3918,7 +3996,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.12'
+FILE_VERSI      = 'V6.17.14'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
