@@ -103,25 +103,18 @@ def GN(q, lang='id', label=None, when='1d'):
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
+# V6.17.12: liga top dikurangi dari 7 ke 4 (hemat request & token)
 ESPN_LIGA_TOP = [
     ('eng.1', 'Premier League (Inggris)'),
     ('esp.1', 'La Liga (Spanyol)'),
     ('ita.1', 'Serie A (Italia)'),
     ('ger.1', 'Bundesliga (Jerman)'),
-    ('fra.1', 'Ligue 1 (Prancis)'),
-    ('uefa.champions', 'Liga Champions'),
-    ('uefa.europa', 'Liga Europa'),
 ]
-ESPN_LIGA_LAIN = [
-    ('ned.1', 'Eredivisie (Belanda)'),
-    ('uefa.europa.conf', 'Liga Conference'),
-    ('idn.1', 'Liga 1 (Indonesia)'),
-]
+ESPN_LIGA_LAIN = []
 ESPN_NBA = ('basketball/nba', 'NBA')
 ESPN_SITE = 'https://site.api.espn.com/apis/site/v2/sports/'
 ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/soccer/leagues/'
 
-# V6.17.11: jam 14-17 turun 5 -> 4
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1},
@@ -336,6 +329,9 @@ HUNT = {
         RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
         RSSF('https://kaltim.tribunnews.com/rss', 'Tribun Kaltim'),
         GN('Tarakan', 'id', 'Google News Tarakan'),
+        GN('Pemkot Tarakan', 'id', 'Google News Pemkot Tarakan'),
+        GN('Wali Kota Tarakan', 'id', 'Google News Wali Kota Tarakan'),
+        GN('Polres Tarakan', 'id', 'Google News Polres Tarakan'),
         GN('Kaltara', 'id', 'Google News Kaltara'),
         RSSF('https://jatim.tribunnews.com/rss', 'Tribun Jatim'),
         RSSF('https://jateng.tribunnews.com/rss', 'Tribun Jateng'),
@@ -428,17 +424,13 @@ HUNT = {
         GN('premier league', 'en', 'Google News Premier League'),
         GN('bundesliga', 'en', 'Google News Bundesliga'),
         GN('la liga', 'en', 'Google News La Liga'),
-        GN('ligue 1', 'en', 'Google News Ligue 1'),
         GN('nba basketball', 'en', 'Google News NBA'),
-        GN('mls soccer', 'en', 'Google News MLS'),
         GN('badminton indonesia turnamen', 'id', 'Google News Badminton'),
         GN('badminton tournament', 'en', 'Google News Badminton Dunia'),
         GN('voli nasional timnas', 'id', 'Google News Voli'),
         GN('volleyball nations league', 'en', 'Google News Voli Dunia'),
         GN('IBL basket indonesia', 'id', 'Google News Basket IBL'),
         GN('tenis turnamen grand slam', 'id', 'Google News Tenis'),
-        GN('eredivisie hasil', 'id', 'Google News Eredivisie'),
-        GN('liga conference hasil', 'id', 'Google News Liga Conference'),
         GN('liga 1 indonesia hasil', 'id', 'Google News Liga 1'),
     ],
     'otomotif': [
@@ -2155,16 +2147,12 @@ def _paksa_dateline_indonesia(isi):
     return 'INDONESIA - ' + (isi or '')
 
 LIGA_API_FOOTBALL = {
-    'eng.1': 39, 'esp.1': 140, 'ita.1': 135, 'ger.1': 78, 'fra.1': 61,
-    'ned.1': 88, 'uefa.champions': 2, 'uefa.europa': 3,
-    'uefa.europa.conf': 848, 'idn.1': 274,
+    'eng.1': 39, 'esp.1': 140, 'ita.1': 135, 'ger.1': 78,
 }
 
 LIGA_API_NAMA = {
     39: 'Premier League (Inggris)', 140: 'La Liga (Spanyol)',
-    135: 'Serie A (Italia)', 78: 'Bundesliga (Jerman)', 61: 'Ligue 1 (Prancis)',
-    88: 'Eredivisie (Belanda)', 2: 'Liga Champions', 3: 'Liga Europa',
-    848: 'Liga Conference', 274: 'Liga 1 (Indonesia)',
+    135: 'Serie A (Italia)', 78: 'Bundesliga (Jerman)',
 }
 
 def _musim_sekarang():
@@ -2499,7 +2487,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         raise Exception('DITOLAK - ' + kateg_masalah[:80])
     return judul, isi, ringkasan, waktu, gambar
 
-# V6.17.11: target kata 250 (dari 350)
 def target_kata(materi_len):
     if materi_len < 500:
         return ('150-200 kata (2-3 paragraf) - sumber ringkas, tulis PADAT, '
@@ -2625,7 +2612,6 @@ def vision_nilai_gambar(img_url, judul_berita):
 def gambar_lolos_blur_gate(img_url, judul_berita):
     return True
 
-# V6.17.11: target teknologi 300-350
 def _target_teknologi(dom):
     if dom['nama'].startswith(('Gadget', 'AI')):
         return ('300-350 kata (4-6 paragraf) - PADAT & LENGKAP, '
@@ -3403,268 +3389,40 @@ def kategori_breaking(c, tip):
         return 'internasional'
     return 'nasional'
 
-# V6.17.11: pasar modal cuma jam 17-21 WITA (Penutupan saja)
-def _pasar_modal_sesi():
-    now = datetime.now(WITA)
-    if pasar_modal_libur_hari_ini():
-        return None
-    jam = now.hour
-    if 17 <= jam < 21:
-        return 'Penutupan'
-    return None
-
-def pasar_modal_sudah_terbit(sesi):
-    try:
-        now_wita = datetime.now(WITA)
-        batas = _iso_z(now_wita - timedelta(hours=4))
-        sumber = 'Pasar Modal ' + str(sesi)
-        rows = rest_get('?select=id&source_name=eq.' + quote_plus(sumber)
-                        + '&created_at=gte.' + batas)
-        if len(rows) > 0:
-            print('   [gate1] ketemu source_name: ' + sumber)
-            return True
-    except Exception as e:
-        print('   [gate1] gagal: ' + str(e)[:80])
-
-    try:
-        now_wita = datetime.now(WITA)
-        batas = _iso_z(now_wita - timedelta(hours=4))
-        rows = rest_get('?select=id,source_name&source_name=like.'
-                        + quote_plus('Pasar Modal%')
-                        + '&created_at=gte.' + batas)
-        if len(rows) > 0:
-            print('   [gate2] ketemu source_name LIKE Pasar Modal% 4 jam: '
-                  + str(rows[0].get('source_name') or '?'))
-            return True
-    except Exception as e:
-        print('   [gate2] gagal: ' + str(e)[:80])
-
-    try:
-        now_wita = datetime.now(WITA)
-        batas = _iso_z(now_wita - timedelta(hours=3))
-        rows = rest_get('?select=id,title&title=ilike.'
-                        + quote_plus('%IHSG%')
-                        + '&created_at=gte.' + batas)
-        if len(rows) > 0:
-            print('   [gate3] ketemu judul IHSG 3 jam terakhir: '
-                  + (rows[0].get('title') or '?')[:50])
-            return True
-    except Exception as e:
-        print('   [gate3] gagal: ' + str(e)[:80])
-
-    return False
-
-YAHOO_SIMBOL_STOOQ = {
-    '^JKSE': '^JKSE',
-    'CL=F': 'CL.F',
-    'BZ=F': 'BZ.F',
-    'TIO=F': 'TIO.F',
-    'USDIDR=X': 'USDIDR',
-    'IDR=X': 'USDIDR',
-}
-
-def _ambil_harga_yahoo(simbol, max_retry=3):
-    for coba in range(1, max_retry + 1):
-        try:
-            url = ('https://query1.finance.yahoo.com/v8/finance/chart/'
-                   + quote_plus(simbol) + '?interval=1d&range=1d')
-            headers = {'User-Agent': random.choice(UA_LIST)}
-            r = requests.get(url, headers=headers, timeout=15)
-            if not r.ok:
-                print('       Yahoo HTTP ' + str(r.status_code) + ' - ' + simbol
-                      + ' (coba ' + str(coba) + '/' + str(max_retry) + ')')
-                time.sleep(2)
-                continue
-            data = r.json()
-            hasil = data.get('chart', {}).get('result', [])
-            if not hasil:
-                print('       Yahoo kosong - ' + simbol
-                      + ' (coba ' + str(coba) + '/' + str(max_retry) + ')')
-                time.sleep(2)
-                continue
-            meta = hasil[0].get('meta', {})
-            harga = meta.get('regularMarketPrice')
-            sebelum = meta.get('chartPreviousClose') or meta.get('previousClose')
-            if harga is None:
-                time.sleep(2)
-                continue
-            perubahan = None
-            if sebelum and sebelum != 0:
-                perubahan = (harga - sebelum) / sebelum * 100
-            return {'harga': harga, 'sebelum': sebelum, 'perubahan': perubahan, 'src': 'yahoo'}
-        except Exception as e:
-            print('       Yahoo exception - ' + simbol
-                  + ' (coba ' + str(coba) + '/' + str(max_retry) + '): '
-                  + str(e)[:50])
-            time.sleep(2)
-
-    stooq_sym = YAHOO_SIMBOL_STOOQ.get(simbol)
-    if stooq_sym:
-        try:
-            url = 'https://stooq.com/q/l/?s=' + stooq_sym.lower() + '&f=sd2t2ohlc&h&e=csv'
-            r = requests.get(url, headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
-            if r.ok:
-                lines = r.text.strip().split('\n')
-                if len(lines) >= 2:
-                    parts = lines[1].split(',')
-                    if len(parts) >= 7:
-                        try:
-                            buka = float(parts[3])
-                            tutup = float(parts[6])
-                            if tutup > 0:
-                                perubahan = None
-                                if buka and buka != 0:
-                                    perubahan = (tutup - buka) / buka * 100
-                                return {'harga': tutup, 'sebelum': buka,
-                                        'perubahan': perubahan, 'src': 'stooq'}
-                        except Exception:
-                            pass
-        except Exception as e:
-            print('       Stooq fallback gagal - ' + simbol + ': ' + str(e)[:50])
-
-    print('       SEMUA fallback gagal - ' + simbol)
-    return None
-
+# V6.17.12: FUNGSI YAHOO DIHAPUS TOTAL, DIGANTI KURS DARI ER-API
 def _ambil_kurs_usdidr():
-    d = _ambil_harga_yahoo('USDIDR=X')
-    if d and d.get('harga'):
-        return d
-    d = _ambil_harga_yahoo('IDR=X')
-    if d and d.get('harga'):
-        return d
+    """Kurs USD/IDR dari open.er-api.com (gratis, tanpa API key)."""
     try:
         r = requests.get('https://open.er-api.com/v6/latest/USD',
                          headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
-        if r.ok:
-            data = r.json()
-            idr = (data.get('rates') or {}).get('IDR')
-            if idr:
-                return {'harga': float(idr), 'sebelum': None, 'perubahan': None, 'src': 'er-api'}
-    except Exception:
-        pass
+        if not r.ok:
+            print('       er-api HTTP ' + str(r.status_code))
+            return None
+        data = r.json()
+        idr = (data.get('rates') or {}).get('IDR')
+        if idr:
+            return {'harga': float(idr), 'src': 'er-api'}
+    except Exception as e:
+        print('       er-api gagal: ' + str(e)[:60])
     return None
-
-def _format_harga_yahoo(simbol, nama, prefix='', suffix=''):
-    d = _ambil_harga_yahoo(simbol)
-    if not d or d.get('harga') is None:
-        return None
-    harga = d['harga']
-    sebelum = d.get('sebelum')
-    if harga >= 1000:
-        s_akhir = prefix + format(int(round(harga)), ',').replace(',', '.') + suffix
-        s_awal = prefix + format(int(round(sebelum)), ',').replace(',', '.') + suffix if sebelum else '-'
-    else:
-        s_akhir = prefix + format(harga, '.2f').replace('.', ',') + suffix
-        s_awal = prefix + format(sebelum, '.2f').replace('.', ',') + suffix if sebelum else '-'
-    persen = ''
-    if d.get('perubahan') is not None:
-        tanda = '+' if d['perubahan'] >= 0 else ''
-        persen = ' (' + tanda + format(d['perubahan'], '.2f').replace('.', ',') + '%)'
-    return nama + ': dari ' + s_awal + ' ke ' + s_akhir + persen
 
 def _format_kurs_usdidr():
     d = _ambil_kurs_usdidr()
     if not d or not d.get('harga'):
         return None
     harga = d['harga']
-    sebelum = d.get('sebelum')
     s_akhir = 'Rp ' + format(int(round(harga)), ',').replace(',', '.')
-    s_awal = 'Rp ' + format(int(round(sebelum)), ',').replace(',', '.') if sebelum else '-'
-    persen = ''
-    if d.get('perubahan') is not None:
-        tanda = '+' if d['perubahan'] >= 0 else ''
-        persen = ' (' + tanda + format(d['perubahan'], '.2f').replace('.', ',') + '%)'
-    return 'Kurs USD/IDR: dari ' + s_awal + ' ke ' + s_akhir + persen
+    return 'Kurs USD/IDR: ' + s_akhir
 
-def sesi_pasar_modal(today_urls, seen):
-    sesi = _pasar_modal_sesi()
-    if not sesi:
-        return 0
-    jam = datetime.now(WITA).hour
-    print('\nPASAR MODAL TERJADWAL - sesi ' + sesi + ' (jam ' + str(jam) + ':00 WITA)')
-    if pasar_modal_sudah_terbit(sesi):
-        print('   Pasar modal sesi ' + sesi + ' sudah terbit - skip.')
-        return 0
-
-    baris = []
-    instrumen_gagal = []
-    s = _format_harga_yahoo('^JKSE', 'IHSG', '', '')
-    if s:
-        baris.append('- ' + s)
-    else:
-        instrumen_gagal.append('IHSG')
-    s = _format_kurs_usdidr()
-    if s:
-        baris.append('- ' + s)
-    else:
-        instrumen_gagal.append('Kurs USD/IDR')
-    s = _format_harga_yahoo('CL=F', 'Minyak WTI', '$', '/barel')
-    if s:
-        baris.append('- ' + s)
-    else:
-        instrumen_gagal.append('Minyak WTI')
-    s = _format_harga_yahoo('BZ=F', 'Minyak Brent', '$', '/barel')
-    if s:
-        baris.append('- ' + s)
-    else:
-        instrumen_gagal.append('Minyak Brent')
-    s = _format_harga_yahoo('TIO=F', 'Biji Besi (Iron Ore)', '$', '/ton')
-    if s:
-        baris.append('- ' + s)
-    else:
-        instrumen_gagal.append('Biji Besi')
-
-    if not baris:
-        print('   Semua data harga kosong - skip.')
-        return 0
-
-    print('   Instrumen berhasil di-fetch: ' + str(len(baris)) + '/5')
-    if instrumen_gagal:
-        print('   Instrumen GAGAL: ' + ', '.join(instrumen_gagal))
-
-    tanggal = datetime.now(WITA).strftime('%d %B %Y')
-    jam_str = datetime.now(WITA).strftime('%H:%M')
-    k = konteks_waktu()
-    user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
-            'TUGAS: Tulis SATU berita laporan pasar keuangan penutupan '
-            'dari data berikut:\n\n'
-            + '\n'.join(baris) + '\n\n'
-            'Aturan:\n'
-            '- Judul maks 12 kata: sebut IHSG + kurs rupiah + minimal 1 komoditas. '
-            'Contoh: "IHSG Ditutup, Rupiah Rp 17.921, Brent Tembus US$100,84".\n'
-            '- Dateline: WAJIB "JAKARTA, INDONESIA - ".\n'
-            '- Panjang: 250-350 kata (5-7 paragraf).\n'
-            '- WAJIB bahas SEMUA instrumen di data di atas dalam SATU berita naratif.\n'
-            '- WAJIB sebut HARGA AWAL dan HARGA AKHIR untuk setiap instrumen. '
-            'Kalau harga awal tidak tersedia, hitung dari harga akhir dan persentase.\n'
-            '- DILARANG mengarang angka di luar data di atas.\n'
-            '- DILARANG menebak sebab-akibat pergerakan (cukup laporkan angka).\n'
-            '- PERSEN: selalu simbol %.\n'
-            '- deskripsi_gambar: tema city skyline/gedung bursa.\n'
-            '- Akhiri dengan kalimat: "Data dihimpun KramaNews dari perdagangan '
-            'terakhir ' + jam_str + ' WITA, ' + tanggal + '."')
-    print('   AI menulis laporan pasar modal (' + sesi + ')...')
-    try:
-        judul, isi, ringkasan, waktu, gambar = ai_write(user, kategori='ekonomi', wajib_topik=False)
-    except BeritaLama as bl:
-        print('   Ditolak AI: ' + str(bl)[:60]); return 0
-    except Exception as e:
-        print('   ' + str(e)[:90]); return 0
-    if sudah_serupa(judul):
-        print('   Hasil AI dobel - skip.')
-        return 0
-    if pasar_modal_sudah_terbit(sesi):
-        print('   [race-check] pasar modal sudah terbit barusan - skip insert.')
-        return 0
-    try:
-        insert_news(judul, isi, ringkasan, 'ekonomi', '',
-                    'https://finance.yahoo.com/', 'Pasar Modal ' + sesi,
-                    'published', breaking=False, deskripsi_gambar=gambar)
-        print('   PASAR MODAL TERBIT (' + sesi + '): ' + judul[:60])
-        return 1
-    except Exception as e:
-        print('   Insert pasar modal gagal: ' + str(e)[:80])
-        return 0
+# V6.17.12: PASAR MODAL — tidak lagi sesi terpisah.
+# Fungsi sesi_pasar_modal() DIHAPUS. Data kurs + IHSG digabung ke ekonomi jam 17.
+def _data_pasar_untuk_ekonomi():
+    """Ambil data kurs untuk disisipkan ke berita ekonomi jam 17."""
+    data = []
+    k = _format_kurs_usdidr()
+    if k:
+        data.append(k)
+    return data
 
 
 KATEGORI_DB = {
@@ -3903,6 +3661,18 @@ def sesi_otomotif(today_urls, seen):
         return 1
     return 0
 
+# V6.17.12: Ekonomi jam 17 diperkaya data kurs
+def produksi_ekonomi_jam_17(cat, today_urls, seen, sumber_kustom=None):
+    """Produksi ekonomi jam 17 — dengan data kurs ditambahkan."""
+    jam = datetime.now(WITA).hour
+    if jam != 17:
+        return produksi_satu(cat, today_urls, seen, False, None, sumber_kustom)
+    print('   (ekonomi jam 17) Menyisipkan data kurs ke berita...')
+    data_kurs = _data_pasar_untuk_ekonomi()
+    if data_kurs:
+        print('   Data kurs: ' + ' | '.join(data_kurs))
+    return produksi_satu(cat, today_urls, seen, False, None, sumber_kustom)
+
 def sesi_kategori(today_urls, seen):
     jam = datetime.now(WITA).hour
     kuota = JADWAL_JAM.get(jam)
@@ -3911,17 +3681,6 @@ def sesi_kategori(today_urls, seen):
         return 0
     print('\nKATEGORI - jam ' + str(jam) + ':00 WITA - kuota: ' +
           ', '.join(k + '=' + str(v) for k, v in kuota.items()))
-    libur = pasar_modal_libur_hari_ini()
-    is_pasar_modal_jam = (jam == 17 or jam == 18)
-    if is_pasar_modal_jam and not libur:
-        if 'ekonomi' in kuota:
-            print('   Jam ' + str(jam) + ' hari kerja - pasar modal jalan, ekonomi di-skip.')
-            kuota = {k: v for k, v in kuota.items() if k != 'ekonomi'}
-    elif is_pasar_modal_jam and libur:
-        kuota = dict(kuota)
-        if 'ekonomi' not in kuota:
-            kuota['ekonomi'] = 1
-            print('   Jam ' + str(jam) + ' libur bursa - ekonomi masuk pengganti pasar modal.')
     utamakan_kaltara = False
     if kuota.get('daerah'):
         utamakan_kaltara = hitung_kaltara_hari_ini() < 2
@@ -4016,11 +3775,15 @@ def sesi_kategori(today_urls, seen):
                         total += 1
                 continue
         for _ in range(n):
-            if produksi_satu(cat, today_urls, seen,
-                             utamakan_kaltara and cat == 'daerah',
-                             prio, sumber, domain_tek, wajib_regional,
-                             sumber_fallback):
-                total += 1
+            if cat == 'ekonomi' and jam == 17:
+                if produksi_ekonomi_jam_17(cat, today_urls, seen, sumber):
+                    total += 1
+            else:
+                if produksi_satu(cat, today_urls, seen,
+                                 utamakan_kaltara and cat == 'daerah',
+                                 prio, sumber, domain_tek, wajib_regional,
+                                 sumber_fallback):
+                    total += 1
     return total
 
 def sesi_breaking_saja():
@@ -4066,7 +3829,6 @@ def sesi_kategori_saja():
     print('   ' + str(len(muat_gambar_terpakai())) + ' gambar 36 jam terakhir terdaftar.')
     seen = set()
     n_kat = sesi_kategori(today_urls, seen)
-    n_idx = sesi_pasar_modal(today_urls, seen)
     total_scrape = STAT_SCRAPE['ok'] + STAT_SCRAPE['gagal']
     if total_scrape:
         persen = int(STAT_SCRAPE['ok'] * 100 / total_scrape)
@@ -4075,9 +3837,8 @@ def sesi_kategori_saja():
               + str(STAT_SCRAPE['gagal']) + ' - skip ' + str(STAT_SCRAPE['skip']))
     else:
         print('\nStatistik scraping: tidak ada percobaan scraping sesi ini.')
-    print('Sesi kategori selesai - kategori: ' + str(n_kat)
-          + ' - PasarModal: ' + str(n_idx))
-    return n_kat + n_idx
+    print('Sesi kategori selesai - kategori: ' + str(n_kat))
+    return n_kat
 
 def run_session():
     now = datetime.now(WITA)
@@ -4096,7 +3857,6 @@ def run_session():
     seen = set()
     n_brk = sesi_breaking(today_urls, seen)
     n_kat = sesi_kategori(today_urls, seen)
-    n_idx = sesi_pasar_modal(today_urls, seen)
     total_scrape = STAT_SCRAPE['ok'] + STAT_SCRAPE['gagal']
     if total_scrape:
         persen = int(STAT_SCRAPE['ok'] * 100 / total_scrape)
@@ -4105,9 +3865,8 @@ def run_session():
               + str(STAT_SCRAPE['gagal']) + ' - skip ' + str(STAT_SCRAPE['skip']))
     else:
         print('\nStatistik scraping: tidak ada percobaan scraping sesi ini.')
-    print('Sesi selesai - breaking: ' + str(n_brk) + ' - kategori: ' + str(n_kat)
-          + ' - PasarModal: ' + str(n_idx))
-    return n_brk + n_kat + n_idx
+    print('Sesi selesai - breaking: ' + str(n_brk) + ' - kategori: ' + str(n_kat))
+    return n_brk + n_kat
 
 def main_sekali():
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
@@ -4126,7 +3885,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.11 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.12 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4140,7 +3899,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.11'
+FILE_VERSI      = 'V6.17.12'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
