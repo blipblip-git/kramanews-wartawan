@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER
+# PART 1 - KONFIGURASI, JADWAL & SUMBER - V6.17.7
 
 import requests
 import json
@@ -32,7 +32,7 @@ NBA_API_URL        = 'https://v1.nba.api-sports.io'
 VOLLEYBALL_API_URL = 'https://v1.volleyball.api-sports.io'
 F1_API_URL         = 'https://v1.formula-1.api-sports.io'
 
-BREAKING_MAX_SLOT       = 3
+BREAKING_MAX_SLOT       = 1
 BREAKING_UMUR_MENIT     = 30
 MAX_UMUR_BERITA_JAM     = 30
 JENDELA_DOBEL_JAM       = 36
@@ -3286,7 +3286,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.17.6
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION - V6.17.7
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3302,15 +3302,14 @@ def is_berita_politik_hukum(teks):
     return False
 
 def _jam_breaking_aktif():
-    """V6.17.6: Breaking cuma jalan 06:07-20:07 WITA. Di luar itu stop (kecuali darurat)."""
+    """V6.17.7: Breaking cuma jalan 06:07-19:07 WITA. Di luar itu stop (kecuali darurat)."""
     jam = datetime.now(WITA).hour
     return 6 <= jam < 20
 
 def _darurat_malam(judul, summary):
-    """V6.17.6: Topik darurat yang tetap lolos breaking malam. Ketat - cuma 6 kondisi."""
+    """V6.17.7: Topik darurat yang tetap lolos breaking malam. Ketat - cuma 6 kondisi."""
     t = ((judul or '') + ' ' + (summary or '')).lower()
 
-    # Gempa bumi >=6.0
     if 'gempa' in t or 'earthquake' in t:
         mag = ambil_magnitude(t)
         if mag is not None and mag >= 6.0:
@@ -3318,30 +3317,25 @@ def _darurat_malam(judul, summary):
         if 'magnitude 6' in t or 'magnitudo 6' in t or 'magnitude 7' in t or 'magnitudo 7' in t or 'magnitude 8' in t or 'magnitudo 8' in t or 'magnitude 9' in t or 'magnitudo 9' in t:
             return True
 
-    # Tsunami
     if 'tsunami' in t:
         return True
 
-    # Perang / invasi
     if any(k in t for k in ('perang', 'war', 'invasi', 'invasion')):
         return True
 
-    # Nuklir
     if any(k in t for k in ('serangan nuklir', 'nuclear attack', 'nuclear test', 'uji nuklir', 'nuclear strike')):
         return True
 
-    # Kudeta
     if any(k in t for k in ('kudeta', 'coup')):
         return True
 
-    # Erupsi gunung (VEI >=4 atau "besar")
     if any(k in t for k in ('erupsi', 'gunung meletus', 'volcanic eruption')):
         return True
 
     return False
 
 def sesi_breaking(today_urls, seen):
-    """V6.17.6: Breaking 1 slot, prioritas domestik, 06:07-20:07 WITA (malam stop, kecuali darurat)."""
+    """V6.17.7: Breaking 1 slot, prioritas domestik, 06:07-19:07 WITA (malam stop, kecuali darurat)."""
     made = 0
     slots = BREAKING_MAX_SLOT - len(get_breaking_list())
     print('\nBREAKING - slot tersedia: ' + str(slots) + '/' + str(BREAKING_MAX_SLOT))
@@ -3350,7 +3344,7 @@ def sesi_breaking(today_urls, seen):
 
     jam_aktif = _jam_breaking_aktif()
     if not jam_aktif:
-        print('   ⏰ Di luar jam breaking (06:07-20:07 WITA). Cek darurat dulu...')
+        print('   ⏰ Di luar jam breaking (06:07-19:07 WITA). Cek darurat dulu...')
 
     cand_dom = collect_candidates(BREAKING_DOMESTIK_FEEDS, today_urls, seen, max_umur_jam=30)
     skor_dom = sorted([(c, skor_domestik(c['title'], c['summary'])) for c in cand_dom], key=lambda x: -x[1])
@@ -3364,17 +3358,14 @@ def sesi_breaking(today_urls, seen):
     skor_dun = [x for x in skor_dun if x[1] >= SKOR_BREAKING_MIN]
     print('   Kandidat breaking dunia layak: ' + str(len(skor_dun)))
 
-    # V6.17.6: prioritas domestik dulu, baru dunia
     semua_pilihan = []
     for c, s in skor_dom:
         semua_pilihan.append((c, 'dom'))
     for c, s in skor_dun:
-        # Kalau di luar jam aktif: hanya darurat yang lolos
         if not jam_aktif and not _darurat_malam(c['title'], c['summary']):
             continue
         semua_pilihan.append((c, 'dun'))
 
-    # V6.17.6: kalau di luar jam & tidak ada darurat, skip total
     if not jam_aktif and not semua_pilihan:
         print('   ⏰ Di luar jam breaking + tidak ada darurat - skip breaking.')
         return 0
@@ -3986,7 +3977,7 @@ def sesi_kategori(today_urls, seen):
 def sesi_breaking_saja():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.6)')
+    print('SESI BREAKING - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.7)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -4013,7 +4004,7 @@ def sesi_breaking_saja():
 def sesi_kategori_saja():
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.6)')
+    print('SESI KATEGORI - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.7)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -4044,7 +4035,7 @@ def run_session():
     """Fallback: jalankan semua (untuk kompatibilitas)."""
     now = datetime.now(WITA)
     print('\n==========================================')
-    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.6)')
+    print('SESI BERBURU - ' + now.strftime('%d/%m/%Y %H:%M') + ' WITA (V6.17.7)')
     print('==========================================')
     dicabut = expire_breaking(BREAKING_UMUR_MENIT)
     if dicabut:
@@ -4089,7 +4080,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.6 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.7 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4103,7 +4094,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.6'
+FILE_VERSI      = 'V6.17.7'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
