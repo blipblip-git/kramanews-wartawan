@@ -1068,7 +1068,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.18)
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.20)
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1216,7 +1216,7 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# ═══ V6.17.18: AI EDITOR LUAR — DIPERLONGGAR ═══
+# ═══ V6.17.20: AI EDITOR LUAR — DIPERLONGGAR ═══
 # Tujuan: skip sampah, tapi tidak skip berita valid
 # Breaking/nasional tidak wajib lokasi
 
@@ -1290,7 +1290,7 @@ def _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary):
             return False, 'kategori luar tapi ada lembaga Indonesia: ' + lem
     return True, ''
 
-# V6.17.18: lokasi — LONGGAR (tidak wajib untuk breaking/nasional)
+# V6.17.20: lokasi — LONGGAR (tidak wajib untuk breaking/nasional)
 def _kandidat_ada_lokasi(judul, summary, kategori=''):
     """Cek lokasi — KECUALI breaking/nasional (mereka tidak wajib kota)."""
     # Breaking dan nasional — tidak wajib lokasi
@@ -1815,7 +1815,8 @@ INSTITUSI_LOKAL_BUTUH_NAMA = [
     'angkasa pura',
 ]
 
-INSTITUSI_BUTUH_NAMA = INSTITUSI_LOKAL_BUTUH_NAMA + INSTITUSI_PUSAT_LEBIH_LEBIH_LONGGAR
+# V6.17.20: FIX TYPO — INSTITUSI_PUSAT_LEBIH_LONGGAR (bukan LEBIH_LEBIH_LONGGAR)
+INSTITUSI_BUTUH_NAMA = INSTITUSI_LOKAL_BUTUH_NAMA + INSTITUSI_PUSAT_LEBIH_LONGGAR
 
 KATA_KERJA_NARASUMBER = [
     'mengatakan', 'menyatakan', 'menjelaskan', 'menuturkan', 'mengungkapkan',
@@ -3340,7 +3341,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.19)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.20)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3629,7 +3630,7 @@ def tolak_amerika_lokal(teks):
 def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                   sumber_custom=None, domain_tek=None, wajib_regional=False,
                   sumber_fallback=None):
-    """V6.17.19: 2 KANDIDAT CADANGAN — kalau #1 ditolak AI Token, coba #2.
+    """V6.17.20: 2 KANDIDAT CADANGAN — kalau #1 ditolak AI Token, coba #2.
     Kandidat #2 sudah lolos AI Editor Luar (bersih), tinggal dikirim 1-per-1.
     Token hangus maksimal 2x per kategori (normalnya 1x).
     """
@@ -3711,7 +3712,7 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                 return 2 if barat_sudah_terbit(b) else 1
             return 1
         groups.sort(key=asean_prio)
-    # V6.17.19: 2 KANDIDAT CADANGAN (1-per-1, hemat token)
+    # V6.17.20: 2 KANDIDAT CADANGAN (1-per-1, hemat token)
     percobaan = 0
     for g in groups:
         if percobaan >= 2:
@@ -3891,7 +3892,7 @@ def sesi_kategori(today_urls, seen):
                                      sumber_fallback):
                         total += 1
                 continue
-        # V6.17.19: 1 KANDIDAT SAJA per kategori (cadangan di dalam produksi_satu)
+        # V6.17.20: produksi_satu sudah handle 2 kandidat cadangan
         if cat == 'ekonomi' and jam == 17:
             if produksi_ekonomi_jam_17(cat, today_urls, seen, sumber):
                 total += 1
@@ -4002,7 +4003,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.19 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.20 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4016,7 +4017,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.19'
+FILE_VERSI      = 'V6.17.20'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
