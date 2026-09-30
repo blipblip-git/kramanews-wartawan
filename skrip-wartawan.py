@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.25)
+# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.26)
 
 import requests
 import json
@@ -32,7 +32,7 @@ NBA_API_URL        = 'https://v1.nba.api-sports.io'
 VOLLEYBALL_API_URL = 'https://v1.volleyball.api-sports.io'
 F1_API_URL         = 'https://v1.formula-1.api-sports.io'
 
-BREAKING_MAX_SLOT       = 1
+BREAKING_MAX_SLOT       = 2
 BREAKING_UMUR_MENIT     = 30
 MAX_UMUR_BERITA_JAM     = 30
 JENDELA_DOBEL_JAM       = 36
@@ -1071,7 +1071,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.24)
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.26)
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1219,7 +1219,7 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# ═══ V6.17.24: AI EDITOR LUAR — CERMIN SEMPURNA ═══
+# ═══ V6.17.26: AI EDITOR LUAR ═══
 
 KATA_FEATURE_OPINI = [
     'editorial', 'opini:', 'analisis:', 'sorotan', 'potret', 'foto-foto',
@@ -1259,7 +1259,7 @@ def _kandidat_topik_nyambung(judul, summary):
         return False, 'judul & materi tidak nyambung (irisan 0)'
     return True, ''
 
-# V6.17.24: KATA KUNCI KATEGORI (tambah kata umum)
+# V6.17.26: KATA KUNCI KATEGORI
 KATA_KUNCI_KATEGORI = {
     'nasional': ['pemerintah', 'presiden', 'menteri', 'dpr', 'kementerian',
                  'prabowo', 'gibran', 'jakarta', 'indonesia', 'kebijakan',
@@ -1268,12 +1268,15 @@ KATA_KUNCI_KATEGORI = {
                  'polisi', 'tni', 'polri', 'pemilu', 'partai', 'dprd',
                  'anggaran', 'apbn', 'subsidi', 'bansos', 'pajak',
                  'pertahanan', 'kemhan', 'kemenhan', 'badan', 'debat',
-                 'pbb', 'ham', 'diplomasi', 'luar negeri', 'menteri luar'],
+                 'pbb', 'ham', 'diplomasi', 'luar negeri', 'menteri luar',
+                 'mbg', 'sppg', 'dapur', 'makan bergizi', 'gizi',
+                 'bgn', 'ketahanan pangan', 'bulog'],
     'daerah': ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
                'tana tidung', 'tanjung selor', 'sebatik', 'juata', 'sesayap',
                'kota', 'kabupaten', 'pemkot', 'pemkab', 'bupati', 'walikota',
                'dprd', 'polres', 'kodim', 'kelurahan', 'kecamatan', 'desa',
-               'provinsi', 'gubernur', 'camat', 'lurah', 'rt', 'rw'],
+               'provinsi', 'gubernur', 'camat', 'lurah', 'rt', 'rw',
+               'kppn', 'kpp', 'satker', 'ikpa'],
     'internasional': ['amerika', 'rusia', 'china', 'jepang', 'korea',
                       'eropa', 'inggris', 'jerman', 'perancis', 'italia',
                       'timur tengah', 'israel', 'palestina', 'iran', 'irak',
@@ -1295,7 +1298,9 @@ KATA_KUNCI_KATEGORI = {
                 'umkm', 'startup', 'kredit', 'utang', 'defisit', 'surplus',
                 'harga', 'pasar', 'konsumen', 'pedagang', 'pertanian',
                 'petani', 'industri', 'perdagangan', 'bumn', 'koperasi',
-                'keuangan', 'fiskal', 'moneter', 'daya beli'],
+                'keuangan', 'fiskal', 'moneter', 'daya beli',
+                'ventures', 'asia', 'asia tenggara', 'malaysia',
+                'china', 'singapura', 'fintech', 'e-commerce'],
     'olahraga': ['bola', 'sepak', 'basket', 'voli', 'badminton', 'tenis',
                  'motogp', 'f1', 'liga', 'piala', 'timnas', 'atlet',
                  'pemain', 'klub', 'pertandingan', 'laga', 'gol', 'skor',
@@ -2033,7 +2038,7 @@ KATA_LUAR_NEGERI_WAJIB = [
     'afrika', 'africa', 'nigeria', 'kenya', 'pbb', 'united nations', 'nato',
     'asean', 'who', 'unicef', 'bank dunia', 'world bank', 'imf', 'g20', 'g7',
     'brics', 'pemilu amerika', 'us election', 'parlemen eropa', 'uni eropa',
-    'european union', 'taiwan',
+    'european union', 'taiwan', 'kamboja', 'cambodia', 'laos', 'myanmar',
 ]
 
 KATA_ASEAN_WAJIB = [
@@ -2071,6 +2076,7 @@ KATA_EKONOMI_WAJIB = [
     'koperasi', 'pajak', 'bea', 'cukai', 'tarif', 'tbg', 'pendapatan',
     'belanja', 'anggaran', 'fiskal', 'moneter', 'bank sentral', 'bank',
     'kartu kredit', 'kpr', 'leasing', 'asuransi', 'jasa keuangan',
+    'ventures', 'request for startups', 'asia tenggara', 'malaysia',
 ]
 
 KATA_POLITIK_HUKUM_LOKAL = [
@@ -2323,7 +2329,6 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
         return None
     teks_materi = (judul_materi or '') + ' ' + (summary_materi or '')[:500]
     teks_ai = (judul_ai or '') + ' ' + (isi_ai or '')
-    # V6.17.24: cek kategori final vs judul AI — KECUALI breaking
     if kategori and kategori != 'breaking':
         gab_ai = (judul_ai or '') + ' ' + (isi_ai or '')
         ok_kat, alasan_kat = _materi_cocok_kategori(kategori, judul_ai, gab_ai[:500])
@@ -2354,7 +2359,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
 
 # AKHIR PART 3A
 
-# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.24)
+# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.26)
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -2942,8 +2947,10 @@ def _catatan_anti_jiplak():
     )
 
 def _catatan_kategori_ketat(kategori_target):
-    # V6.17.24: breaking tidak perlu filter kategori
+    # V6.17.26: skip untuk breaking + kategori luar negeri (sudah dicek Python)
     if not kategori_target or kategori_target == 'breaking':
+        return ''
+    if kategori_target in ('internasional', 'internasional_asean', 'internasional_tt'):
         return ''
     kata_kunci = KATA_KUNCI_KATEGORI.get(kategori_target, [])
     if not kata_kunci:
@@ -3567,7 +3574,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.25)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.26)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3632,6 +3639,7 @@ def _kandidat_beda_topik(kandidat_baru, kandidat_lama):
     return True
 
 def sesi_breaking(today_urls, seen):
+    # V6.17.26: 2 slot — 1 nasional + 1 internasional (beda jenis)
     made = 0
     slots = BREAKING_MAX_SLOT - len(get_breaking_list())
     print('\nBREAKING - slot tersedia: ' + str(slots) + '/' + str(BREAKING_MAX_SLOT))
@@ -3654,34 +3662,42 @@ def sesi_breaking(today_urls, seen):
     skor_dun = [x for x in skor_dun if x[1] >= SKOR_BREAKING_MIN]
     print('   Kandidat breaking dunia layak: ' + str(len(skor_dun)))
 
-    semua_pilihan = []
-    for c, s in skor_dom:
-        semua_pilihan.append((c, 'dom'))
-    for c, s in skor_dun:
-        if not jam_aktif and not _darurat_malam(c['title'], c['summary']):
-            continue
-        semua_pilihan.append((c, 'dun'))
+    # V6.17.26: pisah dom & dun — slot 1 prioritas, slot 2 harus beda jenis
+    if not jam_aktif:
+        # Filter darurat malam
+        skor_dom = [(c, s) for c, s in skor_dom if _darurat_malam(c['title'], c['summary'])]
+        skor_dun = [(c, s) for c, s in skor_dun if _darurat_malam(c['title'], c['summary'])]
 
-    if not jam_aktif and not semua_pilihan:
-        print('   ⏰ Di luar jam breaking + tidak ada darurat - skip breaking.')
+    if not skor_dom and not skor_dun:
+        print('   Tidak ada kandidat breaking layak - skip.')
         return 0
 
-    if not semua_pilihan:
+    # Slot 1: prioritas — dom dulu, kalau kosong baru dun
+    slot1_dom = skor_dom[0] if skor_dom else None
+    slot1_dun = skor_dun[0] if skor_dun else None
+
+    # V6.17.26: pemilihan slot 1
+    if slot1_dom and slot1_dun:
+        # Dua-duanya ada → slot 1 = dom (prioritas), slot 2 = dun
+        pilihan = [(slot1_dom[0], 'dom'), (slot1_dun[0], 'dun')]
+    elif slot1_dom:
+        # Cuma dom → slot 1 = dom, slot 2 kosong (jangan paksa dun)
+        pilihan = [(slot1_dom[0], 'dom')]
+    elif slot1_dun:
+        # Cuma dun → slot 1 = dun, slot 2 kosong
+        pilihan = [(slot1_dun[0], 'dun')]
+    else:
         print('   Tidak ada kandidat breaking layak - skip.')
         return 0
 
     percobaan = 0
-    kandidat_terpakai = []
-    for c, tip in semua_pilihan:
+    for c, tip in pilihan:
         if made >= slots:
             break
         if percobaan >= 2:
             break
         if sudah_serupa(c['title']):
             print('   Skip (dobel): ' + c['title'][:50])
-            continue
-        if kandidat_terpakai and not _kandidat_beda_topik(c, kandidat_terpakai[0]):
-            print('   Skip (cadangan sama topik): ' + c['title'][:50])
             continue
         jdl_lower = (c.get('title') or '').lower()
         if any(x in jdl_lower for x in ('potret', 'sorotan', 'foto-foto', 'galeri',
@@ -3717,7 +3733,6 @@ def sesi_breaking(today_urls, seen):
                         img_url, c.get('link', ''), c.get('source', 'Breaking'),
                         'published', breaking=True, deskripsi_gambar=gambar)
             made += 1
-            kandidat_terpakai.append(c)
             print('   BREAKING TERBIT: ' + judul[:60])
         except Exception as e:
             print('   Insert gagal: ' + str(e)[:80])
@@ -4203,7 +4218,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.25 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.26 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4217,7 +4232,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.25'
+FILE_VERSI      = 'V6.17.26'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
