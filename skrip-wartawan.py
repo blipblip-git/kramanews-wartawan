@@ -1216,9 +1216,9 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# ═══ V6.17.16: AI EDITOR LUAR — Python logic, GRATIS ═══
-# Cek 9 poin sebelum panggil AI Editor Token
-# Tujuan: minimalisir penolakan di AI Editor (hemat token)
+# ═══ V6.17.17: AI EDITOR LUAR — PERKUAT ═══
+# Semua larangan AI Editor Token HARUS ada di sini
+# Target: 0 tolak di AI Editor Token
 
 KATA_FEATURE_OPINI = [
     'editorial', 'opini:', 'analisis:', 'sorotan', 'potret', 'foto-foto',
@@ -1234,61 +1234,140 @@ KATA_KEGIATAN_SOSIAL = [
     'edukasi', 'kampanye', 'penyuluhan', 'latihan', 'simulasi',
 ]
 
+STOPWORDS_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
+                      'sudah oleh sebagai ada adalah kata ujar bilang menurut juga '
+                      'lebih masih hanya setelah sebelum sekitar bisa dapat tidak '
+                      'akan sudah karena jika agar para kami mereka the and for with '
+                      'from that this have will been are was were their they about'.split())
+
+def _kata_kunci_teks(teks):
+    """Ambil kata kunci (bukan stopword) dari teks."""
+    kata = re.findall(r'[a-z]{4,}', (teks or '').lower())
+    return set(k for k in kata if k not in STOPWORDS_DOBEL)
+
+def _kandidat_topik_nyambung(judul, summary):
+    """V6.17.17: Cek judul & materi nyambung (irisan kata kunci).
+    Cermin dari cek_topik_ai_vs_materi di AI Token.
+    """
+    if not judul or not summary:
+        return False, 'judul/materi kosong'
+    kata_judul = _kata_kunci_teks(judul)
+    kata_materi = _kata_kunci_teks(summary)
+    if not kata_judul:
+        return False, 'judul tidak ada kata kunci'
+    irisan = kata_judul & kata_materi
+    if len(irisan) < 2:
+        return False, 'judul & materi tidak nyambung (irisan ' + str(len(irisan)) + ')'
+    return True, ''
+
+def _kandidat_kategori_materi(kategori, judul, summary):
+    """V6.17.17: Cek kategori cocok dengan isi materi.
+    Cermin dari cek_kategori_cocok di AI Token.
+    """
+    if not kategori:
+        return True, ''
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    if kategori == 'internasional_tt':
+        if not any(k in gab for k in KATA_TT):
+            return False, 'kategori tt tapi materi tidak ada kata Timur Tengah'
+    elif kategori == 'internasional_asean':
+        if not any(k in gab for k in KATA_ASEAN_WAJIB):
+            return False, 'kategori asean tapi materi tidak ada kata ASEAN'
+    elif kategori == 'internasional':
+        if not any(k in gab for k in KATA_LUAR_NEGERI_WAJIB):
+            return False, 'kategori internasional tapi materi tidak ada kata luar negeri'
+    elif kategori == 'ekonomi':
+        if not any(k in gab for k in KATA_EKONOMI_WAJIB):
+            return False, 'kategori ekonomi tapi materi tidak ada kata ekonomi'
+    elif kategori == 'olahraga':
+        if not adalah_konten_olahraga(gab):
+            return False, 'kategori olahraga tapi materi tidak ada konten olahraga'
+    elif kategori == 'otomotif':
+        if not adalah_konten_otomotif(gab):
+            return False, 'kategori otomotif tapi materi tidak ada kata otomotif'
+    return True, ''
+
+def _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary):
+    """V6.17.17: Kategori luar negeri — jangan ada tokoh/lembaga Indonesia.
+    Cermin dari cek_kategori_dari_isi di AI Token.
+    """
+    if kategori not in ('internasional', 'internasional_asean', 'internasional_tt'):
+        return True, ''
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    for tokoh in NAMA_TOKOH_INDONESIA:
+        if re.search(r'\b' + re.escape(tokoh) + r'\b', gab):
+            return False, 'kategori luar tapi ada tokoh Indonesia: ' + tokoh
+    for lem in LEMBAGA_INDONESIA:
+        if lem == 'kpk':
+            if _kpk_konteks_indonesia(gab):
+                return False, 'kategori luar tapi ada lembaga Indonesia kpk (konteks Indonesia)'
+            continue
+        if re.search(r'\b' + re.escape(lem) + r'\b', gab):
+            return False, 'kategori luar tapi ada lembaga Indonesia: ' + lem
+    return True, ''
+
+def _kandidat_ada_lokasi(judul, summary):
+    """V6.17.17: Cek ada kota/lokasi di judul/materi.
+    Cermin dari cek_dateline di AI Token.
+    """
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    # Kota Indonesia
+    for kota in KOTA_INDONESIA_DATELINE:
+        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
+            return True, ''
+    # Ibu kota negara lain
+    for kota_asing in IBU_KOTA_NEGARA.keys():
+        if re.search(r'\b' + re.escape(kota_asing) + r'\b', gab):
+            return True, ''
+    # Kota internasional umum
+    for kota in VARIAN_KOTA_EN_ID.keys():
+        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
+            return True, ''
+    return False, 'tidak ada lokasi (kota/provinsi) di judul/materi'
+
 def _kandidat_ada_nama_orang(judul, summary):
     """Cek apakah judul/summary punya nama orang (pejabat/tokoh/warga).
-    Return True kalau ada nama → layak.
-    Return False kalau cuma jabatan/kegiatan → skip.
+    Return True kalau ada nama.
     """
     teks = ((judul or '') + ' ' + (summary or '')).strip()
     if not teks:
         return False
     tl = teks.lower()
 
-    # Pola nama orang Indonesia: 2+ kata berawalan kapital, bukan kota/jabatan
+    # Pola nama orang Indonesia: 2+ kata berawalan kapital
     pola_nama = re.compile(r'\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b')
     nama_ditemukan = []
     for m in pola_nama.finditer(teks):
         kandidat = m.group(0).strip()
         kata1 = m.group(1).lower()
         kata2 = m.group(2).lower()
-        # Skip kalau kata pertama adalah kata umum/kota
         skip_kata1 = ['jakarta', 'bandung', 'surabaya', 'medan', 'semarang',
                       'makassar', 'balikpapan', 'samarinda', 'tarakan',
                       'kaltara', 'kalimantan', 'sumatera', 'jawa', 'sulawesi',
                       'papua', 'bali', 'nusa', 'pemerintah', 'menteri',
                       'presiden', 'gubernur', 'bupati', 'walikota', 'wakil',
                       'kepala', 'ketua', 'komandan', 'kapolres', 'dandim',
-                      'presiden', 'wakil', 'sekretaris', 'direktur',
-                      'pemkot', 'pemkab', 'pemprov', 'polres', 'kodim',
-                      'bandara', 'kota', 'kabupaten', 'provinsi', 'dinas',
-                      'badan', 'kantor', 'lembaga', 'komisi', 'monday',
-                      'tuesday', 'wednesday', 'thursday', 'friday',
-                      'saturday', 'sunday', 'januari', 'februari', 'maret',
-                      'april', 'mei', 'juni', 'juli', 'agustus', 'september',
-                      'oktober', 'november', 'desember']
+                      'sekretaris', 'direktur', 'pemkot', 'pemkab', 'pemprov',
+                      'polres', 'kodim', 'bandara', 'kota', 'kabupaten',
+                      'provinsi', 'dinas', 'badan', 'kantor', 'lembaga',
+                      'komisi', 'monday', 'tuesday', 'wednesday', 'thursday',
+                      'friday', 'saturday', 'sunday', 'januari', 'februari',
+                      'maret', 'april', 'mei', 'juni', 'juli', 'agustus',
+                      'september', 'oktober', 'november', 'desember']
         if kata1 in skip_kata1 or kata2 in skip_kata1:
             continue
-        # Skip kalau kata kedua adalah gelar/jabatan
         skip_kata2 = ['sebut', 'kata', 'ujar', 'tutur', 'jelas', 'ungkap',
-                      'minta', 'harap', 'imbau', 'seru', 'tegas']
+                      'minta', 'harap', 'imbau', 'seru', 'tegas', 'sebutkan']
         if kata2 in skip_kata2:
             continue
         nama_ditemukan.append(kandidat)
 
     if nama_ditemukan:
         return True
-
-    # Kalau tidak ada nama, cek apakah ini kegiatan sosial (skip)
-    for k in KATA_KEGIATAN_SOSIAL:
-        if k in tl:
-            return False
-
-    # Default: kalau tidak jelas, biarkan lolos ke AI Editor Token
-    # (jangan terlalu ketat — tune nanti)
-    return True
+    return False
 
 def _kandidat_layak(judul, summary, kategori=''):
-    """AI EDITOR LUAR — cek 9 poin sebelum panggil AI Editor Token.
+    """AI EDITOR LUAR — cek semua larangan AI Token sebelum panggil.
     Return (True, '') kalau layak.
     Return (False, 'alasan') kalau skip.
     """
@@ -1312,30 +1391,29 @@ def _kandidat_layak(judul, summary, kategori=''):
     if len(judul.split()) < 4:
         return False, 'judul kurang dari 4 kata'
 
-    # 3. Judul ada nama orang (pejabat/tokoh) ATAU kegiatan layak
+    # 3. Judul ada nama orang (pejabat/tokoh)
     if not _kandidat_ada_nama_orang(judul, summary):
         return False, 'tidak ada nama orang'
 
-    # 4. Bukan breaking exception tanpa lokasi (untuk kategori non-breaking)
-    #    Breaking punya jalur sendiri — skip cek ini kalau bukan kategori biasa
-    #    (biar breaking lolos)
+    # 4. Cek topik nyambung (cermin AI Token)
+    ok, alasan = _kandidat_topik_nyambung(judul, summary)
+    if not ok:
+        return False, alasan
 
-    # 5. Kategori & isi nyambung (kasar)
-    if kategori == 'internasional_asean':
-        if not any(k in gab for k in KATA_ASEAN_WAJIB):
-            return False, 'kategori asean tapi tidak ada kata asean'
-    elif kategori in ('internasional', 'internasional_tt'):
-        if not any(k in gab for k in KATA_LUAR_NEGERI_WAJIB):
-            return False, 'kategori luar negeri tapi tidak ada kata luar negeri'
-    elif kategori == 'ekonomi':
-        if not any(k in gab for k in KATA_EKONOMI_WAJIB):
-            return False, 'kategori ekonomi tapi tidak ada kata ekonomi'
-    elif kategori == 'olahraga':
-        if not adalah_konten_olahraga(gab):
-            return False, 'kategori olahraga tapi tidak ada konten olahraga'
-    elif kategori == 'otomotif':
-        if not adalah_konten_otomotif(gab):
-            return False, 'kategori otomotif tapi tidak ada kata otomotif'
+    # 5. Cek kategori cocok isi (cermin AI Token)
+    ok, alasan = _kandidat_kategori_materi(kategori, judul, summary)
+    if not ok:
+        return False, alasan
+
+    # 6. Cek tokoh Indonesia di kategori luar (cermin AI Token)
+    ok, alasan = _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary)
+    if not ok:
+        return False, alasan
+
+    # 7. Cek lokasi (kecuali breaking)
+    ok, alasan = _kandidat_ada_lokasi(judul, summary)
+    if not ok:
+        return False, alasan
 
     return True, ''
 
@@ -1345,7 +1423,6 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
     if max_umur_jam is None:
         max_umur_jam = MAX_UMUR_BERITA_JAM
     out = []
-    skip_nama = 0
     skip_layak = 0
     for src in sources:
         try:
@@ -1364,7 +1441,6 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
             if not title or not summary:
                 continue
 
-            # V6.17.16: AI EDITOR LUAR — cek 9 poin (skip sebelum panggil AI)
             layak, alasan = _kandidat_layak(title, summary, kategori)
             if not layak:
                 skip_layak += 1
@@ -1882,6 +1958,12 @@ KATA_ASEAN_WAJIB = [
     'singapura', 'singapore', 'myanmar', 'kamboja', 'cambodia', 'laos',
     'brunei', 'timor leste', 'jakarta', 'bangkok', 'manila', 'kuala lumpur',
     'hanoi', 'indonesia',
+]
+
+KATA_TT = [
+    'timur tengah', 'middle east', 'gaza', 'israel', 'palestina', 'iran',
+    'iraq', 'suriah', 'syria', 'saudi', 'yaman', 'yemen', 'uni emirat',
+    'emirates', 'qatar', 'kuwait', 'libanon', 'jordan', 'turki',
 ]
 
 KATA_EKONOMI_WAJIB = [
@@ -3463,7 +3545,6 @@ def _jam_breaking_aktif():
     return 6 <= jam < 20
 
 def _darurat_malam(judul, summary):
-    """Diperketat - hanya darurat BENAR yang lolos malam."""
     t = ((judul or '') + ' ' + (summary or '')).lower()
 
     if 'gempa' in t or 'earthquake' in t:
@@ -3579,7 +3660,6 @@ def sesi_breaking(today_urls, seen):
     return made
 
 def _breaking_ada_lokasi(judul, isi):
-    """Cek judul atau dateline isi ada nama kota/kabupaten/provinsi Indonesia."""
     gab = ((judul or '') + ' ' + (isi or '')).lower()
     for kota in KOTA_INDONESIA_DATELINE:
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
@@ -3611,7 +3691,6 @@ def kategori_breaking(c, tip):
     return 'nasional'
 
 def _ambil_kurs_usdidr():
-    """Kurs USD/IDR dari open.er-api.com (gratis, tanpa API key)."""
     try:
         r = requests.get('https://open.er-api.com/v6/latest/USD',
                          headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
@@ -3635,7 +3714,6 @@ def _format_kurs_usdidr():
     return 'Kurs USD/IDR: ' + s_akhir
 
 def _data_pasar_untuk_ekonomi():
-    """Ambil data kurs untuk disisipkan ke berita ekonomi jam 17."""
     data = []
     k = _format_kurs_usdidr()
     if k:
@@ -4101,7 +4179,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.16 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.17 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4115,7 +4193,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.16'
+FILE_VERSI      = 'V6.17.17'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
