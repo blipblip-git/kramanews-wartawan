@@ -3340,7 +3340,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.18)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.19)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3629,7 +3629,10 @@ def tolak_amerika_lokal(teks):
 def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                   sumber_custom=None, domain_tek=None, wajib_regional=False,
                   sumber_fallback=None):
-    """V6.17.18: PRODUKSI 1 KANDIDAT SAJA — hemat token, AI Editor Luar kuat."""
+    """V6.17.19: 2 KANDIDAT CADANGAN — kalau #1 ditolak AI Token, coba #2.
+    Kandidat #2 sudah lolos AI Editor Luar (bersih), tinggal dikirim 1-per-1.
+    Token hangus maksimal 2x per kategori (normalnya 1x).
+    """
     max_umur = max_umur_kategori(cat)
     cand = collect_candidates(sumber_custom if sumber_custom else HUNT.get(cat, []),
                               today_urls, seen, max_umur_jam=max_umur, kategori=cat)
@@ -3708,10 +3711,10 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                 return 2 if barat_sudah_terbit(b) else 1
             return 1
         groups.sort(key=asean_prio)
-    # V6.17.18: 1 KANDIDAT SAJA (MAX_LOOP=1)
+    # V6.17.19: 2 KANDIDAT CADANGAN (1-per-1, hemat token)
     percobaan = 0
     for g in groups:
-        if percobaan >= 1:
+        if percobaan >= 2:
             break
         items = g['items']
         top = items[0]
@@ -3888,7 +3891,7 @@ def sesi_kategori(today_urls, seen):
                                      sumber_fallback):
                         total += 1
                 continue
-        # V6.17.18: 1 KANDIDAT SAJA per kategori (abaikan kuota multi)
+        # V6.17.19: 1 KANDIDAT SAJA per kategori (cadangan di dalam produksi_satu)
         if cat == 'ekonomi' and jam == 17:
             if produksi_ekonomi_jam_17(cat, today_urls, seen, sumber):
                 total += 1
@@ -3999,7 +4002,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.18 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.19 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4013,7 +4016,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.18'
+FILE_VERSI      = 'V6.17.19'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
