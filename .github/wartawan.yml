@@ -2,9 +2,12 @@ name: AI Wartawan KramaNews
 
 # ══════════════════════════════════════════════════════
 #  WARTAWAN.YML — V6.14
-#  Perubahan dari V6.13:
-#   - HAPUS blok `schedule:` (penyebab run liar jam 03:22)
+#  Perubahan dari V6.9:
+#   - HAPUS semua cron `schedule:` (penyebab run liar jam 03:22,
+#     04:00, 14:00, 16:00, 20:00, 22:00)
 #   - Pemicu HANYA dari cron-job.org via workflow_dispatch
+#   - Command: --sekali --kategori
+#  ATURAN EMAS: FILE INI TIDAK PERNAH BERISI KUNCI ASLI.
 # ══════════════════════════════════════════════════════
 
 on:
