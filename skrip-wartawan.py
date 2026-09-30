@@ -1068,7 +1068,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.18)
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1216,9 +1216,9 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# ═══ V6.17.17: AI EDITOR LUAR — PERKUAT ═══
-# Semua larangan AI Editor Token HARUS ada di sini
-# Target: 0 tolak di AI Editor Token
+# ═══ V6.17.18: AI EDITOR LUAR — DIPERLONGGAR ═══
+# Tujuan: skip sampah, tapi tidak skip berita valid
+# Breaking/nasional tidak wajib lokasi
 
 KATA_FEATURE_OPINI = [
     'editorial', 'opini:', 'analisis:', 'sorotan', 'potret', 'foto-foto',
@@ -1241,14 +1241,10 @@ STOPWORDS_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan 
                       'from that this have will been are was were their they about'.split())
 
 def _kata_kunci_teks(teks):
-    """Ambil kata kunci (bukan stopword) dari teks."""
     kata = re.findall(r'[a-z]{4,}', (teks or '').lower())
     return set(k for k in kata if k not in STOPWORDS_DOBEL)
 
 def _kandidat_topik_nyambung(judul, summary):
-    """V6.17.17: Cek judul & materi nyambung (irisan kata kunci).
-    Cermin dari cek_topik_ai_vs_materi di AI Token.
-    """
     if not judul or not summary:
         return False, 'judul/materi kosong'
     kata_judul = _kata_kunci_teks(judul)
@@ -1256,14 +1252,11 @@ def _kandidat_topik_nyambung(judul, summary):
     if not kata_judul:
         return False, 'judul tidak ada kata kunci'
     irisan = kata_judul & kata_materi
-    if len(irisan) < 2:
-        return False, 'judul & materi tidak nyambung (irisan ' + str(len(irisan)) + ')'
+    if len(irisan) < 1:
+        return False, 'judul & materi tidak nyambung (irisan 0)'
     return True, ''
 
 def _kandidat_kategori_materi(kategori, judul, summary):
-    """V6.17.17: Cek kategori cocok dengan isi materi.
-    Cermin dari cek_kategori_cocok di AI Token.
-    """
     if not kategori:
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
@@ -1279,18 +1272,9 @@ def _kandidat_kategori_materi(kategori, judul, summary):
     elif kategori == 'ekonomi':
         if not any(k in gab for k in KATA_EKONOMI_WAJIB):
             return False, 'kategori ekonomi tapi materi tidak ada kata ekonomi'
-    elif kategori == 'olahraga':
-        if not adalah_konten_olahraga(gab):
-            return False, 'kategori olahraga tapi materi tidak ada konten olahraga'
-    elif kategori == 'otomotif':
-        if not adalah_konten_otomotif(gab):
-            return False, 'kategori otomotif tapi materi tidak ada kata otomotif'
     return True, ''
 
 def _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary):
-    """V6.17.17: Kategori luar negeri — jangan ada tokoh/lembaga Indonesia.
-    Cermin dari cek_kategori_dari_isi di AI Token.
-    """
     if kategori not in ('internasional', 'internasional_asean', 'internasional_tt'):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
@@ -1306,35 +1290,30 @@ def _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary):
             return False, 'kategori luar tapi ada lembaga Indonesia: ' + lem
     return True, ''
 
-def _kandidat_ada_lokasi(judul, summary):
-    """V6.17.17: Cek ada kota/lokasi di judul/materi.
-    Cermin dari cek_dateline di AI Token.
-    """
+# V6.17.18: lokasi — LONGGAR (tidak wajib untuk breaking/nasional)
+def _kandidat_ada_lokasi(judul, summary, kategori=''):
+    """Cek lokasi — KECUALI breaking/nasional (mereka tidak wajib kota)."""
+    # Breaking dan nasional — tidak wajib lokasi
+    if kategori in ('nasional', 'breaking'):
+        return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
-    # Kota Indonesia
     for kota in KOTA_INDONESIA_DATELINE:
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
             return True, ''
-    # Ibu kota negara lain
     for kota_asing in IBU_KOTA_NEGARA.keys():
         if re.search(r'\b' + re.escape(kota_asing) + r'\b', gab):
             return True, ''
-    # Kota internasional umum
     for kota in VARIAN_KOTA_EN_ID.keys():
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
             return True, ''
     return False, 'tidak ada lokasi (kota/provinsi) di judul/materi'
 
 def _kandidat_ada_nama_orang(judul, summary):
-    """Cek apakah judul/summary punya nama orang (pejabat/tokoh/warga).
-    Return True kalau ada nama.
-    """
     teks = ((judul or '') + ' ' + (summary or '')).strip()
     if not teks:
         return False
     tl = teks.lower()
 
-    # Pola nama orang Indonesia: 2+ kata berawalan kapital
     pola_nama = re.compile(r'\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b')
     nama_ditemukan = []
     for m in pola_nama.finditer(teks):
@@ -1353,7 +1332,8 @@ def _kandidat_ada_nama_orang(judul, summary):
                       'komisi', 'monday', 'tuesday', 'wednesday', 'thursday',
                       'friday', 'saturday', 'sunday', 'januari', 'februari',
                       'maret', 'april', 'mei', 'juni', 'juli', 'agustus',
-                      'september', 'oktober', 'november', 'desember']
+                      'september', 'oktober', 'november', 'desember',
+                      'breaking', 'news']
         if kata1 in skip_kata1 or kata2 in skip_kata1:
             continue
         skip_kata2 = ['sebut', 'kata', 'ujar', 'tutur', 'jelas', 'ungkap',
@@ -1361,15 +1341,13 @@ def _kandidat_ada_nama_orang(judul, summary):
         if kata2 in skip_kata2:
             continue
         nama_ditemukan.append(kandidat)
-
     if nama_ditemukan:
         return True
     return False
 
 def _kandidat_layak(judul, summary, kategori=''):
-    """AI EDITOR LUAR — cek semua larangan AI Token sebelum panggil.
-    Return (True, '') kalau layak.
-    Return (False, 'alasan') kalau skip.
+    """AI EDITOR LUAR — cek larangan AI Token.
+    Diperlonggar: breaking/nasional tidak wajib lokasi & nama.
     """
     judul = (judul or '').strip()
     summary = (summary or '').strip()
@@ -1377,7 +1355,6 @@ def _kandidat_layak(judul, summary, kategori=''):
         return False, 'judul/summary kosong'
 
     tl = judul.lower()
-    gab = (judul + ' ' + summary).lower()
 
     # 1. Bukan feature/opini/clickbait
     for k in KATA_FEATURE_OPINI:
@@ -1391,27 +1368,23 @@ def _kandidat_layak(judul, summary, kategori=''):
     if len(judul.split()) < 4:
         return False, 'judul kurang dari 4 kata'
 
-    # 3. Judul ada nama orang (pejabat/tokoh)
-    if not _kandidat_ada_nama_orang(judul, summary):
-        return False, 'tidak ada nama orang'
-
-    # 4. Cek topik nyambung (cermin AI Token)
+    # 3. Cek topik nyambung (longgar — irisan >= 1)
     ok, alasan = _kandidat_topik_nyambung(judul, summary)
     if not ok:
         return False, alasan
 
-    # 5. Cek kategori cocok isi (cermin AI Token)
+    # 4. Cek kategori cocok isi
     ok, alasan = _kandidat_kategori_materi(kategori, judul, summary)
     if not ok:
         return False, alasan
 
-    # 6. Cek tokoh Indonesia di kategori luar (cermin AI Token)
+    # 5. Cek tokoh Indonesia di kategori luar
     ok, alasan = _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary)
     if not ok:
         return False, alasan
 
-    # 7. Cek lokasi (kecuali breaking)
-    ok, alasan = _kandidat_ada_lokasi(judul, summary)
+    # 6. Cek lokasi — KECUALI nasional/breaking
+    ok, alasan = _kandidat_ada_lokasi(judul, summary, kategori)
     if not ok:
         return False, alasan
 
@@ -1842,7 +1815,7 @@ INSTITUSI_LOKAL_BUTUH_NAMA = [
     'angkasa pura',
 ]
 
-INSTITUSI_BUTUH_NAMA = INSTITUSI_LOKAL_BUTUH_NAMA + INSTITUSI_PUSAT_LEBIH_LONGGAR
+INSTITUSI_BUTUH_NAMA = INSTITUSI_LOKAL_BUTUH_NAMA + INSTITUSI_PUSAT_LEBIH_LEBIH_LONGGAR
 
 KATA_KERJA_NARASUMBER = [
     'mengatakan', 'menyatakan', 'menjelaskan', 'menuturkan', 'mengungkapkan',
@@ -2412,11 +2385,9 @@ LIGA_API_NAMA = {
     135: 'Serie A (Italia)', 78: 'Bundesliga (Jerman)',
 }
 
+# V6.17.18: paksa musim 2024 (API Football Free plan cuma 2022-2024)
 def _musim_sekarang():
-    now = datetime.now(WITA)
-    if now.month >= 7:
-        return now.year
-    return now.year - 1
+    return 2024
 
 def football_api_get(endpoint, params=None, timeout=20):
     if not FOOTBALL_API_KEY:
@@ -2712,6 +2683,18 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     ringkasan = perbaiki_persen(obj.get('ringkasan', '').strip())
     if ada_persen_kata(judul + ' ' + isi + ' ' + ringkasan):
         print('       Persen auto-fix diterapkan.')
+
+    # V6.17.18: TOLAK output AI error
+    judul_l = judul.lower()
+    if any(x in judul_l for x in ('materi tidak dapat diolah', 'materi tidak tersedia',
+                                   'isi tak sesuai judul', 'tidak dapat diolah',
+                                   'materi tidak relevan')):
+        raise BeritaLama('AI output error: ' + judul[:60])
+    if not judul or len(judul) < 10:
+        raise BeritaLama('judul AI kosong/terlalu pendek')
+    if not isi or len(isi) < 100:
+        raise BeritaLama('isi AI kosong/terlalu pendek')
+
     waktu = (obj.get('waktu_kejadian') or '').strip()
     gambar = (obj.get('deskripsi_gambar') or '').strip()
     frasa_akhir = _frasa_tertangkap(isi)
@@ -2956,115 +2939,9 @@ def ai_rewrite_teknologi_multi(items, dom):
                     judul_materi=judul_materi_gabung, summary_materi=summary_materi_gabung,
                     wajib_topik=True)
 
-def _espn_get(path):
-    try:
-        r = requests.get(ESPN_SITE + path, headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
-        if not r.ok:
-            return None
-        return r.json()
-    except Exception:
-        return None
-
-def espn_skor_rentang(liga_code, hari_mundur=4):
-    out = []
-    try:
-        t0 = datetime.now(timezone.utc) - timedelta(days=hari_mundur)
-        t1 = datetime.now(timezone.utc) + timedelta(days=1)
-        fmt = '%Y%m%d'
-        if liga_code.startswith('basketball'):
-            base = ('basketball/nba/scoreboard?dates='
-                    + t0.strftime(fmt) + '-' + t1.strftime(fmt))
-        else:
-            base = ('soccer/scoreboard/_/league/' + liga_code +
-                    '?dates=' + t0.strftime(fmt) + '-' + t1.strftime(fmt))
-        r = requests.get(ESPN_SITE + base, headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
-        if not r.ok:
-            return out
-        data = r.json()
-        for ev in data.get('events', []):
-            komp = ev.get('competitions', [{}])[0]
-            st = komp.get('status', {}).get('type', {})
-            if st.get('state') != 'post':
-                continue
-            peserta = komp.get('competitors', [])
-            if len(peserta) < 2:
-                continue
-            away = peserta[0] if peserta[0].get('homeAway') == 'away' else peserta[1]
-            home = peserta[1] if peserta[0].get('homeAway') == 'away' else peserta[0]
-            sa, sh = away.get('score'), home.get('score')
-            if sa is None or sh is None:
-                continue
-            out.append(away.get('team', {}).get('displayName', '?') + ' '
-                       + str(int(float(sa))) + ' - ' + str(int(float(sh))) + ' '
-                       + home.get('team', {}).get('displayName', '?'))
-    except Exception:
-        pass
-    return out
-
-def espn_klasemen(liga_code, nama_liga):
-    try:
-        if liga_code.startswith('basketball'):
-            r = requests.get(ESPN_SITE + 'basketball/nba/standings',
-                             headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
-        else:
-            r = requests.get(ESPN_CORE + liga_code + '/standings?season=2026',
-                             headers={'User-Agent': random.choice(UA_LIST)}, timeout=15)
-        if not r.ok:
-            return '', ''
-        data = r.json()
-        entries = []
-        try:
-            anak = data.get('children', [])
-            for ch in anak:
-                st = ch.get('standings', {})
-                for e in st.get('entries', []):
-                    entries.append(e)
-        except Exception:
-            entries = []
-        if not entries and data.get('standings'):
-            for e in data.get('standings', {}).get('entries', []):
-                entries.append(e)
-        baris = []
-        for st in entries:
-            pos = None; poin = None; main = None; mn = None; dr = None; kl = None
-            for stat in st.get('stats', []):
-                tipe = stat.get('type') or stat.get('name') or ''
-                val = stat.get('value')
-                if tipe in ('rank', 'playoffSeed', 'position') and pos is None:
-                    pos = val
-                if (tipe == 'points' or tipe.lower() == 'points') and poin is None:
-                    poin = val
-                if tipe in ('gamesPlayed',) and main is None:
-                    main = val
-                if tipe in ('wins',) and mn is None:
-                    mn = val
-                if tipe in ('ties', 'draws') and dr is None:
-                    dr = val
-                if tipe in ('losses',) and kl is None:
-                    kl = val
-            tim = st.get('team', {}).get('displayName', '?')
-            if pos is None:
-                continue
-            baris.append((int(pos), tim,
-                          int(main) if main is not None else 0,
-                          int(mn) if mn is not None else 0,
-                          int(dr) if dr is not None else 0,
-                          int(kl) if kl is not None else 0,
-                          int(poin) if poin is not None else 0))
-        if not baris:
-            return '', ''
-        baris.sort()
-        teks = nama_liga + ': '
-        teks += '; '.join(str(p) + '. ' + t + ' (' + str(pt) + ' poin)'
-                          for p, t, _, _, _, _, pt in baris[:10])
-        blok = '[KLASMEN]\n' + nama_liga + '\n'
-        for p, t, main, mn, dr, kl, pt in baris:
-            blok += str(p) + '|' + t + '|' + str(main) + '|' + str(mn) + '|' \
-                    + str(dr) + '|' + str(kl) + '|' + str(pt) + '\n'
-        blok += '[/KLASMEN]'
-        return blok, teks
-    except Exception:
-        return '', ''
+# V6.17.18: ESPN DIHAPUS TOTAL
+# Fungsi _espn_get, espn_skor_rentang, espn_klasemen DIHAPUS.
+# Fallback olahraga pakai Google News saja.
 
 # AKHIR PART 3B
 
@@ -3266,11 +3143,11 @@ def rangkuman_umum_sudah_terbit_hari_ini():
     except Exception:
         return False
 
-# V6.17.11: rangkuman umum DIMATIKAN (efek penghematan)
 def sesi_rangkuman_umum(today_urls, seen):
     print('\nRANGKUMAN OLAHRAGA UMUM: DIMATIKAN (V6.17.11) - skip.')
     return 0
 
+# V6.17.18: ESPN DIHAPUS — hanya API Football
 def buat_materi_rangkuman_eropa():
     skor_semua = []
     klasemen_blok = []
@@ -3282,25 +3159,13 @@ def buat_materi_rangkuman_eropa():
         if skor_api:
             for s in skor_api:
                 skor_semua.append(nama.split(' (')[0] + ': ' + s)
-        else:
-            skor_espn = espn_skor_rentang(code, hari_mundur=3)
-            n_espn = len(skor_espn)
-            for s in skor_espn:
-                skor_semua.append(nama.split(' (')[0] + ': ' + s)
-            print('   ' + nama.split(' (')[0] + ': API 0 - ESPN ' + str(n_espn) + ' laga')
-        if skor_api:
             print('   ' + nama.split(' (')[0] + ': API ' + str(n_api) + ' laga')
         blok_api, teks_api = api_klasmen_football(code)
         if blok_api:
             klasemen_blok.append(blok_api)
             klasemen_teks.append(teks_api)
-        else:
-            blok_esp, teks_esp = espn_klasmen(code, nama)
-            if blok_esp:
-                klasemen_blok.append(blok_esp)
-                klasemen_teks.append(teks_esp)
     if not skor_semua:
-        print('   TIDAK ADA SKOR DARI API FOOTBALL MAUPUN ESPN - return None')
+        print('   TIDAK ADA SKOR DARI API FOOTBALL - return None')
         return None
     print('   Total laga terkumpul: ' + str(len(skor_semua))
           + ' - klasmen: ' + str(len(klasemen_blok)) + ' blok')
@@ -3316,26 +3181,14 @@ def buat_materi_rangkuman_eropa():
                       + '\n\n'.join(klasemen_blok[:6]))
     return '\n\n'.join(bagian)
 
+# V6.17.18: NBA sekarang pakai Google News (ESPN dihapus)
 def buat_materi_rangkuman_nba():
-    skor_semua = []
-    for s in espn_skor_rentang('basketball/nba', hari_mundur=2):
-        skor_semua.append('NBA: ' + s)
-    if not skor_semua:
-        return None
-    blok, teks = espn_klasemen('basketball/nba', 'NBA')
-    bagian = []
-    bagian.append('HASIL LAGA NBA TERAKHIR (ANGKA RESMI MESIN - SALIN PERSIS):\n'
-                  + '\n'.join(skor_semua))
-    if teks:
-        bagian.append('KLASMEN NBA (ANGKA RESMI MESIN - WAJIB disalin ke blok [KLASMEN]):\n' + teks)
-    if blok:
-        bagian.append('BLOK KLASMEN SIAP-RENDER (WAJIB disalin APA ADUNA di '
-                      'akhir isi berita, jangan diubah, jangan digandakan):\n' + blok)
-    return '\n\n'.join(bagian)
+    print('   NBA via ESPN DIHAPUS - gunakan Google News')
+    return None
 
 def _tulis_event_besar_dari_cand(today_urls, seen, aktif):
     sumber = buat_sumber_event(aktif)
-    cand = collect_candidates(sumber, today_urls, seen, max_umur_jam=72)
+    cand = collect_candidates(sumber, today_urls, seen, max_umur_jam=72, kategori='olahraga')
     if not cand:
         print('   Tidak ada materi event segar.')
         return 0
@@ -3409,7 +3262,7 @@ def sesi_olahraga_api(jenis):
             RSSF('https://www.cnnindonesia.com/olahraga/rss', 'CNN Olahraga'),
             RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
         ]
-        cand = collect_candidates(SUMBER_BOLA, today_urls, seen, max_umur_jam=30)
+        cand = collect_candidates(SUMBER_BOLA, today_urls, seen, max_umur_jam=30, kategori='olahraga')
         bola = [c for c in cand if teks_mengandung(c['title'] + ' ' + c['summary'],
                 ['bola', 'liga', 'sepak', 'football', 'soccer', 'premier',
                  'champions', 'bundesliga', 'serie a', 'la liga'])]
@@ -3433,7 +3286,7 @@ def sesi_olahraga_api(jenis):
             RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
             RSSF('https://www.bola.net/feed', 'Bola.net'),
         ]
-        cand = collect_candidates(SUMBER_OLGA_UMUM, today_urls, seen, max_umur_jam=30)
+        cand = collect_candidates(SUMBER_OLGA_UMUM, today_urls, seen, max_umur_jam=30, kategori='olahraga')
         cand = [c for c in cand if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
         cand = [c for c in cand if not is_berita_politik_hukum(c['title'] + ' ' + c.get('summary', ''))]
         if cand:
@@ -3448,42 +3301,7 @@ def sesi_olahraga_api(jenis):
         if olahraga_sudah_terbit_hari_ini('ESPN Data NBA'):
             print('   ESPN NBA sudah terbit HARI INI - skip.')
             return 1
-        print('   TAHAP 1: NBA...')
-        materi = buat_materi_rangkuman_nba()
-        if materi:
-            k = konteks_waktu()
-            user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
-                    'TUGAS: LAPORAN HASIL NBA + KLASMEN SEMENTARA per WILAYAH.\n'
-                    'GAYA: MINIM KATA.\n\n' + materi + '\n\n' + ATURAN_OLAHRAGA_KOMPETISI +
-                    'FORMAT WAJIB:\n'
-                    '1. Buka 1 kalimat: "Inilah hasil NBA dan klasmen sementara:"\n'
-                    '2. Daftar SKOR pertandingan dengan ANGKA PERSIS.\n'
-                    '3. SALIN APA ADUNA blok [KLASMEN]...[/KLASMEN].\n'
-                    '4. KHUSUS NBA: klasmen WAJIB dibagi per WILAYAH (Timur/Barat) '
-                    'atau DIVISI. Kalau materi punya blok [KLASMEN] dengan '
-                    'label wilayah, PERTAHANKAN label tersebut.\n'
-                    '5. Dateline: "INDONESIA - ".\n'
-                    '6. Judul maks 10 kata.\n'
-                    '7. deskripsi_gambar: tema bola basket.\n'
-                    '8. Jangan sebut sumber data.')
-            print('   AI menulis dari data NBA...')
-            try:
-                judul, isi, ringkasan, waktu, gambar = ai_write(user, kategori='olahraga', wajib_topik=False)
-            except BeritaLama as bl:
-                print('   Ditolak AI: ' + str(bl)[:60]); materi = None
-            except Exception as e:
-                print('   ' + str(e)[:90]); materi = None
-            if materi:
-                try:
-                    insert_news(judul, isi, ringkasan, 'olahraga', '',
-                                'https://www.espn.com/nba/ (data mesin nba)',
-                                'ESPN Data NBA', 'published', breaking=False,
-                                deskripsi_gambar=gambar)
-                    print('   TERBIT (NBA): ' + judul[:60])
-                    return 1
-                except Exception as e:
-                    print('   Insert gagal: ' + str(e)[:80])
-        print('   TAHAP 2: berita NBA/WNBA...')
+        print('   TAHAP 1: NBA via Google News...')
         today_urls = get_today_state()
         seen = set()
         SUMBER_NBA = [
@@ -3493,14 +3311,14 @@ def sesi_olahraga_api(jenis):
             GN('NBA news', 'en', 'GN NBA Berita'),
             GN('berita NBA', 'id', 'GN NBA Berita ID'),
         ]
-        cand = collect_candidates(SUMBER_NBA, today_urls, seen, max_umur_jam=30)
+        cand = collect_candidates(SUMBER_NBA, today_urls, seen, max_umur_jam=30, kategori='olahraga')
         cand = [c for c in cand if teks_mengandung(c['title'] + ' ' + c['summary'], ['nba', 'wnba'])]
         cand = [c for c in cand if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
         if cand:
             hasil = _tulis_dari_kandidat(cand[0], 'Rangkuman NBA', breaking=False)
             if hasil == 1:
                 return 1
-        print('   TAHAP 3: olahraga umum (fallback)...')
+        print('   TAHAP 2: olahraga umum (fallback)...')
         today_urls = get_today_state()
         seen = set()
         SUMBER_OLGA_UMUM = [
@@ -3509,7 +3327,7 @@ def sesi_olahraga_api(jenis):
             RSSF('https://www.cnnindonesia.com/olahraga/rss', 'CNN Olahraga'),
             RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
         ]
-        cand = collect_candidates(SUMBER_OLGA_UMUM, today_urls, seen, max_umur_jam=30)
+        cand = collect_candidates(SUMBER_OLGA_UMUM, today_urls, seen, max_umur_jam=30, kategori='olahraga')
         cand = [c for c in cand if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
         cand = [c for c in cand if not is_berita_politik_hukum(c['title'] + ' ' + c.get('summary', ''))]
         if cand:
@@ -3522,7 +3340,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.18)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3587,14 +3405,14 @@ def sesi_breaking(today_urls, seen):
     if not jam_aktif:
         print('   ⏰ Di luar jam breaking (06:07-19:07 WITA). Cek darurat dulu...')
 
-    cand_dom = collect_candidates(BREAKING_DOMESTIK_FEEDS, today_urls, seen, max_umur_jam=30, kategori='nasional')
+    cand_dom = collect_candidates(BREAKING_DOMESTIK_FEEDS, today_urls, seen, max_umur_jam=30, kategori='breaking')
     skor_dom = sorted([(c, skor_domestik(c['title'], c['summary'])) for c in cand_dom], key=lambda x: -x[1])
     if skor_dom:
         print('   Top 3 skor domestik: ' + ', '.join(str(int(s)) for _, s in skor_dom[:3]))
     skor_dom = [x for x in skor_dom if x[1] >= SKOR_BREAKING_MIN_DOM]
     print('   Kandidat breaking domestik layak: ' + str(len(skor_dom)))
 
-    cand_dun = collect_candidates(BREAKING_DUNIA_FEEDS, today_urls, seen, max_umur_jam=30, kategori='internasional')
+    cand_dun = collect_candidates(BREAKING_DUNIA_FEEDS, today_urls, seen, max_umur_jam=30, kategori='breaking')
     skor_dun = sorted([(c, skor_dunia(c['title'], c['summary'])) for c in cand_dun], key=lambda x: -x[1])
     skor_dun = [x for x in skor_dun if x[1] >= SKOR_BREAKING_MIN]
     print('   Kandidat breaking dunia layak: ' + str(len(skor_dun)))
@@ -3811,6 +3629,7 @@ def tolak_amerika_lokal(teks):
 def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                   sumber_custom=None, domain_tek=None, wajib_regional=False,
                   sumber_fallback=None):
+    """V6.17.18: PRODUKSI 1 KANDIDAT SAJA — hemat token, AI Editor Luar kuat."""
     max_umur = max_umur_kategori(cat)
     cand = collect_candidates(sumber_custom if sumber_custom else HUNT.get(cat, []),
                               today_urls, seen, max_umur_jam=max_umur, kategori=cat)
@@ -3889,9 +3708,10 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                 return 2 if barat_sudah_terbit(b) else 1
             return 1
         groups.sort(key=asean_prio)
+    # V6.17.18: 1 KANDIDAT SAJA (MAX_LOOP=1)
     percobaan = 0
     for g in groups:
-        if percobaan >= 2:
+        if percobaan >= 1:
             break
         items = g['items']
         top = items[0]
@@ -4068,16 +3888,16 @@ def sesi_kategori(today_urls, seen):
                                      sumber_fallback):
                         total += 1
                 continue
-        for _ in range(n):
-            if cat == 'ekonomi' and jam == 17:
-                if produksi_ekonomi_jam_17(cat, today_urls, seen, sumber):
-                    total += 1
-            else:
-                if produksi_satu(cat, today_urls, seen,
-                                 utamakan_kaltara and cat == 'daerah',
-                                 prio, sumber, domain_tek, wajib_regional,
-                                 sumber_fallback):
-                    total += 1
+        # V6.17.18: 1 KANDIDAT SAJA per kategori (abaikan kuota multi)
+        if cat == 'ekonomi' and jam == 17:
+            if produksi_ekonomi_jam_17(cat, today_urls, seen, sumber):
+                total += 1
+        else:
+            if produksi_satu(cat, today_urls, seen,
+                             utamakan_kaltara and cat == 'daerah',
+                             prio, sumber, domain_tek, wajib_regional,
+                             sumber_fallback):
+                total += 1
     return total
 
 def sesi_breaking_saja():
@@ -4179,7 +3999,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.17 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.18 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4193,7 +4013,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.17'
+FILE_VERSI      = 'V6.17.18'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
