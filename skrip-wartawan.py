@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.24)
+# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.25)
 
 import requests
 import json
@@ -126,7 +126,7 @@ JADWAL_JAM = {
     14: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1},
     15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1},
     16: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'kesehatan': 1},
-    17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1},
+    17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1, 'ekonomi': 1},
     18: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'olahraga': 1},
 }
 
@@ -3567,7 +3567,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.24)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.25)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3753,59 +3753,6 @@ def kategori_breaking(c, tip):
     if any(w in t for w in LUAR_NEGERI_WORDS):
         return 'internasional'
     return 'nasional'
-
-def _ambil_kurs_usdidr():
-    try:
-        now = datetime.now(timezone.utc)
-        tgl = now.strftime('%Y-%m-%d')
-        jam = now.strftime('%H')
-        url = ('https://cdn.jsdelivr.net/gh/ismartcoding/currency-api@main/'
-               + tgl + '/' + jam + '.json')
-        r = requests.get(url,
-                         headers={'User-Agent': random.choice(UA_LIST)},
-                         timeout=15)
-        if not r.ok:
-            jam_int = now.hour - 1
-            if jam_int < 0:
-                jam_int = 23
-            jam_prev = str(jam_int).zfill(2)
-            url_prev = ('https://cdn.jsdelivr.net/gh/ismartcoding/currency-api@main/'
-                        + tgl + '/' + jam_prev + '.json')
-            print('       ismartcoding jam ' + jam + ' belum ada - coba jam ' + jam_prev)
-            r = requests.get(url_prev,
-                             headers={'User-Agent': random.choice(UA_LIST)},
-                             timeout=15)
-            if not r.ok:
-                print('       ismartcoding HTTP ' + str(r.status_code))
-                return None
-        data = r.json()
-        usd = data.get('usd') or {}
-        idr = usd.get('idr')
-        if idr:
-            return {'harga': float(idr), 'src': 'ismartcoding'}
-        rates = data.get('rates') or {}
-        idr2 = rates.get('IDR')
-        if idr2:
-            return {'harga': float(idr2), 'src': 'ismartcoding'}
-        print('       ismartcoding: IDR tidak ditemukan di response')
-    except Exception as e:
-        print('       ismartcoding gagal: ' + str(e)[:60])
-    return None
-
-def _format_kurs_usdidr():
-    d = _ambil_kurs_usdidr()
-    if not d or not d.get('harga'):
-        return None
-    harga = d['harga']
-    s_akhir = 'Rp ' + format(int(round(harga)), ',').replace(',', '.')
-    return 'Kurs USD/IDR: ' + s_akhir
-
-def _data_pasar_untuk_ekonomi():
-    data = []
-    k = _format_kurs_usdidr()
-    if k:
-        data.append(k)
-    return data
 
 
 KATEGORI_DB = {
@@ -4049,16 +3996,6 @@ def sesi_otomotif(today_urls, seen):
         return 1
     return 0
 
-def produksi_ekonomi_jam_17(cat, today_urls, seen, sumber_kustom=None):
-    jam = datetime.now(WITA).hour
-    if jam != 17:
-        return produksi_satu(cat, today_urls, seen, False, None, sumber_kustom)
-    print('   (ekonomi jam 17) Menyisipkan data kurs ke berita...')
-    data_kurs = _data_pasar_untuk_ekonomi()
-    if data_kurs:
-        print('   Data kurs: ' + ' | '.join(data_kurs))
-    return produksi_satu(cat, today_urls, seen, False, None, sumber_kustom)
-
 def sesi_kategori(today_urls, seen):
     jam = datetime.now(WITA).hour
     kuota = JADWAL_JAM.get(jam)
@@ -4160,15 +4097,11 @@ def sesi_kategori(today_urls, seen):
                                      sumber_fallback):
                         total += 1
                 continue
-        if cat == 'ekonomi' and jam == 17:
-            if produksi_ekonomi_jam_17(cat, today_urls, seen, sumber):
-                total += 1
-        else:
-            if produksi_satu(cat, today_urls, seen,
-                             utamakan_kaltara and cat == 'daerah',
-                             prio, sumber, domain_tek, wajib_regional,
-                             sumber_fallback):
-                total += 1
+        if produksi_satu(cat, today_urls, seen,
+                         utamakan_kaltara and cat == 'daerah',
+                         prio, sumber, domain_tek, wajib_regional,
+                         sumber_fallback):
+            total += 1
     return total
 
 def sesi_breaking_saja():
@@ -4270,7 +4203,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.24 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.25 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4284,7 +4217,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.24'
+FILE_VERSI      = 'V6.17.25'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
