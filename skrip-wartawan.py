@@ -544,9 +544,7 @@ DOM_KRITIS = [
     'massa membakar', 'membakar massal', 'tawuran besar',
 ]
 
-# V6.17.13: BREAKING_INT_KRITIS diperketat — buang yang terlalu umum
 BREAKING_INT_KRITIS = [
-    # A. BENCANA ALAM
     'banjir besar', 'major flood', 'flash flood', 'devastating flood',
     'tsunami', 'tsunami warning',
     'gempa bumi', 'earthquake', 'magnitude',
@@ -555,7 +553,6 @@ BREAKING_INT_KRITIS = [
     'kebakaran hutan', 'wildfire', 'forest fire',
     'tanah longsor', 'landslide',
 
-    # B. KECELAKAAN MASSAL
     'pesawat komersial jatuh', 'commercial plane crash',
     'airliner crash', 'passenger plane crash',
     'pesawat penumpang jatuh', 'pesawat hilang', 'plane missing',
@@ -563,7 +560,6 @@ BREAKING_INT_KRITIS = [
     'kapal terbakar', 'ferry fire', 'ship fire',
     'kereta anjlok', 'train derailment', 'train crash', 'train collision',
 
-    # C. GEOPOLITIK & MILITER (HARUS BERAT)
     'deklarasi perang', 'declaration of war',
     'serangan rudal', 'missile strike', 'missile attack', 'rocket attack',
     'kudeta', 'coup', 'military coup',
@@ -572,7 +568,6 @@ BREAKING_INT_KRITIS = [
     'gencatan senjata besar', 'ceasefire deal', 'peace deal', 'peace agreement',
     'embargo minyak', 'oil embargo',
 
-    # D. POLITIK & HUKUM
     'presiden meninggal', 'president dies', 'president dead',
     'pm meninggal', 'prime minister dies',
     'presiden mundur', 'president resigns', 'president steps down',
@@ -583,17 +578,14 @@ BREAKING_INT_KRITIS = [
     'pejabat ditangkap', 'official arrested', 'minister arrested',
     'bandar narkoba', 'drug lord arrested', 'drug kingpin',
 
-    # E. EKONOMI (HARUS BERAT)
     'krisis mata uang', 'currency crisis', 'devaluation',
     'bank runtuh', 'bank collapse', 'bank fails',
     'kebangkrutan negara', 'sovereign default',
     'opec memangkas', 'opec cuts',
 
-    # F. TEKNOLOGI & SAINS
     'peluncuran roket berawak', 'crewed launch', 'manned launch',
     'nasa launch', 'spacex launch', 'cnsa launch',
 
-    # G. WABAH
     'pandemi', 'pandemic', 'who emergency', 'global health emergency',
 ]
 
@@ -608,7 +600,6 @@ BREAKING_INT_TOLAK = [
     'plane crash drill', 'simulasi', 'latihan',
     'plane crash warning', 'memorial', 'peringatan',
     'anniversary', '30th anniversary', '40th anniversary',
-    # V6.17.13: tambah tolak untuk kasus ekonomi ringan
     'larangan impor alkohol', 'alcohol import ban', 'liquor ban',
     'larangan susu', 'dairy ban', 'milk ban',
     'ban on alcohol', 'ban on dairy',
@@ -999,9 +990,10 @@ def tanggal_publikasi_str(entry):
     except Exception:
         return None
 
+# V6.17.16: PROMPT AI EDITOR DIPERKETAT — kurangi tolak, clarity naik
 def build_system_prompt():
     k = konteks_waktu()
-    return """Kamu AI Wartawan KramaNews Indonesia.
+    return """Kamu AI Editor KramaNews Indonesia. TUGAS: Tulis berita dari materi yang sudah lolos filter. Materi SUDAH BERSIH — jangan tolak kecuali fatal.
 
 ANTI-JIPLAK:
 - Tulis kalimatmu sendiri. Sinonim ("mengatakan" -> "menuturkan/ujar").
@@ -1011,18 +1003,15 @@ ANTI-JIPLAK:
 FAKTA:
 - NAMA ORANG, LEMBAGA, TEMPAT, ANGKA wajib ada di materi.
 
-NAMA ORANG (DALAM NEGERI):
-- Pejabat/tokoh WAJIB nama. Kalau materi hanya jabatan -> tolak:
-  {"tolak":"narasumber tanpa nama"}.
-- TNI/Polri: nama + pangkat + jabatan.
+ATURAN NAMA (SANGAT PENTING):
+- Kalau materi SUDAH ADA nama orang → WAJIB tulis nama lengkap + jabatan.
+- Kalau materi HANYA jabatan (tanpa nama) → JANGAN paksa narasumber.
+  * Tulis berita sebagai KEGIATAN/PERISTIWA, bukan pernyataan pejabat.
+  * CONTOH BENAR: "Kodim Tarakan salurkan air bersih ke warga."
+  * CONTOH SALAH: "Komandan Kodim Tarakan mengatakan..."
+  * Kalau materi tidak ada nama → JANGAN tulis "X mengatakan".
+- TNI/Polri: nama + pangkat + jabatan (kalau ada di materi).
 - Gelar akademik tulis persis dari materi.
-- DILARANG "seorang pejabat/pengamat/tokoh".
-
-PENGECUALIAN KESEHATAN & NON-ORANG:
-- Berita kesehatan boleh sebut "pakar Kemenkes", "dokter spesialis RSCM"
-  TANPA nama. Yang wajib: institusi resmi.
-- Berita OTOMOTIF/TEKNOLOGI berupa daftar harga/review/tips TIDAK butuh
-  narasumber berita.
 
 NAMA LEMBAGA ASING: JANGAN diterjemahkan.
 - "Cockroach Janta Party" (bukan "Partai Kecoak India").
@@ -1059,10 +1048,16 @@ JANGAN SALAH KATEGORI:
 - Kesehatan/vaksin/penyakit -> kesehatan.
 - "hasil", "skor", "klasemen" TIDAK cukup untuk olahraga.
 
+TOLAK HANYA KALAU (fatal):
+1. Materi benar-benar tidak ada (kosong).
+2. Materi tidak nyambung judul (topik beda jauh).
+3. Materi palsu/spam (iklan, judi, dll).
+
 GAMBAR (deskripsi_gambar): 3-6 kata kunci Inggris.
 DILARANG: hewan, tempat ibadah, alas kaki, insiden-korban.
+WAJIB sesuai topik berita.
 
-JUDUL: maks 10 kata.
+JUDUL: maks 10 kata. Harus mencerminkan isi — JANGAN clickbait.
 
 FORMAT JAWABAN - HANYA JSON valid:
 {"judul": "...", "isi": "DATELINE - paragraf1\\n\\nparagraf2", "ringkasan": "...",
@@ -1221,10 +1216,137 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-def collect_candidates(sources, today_urls, seen, max_umur_jam=None):
+# ═══ V6.17.16: AI EDITOR LUAR — Python logic, GRATIS ═══
+# Cek 9 poin sebelum panggil AI Editor Token
+# Tujuan: minimalisir penolakan di AI Editor (hemat token)
+
+KATA_FEATURE_OPINI = [
+    'editorial', 'opini:', 'analisis:', 'sorotan', 'potret', 'foto-foto',
+    'galeri', 'in pictures', 'photos:', 'images:', 'see photos',
+    'in photos', 'feature:', 'commentary', 'opinion:', 'analysis:',
+    'review:', 'wawancara:', 'interview:',
+]
+
+KATA_KEGIATAN_SOSIAL = [
+    'salurkan', 'bagikan', 'bantu', 'gelar', 'adakan', 'rutin',
+    'kerja bakti', 'gotong royong', 'bersih-bersih', 'kunjungi',
+    'santuni', 'sedekah', 'donasi', 'beri bantuan', 'sosialisasi',
+    'edukasi', 'kampanye', 'penyuluhan', 'latihan', 'simulasi',
+]
+
+def _kandidat_ada_nama_orang(judul, summary):
+    """Cek apakah judul/summary punya nama orang (pejabat/tokoh/warga).
+    Return True kalau ada nama → layak.
+    Return False kalau cuma jabatan/kegiatan → skip.
+    """
+    teks = ((judul or '') + ' ' + (summary or '')).strip()
+    if not teks:
+        return False
+    tl = teks.lower()
+
+    # Pola nama orang Indonesia: 2+ kata berawalan kapital, bukan kota/jabatan
+    pola_nama = re.compile(r'\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b')
+    nama_ditemukan = []
+    for m in pola_nama.finditer(teks):
+        kandidat = m.group(0).strip()
+        kata1 = m.group(1).lower()
+        kata2 = m.group(2).lower()
+        # Skip kalau kata pertama adalah kata umum/kota
+        skip_kata1 = ['jakarta', 'bandung', 'surabaya', 'medan', 'semarang',
+                      'makassar', 'balikpapan', 'samarinda', 'tarakan',
+                      'kaltara', 'kalimantan', 'sumatera', 'jawa', 'sulawesi',
+                      'papua', 'bali', 'nusa', 'pemerintah', 'menteri',
+                      'presiden', 'gubernur', 'bupati', 'walikota', 'wakil',
+                      'kepala', 'ketua', 'komandan', 'kapolres', 'dandim',
+                      'presiden', 'wakil', 'sekretaris', 'direktur',
+                      'pemkot', 'pemkab', 'pemprov', 'polres', 'kodim',
+                      'bandara', 'kota', 'kabupaten', 'provinsi', 'dinas',
+                      'badan', 'kantor', 'lembaga', 'komisi', 'monday',
+                      'tuesday', 'wednesday', 'thursday', 'friday',
+                      'saturday', 'sunday', 'januari', 'februari', 'maret',
+                      'april', 'mei', 'juni', 'juli', 'agustus', 'september',
+                      'oktober', 'november', 'desember']
+        if kata1 in skip_kata1 or kata2 in skip_kata1:
+            continue
+        # Skip kalau kata kedua adalah gelar/jabatan
+        skip_kata2 = ['sebut', 'kata', 'ujar', 'tutur', 'jelas', 'ungkap',
+                      'minta', 'harap', 'imbau', 'seru', 'tegas']
+        if kata2 in skip_kata2:
+            continue
+        nama_ditemukan.append(kandidat)
+
+    if nama_ditemukan:
+        return True
+
+    # Kalau tidak ada nama, cek apakah ini kegiatan sosial (skip)
+    for k in KATA_KEGIATAN_SOSIAL:
+        if k in tl:
+            return False
+
+    # Default: kalau tidak jelas, biarkan lolos ke AI Editor Token
+    # (jangan terlalu ketat — tune nanti)
+    return True
+
+def _kandidat_layak(judul, summary, kategori=''):
+    """AI EDITOR LUAR — cek 9 poin sebelum panggil AI Editor Token.
+    Return (True, '') kalau layak.
+    Return (False, 'alasan') kalau skip.
+    """
+    judul = (judul or '').strip()
+    summary = (summary or '').strip()
+    if not judul or not summary:
+        return False, 'judul/summary kosong'
+
+    tl = judul.lower()
+    gab = (judul + ' ' + summary).lower()
+
+    # 1. Bukan feature/opini/clickbait
+    for k in KATA_FEATURE_OPINI:
+        if k in tl:
+            return False, 'feature/opini: ' + k
+    if any(x in tl for x in ('ada apa?', 'ternyata', 'ini faktanya',
+                              'simak', 'begini', 'inilah')):
+        return False, 'clickbait: kata pancingan'
+
+    # 2. Judul ada substansi (min 4 kata)
+    if len(judul.split()) < 4:
+        return False, 'judul kurang dari 4 kata'
+
+    # 3. Judul ada nama orang (pejabat/tokoh) ATAU kegiatan layak
+    if not _kandidat_ada_nama_orang(judul, summary):
+        return False, 'tidak ada nama orang'
+
+    # 4. Bukan breaking exception tanpa lokasi (untuk kategori non-breaking)
+    #    Breaking punya jalur sendiri — skip cek ini kalau bukan kategori biasa
+    #    (biar breaking lolos)
+
+    # 5. Kategori & isi nyambung (kasar)
+    if kategori == 'internasional_asean':
+        if not any(k in gab for k in KATA_ASEAN_WAJIB):
+            return False, 'kategori asean tapi tidak ada kata asean'
+    elif kategori in ('internasional', 'internasional_tt'):
+        if not any(k in gab for k in KATA_LUAR_NEGERI_WAJIB):
+            return False, 'kategori luar negeri tapi tidak ada kata luar negeri'
+    elif kategori == 'ekonomi':
+        if not any(k in gab for k in KATA_EKONOMI_WAJIB):
+            return False, 'kategori ekonomi tapi tidak ada kata ekonomi'
+    elif kategori == 'olahraga':
+        if not adalah_konten_olahraga(gab):
+            return False, 'kategori olahraga tapi tidak ada konten olahraga'
+    elif kategori == 'otomotif':
+        if not adalah_konten_otomotif(gab):
+            return False, 'kategori otomotif tapi tidak ada kata otomotif'
+
+    return True, ''
+
+# ═══ AKHIR AI EDITOR LUAR ═══
+
+def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''):
     if max_umur_jam is None:
         max_umur_jam = MAX_UMUR_BERITA_JAM
     out = []
+    skip_nama = 0
+    skip_layak = 0
     for src in sources:
         try:
             feed = feedparser.parse(src['url'])
@@ -1241,6 +1363,15 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None):
             summary = get_material(entry)
             if not title or not summary:
                 continue
+
+            # V6.17.16: AI EDITOR LUAR — cek 9 poin (skip sebelum panggil AI)
+            layak, alasan = _kandidat_layak(title, summary, kategori)
+            if not layak:
+                skip_layak += 1
+                if skip_layak <= 3:
+                    print('       Skip kandidat (AI Editor Luar): ' + alasan[:60] + ' — ' + title[:50])
+                continue
+
             seen.add(link)
             sname = src['source']
             if src.get('gn'):
@@ -1251,6 +1382,8 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None):
             out.append({'title': title, 'summary': summary, 'link': link,
                         'source': sname, 'entry': entry,
                         'tgl_pub': tanggal_publikasi_str(entry)})
+    if skip_layak > 3:
+        print('       (Total skip AI Editor Luar: ' + str(skip_layak) + ')')
     return out
 
 def match_articles(candidates):
@@ -1540,7 +1673,6 @@ def cek_deskripsi_gambar(deskripsi):
     return None
 
 def cek_url_gambar_hewan(url):
-    """Cek URL gambar hasil Pexels — kalau ada kata hewan, tolak."""
     if not url:
         return None
     low = url.lower()
@@ -1591,23 +1723,20 @@ def skor_dunia(title, summary):
     t = (title + ' ' + summary).lower()
     if any(w in t for w in KATA_ANALISIS):
         return 0
-    # V6.17.15: tolak breaking internasional yang sifatnya ringan
     for k in BREAKING_INT_TOLAK:
         if k in t:
             return 0
-    # V6.17.15: gempa/quakes — kalau < 6.5 SR, TOLAK TOTAL
     if 'earthquake' in t or 'gempa' in t or ' quake' in t or 'quake ' in t:
         mag = ambil_magnitude(t)
         if mag is None:
-            return 0  # tidak jelas magnitude → tolak (lebih aman)
+            return 0
         if mag < GEMPA_DUNIA_MIN:
-            return 0  # < 6.5 → tolak
+            return 0
         skor = 60 + min(int(mag), 9)
         hit = sum(1 for k in DUNIA_KRITIS if k in t)
         if hit:
             skor += 30 + (hit - 1) * 8
         return skor
-    # Cek kritis
     hit = sum(1 for k in DUNIA_KRITIS if k in t)
     if hit:
         return 30 + (hit - 1) * 8
@@ -3377,14 +3506,14 @@ def sesi_breaking(today_urls, seen):
     if not jam_aktif:
         print('   ⏰ Di luar jam breaking (06:07-19:07 WITA). Cek darurat dulu...')
 
-    cand_dom = collect_candidates(BREAKING_DOMESTIK_FEEDS, today_urls, seen, max_umur_jam=30)
+    cand_dom = collect_candidates(BREAKING_DOMESTIK_FEEDS, today_urls, seen, max_umur_jam=30, kategori='nasional')
     skor_dom = sorted([(c, skor_domestik(c['title'], c['summary'])) for c in cand_dom], key=lambda x: -x[1])
     if skor_dom:
         print('   Top 3 skor domestik: ' + ', '.join(str(int(s)) for _, s in skor_dom[:3]))
     skor_dom = [x for x in skor_dom if x[1] >= SKOR_BREAKING_MIN_DOM]
     print('   Kandidat breaking domestik layak: ' + str(len(skor_dom)))
 
-    cand_dun = collect_candidates(BREAKING_DUNIA_FEEDS, today_urls, seen, max_umur_jam=30)
+    cand_dun = collect_candidates(BREAKING_DUNIA_FEEDS, today_urls, seen, max_umur_jam=30, kategori='internasional')
     skor_dun = sorted([(c, skor_dunia(c['title'], c['summary'])) for c in cand_dun], key=lambda x: -x[1])
     skor_dun = [x for x in skor_dun if x[1] >= SKOR_BREAKING_MIN]
     print('   Kandidat breaking dunia layak: ' + str(len(skor_dun)))
@@ -3606,7 +3735,7 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                   sumber_fallback=None):
     max_umur = max_umur_kategori(cat)
     cand = collect_candidates(sumber_custom if sumber_custom else HUNT.get(cat, []),
-                              today_urls, seen, max_umur_jam=max_umur)
+                              today_urls, seen, max_umur_jam=max_umur, kategori=cat)
     if not cand:
         print('   (' + cat + ') Tidak ada kandidat segar.')
         return False
@@ -3751,7 +3880,6 @@ def sesi_otomotif(today_urls, seen):
     return 0
 
 def produksi_ekonomi_jam_17(cat, today_urls, seen, sumber_kustom=None):
-    """Produksi ekonomi jam 17 — dengan data kurs ditambahkan."""
     jam = datetime.now(WITA).hour
     if jam != 17:
         return produksi_satu(cat, today_urls, seen, False, None, sumber_kustom)
@@ -3973,7 +4101,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.15 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.16 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -3987,7 +4115,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.15'
+FILE_VERSI      = 'V6.17.16'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
