@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER
+# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.21)
 
 import requests
 import json
@@ -103,7 +103,6 @@ def GN(q, lang='id', label=None, when='1d'):
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
-# V6.17.12: liga top dikurangi dari 7 ke 4 (hemat request & token)
 ESPN_LIGA_TOP = [
     ('eng.1', 'Premier League (Inggris)'),
     ('esp.1', 'La Liga (Spanyol)'),
@@ -368,11 +367,14 @@ HUNT = {
         GN('Gorontalo', 'id', 'Google News Gorontalo'),
         GN('Batam', 'id', 'Google News Batam'),
     ],
+    # V6.17.21: sumber internasional_asean DITAMBAH
     'internasional_asean': [
         RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
         RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
         RSSF('https://vietnamnews.vn/rss.html', 'Vietnam News'),
         RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
+        RSSF('https://www.channelnewsasia.com/rssfeed/8395986/asia', 'CNA Asia'),
+        RSSF('https://asean.org/feed/', 'ASEAN Official'),
         GN('asean', 'en', 'Google News ASEAN'),
         GN('malaysia indonesia', 'en', 'Google News Malaysia-Indonesia'),
         GN('thailand southeast asia', 'en', 'Google News Thailand'),
@@ -382,6 +384,9 @@ HUNT = {
         GN('myanmar southeast asia', 'en', 'Google News Myanmar'),
         GN('cambodia laos brunei', 'en', 'Google News Kamboja-Laos-Brunei'),
         GN('borneo malaysia', 'en', 'Google News Borneo'),
+        GN('asean summit', 'en', 'Google News ASEAN Summit'),
+        GN('asean economy trade', 'en', 'Google News ASEAN Trade'),
+        GN('asean investment deal', 'en', 'Google News ASEAN Investment'),
     ],
     'internasional_tt': [
         RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
@@ -1068,7 +1073,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.20)
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.21)
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1216,9 +1221,7 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# ═══ V6.17.20: AI EDITOR LUAR — DIPERLONGGAR ═══
-# Tujuan: skip sampah, tapi tidak skip berita valid
-# Breaking/nasional tidak wajib lokasi
+# ═══ V6.17.21: AI EDITOR LUAR — CERMIN AI TOKEN LENGKAP ═══
 
 KATA_FEATURE_OPINI = [
     'editorial', 'opini:', 'analisis:', 'sorotan', 'potret', 'foto-foto',
@@ -1251,6 +1254,9 @@ def _kandidat_topik_nyambung(judul, summary):
     kata_materi = _kata_kunci_teks(summary)
     if not kata_judul:
         return False, 'judul tidak ada kata kunci'
+    # V6.17.21: kalau materi pendek (<150 char), longgarkan
+    if len(summary) < 150:
+        return True, ''
     irisan = kata_judul & kata_materi
     if len(irisan) < 1:
         return False, 'judul & materi tidak nyambung (irisan 0)'
@@ -1286,15 +1292,18 @@ def _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary):
             if _kpk_konteks_indonesia(gab):
                 return False, 'kategori luar tapi ada lembaga Indonesia kpk (konteks Indonesia)'
             continue
+        # V6.17.21: 'tni' terlalu umum untuk kategori luar - skip cek
+        if lem == 'tni':
+            continue
         if re.search(r'\b' + re.escape(lem) + r'\b', gab):
             return False, 'kategori luar tapi ada lembaga Indonesia: ' + lem
     return True, ''
 
-# V6.17.20: lokasi — LONGGAR (tidak wajib untuk breaking/nasional)
+# V6.17.21: lokasi — LONGGAR (tidak wajib untuk breaking/nasional)
 def _kandidat_ada_lokasi(judul, summary, kategori=''):
-    """Cek lokasi — KECUALI breaking/nasional (mereka tidak wajib kota)."""
-    # Breaking dan nasional — tidak wajib lokasi
-    if kategori in ('nasional', 'breaking'):
+    """Cek lokasi — KECUALI breaking/nasional/teknologi (mereka tidak wajib kota)."""
+    # Breaking, nasional, teknologi, kesehatan - tidak wajib lokasi
+    if kategori in ('nasional', 'breaking', 'teknologi', 'kesehatan'):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
     for kota in KOTA_INDONESIA_DATELINE:
@@ -1313,11 +1322,9 @@ def _kandidat_ada_nama_orang(judul, summary):
     if not teks:
         return False
     tl = teks.lower()
-
     pola_nama = re.compile(r'\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b')
     nama_ditemukan = []
     for m in pola_nama.finditer(teks):
-        kandidat = m.group(0).strip()
         kata1 = m.group(1).lower()
         kata2 = m.group(2).lower()
         skip_kata1 = ['jakarta', 'bandung', 'surabaya', 'medan', 'semarang',
@@ -1340,15 +1347,55 @@ def _kandidat_ada_nama_orang(judul, summary):
                       'minta', 'harap', 'imbau', 'seru', 'tegas', 'sebutkan']
         if kata2 in skip_kata2:
             continue
-        nama_ditemukan.append(kandidat)
-    if nama_ditemukan:
-        return True
-    return False
+        nama_ditemukan.append(m.group(0).strip())
+    return len(nama_ditemukan) > 0
+
+# V6.17.21: CEK BARU — dateline luar negeri untuk kategori internasional
+def _kandidat_dateline_luar_untuk_int(judul, summary, kategori=''):
+    """Cek materi punya kota luar negeri untuk kategori internasional."""
+    if kategori not in ('internasional', 'internasional_asean', 'internasional_tt'):
+        return True, ''
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    # Kalau ada kota luar negeri → OK
+    for kota in IBU_KOTA_NEGARA.keys():
+        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
+            return True, ''
+    for varian in VARIAN_KOTA_EN_ID.keys():
+        if re.search(r'\b' + re.escape(varian) + r'\b', gab):
+            return True, ''
+    # Kalau tidak ada kota luar negeri tapi ada nama negara luar negeri → OK juga
+    for negara in KATA_LUAR_NEGERI_WAJIB:
+        if negara in gab:
+            return True, ''
+    # Kalau materinya tentang Indonesia → tolak
+    if any(k in gab for k in ('jakarta', 'indonesia', 'jokowi', 'prabowo')):
+        return False, 'kategori internasional tapi materi tentang Indonesia saja'
+    return True, ''
+
+# V6.17.21: CEK BARU — materi tentang Indonesia saja untuk kategori luar
+def _kandidat_bukan_indo_only(kategori, judul, summary):
+    """Tolak kategori luar kalau materi 100% tentang Indonesia."""
+    if kategori not in ('internasional', 'internasional_asean', 'internasional_tt'):
+        return True, ''
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    # Hitung sinyal Indonesia
+    sinyal_indo = 0
+    for k in ['jakarta', 'indonesia', 'jokowi', 'prabowo', 'menteri ri',
+              'kemenlu ri', 'wni', 'pemerintah indonesia', 'presiden ri']:
+        if k in gab:
+            sinyal_indo += 1
+    # Hitung sinyal luar negeri
+    sinyal_luar = 0
+    for k in KATA_LUAR_NEGERI_WAJIB:
+        if k in gab:
+            sinyal_luar += 1
+    # Kalau sinyal indo >= 2 dan sinyal luar 0 → tolak
+    if sinyal_indo >= 2 and sinyal_luar == 0:
+        return False, 'materi 100% tentang Indonesia untuk kategori luar'
+    return True, ''
 
 def _kandidat_layak(judul, summary, kategori=''):
-    """AI EDITOR LUAR — cek larangan AI Token.
-    Diperlonggar: breaking/nasional tidak wajib lokasi & nama.
-    """
+    """AI EDITOR LUAR V6.17.21 — cermin AI Token lengkap."""
     judul = (judul or '').strip()
     summary = (summary or '').strip()
     if not judul or not summary:
@@ -1361,29 +1408,39 @@ def _kandidat_layak(judul, summary, kategori=''):
         if k in tl:
             return False, 'feature/opini: ' + k
     if any(x in tl for x in ('ada apa?', 'ternyata', 'ini faktanya',
-                              'simak', 'begini', 'inilah')):
+                              'simak', 'begini', 'inilah', 'awas!')):
         return False, 'clickbait: kata pancingan'
 
     # 2. Judul ada substansi (min 4 kata)
     if len(judul.split()) < 4:
         return False, 'judul kurang dari 4 kata'
 
-    # 3. Cek topik nyambung (longgar — irisan >= 1)
+    # 3. Topik nyambung
     ok, alasan = _kandidat_topik_nyambung(judul, summary)
     if not ok:
         return False, alasan
 
-    # 4. Cek kategori cocok isi
+    # 4. Kategori cocok isi
     ok, alasan = _kandidat_kategori_materi(kategori, judul, summary)
     if not ok:
         return False, alasan
 
-    # 5. Cek tokoh Indonesia di kategori luar
+    # 5. Bukan materi 100% Indonesia untuk kategori luar
+    ok, alasan = _kandidat_bukan_indo_only(kategori, judul, summary)
+    if not ok:
+        return False, alasan
+
+    # 6. Dateline luar untuk kategori internasional
+    ok, alasan = _kandidat_dateline_luar_untuk_int(judul, summary, kategori)
+    if not ok:
+        return False, alasan
+
+    # 7. Tokoh Indonesia di kategori luar
     ok, alasan = _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary)
     if not ok:
         return False, alasan
 
-    # 6. Cek lokasi — KECUALI nasional/breaking
+    # 8. Cek lokasi — KECUALI nasional/breaking/teknologi/kesehatan
     ok, alasan = _kandidat_ada_lokasi(judul, summary, kategori)
     if not ok:
         return False, alasan
@@ -1786,8 +1843,9 @@ def skor_dunia(title, summary):
         if hit:
             skor += 30 + (hit - 1) * 8
         return skor
+    # V6.17.21: butuh minimal 2 hit untuk skor dunia (perketat)
     hit = sum(1 for k in DUNIA_KRITIS if k in t)
-    if hit:
+    if hit >= 2:
         return 30 + (hit - 1) * 8
     return 0
 
@@ -1815,7 +1873,6 @@ INSTITUSI_LOKAL_BUTUH_NAMA = [
     'angkasa pura',
 ]
 
-# V6.17.20: FIX TYPO — INSTITUSI_PUSAT_LEBIH_LONGGAR (bukan LEBIH_LEBIH_LONGGAR)
 INSTITUSI_BUTUH_NAMA = INSTITUSI_LOKAL_BUTUH_NAMA + INSTITUSI_PUSAT_LEBIH_LONGGAR
 
 KATA_KERJA_NARASUMBER = [
@@ -2013,6 +2070,9 @@ KOTA_INDONESIA_DATELINE = [
     'malinau', 'bulungan', 'tana tidung', 'bogor', 'depok', 'tangerang',
     'bekasi', 'malang', 'solo', 'surakarta', 'pekanbaru', 'padang', 'bengkulu',
     'lampung', 'bandar lampung', 'batam', 'gorontalo', 'palu', 'kendari', 'mamuju',
+    # V6.17.21: kelurahan Kaltara
+    'selumit', 'selumit pantai', 'juata', 'karang anyar', 'karang balik',
+    'kampung enam', 'pamusian', 'sebengkok', 'gunung lingkas', 'karang harapan',
 ]
 
 KATA_LOKAL_KALTARA = [
@@ -2075,6 +2135,8 @@ def cek_kategori_dari_isi(isi, judul, kategori_target):
         if lem == 'kpk':
             if _kpk_konteks_indonesia(t):
                 return ('isi AI memuat lembaga Indonesia "kpk" dengan konteks Indonesia tapi target internasional')
+            continue
+        if lem == 'tni':
             continue
         if re.search(r'\b' + re.escape(lem) + r'\b', t):
             return ('isi AI memuat lembaga Indonesia "' + lem + '" tapi target kategori internasional')
@@ -2235,7 +2297,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi):
 
 # AKHIR PART 3A
 
-# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI, ESPN
+# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.21)
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -2386,7 +2448,6 @@ LIGA_API_NAMA = {
     135: 'Serie A (Italia)', 78: 'Bundesliga (Jerman)',
 }
 
-# V6.17.18: paksa musim 2024 (API Football Free plan cuma 2022-2024)
 def _musim_sekarang():
     return 2024
 
@@ -2663,7 +2724,12 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
             print('       Panggilan AI gagal (' + str(e)[:60] + ') - retry koneksi '
                   + str(koneksi_retry) + '/' + str(MAX_KONEKSI_RETRY) + '...')
             continue
-        tolak_msg = str(obj.get('tolak', '')).strip()
+        # V6.17.21: handle 'tolak' boolean
+        tolak_raw = obj.get('tolak', '')
+        if isinstance(tolak_raw, bool):
+            tolak_msg = ''
+        else:
+            tolak_msg = str(tolak_raw).strip()
         if tolak_msg:
             tl = tolak_msg.lower()
             if any(f in tl for f in FRASA_TOLAK_AI) and percobaan < MAX_LOOP:
@@ -2679,22 +2745,25 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         break
     if obj is None:
         raise Exception('AI tidak menghasilkan output valid')
-    judul = perbaiki_persen(obj.get('judul', '').strip())
-    isi = perbaiki_persen(obj.get('isi', '').strip())
-    ringkasan = perbaiki_persen(obj.get('ringkasan', '').strip())
+    # V6.17.21: strip judul & isi dulu
+    judul = perbaiki_persen((obj.get('judul') or '').strip())
+    isi = perbaiki_persen((obj.get('isi') or '').strip())
+    ringkasan = perbaiki_persen((obj.get('ringkasan') or '').strip())
     if ada_persen_kata(judul + ' ' + isi + ' ' + ringkasan):
         print('       Persen auto-fix diterapkan.')
 
-    # V6.17.18: TOLAK output AI error
+    # V6.17.21: TOLAK output AI error (lebih lengkap)
     judul_l = judul.lower()
     if any(x in judul_l for x in ('materi tidak dapat diolah', 'materi tidak tersedia',
                                    'isi tak sesuai judul', 'tidak dapat diolah',
-                                   'materi tidak relevan')):
+                                   'materi tidak relevan', 'materi tidak cocok',
+                                   'tidak bisa diolah', 'tidak dapat diproses')):
         raise BeritaLama('AI output error: ' + judul[:60])
-    if not judul or len(judul) < 10:
-        raise BeritaLama('judul AI kosong/terlalu pendek')
-    if not isi or len(isi) < 100:
-        raise BeritaLama('isi AI kosong/terlalu pendek')
+    # V6.17.21: validasi judul & isi minimum (lebih ketat)
+    if not judul or len(judul.strip()) < 10:
+        raise BeritaLama('judul AI kosong/terlalu pendek: "' + judul[:30] + '"')
+    if not isi or len(isi.strip()) < 100:
+        raise BeritaLama('isi AI kosong/terlalu pendek: ' + str(len(isi)) + ' char')
 
     waktu = (obj.get('waktu_kejadian') or '').strip()
     gambar = (obj.get('deskripsi_gambar') or '').strip()
@@ -2740,6 +2809,27 @@ def target_kata(materi_len):
                 'dilarang menggembung dengan kalimat pengisi.')
     return '200-250 kata (3-5 paragraf).'
 
+def _catatan_khusus_kategori(kategori_target):
+    """V6.17.21: catatan khusus per kategori untuk AI Token."""
+    if kategori_target in ('internasional', 'internasional_asean', 'internasional_tt'):
+        return (
+            '\n\nCATATAN KHUSUS KATEGORI LUAR NEGERI:\n'
+            '- DATELINE WAJIB kota LUAR NEGERI (bukan Jakarta/Indonesia).\n'
+            '- Contoh dateline: "LONDON, INGGRIS - ", "TOKYO, JEPANG - ", '
+            '"BANGKOK, THAILAND - ".\n'
+            '- DILARANG pakai dateline "JAKARTA", "INDONESIA" '
+            'KECUALI materi memang tentang Indonesia di forum internasional.\n'
+            '- Fokus berita: peristiwa/kejadian di luar negeri.\n'
+        )
+    if kategori_target == 'internasional_asean':
+        return (
+            '\n\nCATATAN KHUSUS ASEAN:\n'
+            '- DATELINE WAJIB kota ASEAN: BANGKOK, MANILA, KUALA LUMPUR, '
+            'HANOI, SINGAPURA, JAKARTA (kalau pertemuan ASEAN di Jakarta).\n'
+            '- DILARANG pakai dateline Jakarta kalau peristiwanya di negara ASEAN lain.\n'
+        )
+    return ''
+
 def ai_rewrite_single(c, kategori_target=''):
     k = konteks_waktu()
     materi, kaya = ambil_materi_kaya(c)
@@ -2765,11 +2855,13 @@ def ai_rewrite_single(c, kategori_target=''):
             '- TNI/POLRI: WAJIB nama + pangkat + jabatan.\n'
             '- GELAR AKADEMIK: ikut kalau ada di materi (tulis persis).\n'
             '- NAMA LEMBAGA: JANGAN diterjemahkan.\n'
-            '- JUDUL DAN ISI: HARUS satu topik yang sama, sesuai materi.\n'
+            '- JUDUL DAN ISI: HARUS satu topik yang sama, sesuai materi. '
+            'JANGAN mengarang judul yang tidak ada di materi.\n'
             '- PERSEN: selalu simbol %.\n'
             '- deskripsi_gambar: 3-6 kata kunci DARI ELEMEN UTAMA BERITA.\n'
             '- Tulis ulang dengan kalimatmu sendiri.\n'
-            '- Jangan sebut portal/media sumber.')
+            '- Jangan sebut portal/media sumber.'
+            + _catatan_khusus_kategori(kategori_target))
     return ai_write(user, materi_sumber=materi, kategori=kategori_target,
                     judul_materi=c.get('title', ''),
                     summary_materi=c.get('summary', ''),
@@ -2818,7 +2910,8 @@ def ai_rewrite_multi(items, kategori_target=''):
             '- JUDUL DAN ISI: HARUS satu topik yang sama, sesuai materi.\n'
             '- PERSEN: selalu simbol %.\n'
             '- deskripsi_gambar: 3-6 kata kunci DARI ELEMEN UTAMA BERITA.\n'
-            '- Tulis ulang dengan kalimatmu sendiri.')
+            '- Tulis ulang dengan kalimatmu sendiri.'
+            + _catatan_khusus_kategori(kategori_target))
     return ai_write(user, timeout=180, materi_sumber=semua_materi,
                     kategori=kategori_target,
                     judul_materi=judul_materi_gabung,
@@ -2827,6 +2920,11 @@ def ai_rewrite_multi(items, kategori_target=''):
 
 def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
                 breaking=False, deskripsi_gambar=''):
+    # V6.17.21: validasi judul & isi sebelum insert
+    if not judul or len((judul or '').strip()) < 5:
+        raise Exception('diblokir insert: judul kosong/terlalu pendek')
+    if not isi or len((isi or '').strip()) < 50:
+        raise Exception('diblokir insert: isi kosong/terlalu pendek')
     m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+(.*)$', isi, re.DOTALL)
     dateline = m.group(1).strip() if m else ''
     isi_bersih = m.group(2).strip() if m else isi
@@ -2939,10 +3037,6 @@ def ai_rewrite_teknologi_multi(items, dom):
     return ai_write(user, timeout=180, materi_sumber=semua_materi, kategori='teknologi',
                     judul_materi=judul_materi_gabung, summary_materi=summary_materi_gabung,
                     wajib_topik=True)
-
-# V6.17.18: ESPN DIHAPUS TOTAL
-# Fungsi _espn_get, espn_skor_rentang, espn_klasemen DIHAPUS.
-# Fallback olahraga pakai Google News saja.
 
 # AKHIR PART 3B
 
@@ -3341,7 +3435,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.20)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.21)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -3395,6 +3489,17 @@ def _darurat_malam(judul, summary):
 
     return False
 
+def _kandidat_beda_topik(kandidat_baru, kandidat_lama):
+    """V6.17.21: cek kandidat baru beda topik dengan kandidat lama."""
+    if not kandidat_lama:
+        return True
+    kata_baru = kata_inti(kandidat_baru.get('title', ''))
+    kata_lama = kata_inti(kandidat_lama.get('title', ''))
+    irisan = kata_baru & kata_lama
+    if len(irisan) >= 3:
+        return False
+    return True
+
 def sesi_breaking(today_urls, seen):
     made = 0
     slots = BREAKING_MAX_SLOT - len(get_breaking_list())
@@ -3434,11 +3539,20 @@ def sesi_breaking(today_urls, seen):
         print('   Tidak ada kandidat breaking layak - skip.')
         return 0
 
+    # V6.17.21: 2 kandidat cadangan (beda topik)
+    percobaan = 0
+    kandidat_terpakai = []
     for c, tip in semua_pilihan:
         if made >= slots:
             break
+        if percobaan >= 2:
+            break
         if sudah_serupa(c['title']):
             print('   Skip (dobel): ' + c['title'][:50])
+            continue
+        # V6.17.21: cadangan harus beda topik
+        if kandidat_terpakai and not _kandidat_beda_topik(c, kandidat_terpakai[0]):
+            print('   Skip (cadangan sama topik): ' + c['title'][:50])
             continue
         jdl_lower = (c.get('title') or '').lower()
         if any(x in jdl_lower for x in ('potret', 'sorotan', 'foto-foto', 'galeri',
@@ -3448,6 +3562,7 @@ def sesi_breaking(today_urls, seen):
             continue
         label = 'BREAKING DOM' if tip == 'dom' else 'BREAKING DUNIA'
         print('\n   [' + label + '] ' + c['title'][:70])
+        percobaan += 1
         try:
             judul, isi, ringkasan, waktu, gambar = ai_rewrite_single(
                 c, kategori_target='nasional' if tip == 'dom' else 'internasional')
@@ -3473,6 +3588,7 @@ def sesi_breaking(today_urls, seen):
                         img_url, c.get('link', ''), c.get('source', 'Breaking'),
                         'published', breaking=True, deskripsi_gambar=gambar)
             made += 1
+            kandidat_terpakai.append(c)
             print('   BREAKING TERBIT: ' + judul[:60])
         except Exception as e:
             print('   Insert gagal: ' + str(e)[:80])
@@ -3630,10 +3746,7 @@ def tolak_amerika_lokal(teks):
 def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                   sumber_custom=None, domain_tek=None, wajib_regional=False,
                   sumber_fallback=None):
-    """V6.17.20: 2 KANDIDAT CADANGAN — kalau #1 ditolak AI Token, coba #2.
-    Kandidat #2 sudah lolos AI Editor Luar (bersih), tinggal dikirim 1-per-1.
-    Token hangus maksimal 2x per kategori (normalnya 1x).
-    """
+    """V6.17.21: 2 KANDIDAT CADANGAN beda topik (1-per-1, hemat token)."""
     max_umur = max_umur_kategori(cat)
     cand = collect_candidates(sumber_custom if sumber_custom else HUNT.get(cat, []),
                               today_urls, seen, max_umur_jam=max_umur, kategori=cat)
@@ -3712,8 +3825,9 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                 return 2 if barat_sudah_terbit(b) else 1
             return 1
         groups.sort(key=asean_prio)
-    # V6.17.20: 2 KANDIDAT CADANGAN (1-per-1, hemat token)
+    # V6.17.21: 2 kandidat cadangan + beda topik
     percobaan = 0
+    kandidat_terpakai = []
     for g in groups:
         if percobaan >= 2:
             break
@@ -3727,6 +3841,10 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
             if b and barat_sudah_terbit(b):
                 continue
         if sudah_serupa(top['title']):
+            continue
+        # V6.17.21: cadangan harus beda topik
+        if kandidat_terpakai and not _kandidat_beda_topik(top, kandidat_terpakai[0]):
+            print('   Skip (cadangan sama topik): ' + top['title'][:50])
             continue
         percobaan += 1
         print('\n   [' + cat + '] menulis: ' + top['title'][:70])
@@ -3764,6 +3882,7 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
             return True
         except Exception as e:
             print('   Insert gagal: ' + str(e)[:80])
+            kandidat_terpakai.append(top)
             continue
     return False
 
@@ -3892,7 +4011,6 @@ def sesi_kategori(today_urls, seen):
                                      sumber_fallback):
                         total += 1
                 continue
-        # V6.17.20: produksi_satu sudah handle 2 kandidat cadangan
         if cat == 'ekonomi' and jam == 17:
             if produksi_ekonomi_jam_17(cat, today_urls, seen, sumber):
                 total += 1
@@ -4003,7 +4121,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.20 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.21 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4017,7 +4135,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.20'
+FILE_VERSI      = 'V6.17.21'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
