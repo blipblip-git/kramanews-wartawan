@@ -1355,7 +1355,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.32)
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.34)
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1503,7 +1503,9 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# ═══ V6.17.32: VALIDASI MATERI ═══
+# ═══ V6.17.34: VALIDASI MATERI — threshold beda untuk scraping vs fallback RSS ═══
+
+MATERI_MIN_KARAKTER_RSS = 200
 
 def _materi_dominan_url(teks):
     if not teks:
@@ -1537,11 +1539,14 @@ def _materi_nyambung_judul(judul, materi, min_irisan=2):
                        + ' | kata judul: ' + str(sorted(list(kata_judul))[:8]))
     return True, ''
 
-def _materi_valid(judul, materi):
+# V6.17.34: threshold beda — scraping 800, fallback RSS 200
+def _materi_valid(judul, materi, dari_scraping=True):
     if not materi:
         return False, 'materi kosong'
-    if len(materi) < MATERI_MIN_KARAKTER:
-        return False, 'materi terlalu pendek (' + str(len(materi)) + ' < ' + str(MATERI_MIN_KARAKTER) + ')'
+    min_kar = MATERI_MIN_KARAKTER if dari_scraping else MATERI_MIN_KARAKTER_RSS
+    if len(materi) < min_kar:
+        return False, ('materi terlalu pendek (' + str(len(materi)) + ' < '
+                       + str(min_kar) + ', dari_scraping=' + str(dari_scraping) + ')')
     if _materi_dominan_url(materi):
         return False, 'materi dominan URL/link (bukan artikel asli)'
     ok, alasan = _materi_nyambung_judul(judul, materi)
@@ -4076,7 +4081,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.32)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.34)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -4096,9 +4101,7 @@ def _iso_z(dt):
 
 def _jam_breaking_aktif():
     jam = datetime.now(WITA).hour
-    return 6 <= jam < 20
-
-def _darurat_malam(judul, summary):
+    return 6 <= jam < 20def _darurat_malam(judul, summary):
     t = ((judul or '') + ' ' + (summary or '')).lower()
 
     if 'gempa' in t or 'earthquake' in t:
@@ -4847,7 +4850,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.32 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.34 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4861,7 +4864,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.32'
+FILE_VERSI      = 'V6.17.34'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
