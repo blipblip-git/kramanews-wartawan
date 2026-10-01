@@ -4101,7 +4101,9 @@ def _iso_z(dt):
 
 def _jam_breaking_aktif():
     jam = datetime.now(WITA).hour
-    return 6 <= jam < 20def _darurat_malam(judul, summary):
+    return 6 <= jam < 20
+
+def _darurat_malam(judul, summary):
     t = ((judul or '') + ' ' + (summary or '')).lower()
 
     if 'gempa' in t or 'earthquake' in t:
