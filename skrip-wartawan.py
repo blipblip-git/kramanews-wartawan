@@ -2914,7 +2914,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
 
 # AKHIR PART 3A
 
-# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.30)
+# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.35)
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -3100,8 +3100,6 @@ def _paksa_dateline_indonesia(isi):
         return 'INDONESIA - ' + isi[m.end():]
     return 'INDONESIA - ' + (isi or '')
 
-# ═══ V6.17.30: API FOOTBALL DIHAPUS TOTAL ═══
-
 KATA_HEWAN_FILE = ['wolf', 'serigala', 'dog', 'anjing', 'cat_', '-cat-', 'kucing',
                    'bird', 'burung', 'egret', 'heron', 'eagle', 'hawk', 'owl',
                    'monkey', 'monyet', 'orangutan', 'komodo', 'tiger', 'harimau',
@@ -3273,7 +3271,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
             tolak_msg = str(tolak_raw).strip()
         if tolak_msg:
             tl = tolak_msg.lower()
-            # V6.17.30: catat SEMUA tolak (kecuali transient) ke rejected_urls
             if source_url:
                 catat_tolak_ai_token(source_url, tolak_msg)
             if any(f in tl for f in FRASA_TOLAK_AI) and percobaan < MAX_LOOP:
@@ -3310,7 +3307,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     gambar = (obj.get('deskripsi_gambar') or '').strip()
     frasa_akhir = _frasa_tertangkap(isi)
     if frasa_akhir:
-        # V6.17.30: catat ke blacklist karena materi/frasa rusak
         if source_url:
             catat_tolak_ai_token(source_url, 'diblokir pemeriksa: ' + str(frasa_akhir)[:50])
         raise Exception('diblokir pemeriksa: ' + str(frasa_akhir)[:50])
@@ -3347,7 +3343,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
                                                  summary_materi or materi_sumber,
                                                  kategori=kategori)
         if topik_masalah:
-            # V6.17.30: catat ke blacklist karena materi tidak nyambung
             if source_url:
                 catat_tolak_ai_token(source_url, 'DITOLAK topik: ' + topik_masalah[:80])
             raise Exception('DITOLAK - ' + topik_masalah[:100])
@@ -3408,11 +3403,12 @@ def _catatan_kategori_ketat(kategori_target):
         '- Contoh: {"tolak": "tidak cocok kategori: materi negara asing"}\n'
     )
 
+# V6.17.35: ai_rewrite_single — pass dari_scraping=kaya ke _materi_valid
 def ai_rewrite_single(c, kategori_target=''):
     k = konteks_waktu()
     materi, kaya = ambil_materi_kaya(c)
-    # V6.17.30: validasi materi sebelum kirim AI Token
-    ok_valid, alasan_valid = _materi_valid(c.get('title', ''), materi)
+    # V6.17.35: threshold beda — scraping 800, RSS 200
+    ok_valid, alasan_valid = _materi_valid(c.get('title', ''), materi, dari_scraping=kaya)
     if not ok_valid:
         print('       Materi tidak valid - skip: ' + alasan_valid[:80])
         if c.get('link'):
@@ -3455,6 +3451,7 @@ def ai_rewrite_single(c, kategori_target=''):
                     wajib_topik=True,
                     source_url=c.get('link', ''))
 
+# V6.17.35: ai_rewrite_multi — pass dari_scraping
 def ai_rewrite_multi(items, kategori_target=''):
     k = konteks_waktu()
     bagian = []
@@ -3463,10 +3460,12 @@ def ai_rewrite_multi(items, kategori_target=''):
     semua_materi = ''
     semua_judul = []
     semua_summary = []
+    kaya_ada = False
     for i, it in enumerate(items[:3], 1):
         materi, kaya = ambil_materi_kaya(it)
         if kaya:
             total_len += len(materi)
+            kaya_ada = True
         else:
             total_len += len(it.get('summary', ''))
         if it.get('tgl_pub') and not tgl:
@@ -3475,8 +3474,10 @@ def ai_rewrite_multi(items, kategori_target=''):
         semua_summary.append(it.get('summary', '')[:300])
         bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title'] + '\nIsi: ' + materi[:800])
         semua_materi += ' ' + materi
-    # V6.17.30: validasi materi gabungan
-    ok_valid, alasan_valid = _materi_valid(items[0].get('title', ''), semua_materi)
+    # V6.17.35: kalau ada 1 saja kaya → dari_scraping=True; kalau semua RSS → False
+    dari_scraping = kaya_ada
+    ok_valid, alasan_valid = _materi_valid(items[0].get('title', ''), semua_materi,
+                                            dari_scraping=dari_scraping)
     if not ok_valid:
         print('       Materi gabungan tidak valid - skip: ' + alasan_valid[:80])
         if items[0].get('link'):
@@ -3560,11 +3561,11 @@ def _target_teknologi(dom):
                 'sesuai aturan kedalaman domain.')
     return '250-300 kata (4-5 paragraf) - LENGKAP & BANYAK.'
 
+# V6.17.35: ai_rewrite_teknologi_single — pass dari_scraping=kaya
 def ai_rewrite_teknologi_single(c, dom):
     k = konteks_waktu()
     materi, kaya = ambil_materi_kaya(c)
-    # V6.17.30: validasi materi
-    ok_valid, alasan_valid = _materi_valid(c.get('title', ''), materi)
+    ok_valid, alasan_valid = _materi_valid(c.get('title', ''), materi, dari_scraping=kaya)
     if not ok_valid:
         print('       Materi teknologi tidak valid - skip: ' + alasan_valid[:80])
         if c.get('link'):
@@ -3604,6 +3605,7 @@ def ai_rewrite_teknologi_single(c, dom):
                     wajib_topik=True,
                     source_url=c.get('link', ''))
 
+# V6.17.35: ai_rewrite_teknologi_multi — pass dari_scraping
 def ai_rewrite_teknologi_multi(items, dom):
     k = konteks_waktu()
     bagian = []
@@ -3611,15 +3613,20 @@ def ai_rewrite_teknologi_multi(items, dom):
     semua_materi = ''
     semua_judul = []
     semua_summary = []
+    kaya_ada = False
     for i, it in enumerate(items[:3], 1):
         materi, kaya = ambil_materi_kaya(it)
+        if kaya:
+            kaya_ada = True
         if it.get('tgl_pub') and not tgl:
             tgl = it['tgl_pub']
         semua_judul.append(it.get('title', ''))
         semua_summary.append(it.get('summary', '')[:300])
         bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title'] + '\nIsi: ' + materi[:800])
         semua_materi += ' ' + materi
-    ok_valid, alasan_valid = _materi_valid(items[0].get('title', ''), semua_materi)
+    dari_scraping = kaya_ada
+    ok_valid, alasan_valid = _materi_valid(items[0].get('title', ''), semua_materi,
+                                            dari_scraping=dari_scraping)
     if not ok_valid:
         print('       Materi gabungan teknologi tidak valid - skip: ' + alasan_valid[:80])
         if items[0].get('link'):
@@ -4081,7 +4088,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.34)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.35)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -4852,7 +4859,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.34 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.35 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4866,7 +4873,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.34'
+FILE_VERSI      = 'V6.17.35'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
