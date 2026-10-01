@@ -1355,7 +1355,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.36)
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.37)
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1503,7 +1503,7 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# ═══ V6.17.36: VALIDASI MATERI — threshold RSS 200→100 ═══
+# ═══ V6.17.36: VALIDASI MATERI — threshold RSS 100 ═══
 
 MATERI_MIN_KARAKTER_RSS = 100
 
@@ -2467,8 +2467,9 @@ INSTITUSI_PUSAT_LEBIH_LONGGAR = [
     'bnpb', 'basarnas', 'bulog', 'pertamina', 'pln', 'telkom',
 ]
 
+# V6.17.37: hapus 'badan' — terlalu umum (contoh: BKSAP = Badan Kerja Sama Antar Parlemen)
 INSTITUSI_LOKAL_BUTUH_NAMA = [
-    'dinas', 'badan', 'kantor', 'komisi', 'pemkot', 'pemkab',
+    'dinas', 'kantor', 'komisi', 'pemkot', 'pemkab',
     'pemprov', 'polres', 'polsek', 'polda', 'kodam', 'korem', 'kodim',
     'koramil', 'kejaksaan', 'kejari', 'kejati', 'pengadilan', 'bawaslu',
     'kpu', 'kppu', 'kppn', 'kpp', 'bpjs', 'perum', 'peruri', 'pelindo',
