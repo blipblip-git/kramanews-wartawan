@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.30)
+# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.32)
 
 import requests
 import json
@@ -45,9 +45,14 @@ MATCH_MIN_KATA          = 2
 MATCH_MIN_RASIO         = 0.50
 DOMAIN_SKIP_SCRAPE      = ['berita.tarakankota.go.id']
 
-# V6.17.30: anti-dobel-6jam lebih ketat
 DOBEL_6JAM_MIN_KATA     = 5
 DOBEL_6JAM_BUTUH_NAMA   = True
+
+# ═══ V6.17.32: GOOGLE NEWS DECODE ═══
+GOOGLE_NEWS_HOST        = 'news.google.com'
+GOOGLE_NEWS_DECODE_MIN  = 5      # minimal 5 URL sukses decode per batch
+GOOGLE_NEWS_BATCH_MAX   = 10     # maksimal 10 URL sekali decode
+GN_DECODE_TIMEOUT       = 15
 
 UMUR_BERITA_PER_KATEGORI = {
     'nasional': 30, 'daerah': 30, 'internasional_asean': 30,
@@ -547,7 +552,7 @@ def judul_spam(judul):
 
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.31)
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.32)
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -767,12 +772,13 @@ def adalah_konten_otomotif(teks):
 class BeritaLama(Exception):
     pass
 
-STAT_SCRAPE = {'ok': 0, 'gagal': 0, 'skip': 0, 'irisan_gagal': 0}
+STAT_SCRAPE = {'ok': 0, 'gagal': 0, 'skip': 0, 'irisan_gagal': 0,
+               'gn_gagal_decode': 0, 'gn_fallback_rss': 0}
 JUDUL_TERPAKAI = []
 JUDUL_6JAM = []
 _GAMBAR_TERPAKAI_CACHE = None
 
-# ═══ V6.17.31: DEBUG SCRAPING AKTIF ═══
+# V6.17.32: DEBUG scraping
 DEBUG_SCRAPE = True
 
 # ═══ V6.17.30: BLACKLIST PERMANEN rejected_urls ═══
@@ -862,26 +868,121 @@ def _url_valid_berita(u):
         return False
     return True
 
-def resolusi_link_google(url):
+# ═══ V6.17.32: DECODE GOOGLE NEWS URL — ambil URL artikel asli ═══
+
+def _gn_id_dari_url(url):
+    """Ambil ID artikel dari URL Google News (CBM... atau AU_yqL...)."""
     try:
-        if 'news.google.com' not in url:
-            return url
-        headers = {'User-Agent': random.choice(UA_LIST)}
-        r = requests.get(url, headers=headers, timeout=SCRAPER_TIMEOUT, allow_redirects=True)
-        if not r.ok:
-            return url
-        html = r.text or ''
-        for m in re.finditer(r'href="(https?://[^"]+)"', html):
-            kandidat = m.group(1)
-            if _url_valid_berita(kandidat):
-                return kandidat
-        for m in re.finditer(r'https?://[A-Za-z0-9\.\-]+(?:/[^\s"\'<>\\]*)?', html):
-            kandidat = m.group(0)
-            if _url_valid_berita(kandidat):
-                return kandidat
-        return url
+        m = re.search(r'/articles/([A-Za-z0-9_\-]+)', url or '')
+        if m:
+            return m.group(1)
+        m = re.search(r'/([A-Za-z0-9_\-]{30,})(?:\?|$)', url or '')
+        if m:
+            return m.group(1)
     except Exception:
+        pass
+    return ''
+
+def _gn_decode_html(html):
+    """Cari URL artikel asli di HTML Google News.
+    
+    Format Google News baru: ada URL asli tersembunyi di dalam script
+    atau data attribute. Coba beberapa pola.
+    """
+    if not html:
+        return ''
+    # Pola 1: data-n-au atau data-n-href
+    for pola in (r'data-n-au="(https?://[^"]+)"',
+                 r'data-n-href="(https?://[^"]+)"',
+                 r'"url"\s*:\s*"(https?://[^"]+)"',
+                 r'"canonicalUrl"\s*:\s*"(https?://[^"]+)"'):
+        try:
+            for m in re.finditer(pola, html):
+                kandidat = m.group(1).replace('\\u003d', '=').replace('\\u0026', '&')
+                if _url_valid_berita(kandidat) and GOOGLE_NEWS_HOST not in kandidat:
+                    return kandidat
+        except Exception:
+            continue
+    # Pola 2: href ke situs berita (fallback lama)
+    for m in re.finditer(r'href="(https?://[^"]+)"', html):
+        kandidat = m.group(1).replace('\\u003d', '=').replace('\\u0026', '&')
+        if GOOGLE_NEWS_HOST in kandidat:
+            continue
+        if _url_valid_berita(kandidat):
+            return kandidat
+    return ''
+
+def _gn_decode_batch(ids):
+    """Decode batch Google News ID via endpoint internal."""
+    if not ids:
+        return {}
+    out = {}
+    try:
+        # Endpoint batch — Google News internal
+        url = 'https://news.google.com/_/DotsSplashUi/data/batchexecute'
+        payload = []
+        for i, gid in enumerate(ids):
+            payload.append(['Fbv4je',
+                            '["garturlreq",[["X","X",["X","X"],null,null,1,1,"US:en",null,1,null,null,null,null,null,0,1],"X","X",1,[1,1,1],1,1,null,0,0,null,0],"' + gid + '",0,0]'])
+        import json as _json
+        body = 'f.req=' + _json.dumps([[['Fbv4je', _json.dumps(payload), None, 'generic']]])
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'User-Agent': random.choice(UA_LIST),
+        }
+        r = requests.post(url, data=body, headers=headers, timeout=GN_DECODE_TIMEOUT)
+        if not r.ok:
+            return {}
+        teks = r.text or ''
+        # Format: [["wrb.fr","Fbv4je","[...]",null,...]]
+        for m in re.finditer(r'"(https?://[^"]+)"', teks):
+            u = m.group(1).replace('\\u003d', '=').replace('\\u0026', '&')
+            if _url_valid_berita(u) and GOOGLE_NEWS_HOST not in u:
+                # Cocokkan dengan salah satu ID (first match)
+                out.setdefault('_first', u)
+                if '_first' in out:
+                    break
+        if out.get('_first'):
+            # Distribusi sama untuk semua (endpoint batch tidak kasih mapping)
+            for gid in ids:
+                out[gid] = out['_first']
+            out.pop('_first', None)
+    except Exception as e:
+        print('       GN decode batch gagal: ' + str(e)[:60])
+    return out
+
+def resolusi_link_google(url):
+    """V6.17.32: decode Google News URL → URL artikel asli.
+    
+    Kalau gagal decode → return URL kosong (bukan URL Google News).
+    """
+    if not url or GOOGLE_NEWS_HOST not in url:
         return url
+    gid = _gn_id_dari_url(url)
+    if not gid:
+        print('       GN decode: ID tidak ditemukan di URL')
+        STAT_SCRAPE['gn_gagal_decode'] += 1
+        return ''
+    # Coba batch decode
+    hasil = _gn_decode_batch([gid])
+    if hasil and gid in hasil:
+        return hasil[gid]
+    # Fallback: coba fetch HTML + cari URL
+    try:
+        headers = {
+            'User-Agent': random.choice(UA_LIST),
+            'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
+        }
+        r = requests.get(url, headers=headers, timeout=GN_DECODE_TIMEOUT, allow_redirects=True)
+        if r.ok:
+            url_decoded = _gn_decode_html(r.text or '')
+            if url_decoded:
+                return url_decoded
+    except Exception as e:
+        print('       GN decode HTML gagal: ' + str(e)[:60])
+    print('       GN decode GAGAL — skip artikel ini')
+    STAT_SCRAPE['gn_gagal_decode'] += 1
+    return ''
 
 def domain_skip_scrape(url):
     low = (url or '').lower()
@@ -964,13 +1065,24 @@ def scrape_artikel(url, judul_debug=''):
         print('       Skip scraping (domain 403 konsisten) - ' + url[:60])
         _CACHE_SCRAPE[url] = ''
         return ''
+    # V6.17.32: resolve Google News → URL asli
     url_asli = resolusi_link_google(url)
-    if not _url_valid_berita(url_asli) and 'news.google.com' not in url_asli:
+    if not url_asli:
+        print('       Resolusi GN gagal — fallback RSS summary')
+        STAT_SCRAPE['gn_fallback_rss'] += 1
+        _CACHE_SCRAPE[url] = ''
+        return ''
+    # V6.17.32: cek hasil resolusi BUKAN google news lagi
+    if GOOGLE_NEWS_HOST in url_asli:
+        print('       Hasil resolusi masih Google News — fallback RSS summary')
+        STAT_SCRAPE['gn_fallback_rss'] += 1
+        _CACHE_SCRAPE[url] = ''
+        return ''
+    if not _url_valid_berita(url_asli):
         print('       URL hasil resolusi tidak valid (non-berita) - skip: ' + url_asli[:60])
         STAT_SCRAPE['skip'] += 1
         _CACHE_SCRAPE[url] = ''
         return ''
-    # V6.17.31: DEBUG — print URL final + domain
     if DEBUG_SCRAPE:
         print('       [DEBUG] URL final: ' + url_asli[:100])
         print('       [DEBUG] Domain: ' + _domain_dari_url(url_asli))
@@ -994,11 +1106,6 @@ def scrape_artikel(url, judul_debug=''):
     if hasil:
         _CACHE_SCRAPE[url] = hasil
         return hasil
-    if url_asli != url:
-        hasil = scrape_via_jina(url)
-        if hasil:
-            _CACHE_SCRAPE[url] = hasil
-            return hasil
     _CACHE_SCRAPE[url] = ''
     return ''
 
@@ -1007,7 +1114,6 @@ def ambil_materi_kaya(c):
     if scraped and len(scraped) >= SCRAPE_MIN_KARAKTER:
         STAT_SCRAPE['ok'] += 1
         print('       Scraping artikel asli: ' + str(len(scraped)) + ' karakter')
-        # V6.17.31: DEBUG — print 250 karakter pertama materi
         if DEBUG_SCRAPE:
             print('       [DEBUG] Judul asli: ' + (c.get('title') or '')[:80])
             print('       [DEBUG] Materi 250 kar pertama: ' + scraped[:250])
@@ -1029,8 +1135,7 @@ def ambil_materi_kaya(c):
                 if isinstance(part, dict):
                     v = part.get('value') or ''
                     if len(v) > len(konten_rss):
-                        konten_rss = v
-        konten_rss = clean(konten_rss, 2500)
+                        konten_rss = v        konten_rss = clean(konten_rss, 2500)
         if konten_rss and len(konten_rss) > len(s):
             potongan.append('Konten RSS: ' + konten_rss)
     except Exception:
@@ -1271,7 +1376,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.31)
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.32)
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1419,7 +1524,7 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# ═══ V6.17.31: VALIDASI MATERI — min_irisan 3→2 + fallback summary ═══
+# ═══ V6.17.32: VALIDASI MATERI ═══
 
 def _materi_dominan_url(teks):
     if not teks:
@@ -3992,7 +4097,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.31)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.32)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -4671,6 +4776,10 @@ def sesi_breaking_saja():
               + str(STAT_SCRAPE['gagal']) + ' - skip ' + str(STAT_SCRAPE['skip']))
     else:
         print('\nStatistik scraping: tidak ada percobaan scraping sesi ini.')
+    if STAT_SCRAPE.get('gn_gagal_decode'):
+        print('   GN decode gagal: ' + str(STAT_SCRAPE['gn_gagal_decode']))
+    if STAT_SCRAPE.get('gn_fallback_rss'):
+        print('   GN fallback RSS: ' + str(STAT_SCRAPE['gn_fallback_rss']))
     print('Sesi breaking selesai - breaking: ' + str(n_brk))
     return n_brk
 
@@ -4701,6 +4810,10 @@ def sesi_kategori_saja():
               + str(STAT_SCRAPE['gagal']) + ' - skip ' + str(STAT_SCRAPE['skip']))
     else:
         print('\nStatistik scraping: tidak ada percobaan scraping sesi ini.')
+    if STAT_SCRAPE.get('gn_gagal_decode'):
+        print('   GN decode gagal: ' + str(STAT_SCRAPE['gn_gagal_decode']))
+    if STAT_SCRAPE.get('gn_fallback_rss'):
+        print('   GN fallback RSS: ' + str(STAT_SCRAPE['gn_fallback_rss']))
     print('Sesi kategori selesai - kategori: ' + str(n_kat))
     return n_kat
 
@@ -4732,6 +4845,10 @@ def run_session():
               + str(STAT_SCRAPE['gagal']) + ' - skip ' + str(STAT_SCRAPE['skip']))
     else:
         print('\nStatistik scraping: tidak ada percobaan scraping sesi ini.')
+    if STAT_SCRAPE.get('gn_gagal_decode'):
+        print('   GN decode gagal: ' + str(STAT_SCRAPE['gn_gagal_decode']))
+    if STAT_SCRAPE.get('gn_fallback_rss'):
+        print('   GN fallback RSS: ' + str(STAT_SCRAPE['gn_fallback_rss']))
     print('Sesi selesai - breaking: ' + str(n_brk) + ' - kategori: ' + str(n_kat))
     return n_brk + n_kat
 
@@ -4751,7 +4868,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.31 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.32 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4765,7 +4882,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.31'
+FILE_VERSI      = 'V6.17.32'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
