@@ -2913,7 +2913,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
 
 # AKHIR PART 3A
 
-# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.35)
+# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.37)
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -3068,7 +3068,8 @@ def _kemiripan_struktur_kalimat(isi_ai, materi_sumber):
     for ka in kalimat_ai:
         for km in kalimat_materi:
             ratio = SequenceMatcher(None, ka.lower(), km.lower()).ratio()
-            if ratio >= 0.75:
+            # V6.17.37: struktur 0.75 → 0.82 (lebih longgar)
+            if ratio >= 0.82:
                 return 'struktur kalimat mirip (' + str(int(ratio * 100)) + '%): "' + ka[:60] + '"'
     return None
 
@@ -3078,7 +3079,8 @@ def cek_jiplak(materi_sumber, isi_ai):
     frasa_mesin = _frasa_janggal_terjemahan(isi_ai)
     if frasa_mesin:
         return frasa_mesin
-    n_kata = 10
+    # V6.17.37: n-gram 10 → 13 kata (lebih longgar)
+    n_kata = 13
     if len(materi_sumber) < 500:
         n_kata = 15
     sumber_grams = _gram_set(materi_sumber, n_kata)
@@ -3375,7 +3377,7 @@ def _catatan_khusus_kategori(kategori_target):
 def _catatan_anti_jiplak():
     return (
         '\n\nANTI-JIPLAK (WAJIB):\n'
-        '- Tulis kalimatmu SENDIRI — jangan salin 10+ kata berurutan.\n'
+        '- Tulis kalimatmu SENDIRI — jangan salin 13+ kata berurutan.\n'
         '- JANGAN terjemahkan langsung dari materi bahasa Inggris.\n'
         '- HINDARI frasa janggal terjemahan mesin.\n'
         '- Ganti sinonim: "mengatakan" → "menuturkan/ujar".\n'
@@ -3402,11 +3404,9 @@ def _catatan_kategori_ketat(kategori_target):
         '- Contoh: {"tolak": "tidak cocok kategori: materi negara asing"}\n'
     )
 
-# V6.17.35: ai_rewrite_single — pass dari_scraping=kaya ke _materi_valid
 def ai_rewrite_single(c, kategori_target=''):
     k = konteks_waktu()
     materi, kaya = ambil_materi_kaya(c)
-    # V6.17.35: threshold beda — scraping 800, RSS 200
     ok_valid, alasan_valid = _materi_valid(c.get('title', ''), materi, dari_scraping=kaya)
     if not ok_valid:
         print('       Materi tidak valid - skip: ' + alasan_valid[:80])
@@ -3450,7 +3450,6 @@ def ai_rewrite_single(c, kategori_target=''):
                     wajib_topik=True,
                     source_url=c.get('link', ''))
 
-# V6.17.35: ai_rewrite_multi — pass dari_scraping
 def ai_rewrite_multi(items, kategori_target=''):
     k = konteks_waktu()
     bagian = []
@@ -3473,7 +3472,6 @@ def ai_rewrite_multi(items, kategori_target=''):
         semua_summary.append(it.get('summary', '')[:300])
         bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title'] + '\nIsi: ' + materi[:800])
         semua_materi += ' ' + materi
-    # V6.17.35: kalau ada 1 saja kaya → dari_scraping=True; kalau semua RSS → False
     dari_scraping = kaya_ada
     ok_valid, alasan_valid = _materi_valid(items[0].get('title', ''), semua_materi,
                                             dari_scraping=dari_scraping)
@@ -3560,7 +3558,6 @@ def _target_teknologi(dom):
                 'sesuai aturan kedalaman domain.')
     return '250-300 kata (4-5 paragraf) - LENGKAP & BANYAK.'
 
-# V6.17.35: ai_rewrite_teknologi_single — pass dari_scraping=kaya
 def ai_rewrite_teknologi_single(c, dom):
     k = konteks_waktu()
     materi, kaya = ambil_materi_kaya(c)
@@ -3604,7 +3601,6 @@ def ai_rewrite_teknologi_single(c, dom):
                     wajib_topik=True,
                     source_url=c.get('link', ''))
 
-# V6.17.35: ai_rewrite_teknologi_multi — pass dari_scraping
 def ai_rewrite_teknologi_multi(items, dom):
     k = konteks_waktu()
     bagian = []
@@ -4087,7 +4083,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.36)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.37)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -4858,7 +4854,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.36 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.37 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4872,7 +4868,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.36'
+FILE_VERSI      = 'V6.17.37'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
