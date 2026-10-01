@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.32)
+# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.38)
 
 import requests
 import json
@@ -50,8 +50,8 @@ DOBEL_6JAM_BUTUH_NAMA   = True
 
 # ═══ V6.17.32: GOOGLE NEWS DECODE ═══
 GOOGLE_NEWS_HOST        = 'news.google.com'
-GOOGLE_NEWS_DECODE_MIN  = 5      # minimal 5 URL sukses decode per batch
-GOOGLE_NEWS_BATCH_MAX   = 10     # maksimal 10 URL sekali decode
+GOOGLE_NEWS_DECODE_MIN  = 5
+GOOGLE_NEWS_BATCH_MAX   = 10
 GN_DECODE_TIMEOUT       = 15
 
 UMUR_BERITA_PER_KATEGORI = {
@@ -313,6 +313,7 @@ DOMAIN_KESEHATAN = [
 ]
 JAM_KESEHATAN = {10: 0, 15: 1, 16: 2}
 
+# V6.17.38: autonetmagz DIHAPUS dari DOMAIN_OTOMOTIF
 DOMAIN_OTOMOTIF = [
     {'nama': 'Mobil Baru & Rilis', 'query': [
         ('mobil baru rilis Indonesia', 'id'),
@@ -509,10 +510,10 @@ HUNT = {
         GN('tenis turnamen grand slam', 'id', 'Google News Tenis'),
         GN('liga 1 indonesia hasil', 'id', 'Google News Liga 1'),
     ],
+    # V6.17.38: autonetmagz DIHAPUS
     'otomotif': [
         RSSF('https://www.otomotifnet.com/rss', 'Otomotifnet'),
         RSSF('https://www.gridoto.com/rss', 'GridOto'),
-        RSSF('https://autonetmagz.com/feed/', 'Autonetmagz'),
         RSSF('https://oto.detik.com/rss', 'Detik Oto'),
         GN('mobil baru rilis Indonesia', 'id', 'GN Mobil Baru'),
         GN('motor baru rilis Indonesia', 'id', 'GN Motor Baru'),
@@ -4084,7 +4085,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.37)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.38)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -4855,7 +4856,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.37 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.38 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4869,7 +4870,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.37'
+FILE_VERSI      = 'V6.17.38'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
