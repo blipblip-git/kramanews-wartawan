@@ -1378,7 +1378,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.37)
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.39)
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1616,6 +1616,21 @@ def _kandidat_topik_nyambung(judul, summary):
         return False, 'judul & materi tidak nyambung (irisan 0)'
     return True, ''
 
+# ═══ V6.17.39: ANTI-POLITIK LUAR NEGERI DI EKONOMI ═══
+TOKOH_POLITIK_ASING = [
+    'xi jinping', 'putin', 'trump', 'biden', 'netanyahu', 'erdogan',
+    'macron', 'sunak', 'scholz', 'kishida', 'yoon suk yeol', 'modi',
+    'zelensky', 'al sissi', 'bin salman',
+]
+
+KATA_POLITIK_EKSPLISIT = [
+    'parlemen', 'taiwan', 'pemilu', 'diplomatik', 'resepsi diplomatik',
+    'kongres', 'senat', 'duma', 'legislatif', 'kabinet', 'reshuffle',
+    'mosi', 'impeachment', 'veto', 'summit', 'ktt',
+    'hubungan diplomatik', 'menteri luar negeri',
+]
+# ═══ AKHIR ANTI-POLITIK LUAR NEGERI ═══
+
 KATA_KUNCI_KATEGORI = {
     'nasional': ['pemerintah', 'presiden', 'menteri', 'dpr', 'kementerian',
                  'prabowo', 'gibran', 'jakarta', 'indonesia', 'kebijakan',
@@ -1817,6 +1832,11 @@ def _kandidat_kategori_materi(kategori, judul, summary):
     elif kategori == 'ekonomi':
         if not any(k in gab for k in KATA_EKONOMI_WAJIB):
             return False, 'kategori ekonomi tapi materi tidak ada kata ekonomi'
+        # V6.17.39: tolak kalau ada tokoh politik asing + kata politik eksplisit
+        ada_tokoh = any(k in gab for k in TOKOH_POLITIK_ASING)
+        ada_politik = any(k in gab for k in KATA_POLITIK_EKSPLISIT)
+        if ada_tokoh and ada_politik:
+            return False, 'kategori ekonomi tapi materi politik luar negeri (tokoh + kata politik)'
     ok, alasan = _materi_cocok_kategori(kategori, judul, summary)
     if not ok:
         return False, alasan
@@ -2490,9 +2510,9 @@ INSTITUSI_PUSAT_LEBIH_LONGGAR = [
     'bnpb', 'basarnas', 'bulog', 'pertamina', 'pln', 'telkom',
 ]
 
-# V6.17.37: hapus 'badan' — terlalu umum (contoh: BKSAP = Badan Kerja Sama Antar Parlemen)
+# V6.17.39: hapus 'komisi' — terlalu umum (seperti 'badan' di V6.17.37)
 INSTITUSI_LOKAL_BUTUH_NAMA = [
-    'dinas', 'kantor', 'komisi', 'pemkot', 'pemkab',
+    'dinas', 'kantor', 'pemkot', 'pemkab',
     'pemprov', 'polres', 'polsek', 'polda', 'kodam', 'korem', 'kodim',
     'koramil', 'kejaksaan', 'kejari', 'kejati', 'pengadilan', 'bawaslu',
     'kpu', 'kppu', 'kppn', 'kpp', 'bpjs', 'perum', 'peruri', 'pelindo',
@@ -2937,7 +2957,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
 
 # AKHIR PART 3A
 
-# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.37)
+# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.39)
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -2977,8 +2997,7 @@ def sumber_otomotif_hari_ini(jam):
         sumber.append(GN(q, lang, 'GN Otomotif: ' + dom['nama'], when='180d'))
     sumber.append(RSSF('https://www.otomotifnet.com/rss', 'Otomotifnet'))
     sumber.append(RSSF('https://www.gridoto.com/rss', 'GridOto'))
-    sumber.append(RSSF('https://autonetmagz.com/feed/', 'Autonetmagz'))
-    print('   OTOMOTIF hari ini (jam ' + str(jam) + '): ' + dom['nama'])
+        print('   OTOMOTIF hari ini (jam ' + str(jam) + '): ' + dom['nama'])
     return dom, sumber
 
 def sumber_teknologi_hari_ini(jam):
@@ -3264,6 +3283,31 @@ def catat_gambar_terpakai(url):
     if url:
         muat_gambar_terpakai().add(url)
 
+# ═══ V6.17.39: CATATAN KHUSUS EKONOMI ═══
+KATA_SINYAL_EKONOMI = [
+    'ekspor', 'impor', 'trade', 'exports', 'imports', 'perdagangan',
+    'neraca dagang', 'gdp', 'pdb', 'pertumbuhan ekonomi', 'produksi',
+    'manufaktur', 'factory', 'manufacturing', 'supply chain',
+    'penjualan ritel', 'retail sales', 'indeks pmi', 'pmi index',
+]
+
+def _catatan_ekonomi_khusus(kategori_target, judul, materi):
+    """Sisipkan catatan 'materi ini ekonomi' kalau ada sinyal ekonomi tanpa kata 'ekonomi'."""
+    if kategori_target != 'ekonomi':
+        return ''
+    gab_low = ((judul or '') + ' ' + (materi or '')).lower()
+    ada_sinyal = any(k in gab_low for k in KATA_SINYAL_EKONOMI)
+    ada_kata_ekonomi = ('ekonomi' in gab_low or 'economy' in gab_low
+                        or 'economic' in gab_low or 'economist' in gab_low)
+    if ada_sinyal and not ada_kata_ekonomi:
+        return ('\n\nCATATAN PENTING — MATERI INI ADALAH BERITA EKONOMI:\n'
+                '- Materi memuat kata perdagangan/ekspor/impor/produksi/manufaktur.\n'
+                '- WAJIB tulis sebagai berita EKONOMI, BUKAN politik luar negeri.\n'
+                '- JANGAN tolak dengan alasan "politik luar negeri" atau "materi politik".\n'
+                '- Fokus: angka, data perdagangan, pertumbuhan, dampak ekonomi.\n')
+    return ''
+# ═══ AKHIR CATATAN EKONOMI ═══
+
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
              judul_materi='', summary_materi='', wajib_topik=True,
              source_url=''):
@@ -3316,6 +3360,17 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     ringkasan = perbaiki_persen((obj.get('ringkasan') or '').strip())
     if ada_persen_kata(judul + ' ' + isi + ' ' + ringkasan):
         print('       Persen auto-fix diterapkan.')
+
+    # ═══ V6.17.39: ANTI-JIPLAK JUDUL AI vs JUDUL MATERI ═══
+    if judul_materi and judul:
+        rasio_judul = SequenceMatcher(None, judul.lower(), judul_materi.lower()).ratio()
+        if rasio_judul >= 0.80:
+            msg_tolak = ('judul AI mirip judul materi (' + str(int(rasio_judul * 100))
+                         + '%) — jiplak, wajib judul beda')
+            if source_url:
+                catat_tolak_ai_token(source_url, msg_tolak)
+            raise Exception('DITOLAK - ' + msg_tolak)
+    # ═══ AKHIR ANTI-JIPLAK JUDUL ═══
 
     judul_l = judul.lower()
     if any(x in judul_l for x in ('materi tidak dapat diolah', 'materi tidak tersedia',
@@ -3406,6 +3461,9 @@ def _catatan_anti_jiplak():
         '- HINDARI frasa janggal terjemahan mesin.\n'
         '- Ganti sinonim: "mengatakan" → "menuturkan/ujar".\n'
         '- JANGAN salin struktur kalimat materi — ubah susunan kata.\n'
+        # V6.17.39: instruksi tegas anti-jiplak judul
+        '- JUDUL: DILARANG pakai judul yang sama/mirip dengan materi sumber. '
+        'WAJIB bikin judul BEDA dengan kalimatmu sendiri — jiplak judul = ditolak.\n'
     )
 
 def _catatan_kategori_ketat(kategori_target):
@@ -3445,6 +3503,8 @@ def ai_rewrite_single(c, kategori_target=''):
     else:
         baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia.\n'
                      'WAJIB: tulis kejadian sebagai peristiwa TERKINI dengan tanggal konkret.\n')
+    # V6.17.39: catatan khusus ekonomi
+    catatan_eko = _catatan_ekonomi_khusus(kategori_target, c.get('title', ''), materi)
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
             + baris_tgl +
             'JENIS MATERI: ' + label_materi + '\n'
@@ -3461,10 +3521,12 @@ def ai_rewrite_single(c, kategori_target=''):
             '- NAMA LEMBAGA: JANGAN diterjemahkan.\n'
             '- JUDUL DAN ISI: HARUS satu topik yang sama, sesuai materi. '
             'JANGAN mengarang judul yang tidak ada di materi.\n'
+            '- JUDUL: DILARANG sama/mirip judul asli materi — WAJIB judul BEDA.\n'
             '- PERSEN: selalu simbol %.\n'
             '- deskripsi_gambar: 3-6 kata kunci DARI ELEMEN UTAMA BERITA.\n'
             '- Tulis ulang dengan kalimatmu sendiri.\n'
             '- Jangan sebut portal/media sumber.'
+            + catatan_eko
             + _catatan_khusus_kategori(kategori_target)
             + _catatan_anti_jiplak()
             + _catatan_kategori_ketat(kategori_target))
@@ -3512,6 +3574,8 @@ def ai_rewrite_multi(items, kategori_target=''):
     else:
         baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia.\n'
                      'WAJIB: tulis kejadian sebagai peristiwa TERKINI.\n')
+    # V6.17.39: catatan khusus ekonomi
+    catatan_eko = _catatan_ekonomi_khusus(kategori_target, judul_materi_gabung, semua_materi)
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
             + baris_tgl +
             'TARGET PANJANG: ' + target_kata(total_len) + '\n\n'
@@ -3525,9 +3589,11 @@ def ai_rewrite_multi(items, kategori_target=''):
             '- GELAR AKADEMIK: ikut kalau ada di materi (tulis persis).\n'
             '- NAMA LEMBAGA: JANGAN diterjemahkan.\n'
             '- JUDUL DAN ISI: HARUS satu topik yang sama, sesuai materi.\n'
+            '- JUDUL: DILARANG sama/mirip judul asli materi — WAJIB judul BEDA.\n'
             '- PERSEN: selalu simbol %.\n'
             '- deskripsi_gambar: 3-6 kata kunci DARI ELEMEN UTAMA BERITA.\n'
             '- Tulis ulang dengan kalimatmu sendiri.'
+            + catatan_eko
             + _catatan_khusus_kategori(kategori_target)
             + _catatan_anti_jiplak()
             + _catatan_kategori_ketat(kategori_target))
@@ -3614,6 +3680,7 @@ def ai_rewrite_teknologi_single(c, dom):
             '- DATELINE: WAJIB kota/provinsi spesifik (bukan "INDONESIA - ").\n'
             '- NAMA + JABATAN NARASUMBER: WAJIB tulis jabatan lengkap + nama.\n'
             '- DILARANG mengarang spesifikasi/harga/angka di luar materi.\n'
+            '- JUDUL: DILARANG sama/mirip judul asli materi — WAJIB judul BEDA.\n'
             '- PERSEN: selalu simbol %.\n'
             '- deskripsi_gambar: 3-6 kata kunci DARI ELEMEN UTAMA BERITA.\n'
             '- Tulis ulang kalimatmu sendiri.'
@@ -3670,6 +3737,7 @@ def ai_rewrite_teknologi_multi(items, dom):
             '- TANGGAL KONKRET; DATELINE dari materi.\n'
             '- NAMA + JABATAN NARASUMBER: WAJIB tulis jabatan lengkap + nama.\n'
             '- DILARANG mengarang spesifikasi/harga/angka di luar materi.\n'
+            '- JUDUL: DILARANG sama/mirip judul asli materi — WAJIB judul BEDA.\n'
             '- PERSEN: selalu simbol %.\n'
             '- deskripsi_gambar tanpa manusia/hewan/alas kaki/ibadah.\n'
             '- Jangan sebut media sumber.'
@@ -4892,7 +4960,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.38'
+FILE_VERSI      = 'V6.17.39'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
