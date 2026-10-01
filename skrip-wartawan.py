@@ -552,7 +552,7 @@ def judul_spam(judul):
 
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.32)
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.33)
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -778,7 +778,6 @@ JUDUL_TERPAKAI = []
 JUDUL_6JAM = []
 _GAMBAR_TERPAKAI_CACHE = None
 
-# V6.17.32: DEBUG scraping
 DEBUG_SCRAPE = True
 
 # ═══ V6.17.30: BLACKLIST PERMANEN rejected_urls ═══
@@ -871,7 +870,6 @@ def _url_valid_berita(u):
 # ═══ V6.17.32: DECODE GOOGLE NEWS URL — ambil URL artikel asli ═══
 
 def _gn_id_dari_url(url):
-    """Ambil ID artikel dari URL Google News (CBM... atau AU_yqL...)."""
     try:
         m = re.search(r'/articles/([A-Za-z0-9_\-]+)', url or '')
         if m:
@@ -884,14 +882,8 @@ def _gn_id_dari_url(url):
     return ''
 
 def _gn_decode_html(html):
-    """Cari URL artikel asli di HTML Google News.
-    
-    Format Google News baru: ada URL asli tersembunyi di dalam script
-    atau data attribute. Coba beberapa pola.
-    """
     if not html:
         return ''
-    # Pola 1: data-n-au atau data-n-href
     for pola in (r'data-n-au="(https?://[^"]+)"',
                  r'data-n-href="(https?://[^"]+)"',
                  r'"url"\s*:\s*"(https?://[^"]+)"',
@@ -903,7 +895,6 @@ def _gn_decode_html(html):
                     return kandidat
         except Exception:
             continue
-    # Pola 2: href ke situs berita (fallback lama)
     for m in re.finditer(r'href="(https?://[^"]+)"', html):
         kandidat = m.group(1).replace('\\u003d', '=').replace('\\u0026', '&')
         if GOOGLE_NEWS_HOST in kandidat:
@@ -913,12 +904,10 @@ def _gn_decode_html(html):
     return ''
 
 def _gn_decode_batch(ids):
-    """Decode batch Google News ID via endpoint internal."""
     if not ids:
         return {}
     out = {}
     try:
-        # Endpoint batch — Google News internal
         url = 'https://news.google.com/_/DotsSplashUi/data/batchexecute'
         payload = []
         for i, gid in enumerate(ids):
@@ -934,16 +923,13 @@ def _gn_decode_batch(ids):
         if not r.ok:
             return {}
         teks = r.text or ''
-        # Format: [["wrb.fr","Fbv4je","[...]",null,...]]
         for m in re.finditer(r'"(https?://[^"]+)"', teks):
             u = m.group(1).replace('\\u003d', '=').replace('\\u0026', '&')
             if _url_valid_berita(u) and GOOGLE_NEWS_HOST not in u:
-                # Cocokkan dengan salah satu ID (first match)
                 out.setdefault('_first', u)
                 if '_first' in out:
                     break
         if out.get('_first'):
-            # Distribusi sama untuk semua (endpoint batch tidak kasih mapping)
             for gid in ids:
                 out[gid] = out['_first']
             out.pop('_first', None)
@@ -952,10 +938,6 @@ def _gn_decode_batch(ids):
     return out
 
 def resolusi_link_google(url):
-    """V6.17.32: decode Google News URL → URL artikel asli.
-    
-    Kalau gagal decode → return URL kosong (bukan URL Google News).
-    """
     if not url or GOOGLE_NEWS_HOST not in url:
         return url
     gid = _gn_id_dari_url(url)
@@ -963,11 +945,9 @@ def resolusi_link_google(url):
         print('       GN decode: ID tidak ditemukan di URL')
         STAT_SCRAPE['gn_gagal_decode'] += 1
         return ''
-    # Coba batch decode
     hasil = _gn_decode_batch([gid])
     if hasil and gid in hasil:
         return hasil[gid]
-    # Fallback: coba fetch HTML + cari URL
     try:
         headers = {
             'User-Agent': random.choice(UA_LIST),
@@ -1065,14 +1045,12 @@ def scrape_artikel(url, judul_debug=''):
         print('       Skip scraping (domain 403 konsisten) - ' + url[:60])
         _CACHE_SCRAPE[url] = ''
         return ''
-    # V6.17.32: resolve Google News → URL asli
     url_asli = resolusi_link_google(url)
     if not url_asli:
         print('       Resolusi GN gagal — fallback RSS summary')
         STAT_SCRAPE['gn_fallback_rss'] += 1
         _CACHE_SCRAPE[url] = ''
         return ''
-    # V6.17.32: cek hasil resolusi BUKAN google news lagi
     if GOOGLE_NEWS_HOST in url_asli:
         print('       Hasil resolusi masih Google News — fallback RSS summary')
         STAT_SCRAPE['gn_fallback_rss'] += 1
@@ -1135,7 +1113,8 @@ def ambil_materi_kaya(c):
                 if isinstance(part, dict):
                     v = part.get('value') or ''
                     if len(v) > len(konten_rss):
-                        konten_rss = v        konten_rss = clean(konten_rss, 2500)
+                        konten_rss = v
+        konten_rss = clean(konten_rss, 2500)
         if konten_rss and len(konten_rss) > len(s):
             potongan.append('Konten RSS: ' + konten_rss)
     except Exception:
