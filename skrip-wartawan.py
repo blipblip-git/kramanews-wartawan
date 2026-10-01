@@ -547,7 +547,7 @@ def judul_spam(judul):
 
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.30)
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.31)
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -767,12 +767,15 @@ def adalah_konten_otomotif(teks):
 class BeritaLama(Exception):
     pass
 
-STAT_SCRAPE = {'ok': 0, 'gagal': 0, 'skip': 0}
+STAT_SCRAPE = {'ok': 0, 'gagal': 0, 'skip': 0, 'irisan_gagal': 0}
 JUDUL_TERPAKAI = []
 JUDUL_6JAM = []
 _GAMBAR_TERPAKAI_CACHE = None
 
-# ═══ V6.17.30: BLACKLIST PERMANEN rejected_urls — SEMUA tolak AI Token ═══
+# ═══ V6.17.31: DEBUG SCRAPING AKTIF ═══
+DEBUG_SCRAPE = True
+
+# ═══ V6.17.30: BLACKLIST PERMANEN rejected_urls ═══
 REJECTED_URLS_CACHE = None
 
 def muat_rejected_urls():
@@ -799,14 +802,12 @@ def muat_rejected_urls():
     REJECTED_URLS_CACHE = out
     return out
 
-# V6.17.30: catat SEMUA tolak AI Token (bukan hanya "tidak cocok kategori")
 def catat_tolak_ai_token(source_url, alasan):
     if not source_url:
         return
     alasan_str = (alasan or '').strip()
     if not alasan_str:
         return
-    # Skip tolak transient (spam/rate-limit) — bisa retry
     alasan_low = alasan_str.lower()
     KATA_TRANSIENT = ['rate limit', 'timeout', 'koneksi', 'connection',
                       'error sementara', 'coba lagi', 'retry']
@@ -886,6 +887,13 @@ def domain_skip_scrape(url):
     low = (url or '').lower()
     return any(d in low for d in DOMAIN_SKIP_SCRAPE)
 
+def _domain_dari_url(url):
+    try:
+        m = re.match(r'^https?://([^/]+)', url or '')
+        return m.group(1) if m else '?'
+    except Exception:
+        return '?'
+
 def scrape_via_jina(url):
     try:
         headers = {'User-Agent': random.choice(UA_LIST)}
@@ -945,7 +953,7 @@ def _bersihkan_html_artikel(html):
 
 _CACHE_SCRAPE = {}
 
-def scrape_artikel(url):
+def scrape_artikel(url, judul_debug=''):
     if not url:
         return ''
     if url in _CACHE_SCRAPE:
@@ -962,6 +970,10 @@ def scrape_artikel(url):
         STAT_SCRAPE['skip'] += 1
         _CACHE_SCRAPE[url] = ''
         return ''
+    # V6.17.31: DEBUG — print URL final + domain
+    if DEBUG_SCRAPE:
+        print('       [DEBUG] URL final: ' + url_asli[:100])
+        print('       [DEBUG] Domain: ' + _domain_dari_url(url_asli))
     hasil = ''
     try:
         headers = {
@@ -991,10 +1003,14 @@ def scrape_artikel(url):
     return ''
 
 def ambil_materi_kaya(c):
-    scraped = scrape_artikel(c.get('link', ''))
+    scraped = scrape_artikel(c.get('link', ''), c.get('title', ''))
     if scraped and len(scraped) >= SCRAPE_MIN_KARAKTER:
         STAT_SCRAPE['ok'] += 1
         print('       Scraping artikel asli: ' + str(len(scraped)) + ' karakter')
+        # V6.17.31: DEBUG — print 250 karakter pertama materi
+        if DEBUG_SCRAPE:
+            print('       [DEBUG] Judul asli: ' + (c.get('title') or '')[:80])
+            print('       [DEBUG] Materi 250 kar pertama: ' + scraped[:250])
         return scraped, True
     STAT_SCRAPE['gagal'] += 1
     potongan = []
@@ -1041,7 +1057,6 @@ def kata_inti(judul):
     return set(k for k in normalisasi_judul(judul).split()
                if len(k) > 3 and k not in KATA_STOP_DOBEL)
 
-# V6.17.30: cek ada nama diri (2+ kata Kapital) di judul
 def _ada_nama_diri_judul(judul):
     if not judul:
         return False
@@ -1081,7 +1096,6 @@ def sudah_serupa(judul):
             sama = ki & kt
             if len(sama) >= 3 and len(sama) / min(len(ki), len(kt)) >= 0.7:
                 return True
-    # V6.17.30: anti-dobel-6jam lebih ketat — butuh 5 kata + nama diri
     for t in JUDUL_6JAM:
         if not t:
             continue
@@ -1149,7 +1163,6 @@ def tanggal_publikasi_str(entry):
     except Exception:
         return None
 
-# V6.17.30: PROMPT AI TOKEN — tolak HANYA kalau JELAS beda kategori
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu AI Editor KramaNews Indonesia. TUGAS: Tulis berita dari materi yang sudah lolos filter. Materi SUDAH BERSIH — jangan tolak kecuali fatal.
@@ -1258,7 +1271,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.30)
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.31)
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1406,20 +1419,17 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# ═══ V6.17.30: VALIDASI MATERI SCRAPING ═══
+# ═══ V6.17.31: VALIDASI MATERI — min_irisan 3→2 + fallback summary ═══
 
 def _materi_dominan_url(teks):
-    """Cek materi dominan URL — bukan artikel asli."""
     if not teks:
         return False
-    # Hitung rasio karakter URL vs total
     url_chars = sum(len(m.group(0)) for m in re.finditer(r'https?://\S+', teks))
     if len(teks) < 100:
         return False
     rasio = url_chars / len(teks)
     if rasio >= 0.30:
         return True
-    # Cek dominan frasa link
     low = teks.lower()
     frasa_link = ['baca juga', 'baca selengkapnya', 'lihat juga', 'simak juga',
                   'klik di sini', 'baca di sini', 'selengkapnya di']
@@ -1428,29 +1438,26 @@ def _materi_dominan_url(teks):
         return True
     return False
 
-def _materi_nyambung_judul(judul, materi, min_irisan=3):
-    """Cek irisan kata judul vs materi."""
+def _materi_nyambung_judul(judul, materi, min_irisan=2):
     if not judul or not materi:
         return False, 'judul/materi kosong'
-    # Kata kunci judul (buang stopword)
     kata_judul = set(k for k in re.findall(r'[a-z]{3,}', judul.lower())
                      if k not in KATA_STOP_DOBEL)
     if not kata_judul:
         return True, ''
-    # Kata kunci materi
     kata_materi = set(re.findall(r'[a-z]{3,}', materi.lower()))
     irisan = kata_judul & kata_materi
     if len(irisan) < min_irisan:
         return False, ('judul-materi tidak nyambung (irisan ' + str(len(irisan))
-                       + ' < ' + str(min_irisan) + '): ' + str(sorted(irisan)[:5]))
+                       + ' < ' + str(min_irisan) + '): ' + str(sorted(irisan)[:5])
+                       + ' | kata judul: ' + str(sorted(list(kata_judul))[:8]))
     return True, ''
 
 def _materi_valid(judul, materi):
-    """Validasi lengkap materi sebelum kirim AI Token."""
     if not materi:
         return False, 'materi kosong'
     if len(materi) < MATERI_MIN_KARAKTER:
-        return False, 'materi terlalu pendek (' + str(len(materi))
+        return False, 'materi terlalu pendek (' + str(len(materi)) + ' < ' + str(MATERI_MIN_KARAKTER) + ')'
     if _materi_dominan_url(materi):
         return False, 'materi dominan URL/link (bukan artikel asli)'
     ok, alasan = _materi_nyambung_judul(judul, materi)
@@ -1459,8 +1466,6 @@ def _materi_valid(judul, materi):
     return True, ''
 
 # ═══ AKHIR VALIDASI MATERI ═══
-
-# ═══ V6.17.28: AI EDITOR LUAR ═══
 
 KATA_FEATURE_OPINI = [
     'editorial', 'opini:', 'analisis:', 'sorotan', 'potret', 'foto-foto',
@@ -1512,7 +1517,6 @@ KATA_KUNCI_KATEGORI = {
                  'mbg', 'sppg', 'dapur', 'makan bergizi', 'gizi',
                  'bgn', 'ketahanan pangan', 'bulog', 'koperasi', 'kdmp',
                  'merah putih', 'aturan', 'penjaminan', 'dana'],
-    # V6.17.30: daerah + infrastruktur/jembatan/jalan/PDAM/dll
     'daerah': ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
                'tana tidung', 'tanjung selor', 'sebatik', 'juata', 'sesayap',
                'kota', 'kabupaten', 'pemkot', 'pemkab', 'bupati', 'walikota',
@@ -1524,17 +1528,17 @@ KATA_KUNCI_KATEGORI = {
                'jembatan', 'jalan', 'jalan raya', 'aspal', 'pengecoran',
                'pembangunan', 'infrastruktur', 'fasilitas', 'gedung',
                'kantor', 'pasar', 'terminal', 'pelabuhan', 'bandara',
-               'pdma', 'pdam', 'air bersih', 'sanitasi', 'drainase',
-               'banjir', 'normalisasi', 'sungai', 'tamah', 'taman',
+               'pdam', 'air bersih', 'sanitasi', 'drainase',
+               'banjir', 'normalisasi', 'sungai', 'taman',
                'trotoar', 'lampu', 'penerangan', 'sampah', 'tps',
                'posyandu', 'puskesmas', 'rumah sakit daerah', 'sekolah',
                'masjid', 'gereja', 'vihara', 'pura', 'lapangan',
                'olahraga daerah', 'kebudayaan', 'wisata daerah',
                'umkm daerah', 'pasar rakyat', 'retribusi', 'pajak daerah',
-               'apbd', 'dprd', 'rapbd', 'musrenbang', 'perda',
-               'camat', 'lurah', 'kades', 'bpd', 'karang taruna',
-               'posyandu', 'pkk', 'dasawisma', 'bumdes', 'bumn daerah',
-               'perumda', 'perusda', 'bank daerah', 'pdam',
+               'apbd', 'rapbd', 'musrenbang', 'perda',
+               'kades', 'bpd', 'karang taruna',
+               'pkk', 'dasawisma', 'bumdes', 'bumn daerah',
+               'perumda', 'perusda', 'bank daerah',
                'ketahanan pangan', 'pertanian', 'perikanan', 'nelayan',
                'petani', 'tambak', 'sawah', 'perkebunan', 'ternak'],
     'internasional': ['amerika', 'rusia', 'china', 'jepang', 'korea',
@@ -1843,7 +1847,6 @@ def _kandidat_bukan_jadwal_transport(kategori, judul, summary):
             return False, 'jadwal transportasi bukan daerah: ' + k
     return True, ''
 
-# V6.17.30: LONGGAARKAN — tolak hanya kalau materi MURNI pendidikan
 KATA_PENDIDIKAN_MURNI = [
     'smpn', 'sman', 'smkn', 'sdn', 'mtsn', 'man ',
     'sekolah dasar negeri', 'sekolah menengah atas', 'sekolah menengah pertama',
@@ -1859,7 +1862,6 @@ def _kandidat_bukan_pendidikan(kategori, judul, summary):
     if kategori != 'daerah':
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
-    # V6.17.30: hanya tolak kalau materi MURNI pendidikan (2+ kata kunci)
     hit = 0
     for k in KATA_PENDIDIKAN_MURNI:
         if len(k) <= 4:
@@ -3990,7 +3992,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.30)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.31)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -4419,7 +4421,6 @@ def sesi_otomotif(today_urls, seen):
         return 1
     return 0
 
-# V6.17.30: API FOOTBALL DIHAPUS — fungsi sesi_olahraga_api diganti Google News
 def sesi_olahraga_api(jenis):
     now = datetime.now(WITA)
     jam = now.hour
@@ -4429,7 +4430,6 @@ def sesi_olahraga_api(jenis):
         if olahraga_sudah_terbit_hari_ini('Olahraga Pagi'):
             print('   Olahraga Pagi sudah terbit HARI INI - skip.')
             return 1
-        # TAHAP 1: Event besar aktif
         aktif = event_besara_aktif()
         if aktif:
             print('   TAHAP 1: event besar aktif...')
@@ -4439,7 +4439,6 @@ def sesi_olahraga_api(jenis):
                 return 1
         else:
             print('   Tidak ada event besar aktif.')
-        # TAHAP 2: berita bola via Google News
         print('   TAHAP 2: berita bola via Google News...')
         today_urls = get_today_state()
         seen = set()
@@ -4466,7 +4465,6 @@ def sesi_olahraga_api(jenis):
                                           breaking=False, kategori_target='internasional')
             if hasil == 1:
                 return 1
-        # TAHAP 3: olahraga umum
         print('   TAHAP 3: olahraga umum (fallback terakhir)...')
         today_urls = get_today_state()
         seen = set()
@@ -4753,7 +4751,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.30 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.31 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4767,7 +4765,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.30'
+FILE_VERSI      = 'V6.17.31'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
