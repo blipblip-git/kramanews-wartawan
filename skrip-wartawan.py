@@ -2997,7 +2997,7 @@ def sumber_otomotif_hari_ini(jam):
         sumber.append(GN(q, lang, 'GN Otomotif: ' + dom['nama'], when='180d'))
     sumber.append(RSSF('https://www.otomotifnet.com/rss', 'Otomotifnet'))
     sumber.append(RSSF('https://www.gridoto.com/rss', 'GridOto'))
-        print('   OTOMOTIF hari ini (jam ' + str(jam) + '): ' + dom['nama'])
+    print('   OTOMOTIF hari ini (jam ' + str(jam) + '): ' + dom['nama'])
     return dom, sumber
 
 def sumber_teknologi_hari_ini(jam):
@@ -3111,7 +3111,6 @@ def _kemiripan_struktur_kalimat(isi_ai, materi_sumber):
     for ka in kalimat_ai:
         for km in kalimat_materi:
             ratio = SequenceMatcher(None, ka.lower(), km.lower()).ratio()
-            # V6.17.37: struktur 0.75 → 0.82 (lebih longgar)
             if ratio >= 0.82:
                 return 'struktur kalimat mirip (' + str(int(ratio * 100)) + '%): "' + ka[:60] + '"'
     return None
@@ -3122,7 +3121,6 @@ def cek_jiplak(materi_sumber, isi_ai):
     frasa_mesin = _frasa_janggal_terjemahan(isi_ai)
     if frasa_mesin:
         return frasa_mesin
-    # V6.17.37: n-gram 10 → 13 kata (lebih longgar)
     n_kata = 13
     if len(materi_sumber) < 500:
         n_kata = 15
@@ -3283,7 +3281,6 @@ def catat_gambar_terpakai(url):
     if url:
         muat_gambar_terpakai().add(url)
 
-# ═══ V6.17.39: CATATAN KHUSUS EKONOMI ═══
 KATA_SINYAL_EKONOMI = [
     'ekspor', 'impor', 'trade', 'exports', 'imports', 'perdagangan',
     'neraca dagang', 'gdp', 'pdb', 'pertumbuhan ekonomi', 'produksi',
@@ -3292,7 +3289,6 @@ KATA_SINYAL_EKONOMI = [
 ]
 
 def _catatan_ekonomi_khusus(kategori_target, judul, materi):
-    """Sisipkan catatan 'materi ini ekonomi' kalau ada sinyal ekonomi tanpa kata 'ekonomi'."""
     if kategori_target != 'ekonomi':
         return ''
     gab_low = ((judul or '') + ' ' + (materi or '')).lower()
@@ -3306,7 +3302,6 @@ def _catatan_ekonomi_khusus(kategori_target, judul, materi):
                 '- JANGAN tolak dengan alasan "politik luar negeri" atau "materi politik".\n'
                 '- Fokus: angka, data perdagangan, pertumbuhan, dampak ekonomi.\n')
     return ''
-# ═══ AKHIR CATATAN EKONOMI ═══
 
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
              judul_materi='', summary_materi='', wajib_topik=True,
@@ -3361,7 +3356,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     if ada_persen_kata(judul + ' ' + isi + ' ' + ringkasan):
         print('       Persen auto-fix diterapkan.')
 
-    # ═══ V6.17.39: ANTI-JIPLAK JUDUL AI vs JUDUL MATERI ═══
     if judul_materi and judul:
         rasio_judul = SequenceMatcher(None, judul.lower(), judul_materi.lower()).ratio()
         if rasio_judul >= 0.80:
@@ -3370,7 +3364,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
             if source_url:
                 catat_tolak_ai_token(source_url, msg_tolak)
             raise Exception('DITOLAK - ' + msg_tolak)
-    # ═══ AKHIR ANTI-JIPLAK JUDUL ═══
 
     judul_l = judul.lower()
     if any(x in judul_l for x in ('materi tidak dapat diolah', 'materi tidak tersedia',
@@ -3461,7 +3454,6 @@ def _catatan_anti_jiplak():
         '- HINDARI frasa janggal terjemahan mesin.\n'
         '- Ganti sinonim: "mengatakan" → "menuturkan/ujar".\n'
         '- JANGAN salin struktur kalimat materi — ubah susunan kata.\n'
-        # V6.17.39: instruksi tegas anti-jiplak judul
         '- JUDUL: DILARANG pakai judul yang sama/mirip dengan materi sumber. '
         'WAJIB bikin judul BEDA dengan kalimatmu sendiri — jiplak judul = ditolak.\n'
     )
@@ -3503,7 +3495,6 @@ def ai_rewrite_single(c, kategori_target=''):
     else:
         baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia.\n'
                      'WAJIB: tulis kejadian sebagai peristiwa TERKINI dengan tanggal konkret.\n')
-    # V6.17.39: catatan khusus ekonomi
     catatan_eko = _catatan_ekonomi_khusus(kategori_target, c.get('title', ''), materi)
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
             + baris_tgl +
@@ -3574,7 +3565,6 @@ def ai_rewrite_multi(items, kategori_target=''):
     else:
         baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia.\n'
                      'WAJIB: tulis kejadian sebagai peristiwa TERKINI.\n')
-    # V6.17.39: catatan khusus ekonomi
     catatan_eko = _catatan_ekonomi_khusus(kategori_target, judul_materi_gabung, semua_materi)
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
             + baris_tgl +
