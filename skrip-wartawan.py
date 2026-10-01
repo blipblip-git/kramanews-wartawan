@@ -553,7 +553,7 @@ def judul_spam(judul):
 
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.33)
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.39)
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -780,6 +780,9 @@ JUDUL_6JAM = []
 _GAMBAR_TERPAKAI_CACHE = None
 
 DEBUG_SCRAPE = True
+
+# ═══ V6.17.39: PEMOTONGAN MATERI PANJANG ═══
+MATERI_MAKS_KARAKTER = 1000
 
 # ═══ V6.17.30: BLACKLIST PERMANEN rejected_urls ═══
 REJECTED_URLS_CACHE = None
@@ -1088,11 +1091,27 @@ def scrape_artikel(url, judul_debug=''):
     _CACHE_SCRAPE[url] = ''
     return ''
 
+# ═══ V6.17.39: POTONG MATERI PANJANG (>1000 KAR) ═══
+def _potong_materi(teks, maks=MATERI_MAKS_KARAKTER):
+    """Potong materi > maks kar. Potong di kalimat terakhir sebelum maks."""
+    if not teks or len(teks) <= maks:
+        return teks
+    potong = teks[:maks]
+    # Cari titik/kalimat terakhir
+    pos = max(potong.rfind('. '), potong.rfind('! '), potong.rfind('? '))
+    if pos > maks * 0.7:
+        return potong[:pos + 1].strip()
+    return potong.strip()
+
 def ambil_materi_kaya(c):
     scraped = scrape_artikel(c.get('link', ''), c.get('title', ''))
     if scraped and len(scraped) >= SCRAPE_MIN_KARAKTER:
         STAT_SCRAPE['ok'] += 1
-        print('       Scraping artikel asli: ' + str(len(scraped)) + ' karakter')
+        # V6.17.39: potong jika > 1000 kar
+        panjang_asli = len(scraped)
+        scraped = _potong_materi(scraped, MATERI_MAKS_KARAKTER)
+        print('       Scraping artikel asli: ' + str(panjang_asli)
+              + ' kar → potong ' + str(len(scraped)) + ' kar')
         if DEBUG_SCRAPE:
             print('       [DEBUG] Judul asli: ' + (c.get('title') or '')[:80])
             print('       [DEBUG] Materi 250 kar pertama: ' + scraped[:250])
@@ -1124,8 +1143,11 @@ def ambil_materi_kaya(c):
         print('       Scraping gagal & RSS kosong - pakai summary minimal')
         return c.get('summary', ''), False
     gabung = '\n\n'.join(potongan)
+    # V6.17.39: potong jika > 1000 kar
+    panjang_asli = len(gabung)
+    gabung = _potong_materi(gabung, MATERI_MAKS_KARAKTER)
     print('       Scraping gagal/pendek - pakai gabungan title+RSS ('
-          + str(len(gabung)) + ' kar)')
+          + str(panjang_asli) + ' → ' + str(len(gabung)) + ' kar)')
     return gabung, False
 
 KATA_STOP_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
