@@ -1355,7 +1355,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.34)
+# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.36)
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1503,9 +1503,9 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# ═══ V6.17.34: VALIDASI MATERI — threshold beda untuk scraping vs fallback RSS ═══
+# ═══ V6.17.36: VALIDASI MATERI — threshold RSS 200→100 ═══
 
-MATERI_MIN_KARAKTER_RSS = 200
+MATERI_MIN_KARAKTER_RSS = 100
 
 def _materi_dominan_url(teks):
     if not teks:
@@ -1539,7 +1539,6 @@ def _materi_nyambung_judul(judul, materi, min_irisan=2):
                        + ' | kata judul: ' + str(sorted(list(kata_judul))[:8]))
     return True, ''
 
-# V6.17.34: threshold beda — scraping 800, fallback RSS 200
 def _materi_valid(judul, materi, dari_scraping=True):
     if not materi:
         return False, 'materi kosong'
@@ -4088,7 +4087,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.35)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.36)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -4859,7 +4858,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.35 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.36 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -4873,7 +4872,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.35'
+FILE_VERSI      = 'V6.17.36'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
