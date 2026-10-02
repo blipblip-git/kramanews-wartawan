@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.43)
+# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.44)
 
 import requests
 import json
@@ -33,7 +33,8 @@ GEMPA_DOM_MIN           = 5.5
 GEMPA_DUNIA_MIN         = 6.5
 SKOR_BREAKING_MIN       = 20
 SKOR_BREAKING_MIN_DOM   = 15
-AMBANG_MIRIP            = 0.65
+# ═══ V6.17.44: ANTI-DOBEL INFINEON — TURUNKAN 2 ANGKA ═══
+AMBANG_MIRIP            = 0.55
 SCRAPER_TIMEOUT         = 12
 SCRAPE_MIN_KARAKTER     = 600
 MATERI_MIN_KARAKTER     = 800
@@ -45,7 +46,8 @@ MATCH_MIN_KATA          = 2
 MATCH_MIN_RASIO         = 0.50
 DOMAIN_SKIP_SCRAPE      = ['berita.tarakankota.go.id']
 
-DOBEL_6JAM_MIN_KATA     = 5
+# ═══ V6.17.44: ANTI-DOBEL INFINEON — TURUNKAN 5 → 3 ═══
+DOBEL_6JAM_MIN_KATA     = 3
 DOBEL_6JAM_BUTUH_NAMA   = True
 
 # ═══ V6.17.32: GOOGLE NEWS DECODE ═══
@@ -456,7 +458,6 @@ HUNT = {
         RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
         RSSF('https://www.channelnewsasia.com/rssfeed/8395986/asia', 'CNA Asia'),
         RSSF('https://www.antaranews.com/rss/world', 'Antara Dunia'),
-        # V6.17.43: TAMBAH RSS ASIA
         RSSF('https://e.vnexpress.net/rss/news.rss', 'VnExpress'),
         RSSF('https://www.nationthailand.com/rss', 'The Nation Thailand'),
         RSSF('https://www.manilatimes.net/feed', 'Manila Times'),
@@ -478,7 +479,6 @@ HUNT = {
         RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
         RSSF('https://www.middleeasteye.net/rss', 'Middle East Eye'),
         RSSF('https://www.timesofisrael.com/feed/', 'Times of Israel'),
-        # V6.17.43: TAMBAH RSS TIMUR TENGAH
         RSSF('https://english.alarabiya.net/tools/rss', 'Al Arabiya'),
         RSSF('https://gulfnews.com/rss', 'Gulf News'),
         RSSF('https://www.jpost.com/rss/rssfeedsfrontpage.aspx', 'Jerusalem Post'),
@@ -496,7 +496,6 @@ HUNT = {
         RSSF('https://apnews.com/index.rss', 'AP News'),
         RSSF('https://www.france24.com/en/rss', 'France24'),
         RSSF('http://rss.cnn.com/rss/edition_world.rss', 'CNN World'),
-        # ═══ V6.17.43: TAMBAH PORTAL CHINA BESAR ═══
         RSSF('http://www.xinhuanet.com/english/rss/worldrss.xml', 'Xinhua World'),
         RSSF('https://www.chinadaily.com.cn/rss/world_rss.xml', 'China Daily World'),
         RSSF('https://www.chinadaily.com.cn/rss/bizchina_rss.xml', 'China Daily Biz'),
@@ -505,7 +504,6 @@ HUNT = {
         RSSF('https://www.globaltimes.cn/rss/outbrain.xml', 'Global Times'),
         RSSF('https://www.scmp.com/rss/91/feed', 'SCMP China'),
         RSSF('https://www.scmp.com/rss/92/feed', 'SCMP Asia'),
-        # ═══ TAMBAH PORTAL ASIA LAIN ═══
         RSSF('https://www.japantimes.co.jp/feed/', 'Japan Times'),
         RSSF('https://www.koreaherald.com/common/rss_xml.php?ct=020000000000', 'Korea Herald'),
         RSSF('https://www3.nhk.or.jp/nhkworld/en/news/rss/all.xml', 'NHK World'),
@@ -524,7 +522,6 @@ HUNT = {
         RSSF('https://www.antaranews.com/rss/ekonomi', 'Antara'),
         RSSF('https://economy.okezone.com/rss', 'Okezone Economy'),
         RSSF('https://www.kontan.co.id/rss', 'Kontan'),
-        # ═══ V6.17.43: TAMBAH RSS EKONOMI INTERNASIONAL ═══
         RSSF('https://feeds.a.dj.com/rss/RSSMarketsMain.xml', 'WSJ Markets'),
         RSSF('https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml', 'WSJ Business'),
         RSSF('https://www.bloomberg.com/feed/podcast/etf-report.xml', 'Bloomberg ETF'),
@@ -550,7 +547,6 @@ HUNT = {
         RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
         RSSF('https://www.goal.com/feeds/en/news', 'Goal.com'),
         RSSF('https://www.espn.com/espn/rss/news', 'ESPN'),
-        # V6.17.43: TAMBAH RSS OLAHRAGA
         RSSF('https://feeds.bbci.co.uk/sport/rss.xml', 'BBC Sport'),
         RSSF('https://www.espn.com/espn/rss/soccer/news', 'ESPN Soccer'),
         RSSF('https://www.skysports.com/rss/12040', 'Sky Sports Football'),
@@ -572,7 +568,6 @@ HUNT = {
         RSSF('https://www.gridoto.com/rss', 'GridOto'),
         RSSF('https://oto.detik.com/rss', 'Detik Oto'),
         RSSF('https://www.motorplus-online.com/rss', 'Motorplus'),
-        # ═══ V6.17.43: TAMBAH RSS OTOMOTIF INTERNASIONAL ═══
         RSSF('https://www.autocar.co.uk/rss', 'Autocar'),
         RSSF('https://www.motor1.com/rss/news/all/', 'Motor1'),
         RSSF('https://www.carscoops.com/feed/', 'Carscoops'),
@@ -616,7 +611,7 @@ def judul_spam(judul):
 
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.43)
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.44)
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -647,7 +642,6 @@ BREAKING_DUNIA_FEEDS = [
     RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
     RSSF('https://apnews.com/index.rss', 'AP News'),
     RSSF('https://www.france24.com/en/rss', 'France24'),
-    # V6.17.43: TAMBAH PORTAL CHINA + ASIA
     RSSF('http://www.xinhuanet.com/english/rss/worldrss.xml', 'Xinhua World'),
     RSSF('https://www.chinadaily.com.cn/rss/world_rss.xml', 'China Daily World'),
     RSSF('https://www.cgtn.com/subscribe/rss/section/world.xml', 'CGTN World'),
@@ -1275,9 +1269,47 @@ def kata_inti(judul):
     return set(k for k in normalisasi_judul(judul).split()
                if len(k) > 3 and k not in KATA_STOP_DOBEL)
 
+# ═══ V6.17.44: KAMUS PERUSAHAAN GLOBAL UNTUK DETEKSI NAMA DIRI ═══
+KAMUS_PERUSAHAAN_GLOBAL = [
+    'infineon', 'toyota', 'tesla', 'apple', 'google', 'microsoft', 'samsung',
+    'huawei', 'xiaomi', 'nvidia', 'intel', 'boeing', 'airbus', 'amazon',
+    'meta', 'facebook', 'netflix', 'openai', 'anthropic', 'bytedance', 'tiktok',
+    'sony', 'lg', 'panasonic', 'toshiba', 'sharp', 'canon', 'nikon', 'fujifilm',
+    'bmw', 'mercedes', 'volkswagen', 'audi', 'porsche', 'ferrari', 'lamborghini',
+    'hyundai', 'kia', 'nissan', 'honda', 'suzuki', 'mazda', 'mitsubishi',
+    'subaru', 'mclaren', 'bentley', 'rolls royce', 'jaguar', 'land rover',
+    'volvo', 'peugeot', 'renault', 'citroen', 'fiat', 'alfa romeo', 'maserati',
+    'chevrolet', 'ford', 'gmc', 'cadillac', 'chrysler', 'dodge', 'jeep',
+    'wuling', 'chery', 'geely', 'byd', 'nio', 'xpeng', 'li auto', 'great wall',
+    'renesas', 'tsmc', 'qualcomm', 'broadcom', 'amd', 'arm', 'asml', 'micron',
+    'texas instruments', 'stmicroelectronics', 'infineon technologies',
+    'bosch', 'continental', 'denso', 'zf', 'magna', 'aptiv', 'valeo',
+    'paypal', 'stripe', 'visa', 'mastercard', 'square', 'shopify', 'uber',
+    'airbnb', 'spotify', 'zoom', 'slack', 'salesforce', 'oracle', 'sap', 'ibm',
+    'cisco', 'dell', 'hp', 'lenovo', 'asus', 'acer', 'msi', 'razer',
+    'goldman sachs', 'morgan stanley', 'jp morgan', 'jpmorgan', 'citigroup',
+    'bank of america', 'wells fargo', 'hsbc', 'barclays', 'deutsche bank',
+    'ubs', 'credit suisse', 'bnp paribas', 'santander', 'standard chartered',
+    'exxon', 'chevron', 'shell', 'bp', 'total', 'petronas', 'aramco',
+    'nestle', 'unilever', 'pepsi', 'coca cola', 'cocacola', 'mcdonald',
+    'starbucks', 'kfc', 'pizza hut', 'domino', 'burger king',
+    'pfizer', 'moderna', 'biontech', 'astrazeneca', 'novartis', 'roche',
+    'johnson', 'merck', 'bayer', 'sanofi', 'gsk', 'sinovac', 'sinopharm',
+]
+
 def _ada_nama_diri_judul(judul):
     if not judul:
         return False
+    # Cek kamus perusahaan dulu (1 kata)
+    j_low = judul.lower()
+    for p in KAMUS_PERUSAHAAN_GLOBAL:
+        if len(p.split()) == 1:
+            if re.search(r'\b' + re.escape(p) + r'\b', j_low):
+                return True
+        else:
+            if p in j_low:
+                return True
+    # Cek pola 2 kata kapital (heuristik)
     pola = re.compile(r'\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b')
     skip = ['jakarta', 'bandung', 'surabaya', 'medan', 'semarang', 'makassar',
             'balikpapan', 'samarinda', 'tarakan', 'kaltara', 'kalimantan',
@@ -1297,6 +1329,16 @@ def _ada_nama_diri_judul(judul):
         if k1 in skip or k2 in skip:
             continue
         return True
+    # Heuristik: 1 kata kapital di awal judul (diikuti huruf kecil)
+    m1 = re.match(r'^([A-Z][a-z]{4,})\b', judul.strip())
+    if m1:
+        kata = m1.group(1).lower()
+        if kata not in skip and kata not in KATA_STOP_DOBEL:
+            # Cek bukan kata umum Indonesia
+            if kata not in ['presiden', 'menteri', 'pemerintah', 'indonesia',
+                            'jakarta', 'breaking', 'update', 'hasil', 'resmi',
+                            'kementerian', 'polisi', 'kepala', 'jenderal']:
+                return True
     return False
 
 def sudah_serupa(judul):
@@ -1505,7 +1547,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI (V6.17.42)
+# PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI (V6.17.44)
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1903,7 +1945,7 @@ KATA_KUNCI_KATEGORI = {
 }
 
 # AKHIR PART 3A-1
-# PART 3A-2 - MATERI_COCOK + KANDIDAT_KATEGORI + COLLECT + MATCH (V6.17.42)
+# PART 3A-2 - MATERI_COCOK + KANDIDAT_KATEGORI + COLLECT + MATCH + DOBEL_DATELINE_TOPIK (V6.17.44)
 
 def _materi_cocok_kategori(kategori, judul, summary):
     if not kategori:
@@ -2126,6 +2168,44 @@ def _kandidat_bukan_dobel(judul):
             else:
                 return False, 'dobel-6jam dengan "' + t[:40] + '"'
     return True, ''
+
+# ═══ V6.17.44: FUNGSI BARU — CEK DOBEL DATELINE + TOPIK ═══
+def _dobel_dateline_topik(judul_baru, isi_baru):
+    """Tolak kalau judul baru mirip (dateline + 2 kata kunci) judul lama 36 jam.
+
+    Cara kerja:
+    - Ambil dateline dari isi_baru (kota pertama sebelum ' - ')
+    - Bandingkan dengan JUDUL_TERPAKAI (36 jam)
+    - Tolak kalau: kata_inti(judul_baru) ∩ kata_inti(judul_lama) >= 2
+      DAN dateline_baru muncul di judul_lama (atau sebaliknya)
+    """
+    if not judul_baru or not isi_baru:
+        return None
+    m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+', isi_baru)
+    if not m:
+        return None
+    dateline_baru = m.group(1).strip().lower()
+    kota_baru = dateline_baru.split(',')[0].strip()
+    if not kota_baru:
+        return None
+    ki_baru = kata_inti(judul_baru)
+    if not ki_baru:
+        return None
+    for t in JUDUL_TERPAKAI:
+        if not t:
+            continue
+        kt = kata_inti(t)
+        if not kt:
+            continue
+        irisan = ki_baru & kt
+        if len(irisan) < 2:
+            continue
+        # dateline sama: kota_baru ada di judul lama
+        if kota_baru in t:
+            return ('dobel dateline+topik: "' + kota_baru + '" + '
+                    + str(len(irisan)) + ' kata kunci sama — '
+                    + 'irisan: ' + str(sorted(list(irisan))[:4]))
+    return None
 
 def _kandidat_layak(judul, summary, kategori=''):
     judul = (judul or '').strip()
@@ -3085,7 +3165,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
 
 # AKHIR PART 3A-4
 
-# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.43)
+# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.44)
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -3125,7 +3205,6 @@ def sumber_otomotif_hari_ini(jam):
         sumber.append(GN(q, lang, 'GN Otomotif: ' + dom['nama'], when='180d'))
     sumber.append(RSSF('https://www.otomotifnet.com/rss', 'Otomotifnet'))
     sumber.append(RSSF('https://www.gridoto.com/rss', 'GridOto'))
-    # V6.17.43: tambah RSS otomotif internasional
     sumber.append(RSSF('https://www.autocar.co.uk/rss', 'Autocar'))
     sumber.append(RSSF('https://www.motor1.com/rss/news/all/', 'Motor1'))
     sumber.append(RSSF('https://www.carscoops.com/feed/', 'Carscoops'))
@@ -3524,6 +3603,12 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     cek_dl = cek_dateline(isi, materi_asli)
     if cek_dl:
         raise Exception('diblokir dateline: ' + cek_dl[:60])
+    # ═══ V6.17.44: CEK DOBEL DATELINE + TOPIK SEBELUM CEK 6JAM ═══
+    dobel_dt = _dobel_dateline_topik(judul, isi)
+    if dobel_dt:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'diblokir anti-dobel-dateline: ' + dobel_dt[:80])
+        raise Exception('diblokir anti-dobel-dateline: ' + dobel_dt[:100])
     if not judul_topik_besar(judul):
         for t in JUDUL_6JAM:
             if len(kata_inti(judul) & kata_inti(t)) >= DOBEL_6JAM_MIN_KATA:
@@ -3590,7 +3675,6 @@ def _catatan_anti_jiplak():
         'WAJIB bikin judul BEDA dengan kalimatmu sendiri — jiplak judul = ditolak.\n'
     )
 
-# ═══ V6.17.43: PERKUAT CATATAN KATEGORI + GELAR ═══
 def _catatan_kategori_ketat(kategori_target):
     if not kategori_target or kategori_target == 'breaking':
         return ''
@@ -5100,7 +5184,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.43'
+FILE_VERSI = 'V6.17.44'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
