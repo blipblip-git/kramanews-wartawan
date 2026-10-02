@@ -567,7 +567,7 @@ def judul_spam(judul):
 
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.40)
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.41)
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -825,6 +825,14 @@ def muat_rejected_urls():
     REJECTED_URLS_CACHE = out
     return out
 
+# ═══ V6.17.41: SKIP CATAT REJECTED KALAU ALASAN TRANSIENT / PENDEK ═══
+KATA_ALASAN_TRANSIENT = [
+    'rate limit', 'timeout', 'koneksi', 'connection',
+    'error sementara', 'coba lagi', 'retry',
+    'materi terlalu pendek', 'materi tidak valid',
+    'materi kosong', 'materi gabungan tidak valid',
+]
+
 def catat_tolak_ai_token(source_url, alasan):
     if not source_url:
         return
@@ -832,9 +840,7 @@ def catat_tolak_ai_token(source_url, alasan):
     if not alasan_str:
         return
     alasan_low = alasan_str.lower()
-    KATA_TRANSIENT = ['rate limit', 'timeout', 'koneksi', 'connection',
-                      'error sementara', 'coba lagi', 'retry']
-    for k in KATA_TRANSIENT:
+    for k in KATA_ALASAN_TRANSIENT:
         if k in alasan_low:
             return
     try:
@@ -1596,7 +1602,7 @@ def gn_split(title):
 
 # ═══ V6.17.36: VALIDASI MATERI — threshold RSS 100 ═══
 
-MATERI_MIN_KARAKTER_RSS = 200
+MATERI_MIN_KARAKTER_RSS = 150
 
 def _materi_dominan_url(teks):
     if not teks:
@@ -5018,7 +5024,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.40'
+FILE_VERSI = 'V6.17.41'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
