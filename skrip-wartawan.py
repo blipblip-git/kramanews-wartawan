@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.38)
+# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.40)
 
 import requests
 import json
@@ -313,7 +313,6 @@ DOMAIN_KESEHATAN = [
 ]
 JAM_KESEHATAN = {10: 0, 15: 1, 16: 2}
 
-# V6.17.38: autonetmagz DIHAPUS dari DOMAIN_OTOMOTIF
 DOMAIN_OTOMOTIF = [
     {'nama': 'Mobil Baru & Rilis', 'query': [
         ('mobil baru rilis Indonesia', 'id'),
@@ -382,12 +381,17 @@ DOMAIN_TEKNOLOGI = [
 ]
 JAM_TEKNOLOGI = {8: 0, 13: 1, 18: 2}
 
+# ═══ V6.17.40: TAMBAH RSS LANGSUNG DI HUNT SEMUA KATEGORI ═══
 HUNT = {
     'nasional': [
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
         RSSF('https://nasional.kompas.com/rss', 'Kompas Nasional'),
         RSSF('https://www.antaranews.com/rss/nasional', 'Antara'),
         RSSF('https://news.okezone.com/rss', 'Okezone'),
+        RSSF('https://www.liputan6.com/rss', 'Liputan6'),
+        RSSF('https://www.detik.com/feed', 'Detik'),
+        RSSF('https://nasional.tribunnews.com/rss', 'Tribun Nasional'),
+        RSSF('https://www.suara.com/rss', 'Suara.com'),
         GN('pemerintah indonesia', 'id', 'Google News Nasional'),
         GN('dpr indonesia', 'id', 'Google News Nasional'),
         GN('Prabowo Subianto', 'id', 'Google News Presiden Prabowo'),
@@ -401,6 +405,7 @@ HUNT = {
     'daerah': [
         RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
         RSSF('https://kaltim.tribunnews.com/rss', 'Tribun Kaltim'),
+        RSSF('https://www.antaranews.com/rss/daerah', 'Antara Daerah'),
         GN('Tarakan', 'id', 'Google News Tarakan'),
         GN('Pemkot Tarakan', 'id', 'Google News Pemkot Tarakan'),
         GN('Wali Kota Tarakan', 'id', 'Google News Wali Kota Tarakan'),
@@ -447,6 +452,7 @@ HUNT = {
         RSSF('https://vietnamnews.vn/rss.html', 'Vietnam News'),
         RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
         RSSF('https://www.channelnewsasia.com/rssfeed/8395986/asia', 'CNA Asia'),
+        RSSF('https://www.antaranews.com/rss/world', 'Antara Dunia'),
         GN('asean', 'en', 'Google News ASEAN'),
         GN('malaysia indonesia', 'en', 'Google News Malaysia-Indonesia'),
         GN('thailand southeast asia', 'en', 'Google News Thailand'),
@@ -462,6 +468,8 @@ HUNT = {
     ],
     'internasional_tt': [
         RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
+        RSSF('https://www.middleeasteye.net/rss', 'Middle East Eye'),
+        RSSF('https://www.timesofisrael.com/feed/', 'Times of Israel'),
         GN('middle east news', 'en', 'Google News Timur Tengah'),
         GN('gaza palestine', 'en', 'Google News Gaza-Palestina'),
         GN('saudi arabia uae', 'en', 'Google News Saudi-UEA'),
@@ -473,6 +481,9 @@ HUNT = {
         RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
         RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
         RSSF('https://www.cnnindonesia.com/internasional/rss', 'CNN Indonesia'),
+        RSSF('https://apnews.com/index.rss', 'AP News'),
+        RSSF('https://www.france24.com/en/rss', 'France24'),
+        RSSF('http://rss.cnn.com/rss/edition_world.rss', 'CNN World'),
         GN('us politics', 'en', 'Google News USA'),
         GN('russia politics', 'en', 'Google News Rusia'),
         GN('europe politics', 'en', 'Google News Eropa'),
@@ -484,6 +495,7 @@ HUNT = {
         RSSF('https://www.cnbcindonesia.com/market/rss', 'CNBC Indonesia'),
         RSSF('https://www.antaranews.com/rss/ekonomi', 'Antara'),
         RSSF('https://economy.okezone.com/rss', 'Okezone Economy'),
+        RSSF('https://www.kontan.co.id/rss', 'Kontan'),
         GN('china economy', 'en', 'Google News Ekonomi China'),
         GN('japan economy', 'en', 'Google News Ekonomi Jepang'),
         GN('south korea economy', 'en', 'Google News Ekonomi Korea Selatan'),
@@ -497,6 +509,8 @@ HUNT = {
         RSSF('https://www.cnnindonesia.com/olahraga/rss', 'CNN Indonesia'),
         RSSF('https://www.bola.net/feed', 'Bola.net'),
         RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
+        RSSF('https://www.goal.com/feeds/en/news', 'Goal.com'),
+        RSSF('https://www.espn.com/espn/rss/news', 'ESPN'),
         GN('timnas indonesia', 'id', 'Google News Timnas'),
         GN('premier league', 'en', 'Google News Premier League'),
         GN('bundesliga', 'en', 'Google News Bundesliga'),
@@ -510,11 +524,11 @@ HUNT = {
         GN('tenis turnamen grand slam', 'id', 'Google News Tenis'),
         GN('liga 1 indonesia hasil', 'id', 'Google News Liga 1'),
     ],
-    # V6.17.38: autonetmagz DIHAPUS
     'otomotif': [
         RSSF('https://www.otomotifnet.com/rss', 'Otomotifnet'),
         RSSF('https://www.gridoto.com/rss', 'GridOto'),
         RSSF('https://oto.detik.com/rss', 'Detik Oto'),
+        RSSF('https://www.motorplus-online.com/rss', 'Motorplus'),
         GN('mobil baru rilis Indonesia', 'id', 'GN Mobil Baru'),
         GN('motor baru rilis Indonesia', 'id', 'GN Motor Baru'),
         GN('kendaraan listrik Indonesia', 'id', 'GN Kendaraan Listrik'),
@@ -553,7 +567,7 @@ def judul_spam(judul):
 
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.39)
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.40)
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -871,7 +885,7 @@ def _url_valid_berita(u):
         return False
     return True
 
-# ═══ V6.17.32: DECODE GOOGLE NEWS URL — ambil URL artikel asli ═══
+# ═══ V6.17.40: DECODE GOOGLE NEWS — METODE BARU (BASE64 / AU_yqL) ═══
 
 def _gn_id_dari_url(url):
     try:
@@ -907,14 +921,49 @@ def _gn_decode_html(html):
             return kandidat
     return ''
 
-def _gn_decode_batch(ids):
+def _gn_decode_base64(url):
+    """V6.17.40: decode ID Google News via base64 → ekstrak URL asli.
+    Google News ID biasanya base64 varian dari URL + signature."""
+    if not url:
+        return ''
+    try:
+        gid = _gn_id_dari_url(url)
+        if not gid:
+            return ''
+        # Padding base64
+        gid_pad = gid + '=' * (-len(gid) % 4)
+        try:
+            raw = base64.urlsafe_b64decode(gid_pad)
+        except Exception:
+            try:
+                raw = base64.b64decode(gid_pad)
+            except Exception:
+                return ''
+        if not raw:
+            return ''
+        # Cari URL di dalam raw bytes
+        teks = raw.decode('utf-8', errors='ignore')
+        # Cari pola http di dalam
+        for m in re.finditer(r'https?://[^\s\x00-\x1f"\'<>]+', teks):
+            u = m.group(0)
+            # Bersihkan trailing garbage
+            u = re.sub(r'[\x00-\x1f]+.*$', '', u)
+            if _url_valid_berita(u) and GOOGLE_NEWS_HOST not in u:
+                return u
+    except Exception as e:
+        print('       GN decode base64 gagal: ' + str(e)[:60])
+    return ''
+
+def _gn_decode_batch_new(ids):
+    """V6.17.40: metode baru — coba beberapa endpoint + base64 fallback."""
     if not ids:
         return {}
     out = {}
+    # Coba metode AU_yqL (batchexecute baru)
     try:
         url = 'https://news.google.com/_/DotsSplashUi/data/batchexecute'
         payload = []
-        for i, gid in enumerate(ids):
+        for gid in ids:
             payload.append(['Fbv4je',
                             '["garturlreq",[["X","X",["X","X"],null,null,1,1,"US:en",null,1,null,null,null,null,null,0,1],"X","X",1,[1,1,1],1,1,null,0,0,null,0],"' + gid + '",0,0]'])
         import json as _json
@@ -924,21 +973,36 @@ def _gn_decode_batch(ids):
             'User-Agent': random.choice(UA_LIST),
         }
         r = requests.post(url, data=body, headers=headers, timeout=GN_DECODE_TIMEOUT)
-        if not r.ok:
-            return {}
-        teks = r.text or ''
-        for m in re.finditer(r'"(https?://[^"]+)"', teks):
-            u = m.group(1).replace('\\u003d', '=').replace('\\u0026', '&')
-            if _url_valid_berita(u) and GOOGLE_NEWS_HOST not in u:
-                out.setdefault('_first', u)
-                if '_first' in out:
+        if r.ok:
+            teks = r.text or ''
+            for m in re.finditer(r'"(https?://[^"]+)"', teks):
+                u = m.group(1).replace('\\u003d', '=').replace('\\u0026', '&')
+                if _url_valid_berita(u) and GOOGLE_NEWS_HOST not in u:
+                    out.setdefault('_first', u)
                     break
-        if out.get('_first'):
-            for gid in ids:
-                out[gid] = out['_first']
-            out.pop('_first', None)
+            if out.get('_first'):
+                for gid in ids:
+                    out[gid] = out['_first']
+                out.pop('_first', None)
+                return out
     except Exception as e:
-        print('       GN decode batch gagal: ' + str(e)[:60])
+        print('       GN decode batch new gagal: ' + str(e)[:60])
+    # Fallback: metode AU_yqL endpoint alternatif
+    try:
+        url = 'https://news.google.com/rss/articles/' + ids[0]
+        headers = {
+            'User-Agent': random.choice(UA_LIST),
+            'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
+        }
+        r = requests.get(url, headers=headers, timeout=GN_DECODE_TIMEOUT, allow_redirects=True)
+        if r.ok:
+            u = _gn_decode_html(r.text or '')
+            if u:
+                for gid in ids:
+                    out[gid] = u
+                return out
+    except Exception as e:
+        print('       GN decode endpoint alt gagal: ' + str(e)[:60])
     return out
 
 def resolusi_link_google(url):
@@ -949,9 +1013,16 @@ def resolusi_link_google(url):
         print('       GN decode: ID tidak ditemukan di URL')
         STAT_SCRAPE['gn_gagal_decode'] += 1
         return ''
-    hasil = _gn_decode_batch([gid])
+    # V6.17.40: coba batch baru dulu
+    hasil = _gn_decode_batch_new([gid])
     if hasil and gid in hasil:
         return hasil[gid]
+    # V6.17.40: coba base64 decode
+    u_b64 = _gn_decode_base64(url)
+    if u_b64:
+        print('       GN decode base64 BERHASIL: ' + u_b64[:80])
+        return u_b64
+    # Fallback: HTML scraping
     try:
         headers = {
             'User-Agent': random.choice(UA_LIST),
@@ -1097,7 +1168,6 @@ def _potong_materi(teks, maks=MATERI_MAKS_KARAKTER):
     if not teks or len(teks) <= maks:
         return teks
     potong = teks[:maks]
-    # Cari titik/kalimat terakhir
     pos = max(potong.rfind('. '), potong.rfind('! '), potong.rfind('? '))
     if pos > maks * 0.7:
         return potong[:pos + 1].strip()
@@ -1107,7 +1177,6 @@ def ambil_materi_kaya(c):
     scraped = scrape_artikel(c.get('link', ''), c.get('title', ''))
     if scraped and len(scraped) >= SCRAPE_MIN_KARAKTER:
         STAT_SCRAPE['ok'] += 1
-        # V6.17.39: potong jika > 1000 kar
         panjang_asli = len(scraped)
         scraped = _potong_materi(scraped, MATERI_MAKS_KARAKTER)
         print('       Scraping artikel asli: ' + str(panjang_asli)
@@ -1143,7 +1212,6 @@ def ambil_materi_kaya(c):
         print('       Scraping gagal & RSS kosong - pakai summary minimal')
         return c.get('summary', ''), False
     gabung = '\n\n'.join(potongan)
-    # V6.17.39: potong jika > 1000 kar
     panjang_asli = len(gabung)
     gabung = _potong_materi(gabung, MATERI_MAKS_KARAKTER)
     print('       Scraping gagal/pendek - pakai gabungan title+RSS ('
@@ -1528,7 +1596,7 @@ def gn_split(title):
 
 # ═══ V6.17.36: VALIDASI MATERI — threshold RSS 100 ═══
 
-MATERI_MIN_KARAKTER_RSS = 100
+MATERI_MIN_KARAKTER_RSS = 200
 
 def _materi_dominan_url(teks):
     if not teks:
@@ -1562,7 +1630,7 @@ def _materi_nyambung_judul(judul, materi, min_irisan=2):
                        + ' | kata judul: ' + str(sorted(list(kata_judul))[:8]))
     return True, ''
 
-def _materi_valid(judul, materi, dari_scraping=True):
+def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
     if not materi:
         return False, 'materi kosong'
     min_kar = MATERI_MIN_KARAKTER if dari_scraping else MATERI_MIN_KARAKTER_RSS
@@ -3481,7 +3549,7 @@ def _catatan_kategori_ketat(kategori_target):
 def ai_rewrite_single(c, kategori_target=''):
     k = konteks_waktu()
     materi, kaya = ambil_materi_kaya(c)
-    ok_valid, alasan_valid = _materi_valid(c.get('title', ''), materi, dari_scraping=kaya)
+    ok_valid, alasan_valid = _materi_valid(c.get('title', ''), materi, dari_scraping=kaya, kategori=kategori_target)
     if not ok_valid:
         print('       Materi tidak valid - skip: ' + alasan_valid[:80])
         if c.get('link'):
@@ -3550,8 +3618,7 @@ def ai_rewrite_multi(items, kategori_target=''):
         bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title'] + '\nIsi: ' + materi[:800])
         semua_materi += ' ' + materi
     dari_scraping = kaya_ada
-    ok_valid, alasan_valid = _materi_valid(items[0].get('title', ''), semua_materi,
-                                            dari_scraping=dari_scraping)
+    ok_valid, alasan_valid = _materi_valid(items[0].get('title', ''), semua_materi, dari_scraping=dari_scraping, kategori=kategori_target)
     if not ok_valid:
         print('       Materi gabungan tidak valid - skip: ' + alasan_valid[:80])
         if items[0].get('link'):
@@ -3641,7 +3708,7 @@ def _target_teknologi(dom):
 def ai_rewrite_teknologi_single(c, dom):
     k = konteks_waktu()
     materi, kaya = ambil_materi_kaya(c)
-    ok_valid, alasan_valid = _materi_valid(c.get('title', ''), materi, dari_scraping=kaya)
+        ok_valid, alasan_valid = _materi_valid(c.get('title', ''), materi, dari_scraping=kaya, kategori='teknologi')
     if not ok_valid:
         print('       Materi teknologi tidak valid - skip: ' + alasan_valid[:80])
         if c.get('link'):
@@ -3701,8 +3768,7 @@ def ai_rewrite_teknologi_multi(items, dom):
         bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title'] + '\nIsi: ' + materi[:800])
         semua_materi += ' ' + materi
     dari_scraping = kaya_ada
-    ok_valid, alasan_valid = _materi_valid(items[0].get('title', ''), semua_materi,
-                                            dari_scraping=dari_scraping)
+            ok_valid, alasan_valid = _materi_valid(items[0].get('title', ''), semua_materi, dari_scraping=dari_scraping, kategori='teknologi')
     if not ok_valid:
         print('       Materi gabungan teknologi tidak valid - skip: ' + alasan_valid[:80])
         if items[0].get('link'):
@@ -3878,10 +3944,13 @@ def _tulis_event_besar(cand, aktif, breaking=False):
             '- NAMA + JABATAN narasumber wajib lengkap.\n'
             '- deskripsi_gambar: tema stadion/medali/atletik 3-6 kata - '
             'TANPA hewan, manusia, alas kaki.\n'
-            '- Jangan sebut media sumber.')
+            '- Jangan sebut media sumber.\n'
+            '- DILARANG kalimat sampah seperti "pertandingan berlangsung seru",\n'
+            '  "para atlet tampil memukau", "suasana meriah" TANPA data konkret.\n'
+            '- Setiap kalimat WAJIB memuat minimal 1 dari: angka, nama, tempat, tanggal.')
     print('   AI menulis rekap event besar (' + str(len(cand[:5])) + ' materi)...')
     try:
-        judul, isi, ringkasan, waktu, gambar = ai_write(user, kategori='internasional',
+        judul, isi, ringkasan, waktu, gambar = ai_write(user, kategori='olahraga',
                                                          materi_sumber=semua_materi,
                                                          judul_materi=nama_event,
                                                          summary_materi=info_kota_str,
@@ -3893,7 +3962,7 @@ def _tulis_event_besar(cand, aktif, breaking=False):
     if sudah_serupa(judul):
         print('   Hasil AI dobel - skip.'); return 0
     try:
-        insert_news(judul, isi, ringkasan, 'internasional', '',
+        insert_news(judul, isi, ringkasan, 'olahraga', '',
                     cand[0].get('link', ''), 'Event Besar Dunia',
                     'published', breaking=breaking, deskripsi_gambar=gambar)
         print('   EVENT BESAR TERBIT: ' + judul[:60])
@@ -4950,7 +5019,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI      = 'V6.17.39'
+FILE_VERSI      = 'V6.17.40'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
