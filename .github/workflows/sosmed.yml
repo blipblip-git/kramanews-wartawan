@@ -1,16 +1,13 @@
 name: KramaNews Sosmed Auto-Post
 
+# ══════════════════════════════════════════════════════
+#  SOSMED.YML — V1.6
+#  Perubahan dari V1.5:
+#   - Hapus install Pillow (tidak dipakai lagi di V1.13)
+#   - FB kirim gambar asli (tanpa tempel judul)
+# ══════════════════════════════════════════════════════
+
 on:
-  schedule:
-    # ═══ V1.2: 5x/hari, tiap 3 jam ═══
-    # Jam WITA: 06:00, 09:00, 12:00, 15:00, 18:00
-    # Jam UTC (WITA-8): 22:00, 01:00, 04:00, 07:00, 10:00
-    # Menit digeser ke 7 (menit 0 paling padat di GitHub Actions)
-    - cron: '7 22 * * *'   # 06:07 WITA
-    - cron: '7 1 * * *'    # 09:07 WITA
-    - cron: '7 4 * * *'    # 12:07 WITA
-    - cron: '7 7 * * *'    # 15:07 WITA
-    - cron: '7 10 * * *'   # 18:07 WITA
   workflow_dispatch:
 
 jobs:
