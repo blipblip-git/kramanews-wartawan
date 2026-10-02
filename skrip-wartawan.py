@@ -3025,7 +3025,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
 
 # AKHIR PART 3A
 
-# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.39)
+# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.41)
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -3708,7 +3708,7 @@ def _target_teknologi(dom):
 def ai_rewrite_teknologi_single(c, dom):
     k = konteks_waktu()
     materi, kaya = ambil_materi_kaya(c)
-        ok_valid, alasan_valid = _materi_valid(c.get('title', ''), materi, dari_scraping=kaya, kategori='teknologi')
+    ok_valid, alasan_valid = _materi_valid(c.get('title', ''), materi, dari_scraping=kaya, kategori='teknologi')
     if not ok_valid:
         print('       Materi teknologi tidak valid - skip: ' + alasan_valid[:80])
         if c.get('link'):
@@ -3768,7 +3768,7 @@ def ai_rewrite_teknologi_multi(items, dom):
         bagian.append('[MATERI ' + str(i) + ']\nJudul: ' + it['title'] + '\nIsi: ' + materi[:800])
         semua_materi += ' ' + materi
     dari_scraping = kaya_ada
-            ok_valid, alasan_valid = _materi_valid(items[0].get('title', ''), semua_materi, dari_scraping=dari_scraping, kategori='teknologi')
+    ok_valid, alasan_valid = _materi_valid(items[0].get('title', ''), semua_materi, dari_scraping=dari_scraping, kategori='teknologi')
     if not ok_valid:
         print('       Materi gabungan teknologi tidak valid - skip: ' + alasan_valid[:80])
         if items[0].get('link'):
@@ -3805,7 +3805,6 @@ def ai_rewrite_teknologi_multi(items, dom):
                     source_url=items[0].get('link', '') if items else '')
 
 # AKHIR PART 3B
-
 # PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS (V6.17.27)
 
 KALENDER_EVENT = [
