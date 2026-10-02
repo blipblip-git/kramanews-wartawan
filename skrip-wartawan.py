@@ -1452,7 +1452,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A - EDGE CALL, REST GET, STATE, GAMBAR, SKOR, DATELINE, PERSEN, VALIDATOR (V6.17.39)
+# PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI (V6.17.42)
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1600,9 +1600,8 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# ═══ V6.17.36: VALIDASI MATERI — threshold RSS 100 ═══
-
 MATERI_MIN_KARAKTER_RSS = 150
+MATERI_MIN_KARAKTER_BREAKING = 100
 
 def _materi_dominan_url(teks):
     if not teks:
@@ -1639,7 +1638,12 @@ def _materi_nyambung_judul(judul, materi, min_irisan=2):
 def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
     if not materi:
         return False, 'materi kosong'
-    min_kar = MATERI_MIN_KARAKTER if dari_scraping else MATERI_MIN_KARAKTER_RSS
+    if kategori == 'breaking':
+        min_kar = MATERI_MIN_KARAKTER_BREAKING
+    elif dari_scraping:
+        min_kar = MATERI_MIN_KARAKTER
+    else:
+        min_kar = MATERI_MIN_KARAKTER_RSS
     if len(materi) < min_kar:
         return False, ('materi terlalu pendek (' + str(len(materi)) + ' < '
                        + str(min_kar) + ', dari_scraping=' + str(dari_scraping) + ')')
@@ -1650,20 +1654,11 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
         return False, alasan
     return True, ''
 
-# ═══ AKHIR VALIDASI MATERI ═══
-
 KATA_FEATURE_OPINI = [
     'editorial', 'opini:', 'analisis:', 'sorotan', 'potret', 'foto-foto',
     'galeri', 'in pictures', 'photos:', 'images:', 'see photos',
     'in photos', 'feature:', 'commentary', 'opinion:', 'analysis:',
     'review:', 'wawancara:', 'interview:',
-]
-
-KATA_KEGIATAN_SOSIAL = [
-    'salurkan', 'bagikan', 'bantu', 'gelar', 'adakan', 'rutin',
-    'kerja bakti', 'gotong royong', 'bersih-bersih', 'kunjungi',
-    'santuni', 'sedekah', 'donasi', 'beri bantuan', 'sosialisasi',
-    'edukasi', 'kampanye', 'penyuluhan', 'latihan', 'simulasi',
 ]
 
 STOPWORDS_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
@@ -1690,25 +1685,9 @@ def _kandidat_topik_nyambung(judul, summary):
         return False, 'judul & materi tidak nyambung (irisan 0)'
     return True, ''
 
-# ═══ V6.17.39: ANTI-POLITIK LUAR NEGERI DI EKONOMI ═══
-TOKOH_POLITIK_ASING = [
-    'xi jinping', 'putin', 'trump', 'biden', 'netanyahu', 'erdogan',
-    'macron', 'sunak', 'scholz', 'kishida', 'yoon suk yeol', 'modi',
-    'zelensky', 'al sissi', 'bin salman',
-]
-
-KATA_POLITIK_EKSPLISIT = [
-    'parlemen', 'taiwan', 'pemilu', 'diplomatik', 'resepsi diplomatik',
-    'kongres', 'senat', 'duma', 'legislatif', 'kabinet', 'reshuffle',
-    'mosi', 'impeachment', 'veto', 'summit', 'ktt',
-    'hubungan diplomatik', 'menteri luar negeri',
-]
-# ═══ AKHIR ANTI-POLITIK LUAR NEGERI ═══
-
 KATA_KUNCI_KATEGORI = {
     'nasional': ['pemerintah', 'presiden', 'menteri', 'dpr', 'kementerian',
-                 'prabowo', 'gibran', 'jakarta', 'indonesia', 'kebijakan',
-                 'menteri', 'wakil', 'menteri', 'program', 'nasional',
+                 'jakarta', 'indonesia', 'kebijakan', 'program', 'nasional',
                  'kpk', 'korupsi', 'hukum', 'sidang', 'pengadilan',
                  'polisi', 'tni', 'polri', 'pemilu', 'partai', 'dprd',
                  'anggaran', 'apbn', 'subsidi', 'bansos', 'pajak',
@@ -1744,8 +1723,8 @@ KATA_KUNCI_KATEGORI = {
     'internasional': ['amerika', 'rusia', 'china', 'jepang', 'korea',
                       'eropa', 'inggris', 'jerman', 'perancis', 'italia',
                       'timur tengah', 'israel', 'palestina', 'iran', 'irak',
-                      'ukraina', 'pbb', 'nato', 'who', 'trump', 'putin',
-                      'biden', 'london', 'washington', 'paris', 'berlin',
+                      'ukraina', 'pbb', 'nato', 'who',
+                      'london', 'washington', 'paris', 'berlin',
                       'moskow', 'tokyo', 'beijing', 'seoul', 'australia',
                       'kanada', 'meksiko', 'brasil', 'india', 'global',
                       'kamboja', 'cambodia', 'thailand', 'vietnam',
@@ -1770,7 +1749,7 @@ KATA_KUNCI_KATEGORI = {
                 'harga', 'pasar', 'konsumen', 'pedagang', 'pertanian',
                 'petani', 'industri', 'perdagangan', 'bumn', 'koperasi',
                 'keuangan', 'fiskal', 'moneter', 'daya beli',
-                'ventures', 'request for startups', 'asia tenggara',
+                'ventures', 'asia tenggara',
                 'malaysia', 'china', 'singapura', 'fintech', 'e-commerce',
                 'economy', 'economic', 'trade', 'growth', 'gdp', 'factory',
                 'exports', 'imports', 'tariff', 'sanction', 'stimulus',
@@ -1780,8 +1759,8 @@ KATA_KUNCI_KATEGORI = {
                  'pemain', 'klub', 'pertandingan', 'laga', 'gol', 'skor',
                  'klasemen', 'stadion', 'nba', 'ibl', 'bwf', 'fivb',
                  'jadwal', 'fifa', 'sea games', 'hasil', 'pelatih',
-                 'herdman', 'kualifikasi', 'wisata olahraga', 'potensi',
-                 'erik thohir', 'medali', 'perolehan', 'asian games',
+                 'kualifikasi', 'wisata olahraga', 'potensi',
+                 'medali', 'perolehan', 'asian games',
                  'olimpiade', 'olympic', 'barcelona', 'real madrid',
                  'manchester', 'liverpool', 'chelsea', 'arsenal',
                  'newcastle', 'aston villa', 'juventus', 'inter milan',
@@ -1794,8 +1773,7 @@ KATA_KUNCI_KATEGORI = {
                   'penipuan', 'scam', 'phishing', 'cyber', 'modus',
                   'online', 'doxing', 'hacker', 'kebocoran',
                   'funding', 'pendanaan', 'series a', 'series b', 'valuasi',
-                  'venture', 'modal ventura', 'beasiswa', 'garuda',
-                  'uc san diego', 'kuliah'],
+                  'venture', 'modal ventura', 'beasiswa', 'garuda'],
     'otomotif': ['mobil', 'motor', 'skutik', 'matic', 'kendaraan', 'listrik',
                  'sedan', 'suv', 'mpv', 'pickup', 'hatchback', 'toyota',
                  'honda', 'yamaha', 'suzuki', 'mitsubishi', 'hyundai',
@@ -1805,7 +1783,6 @@ KATA_KUNCI_KATEGORI = {
                   'vaksin', 'imunisasi', 'gizi', 'stunting', 'demam',
                   'flu', 'jantung', 'diabetes', 'kanker', 'stroke',
                   'mental', 'tidur', 'olahraga', 'diet', 'nutrisi',
-                  'mbg', 'makan bergizi', 'menu', 'ahli gizi',
                   'tekanan darah', 'hipertensi', 'kolesterol', 'asam urat',
                   'obesitas', 'kegemukan', 'berat badan', 'begadang',
                   'insomnia', 'stres', 'depresi', 'kecemasan', 'anxiety',
@@ -1872,6 +1849,9 @@ KATA_KUNCI_KATEGORI = {
                   'folat', 'asam folat', 'yodium', 'zinc', 'magnesium'],
 }
 
+# AKHIR PART 3A-1
+# PART 3A-2 - SKOR + PANGKAT + NARASUMBER + JANJI + TOKOH (V6.17.42)
+
 def _materi_cocok_kategori(kategori, judul, summary):
     if not kategori:
         return True, ''
@@ -1906,7 +1886,6 @@ def _kandidat_kategori_materi(kategori, judul, summary):
     elif kategori == 'ekonomi':
         if not any(k in gab for k in KATA_EKONOMI_WAJIB):
             return False, 'kategori ekonomi tapi materi tidak ada kata ekonomi'
-        # V6.17.39: tolak kalau ada tokoh politik asing + kata politik eksplisit
         ada_tokoh = any(k in gab for k in TOKOH_POLITIK_ASING)
         ada_politik = any(k in gab for k in KATA_POLITIK_EKSPLISIT)
         if ada_tokoh and ada_politik:
@@ -1914,111 +1893,6 @@ def _kandidat_kategori_materi(kategori, judul, summary):
     ok, alasan = _materi_cocok_kategori(kategori, judul, summary)
     if not ok:
         return False, alasan
-    return True, ''
-
-def _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary):
-    if kategori not in ('internasional', 'internasional_asean', 'internasional_tt'):
-        return True, ''
-    gab = ((judul or '') + ' ' + (summary or '')).lower()
-    for tokoh in NAMA_TOKOH_INDONESIA:
-        if re.search(r'\b' + re.escape(tokoh) + r'\b', gab):
-            return False, 'kategori luar tapi ada tokoh Indonesia: ' + tokoh
-    for lem in LEMBAGA_INDONESIA:
-        if lem == 'kpk':
-            if _kpk_konteks_indonesia(gab):
-                return False, 'kategori luar tapi ada lembaga Indonesia kpk (konteks Indonesia)'
-            continue
-        if lem == 'tni':
-            continue
-        if re.search(r'\b' + re.escape(lem) + r'\b', gab):
-            return False, 'kategori luar tapi ada lembaga Indonesia: ' + lem
-    return True, ''
-
-def _kandidat_ada_lokasi(judul, summary, kategori=''):
-    if kategori in ('nasional', 'breaking', 'teknologi', 'kesehatan'):
-        return True, ''
-    gab = ((judul or '') + ' ' + (summary or '')).lower()
-    for kota in KOTA_INDONESIA_DATELINE:
-        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
-            return True, ''
-    for kota_asing in IBU_KOTA_NEGARA.keys():
-        if re.search(r'\b' + re.escape(kota_asing) + r'\b', gab):
-            return True, ''
-    for kota in VARIAN_KOTA_EN_ID.keys():
-        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
-            return True, ''
-    for ev_nama in EVENT_BESAR_KOTA.keys():
-        if ev_nama in gab:
-            return True, ''
-    for tim in KAMUS_TIM_LIGA_NEGARA.keys():
-        if tim in gab:
-            return True, ''
-    return False, 'tidak ada lokasi (kota/provinsi) di judul/materi'
-
-def _kandidat_ada_nama_orang(judul, summary):
-    teks = ((judul or '') + ' ' + (summary or '')).strip()
-    if not teks:
-        return False
-    pola_nama = re.compile(r'\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b')
-    nama_ditemukan = []
-    for m in pola_nama.finditer(teks):
-        kata1 = m.group(1).lower()
-        kata2 = m.group(2).lower()
-        skip_kata1 = ['jakarta', 'bandung', 'surabaya', 'medan', 'semarang',
-                      'makassar', 'balikpapan', 'samarinda', 'tarakan',
-                      'kaltara', 'kalimantan', 'sumatera', 'jawa', 'sulawesi',
-                      'papua', 'bali', 'nusa', 'pemerintah', 'menteri',
-                      'presiden', 'gubernur', 'bupati', 'walikota', 'wakil',
-                      'kepala', 'ketua', 'komandan', 'kapolres', 'dandim',
-                      'sekretaris', 'direktur', 'pemkot', 'pemkab', 'pemprov',
-                      'polres', 'kodim', 'bandara', 'kota', 'kabupaten',
-                      'provinsi', 'dinas', 'badan', 'kantor', 'lembaga',
-                      'komisi', 'monday', 'tuesday', 'wednesday', 'thursday',
-                      'friday', 'saturday', 'sunday', 'januari', 'februari',
-                      'maret', 'april', 'mei', 'juni', 'juli', 'agustus',
-                      'september', 'oktober', 'november', 'desember',
-                      'breaking', 'news']
-        if kata1 in skip_kata1 or kata2 in skip_kata1:
-            continue
-        skip_kata2 = ['sebut', 'kata', 'ujar', 'tutur', 'jelas', 'ungkap',
-                      'minta', 'harap', 'imbau', 'seru', 'tegas', 'sebutkan']
-        if kata2 in skip_kata2:
-            continue
-        nama_ditemukan.append(m.group(0).strip())
-    return len(nama_ditemukan) > 0
-
-def _kandidat_dateline_luar_untuk_int(judul, summary, kategori=''):
-    if kategori not in ('internasional', 'internasional_asean', 'internasional_tt'):
-        return True, ''
-    gab = ((judul or '') + ' ' + (summary or '')).lower()
-    for kota in IBU_KOTA_NEGARA.keys():
-        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
-            return True, ''
-    for varian in VARIAN_KOTA_EN_ID.keys():
-        if re.search(r'\b' + re.escape(varian) + r'\b', gab):
-            return True, ''
-    for negara in KATA_LUAR_NEGERI_WAJIB:
-        if negara in gab:
-            return True, ''
-    if any(k in gab for k in ('jakarta', 'indonesia', 'jokowi', 'prabowo')):
-        return False, 'kategori internasional tapi materi tentang Indonesia saja'
-    return True, ''
-
-def _kandidat_bukan_indo_only(kategori, judul, summary):
-    if kategori not in ('internasional', 'internasional_asean', 'internasional_tt'):
-        return True, ''
-    gab = ((judul or '') + ' ' + (summary or '')).lower()
-    sinyal_indo = 0
-    for k in ['jakarta', 'indonesia', 'jokowi', 'prabowo', 'menteri ri',
-              'kemenlu ri', 'wni', 'pemerintah indonesia', 'presiden ri']:
-        if k in gab:
-            sinyal_indo += 1
-    sinyal_luar = 0
-    for k in KATA_LUAR_NEGERI_WAJIB:
-        if k in gab:
-            sinyal_luar += 1
-    if sinyal_indo >= 2 and sinyal_luar == 0:
-        return False, 'materi 100% tentang Indonesia untuk kategori luar'
     return True, ''
 
 def _kandidat_negara_asing_untuk_lokal(kategori, judul, summary):
@@ -2100,197 +1974,564 @@ def _kandidat_layak(judul, summary, kategori=''):
     summary = (summary or '').strip()
     if not judul or not summary:
         return False, 'judul/summary kosong'
-
     tl = judul.lower()
-
     for k in KATA_FEATURE_OPINI:
         if k in tl:
             return False, 'feature/opini: ' + k
     if any(x in tl for x in ('ada apa?', 'ternyata', 'ini faktanya',
                               'simak', 'begini', 'inilah', 'awas!')):
         return False, 'clickbait: kata pancingan'
-
     if len(judul.split()) < 4:
         return False, 'judul kurang dari 4 kata'
-
     ok, alasan = _kandidat_bukan_dobel(judul)
     if not ok:
         return False, alasan
-
     ok, alasan = _kandidat_topik_nyambung(judul, summary)
     if not ok:
         return False, alasan
-
     ok, alasan = _kandidat_negara_asing_untuk_lokal(kategori, judul, summary)
     if not ok:
         return False, alasan
-
     ok, alasan = _kandidat_bukan_kontes(kategori, judul, summary)
     if not ok:
         return False, alasan
-
     ok, alasan = _kandidat_bukan_pendidikan(kategori, judul, summary)
     if not ok:
         return False, alasan
-
     ok, alasan = _kandidat_bukan_jadwal_transport(kategori, judul, summary)
     if not ok:
         return False, alasan
-
     ok, alasan = _kandidat_kategori_materi(kategori, judul, summary)
     if not ok:
         return False, alasan
-
     ok, alasan = _kandidat_bukan_indo_only(kategori, judul, summary)
     if not ok:
         return False, alasan
-
     ok, alasan = _kandidat_dateline_luar_untuk_int(judul, summary, kategori)
     if not ok:
         return False, alasan
-
     ok, alasan = _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary)
     if not ok:
         return False, alasan
-
     ok, alasan = _kandidat_ada_lokasi(judul, summary, kategori)
     if not ok:
         return False, alasan
-
     return True, ''
 
-# ═══ AKHIR AI EDITOR LUAR ═══
+KATA_ANALISIS = ['analisis', 'soroti', 'opini', 'tinjauan', 'analysis', 'opinion', 'editorial']
+JANJI_JADWAL  = ['jadwal', 'schedule']
+JANJI_TABEL   = ['klasemen', 'standing', 'ranking', 'peringkat']
+JANJI_ANGKA   = ['hasil', 'skor', 'result']
+JANJI_HARGA   = ['harga', 'tarif', 'biaya', 'berapa', 'sewa', 'gaji']
+KATA_HARGA_LONGGAR = ['naik', 'turun', 'melonjak', 'anjlok', 'drastis', 'meroket',
+                      'terjun', 'menguat', 'melemah']
 
-def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''):
-    if max_umur_jam is None:
-        max_umur_jam = MAX_UMUR_BERITA_JAM
-    rejected = muat_rejected_urls()
-    out = []
-    skip_layak = 0
-    skip_rejected = 0
-    for src in sources:
+def _pesawat_kecil(text):
+    t = (text or '').lower()
+    for k in BREAKING_INT_TOLAK:
+        if k in t:
+            return True
+    return False
+
+def judul_topik_besar(judul):
+    j = (judul or '').lower()
+    return any(k in j for k in TOPIK_BESAR_GATE)
+
+KATA_TURNAMEN_OLAHRAGA = [
+    'fifa', 'aff', 'uefa', 'afc', 'piala dunia', 'world cup', 'sea games',
+    'asian games', 'olimpiade', 'olympic', 'piala asia', 'asian cup',
+    'piala aff', 'aff cup', 'fifa asean cup', 'piala eropa', 'euro 202',
+    'copa america', 'liga champions', 'champions league', 'europa league',
+    'premier league', 'la liga', 'serie a', 'bundesliga', 'ligue 1',
+    'eredivisie', 'nba', 'wnba', 'ibl', 'badminton', 'bulu tangkis', 'bwf',
+    'voli', 'volleyball', 'fivb', 'motogp', 'formula 1', 'f1',
+]
+
+def adalah_turnamen_olahraga(teks):
+    t = (teks or '').lower()
+    return any(k in t for k in KATA_TURNAMEN_OLAHRAGA)
+
+KATA_WAJIB_OLAHRAGA = [
+    'bola', 'sepak bola', 'sepakbola', 'football', 'soccer', 'basket', 'nba',
+    'wnba', 'ibl', 'badminton', 'bulu tangkis', 'bwf', 'voli', 'volleyball',
+    'fivb', 'tenis', 'tennis', 'atp', 'wta', 'motogp', 'formula 1', 'f1',
+    'balap', 'liga', 'piala', 'turnamen', 'kejuaraan', 'kompetisi', 'timnas',
+    'atlet', 'pemain', 'klub', 'klub sepak', 'pertandingan', 'laga', 'skor',
+    'klasemen', 'gol', 'olimpiade', 'olympic', 'sea games', 'asian games',
+    'stadion', 'kick-off', 'kick off',
+]
+
+KATA_BUKAN_OLAHRAGA = [
+    'haji', 'umroh', 'umrah', 'arbain', 'kabah', 'mekkah', 'mekah',
+    'madinah', 'ibadah haji', 'jamaah haji', 'kuota haji', 'antrean haji',
+    'calon haji', 'manasik', 'ihram', 'tawaf', 'sa\'i',
+    'puasa', 'ramadan', 'idul fitri', 'idul adha', 'qurban', 'zakat',
+    'isra miraj', 'maulid', 'nabi muhammad', 'pesantren', 'ulama',
+    'pendidikan', 'kurikulum', 'sekolah', 'siswa', 'mahasiswa', 'guru',
+    'kampus', 'universitas', 'beasiswa', 'ujian', 'unbk',
+    'pajak', 'anggaran', 'apbn', 'apbd', 'subsidi', 'bantuan sosial',
+    'bansos', 'pkh', 'blt', 'sembako',
+    'kesehatan', 'rumah sakit', 'dokter', 'obat', 'vaksin', 'imunisasi',
+    'penyakit', 'gizi', 'stunting',
+    'politik', 'pemilu', 'pilpres', 'pilkada', 'partai', 'dpr', 'presiden',
+    'menteri', 'gubernur', 'bupati', 'walikota', 'kepala daerah',
+    'polisi', 'pencurian', 'kriminal', 'narkoba',
+    'ekonomi', 'bisnis', 'keuangan', 'bank', 'saham', 'ihsg', 'rupiah',
+    'dolar', 'kurs', 'investasi', 'ekspor', 'impor',
+    'teknologi', 'gadget', 'aplikasi', 'internet', 'ai', 'kecerdasan buatan',
+    'otomotif', 'mobil', 'motor',
+]
+
+def adalah_konten_olahraga(teks):
+    t = (teks or '').lower()
+    for k in KATA_BUKAN_OLAHRAGA:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', t):
+                return False
+        else:
+            if k in t:
+                return False
+    return any(k in t for k in KATA_WAJIB_OLAHRAGA)
+
+KATA_KUNCI_OTOMOTIF = [
+    'mobil', 'motor', 'skutik', 'matic', 'bebek', 'sport touring',
+    'kendaraan listrik', 'mobil listrik', 'motor listrik', 'tesla', 'byd',
+    'geely', 'nissan', 'toyota', 'honda', 'yamaha', 'suzuki', 'mitsubishi',
+    'hyundai', 'kia', 'wuling', 'chery', 'bmw', 'mercedes', 'audi',
+    'volkswagen', 'ford', 'chevrolet', 'facelift', 'sedan', 'suv', 'mpv',
+    'pickup', 'hatchback', 'spesifikasi mobil', 'spesifikasi motor',
+    'harga mobil', 'harga motor', 'test drive', 'review mobil', 'review motor',
+    'modifikasi', 'mesin mobil', 'mesin motor',
+]
+
+def adalah_konten_otomotif(teks):
+    t = (teks or '').lower()
+    return any(k in t for k in KATA_KUNCI_OTOMOTIF)
+
+KATA_LARANG_GAMBAR_HARD = [
+    'animal', 'dog', 'cat', 'bird', 'monkey', 'elephant', 'tiger', 'lion',
+    'snake', 'crocodile', 'lizard', 'frog', 'fish', 'shark', 'whale',
+    'insect', 'butterfly', 'bee', 'spider', 'rat', 'mouse', 'horse', 'cow',
+    'goat', 'sheep', 'pig', 'chicken', 'rooster', 'duck', 'goose', 'rabbit',
+    'deer', 'bear', 'wolf', 'fox', 'eagle', 'parrot', 'owl', 'kucing',
+    'anjing', 'burung', 'ular', 'kuda', 'sapi', 'ayam', 'bebek', 'kambing',
+    'harimau', 'singa', 'gajah', 'monyet', 'buaya', 'ikan',
+    'mosque', 'masjid', 'church', 'gereja', 'cathedral', 'temple', 'pura',
+    'vihara', 'pagoda', 'shrine', 'monastery',
+    'shoes', 'shoe', 'sneaker', 'sneakers', 'sandal', 'sandals', 'slipper',
+    'slippers', 'footwear', 'high heels', 'stiletto', 'sendal', 'sepatu',
+]
+
+def cek_deskripsi_gambar(deskripsi):
+    d = (deskripsi or '').lower()
+    for k in KATA_HEWAN_SLUG:
+        if k.endswith('_') or k.endswith('-'):
+            if k in d:
+                return 'deskripsi gambar memuat kata hewan terlarang: ' + k
+        else:
+            if re.search(r'\b' + re.escape(k) + r'\b', d):
+                return 'deskripsi gambar memuat kata hewan terlarang: ' + k
+    for k in KATA_LARANG_GAMBAR_HARD:
+        if k.endswith('_') or k.endswith('-'):
+            if k in d:
+                return 'deskripsi gambar memuat kata terlarang: ' + k
+        else:
+            if re.search(r'\b' + re.escape(k) + r'\b', d):
+                return 'deskripsi gambar memuat kata terlarang: ' + k
+    return None
+
+def cek_url_gambar_hewan(url):
+    if not url:
+        return None
+    low = url.lower()
+    for k in KATA_HEWAN_SLUG:
+        if k.endswith('_') or k.endswith('-'):
+            if k in low:
+                return 'url gambar memuat kata hewan: ' + k
+        else:
+            if re.search(r'\b' + re.escape(k) + r'\b', low):
+                return 'url gambar memuat kata hewan: ' + k
+    for k in ['animal', 'puppy', 'kitten', 'wildlife', 'pet-', '-pet',
+              'dog-', '-dog', 'cat-', '-cat', 'bird-', '-bird']:
+        if k in low:
+            return 'url gambar memuat kata hewan: ' + k
+    return None
+
+def ambil_magnitude(teks):
+    m = re.search(r'(?:magnitudo|magnitude)\s*(?:m)?\s*[:=]?\s*(\d{1,2}[.,]\d{1,2})', teks)
+    if not m:
+        m = re.search(r'\bm\s*[:=]?\s*(\d{1,2}[.,]\d{1,2})\b', teks)
+    if not m:
+        m = re.search(r'(\d{1,2}[.,]\d{1,2})\s*(?:magnitude|magnitudo|sr)\b', teks)
+    if m:
         try:
-            feed = feedparser.parse(src['url'])
+            return float(m.group(1).replace(',', '.'))
         except Exception:
+            return None
+    return None
+
+def skor_domestik(title, summary):
+    t = (title + ' ' + summary).lower()
+    if any(w in t for w in KATA_ANALISIS):
+        return 0
+    skor = 0
+    if 'gempa' in t:
+        if not any(w in t for w in INDO_GEO):
+            return 0
+        mag = ambil_magnitude(t)
+        if mag is None or mag < GEMPA_DOM_MIN:
+            return 0
+        skor = 60 + min(int(mag), 8)
+    hit = sum(1 for k in DOM_KRITIS if k in t)
+    if hit:
+        skor += 30 + (hit - 1) * 8
+    return skor
+
+def skor_dunia(title, summary):
+    t = (title + ' ' + summary).lower()
+    if any(w in t for w in KATA_ANALISIS):
+        return 0
+    for k in BREAKING_INT_TOLAK:
+        if k in t:
+            return 0
+    if 'earthquake' in t or 'gempa' in t or ' quake' in t or 'quake ' in t:
+        mag = ambil_magnitude(t)
+        if mag is None:
+            return 0
+        if mag < GEMPA_DUNIA_MIN:
+            return 0
+        skor = 60 + min(int(mag), 9)
+        hit = sum(1 for k in DUNIA_KRITIS if k in t)
+        if hit:
+            skor += 30 + (hit - 1) * 8
+        return skor
+    hit = sum(1 for k in DUNIA_KRITIS if k in t)
+    if hit >= 2:
+        return 30 + (hit - 1) * 8
+    return 0
+
+PANGKAT_TNI_POLRI = [
+    'jenderal', 'letnan jenderal', 'letjen', 'mayor jenderal', 'mayjen',
+    'brigadir jenderal', 'brigjen', 'kolonel', 'letnan kolonel', 'letkol',
+    'mayor', 'kapten', 'lettu', 'letda', 'letnan', 'pembantu letnan', 'pelda',
+    'pelton', 'peltu', 'sersan', 'kopral', 'prajurit', 'akbp', 'akp', 'iptu',
+    'ipda', 'bripka', 'brigpol', 'bripda', 'komisaris besar', 'kombes',
+    'ajun komisaris besar', 'komisaris', 'kompol', 'ajun komisaris',
+    'inspektur', 'inspektur polisi satu', 'inspektur polisi dua',
+    'ajun inspektur', 'bharada', 'bharatu', 'bharaka', 'abrip',
+]
+
+INSTITUSI_PUSAT_LEBIH_LONGGAR = [
+    'kementerian', 'kemenko', 'kemen', 'bank indonesia', 'ojk', 'kpk',
+    'bnpb', 'basarnas', 'bulog', 'pertamina', 'pln', 'telkom',
+]
+
+INSTITUSI_LOKAL_BUTUH_NAMA = [
+    'dinas', 'kantor', 'pemkot', 'pemkab',
+    'pemprov', 'polres', 'polsek', 'polda', 'kodam', 'korem', 'kodim',
+    'koramil', 'kejaksaan', 'kejari', 'kejati', 'pengadilan', 'bawaslu',
+    'kpu', 'kppu', 'kppn', 'kpp', 'bpjs', 'perum', 'peruri', 'pelindo',
+    'angkasa pura',
+]
+
+INSTITUSI_BUTUH_NAMA = INSTITUSI_LOKAL_BUTUH_NAMA + INSTITUSI_PUSAT_LEBIH_LONGGAR
+
+KATA_KERJA_NARASUMBER = [
+    'mengatakan', 'menyatakan', 'menjelaskan', 'menuturkan', 'mengungkapkan',
+    'mengimbau', 'menghimbau', 'meminta', 'menegaskan', 'menambahkan',
+    'mengatakan bahwa', 'menyampaikan', 'menekankan', 'mengajak', 'memastikan',
+    'berbicara', 'menegaskan bahwa', 'menyebut', 'menyebutkan',
+    'menjelaskan bahwa', 'menuturkan bahwa',
+]
+
+def _ada_nama_orang_sebelum(teks, posisi):
+    awal = max(0, posisi - 150)
+    sebelum = teks[awal:posisi]
+    pola_nama = re.compile(r'[A-Z][a-z]+\s+(?:[A-Z]\.\s*)?[A-Z][a-z]+')
+    if pola_nama.search(sebelum):
+        return True
+    return False
+
+KOTA_LOKAL_KALTARA = ['tarakan', 'nunukan', 'bulungan', 'malinau',
+                      'tana tidung', 'tanjung selor', 'sesayap', 'sebatik']
+
+def _adalah_berita_kaltara(judul, isi):
+    gab = ((judul or '') + ' ' + (isi or '')).lower()
+    return any(re.search(r'\b' + re.escape(k) + r'\b', gab)
+               for k in KOTA_LOKAL_KALTARA)
+
+def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
+    if not isi:
+        return None
+    if kategori in ('internasional', 'internasional_asean', 'internasional_tt'):
+        return None
+    if kategori == 'kesehatan':
+        return None
+    if kategori in ('otomotif', 'teknologi'):
+        return None
+    gab_kaltara = ((judul or '') + ' ' + (isi or '')).lower()
+    is_kaltara_berita = any(re.search(r'\b' + re.escape(k) + r'\b', gab_kaltara)
+                            for k in KOTA_LOKAL_KALTARA)
+    if kategori == 'daerah' and is_kaltara_berita:
+        return None
+    teks = isi
+    for pangkat in PANGKAT_TNI_POLRI:
+        pola = re.compile(
+            r'\b' + re.escape(pangkat) + r'\s+('
+            + '|'.join(re.escape(k) for k in KATA_KERJA_NARASUMBER) + r')\b',
+            re.IGNORECASE
+        )
+        m = pola.search(teks)
+        if m:
+            if not _ada_nama_orang_sebelum(teks, m.start()):
+                return ('pangkat TNI/Polri "' + pangkat + '" muncul tanpa nama orang')
+        pola2 = re.compile(
+            r'\b' + re.escape(pangkat) + r'\s*,\s*('
+            + '|'.join(re.escape(k) for k in KATA_KERJA_NARASUMBER) + r')\b',
+            re.IGNORECASE
+        )
+        if pola2.search(teks):
+            return ('pangkat TNI/Polri "' + pangkat + '" diikuti koma langsung kata kerja (tanpa nama)')
+    for inst in INSTITUSI_LOKAL_BUTUH_NAMA:
+        pola = re.compile(
+            r'\b' + re.escape(inst) + r'\b[^\.]{0,60}?\s+('
+            + '|'.join(re.escape(k) for k in KATA_KERJA_NARASUMBER) + r')\b',
+            re.IGNORECASE
+        )
+        m = pola.search(teks)
+        if m:
+            if not _ada_nama_orang_sebelum(teks, m.start()):
+                return ('institusi "' + inst + '" muncul tanpa nama pejabat')
+    for inst in INSTITUSI_LOKAL_BUTUH_NAMA:
+        pola3 = re.compile(
+            r'\bmenurut\s+' + re.escape(inst) + r'\b[^\.]{0,30}?[,\.]',
+            re.IGNORECASE
+        )
+        if pola3.search(teks):
+            return ('"menurut ' + inst + '" tanpa nama pejabat')
+    return None
+
+KATA_BUKAN_BERITA = [
+    'zodiak', 'horoskop', 'ramalan bintang', 'ramalan cinta', 'ramalan nasib',
+    'ramalan zodiak', 'shio', 'primbon', 'arti mimpi', 'artinya mimpi',
+    'pertanda baik', 'pertanda buruk', 'keberuntungan hari ini', 'peruntungan',
+]
+
+def cek_bukan_berita(judul, isi):
+    gab = ((judul or '') + ' ' + (isi or '')).lower()
+    for k in KATA_BUKAN_BERITA:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                return True
+        else:
+            if k in gab:
+                return True
+    return False
+
+KATA_LUAR_NEGERI_WAJIB = [
+    'amerika', 'united states', ' u.s', 'usa', 'washington',
+    'rusia', 'russia', 'moskow', 'moscow', 'ukraina', 'ukraine',
+    'eropa', 'europe', 'jerman', 'germany', 'perancis', 'france', 'inggris',
+    'britain', 'united kingdom', 'italia', 'italy', 'spanyol', 'spain',
+    'paris', 'berlin', 'london', 'timur tengah', 'middle east', 'gaza',
+    'israel', 'palestina', 'iran', 'iraq', 'suriah', 'syria', 'saudi',
+    'yaman', 'yemen', 'uni emirat', 'emirates', 'qatar', 'kuwait', 'libanon',
+    'jordan', 'turki', 'turkey', 'mesir', 'egypt', 'jepang', 'japan', 'china',
+    'tiongkok', 'korea', 'seoul', 'pyongyang', 'india', 'delhi', 'australia',
+    'kanada', 'canada', 'meksiko', 'mexico', 'brasil', 'brazil', 'argentina',
+    'afrika', 'africa', 'nigeria', 'kenya', 'pbb', 'united nations', 'nato',
+    'asean', 'who', 'unicef', 'bank dunia', 'world bank', 'imf', 'g20', 'g7',
+    'brics', 'pemilu amerika', 'us election', 'parlemen eropa', 'uni eropa',
+    'european union', 'taiwan', 'kamboja', 'cambodia', 'thailand',
+    'vietnam', 'filipina', 'singapura', 'myanmar', 'laos', 'brunei',
+]
+
+KATA_ASEAN_WAJIB = [
+    'asean', 'malaysia', 'thailand', 'vietnam', 'filipina', 'philippines',
+    'singapura', 'singapore', 'myanmar', 'kamboja', 'cambodia', 'laos',
+    'brunei', 'timor leste', 'jakarta', 'bangkok', 'manila', 'kuala lumpur',
+    'hanoi', 'indonesia',
+]
+
+KATA_TT = [
+    'timur tengah', 'middle east', 'gaza', 'israel', 'palestina', 'iran',
+    'iraq', 'suriah', 'syria', 'saudi', 'yaman', 'yemen', 'uni emirat',
+    'emirates', 'qatar', 'kuwait', 'libanon', 'jordan', 'turki',
+    'hamas', 'hezbollah', 'idf', 'netanyahu', 'west bank', 'teheran',
+    'lebanon', 'damaskus', 'beirut', 'golan', 'sinai',
+]
+
+KATA_EKONOMI_WAJIB = [
+    'ihsg', 'idx', 'bursa', 'saham', 'obligasi', 'reksa dana', 'bank indonesia',
+    'bi rate', 'suku bunga', 'inflasi', 'deflasi', 'pdb', 'gdp',
+    'pertumbuhan ekonomi', 'resesi', 'kurs', 'rupiah', 'dolar', 'usd', 'idr',
+    'ekspor', 'impor', 'neraca dagang', 'apbn', 'apbd', 'pajak', 'bea cukai',
+    'subsidi', 'ojk', 'kemenkeu', 'umkm',
+    'startup', 'investasi', 'penanaman modal', 'asing', 'ipo', 'emiten',
+    'dividen', 'kapitalisasi', 'wall street', 'dow jones', 'nasdaq', 's&p',
+    'ftse', 'nikkei', 'hang seng', 'minyak mentah', 'brent', 'wti', 'emas',
+    'komoditas', 'perdagangan', 'pasar modal', 'pasar uang', 'fintech',
+    'kripto', 'bitcoin', 'ethereum', 'blockchain', 'pertamina', 'pln', 'telkom',
+    'bank bumn', 'bank swasta', 'kredit', 'pinjaman', 'utang', 'defisit',
+    'surplus', 'harga pangan', 'harga beras', 'harga cabai', 'bulog',
+    'penjualan ritel', 'konsumsi rumah tangga', 'daya beli', 'harga', 'petani',
+    'pangan', 'konsumen', 'pedagang', 'produksi', 'distribusi', 'industri',
+    'pertanian', 'perikanan', 'tambak', 'sawah', 'nelayan', 'ternak',
+    'perkebunan', 'sapi', 'beras', 'cabai', 'bawang', 'gula', 'minyak goreng',
+    'telur', 'ayam', 'daging', 'pasar tradisional', 'pasar modern', 'ritel',
+    'grosir', 'pengusaha', 'dagang', 'bisnis', 'usaha', 'toko', 'bumn',
+    'koperasi', 'pajak', 'bea', 'cukai', 'tarif', 'tbg', 'pendapatan',
+    'belanja', 'anggaran', 'fiskal', 'moneter', 'bank sentral', 'bank',
+    'kartu kredit', 'kpr', 'leasing', 'asuransi', 'jasa keuangan',
+    'asia tenggara', 'malaysia',
+    'economy', 'economic', 'trade', 'growth', 'exports', 'imports',
+    'tariff', 'sanction', 'stimulus', 'resilient', 'domestic', 'grain',
+    'supply', 'factory', 'activity', 'expansion', 'beef', 'daging sapi',
+    'agrikultur', 'agriculture', 'hasil tani',
+]
+
+KATA_POLITIK_HUKUM_LOKAL = [
+    'tersangka', 'korupsi', 'kpk', 'kejaksaan', 'pengadilan', 'sidang',
+    'dakwaan', 'hukuman', 'pidana', 'penjara', 'ditahan', 'dpr', 'presiden',
+    'menteri', 'gubernur', 'walikota', 'bupati', 'pileg', 'pilpres', 'pilkada',
+    'partai', 'kampanye', 'demonstrasi', 'unjuk rasa',
+]
+
+NAMA_TOKOH_INDONESIA = [
+    'prabowo', 'gibran', 'jokowi', 'joko widodo', 'megawati', 'anies',
+    'anies baswedan', 'ganjar', 'ganjar pranowo', 'ridwan kamil', 'ahok',
+    'basuki tjahaja', 'sri mulya', 'sri mulyani', 'mahfud', 'mahfud md',
+    'erick thohir', 'agus yudhoyono', 'sby', 'susilo bambang', 'puan maharani',
+    'bambang soesatyo', 'bamsoet', 'listyo sigit', 'sigit listyo',
+    'yudo margono', 'abdul muhaimin', 'muhaimin iskandar', 'cak imin',
+    'airlangga hartarto', 'luhut', 'luhut pandjaitan', 'tito karnavian',
+    'budi gunawan', 'bahlil', 'bahlil lahadalia', 'dito ariotedjo',
+    'sandiaga', 'sandiaga uno', 'yassierli',
+    'nadiem', 'nadiem makarim', 'hadi tjahjanto',
+    'zulkifli hasan', 'zulhas', 'sufmi dasco', 'dasco', 'ahmad muzani',
+    'muzani', 'yandri susanto', 'muhammad yusril', 'yusril ihza', 'pratikno',
+    'sri mulyani indrawati', 'menteri keuangan', 'kapolri', 'panglima tni',
+    'maruf amin', 'jenderal agus subiyanto', 'agus subiyanto',
+]
+
+LEMBAGA_INDONESIA = [
+    'kpk', 'dpr', 'mpr', 'dpd', 'dprd', 'kemenkeu', 'kemendag', 'kemenhub',
+    'kemendikbud', 'kemenkes', 'kemnaker', 'kemenkumham', 'kemensos', 'kemenag',
+    'kemenparekraf', 'kemenlu', 'kemenhan', 'kemendagri', 'kemenko',
+    'kemenpppa', 'kemenpora', 'polri', 'tni', 'kejagung', 'kejaksaan agung',
+    'mahkamah agung', 'mahkamah konstitusi', 'mk', 'bawaslu', 'kpu', 'ojk',
+    'bank indonesia', 'bi', 'bpk', 'bpn', 'bnpb', 'basarnas', 'bpom', 'bssn',
+    'bin', 'wantannas', 'setkab', 'setneg', 'perpres', 'inpres', 'keppres',
+]
+
+KOTA_INDONESIA_DATELINE = [
+    'jakarta', 'surabaya', 'bandung', 'semarang', 'yogyakarta', 'medan',
+    'palembang', 'makassar', 'denpasar', 'balikpapan', 'samarinda',
+    'pontianak', 'banjarmasin', 'palangka raya', 'manado', 'ambon',
+    'jayapura', 'kupang', 'mataram', 'tarakan', 'tanjung selor', 'nunukan',
+    'malinau', 'bulungan', 'tana tidung', 'bogor', 'depok', 'tangerang',
+    'bekasi', 'malang', 'solo', 'surakarta', 'pekanbaru', 'padang', 'bengkulu',
+    'lampung', 'bandar lampung', 'batam', 'gorontalo', 'palu', 'kendari', 'mamuju',
+    'selumit', 'selumit pantai', 'juata', 'karang anyar', 'karang balik',
+    'kampung enam', 'pamusian', 'sebengkok', 'gunung lingkas', 'karang harapan',
+]
+
+KATA_LOKAL_KALTARA = [
+    'tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau', 'tana tidung',
+    'sesayap', 'juata', 'tanjung selor', 'sebatik', 'kayu putih',
+]
+
+def cek_kategori_cocok(kategori_target, teks):
+    if not teks:
+        return None
+    t = teks.lower()
+    if kategori_target == 'internasional_asean':
+        if any(k in t for k in KATA_ASEAN_WAJIB):
+            return None
+        return 'kategori asean tapi tidak ada kata kunci asean'
+    if kategori_target in ('internasional', 'internasional_tt'):
+        if any(k in t for k in KATA_LUAR_NEGERI_WAJIB):
+            return None
+        return ('kategori ' + kategori_target + ' tapi tidak ada kata luar negeri')
+    if kategori_target == 'ekonomi':
+        if any(k in t for k in KATA_EKONOMI_WAJIB):
+            return None
+        return 'kategori ekonomi tapi tidak ada kata ekonomi'
+    if kategori_target == 'nasional':
+        if any(k in t for k in KATA_POLITIK_HUKUM_LOKAL):
+            return None
+        return None
+    return None
+
+# AKHIR PART 3A-2
+# PART 3A-3 - CEK_KATEGORI + VARIAN_KOTA + DATELINE + TOPIK (V6.17.42)
+
+def _kpk_konteks_indonesia(teks):
+    t = (teks or '').lower()
+    if 'kpk' not in t:
+        return False
+    konteks = ['kpk indonesia', 'komisi pemberantasan korupsi', 'kpk ri',
+               'kpk republik indonesia', 'kpk tangkap', 'kpk periksa',
+               'kpk sidik', 'kpk jerat', 'kpk tetapkan']
+    for k in konteks:
+        if k in t:
+            return True
+    for m in re.finditer(r'kpk', t):
+        awal = max(0, m.start() - 50)
+        akhir = min(len(t), m.end() + 50)
+        sekitar = t[awal:akhir]
+        if any(k in sekitar for k in ('indonesia', 'ri ', 'jakarta', 'korupsi',
+                                       'pemberantasan', 'tersangka', 'menteri')):
+            return True
+    return False
+
+def cek_kategori_dari_isi(isi, judul, kategori_target):
+    if not isi:
+        return None
+    if kategori_target not in ('internasional', 'internasional_asean', 'internasional_tt'):
+        return None
+    gab = (judul or '') + ' ' + (isi or '')
+    t = gab.lower()
+    for tokoh in NAMA_TOKOH_INDONESIA:
+        if re.search(r'\b' + re.escape(tokoh) + r'\b', t):
+            return ('isi AI memuat tokoh Indonesia "' + tokoh + '" tapi target kategori internasional')
+    for lem in LEMBAGA_INDONESIA:
+        if lem == 'kpk':
+            if _kpk_konteks_indonesia(t):
+                return ('isi AI memuat lembaga Indonesia "kpk" dengan konteks Indonesia tapi target kategori internasional')
             continue
-        for entry in feed.entries[:8]:
-            link = entry.get('link', '')
-            if not link or link in seen or link in today_urls:
-                continue
-            if link in rejected:
-                skip_rejected += 1
-                continue
-            u = umur_jam(entry)
-            if u is not None and u > max_umur_jam:
-                continue
-            title = entry.get('title', '')
-            summary = get_material(entry)
-            if not title or not summary:
-                continue
+        if lem == 'tni':
+            continue
+        if re.search(r'\b' + re.escape(lem) + r'\b', t):
+            return ('isi AI memuat lembaga Indonesia "' + lem + '" tapi target kategori internasional')
+    m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+', isi or '')
+    if m:
+        dp = m.group(1).strip().lower()
+        kota = dp.split(',')[0].strip()
+        if kota in KOTA_INDONESIA_DATELINE:
+            return ('dateline "' + kota + '" kota Indonesia tapi target kategori internasional')
+    return None
 
-            layak, alasan = _kandidat_layak(title, summary, kategori)
-            if not layak:
-                skip_layak += 1
-                if skip_layak <= 3:
-                    print('       Skip kandidat (AI Editor Luar): ' + alasan[:60] + ' — ' + title[:50])
-                continue
-
-            seen.add(link)
-            sname = src['source']
-            if src.get('gn'):
-                t2, portal = gn_split(title)
-                title = t2
-                if portal and portal != 'Google News':
-                    sname = portal
-            out.append({'title': title, 'summary': summary, 'link': link,
-                        'source': sname, 'entry': entry,
-                        'tgl_pub': tanggal_publikasi_str(entry)})
-    if skip_layak > 3:
-        print('       (Total skip AI Editor Luar: ' + str(skip_layak) + ')')
-    if skip_rejected > 0:
-        print('       (Total skip rejected_urls blacklist: ' + str(skip_rejected) + ')')
-    return out
-
-def match_articles(candidates):
-    STOP = set('di ke dari yang dan atau dengan untuk pada dalam akan telah '
-               'sudah karena jika agar itu ini para kami mereka ada tidak bisa '
-               'dapat juga lebih masih hanya setelah sebelum sekitar oleh '
-               'sebagai kata bilang katakan ujar menurut the and for with from '
-               'that this have will been are was were their they about after'.split())
-    def kw(s):
-        return set(re.findall(r'[a-z0-9]{4,}', s.lower())) - STOP
-    groups = []
-    for c in candidates:
-        k = kw(c['title'])
-        placed = False
-        for g in groups:
-            if len(g['items']) >= 4:
-                continue
-            sama = k & g['kw']
-            kecil = min(len(k), len(g['kw']))
-            if kecil == 0:
-                continue
-            rasio = len(sama) / kecil
-            if len(sama) >= MATCH_MIN_KATA and rasio >= MATCH_MIN_RASIO:
-                g['items'].append(c)
-                g['kw'] |= k
-                placed = True
+def tentukan_kategori_dari_isi(judul, isi):
+    gab = (judul or '') + ' ' + (isi or '')
+    t = gab.lower()
+    is_indo = False
+    for tokoh in NAMA_TOKOH_INDONESIA:
+        if re.search(r'\b' + re.escape(tokoh) + r'\b', t):
+            is_indo = True
+            break
+    if not is_indo:
+        for lem in LEMBAGA_INDONESIA:
+            if re.search(r'\b' + re.escape(lem) + r'\b', t):
+                is_indo = True
                 break
-        if not placed:
-            groups.append({'kw': k, 'items': [c]})
-    return groups
-
-def kategori_barat(title, summary):
-    t = ((title or '') + ' ' + (summary or '')).lower()
-    if any(k in t for k in KATA_BARAT_USA):
-        return 'usa'
-    if any(k in t for k in KATA_BARAT_RUSIA):
-        return 'rusia'
-    if any(k in t for k in KATA_BARAT_EROPA):
-        return 'eropa'
-    return None
-
-def barat_terbit_jumlah(kelompok):
-    n = 0
-    try:
-        rows = rest_get('?select=title,created_at&order=created_at.desc&limit=300')
-        today = datetime.now(WITA).date()
-        for row in rows:
-            try:
-                d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00')).astimezone(WITA).date()
-                if d != today:
-                    continue
-                teks = (row.get('title') or '').lower()
-                if kelompok == 'usa' and any(k in teks for k in KATA_BARAT_USA):
-                    n += 1
-                elif kelompok == 'rusia' and any(k in teks for k in KATA_BARAT_RUSIA):
-                    n += 1
-                elif kelompok == 'eropa' and any(k in teks for k in KATA_BARAT_EROPA):
-                    n += 1
-            except Exception:
-                pass
-    except Exception:
-        pass
-    return n
-
-def barat_sudah_terbit(kelompok, batas=2):
-    return barat_terbit_jumlah(kelompok) >= batas
-
-def deteksi_dua_topik(judul, isi):
-    try:
-        pola = re.compile(r'\b([A-Z][A-Z\s\.\'\-]{3,40}?)\s+[-–—]\s+')
-        lokasi = set()
-        daftar_kota = set(KOTA_INDONESIA_DATELINE) | set(VARIAN_KOTA_EN_ID.keys())
-        for m in pola.finditer(isi or ''):
-            kandidat = m.group(1).strip().lower()
-            kota = kandidat.split(',')[0].strip()
-            if kota in daftar_kota:
-                lokasi.add(kandidat)
-        if len(lokasi) >= 2:
-            return 'isi memuat lebih dari satu dateline kota: ' + '; '.join(list(lokasi)[:3])
-    except Exception:
-        pass
-    return None
+    if not is_indo:
+        return None
+    is_lokal = any(re.search(r'\b' + re.escape(k) + r'\b', t)
+                   for k in KATA_LOKAL_KALTARA)
+    if is_lokal:
+        return 'daerah'
+    return 'nasional'
 
 VARIAN_KOTA_EN_ID = {
     'korea selatan': ['south korea', 'korea'], 'korea': ['korea selatan', 'south korea', 'north korea'],
@@ -2466,436 +2707,6 @@ def cek_janji_judul(judul, isi):
                         'angka harga maupun tema harga')
     return None
 
-KATA_LARANG_GAMBAR_HARD = [
-    'animal', 'dog', 'cat', 'bird', 'monkey', 'elephant', 'tiger', 'lion',
-    'snake', 'crocodile', 'lizard', 'frog', 'fish', 'shark', 'whale',
-    'insect', 'butterfly', 'bee', 'spider', 'rat', 'mouse', 'horse', 'cow',
-    'goat', 'sheep', 'pig', 'chicken', 'rooster', 'duck', 'goose', 'rabbit',
-    'deer', 'bear', 'wolf', 'fox', 'eagle', 'parrot', 'owl', 'kucing',
-    'anjing', 'burung', 'ular', 'kuda', 'sapi', 'ayam', 'bebek', 'kambing',
-    'harimau', 'singa', 'gajah', 'monyet', 'buaya', 'ikan',
-    'mosque', 'masjid', 'church', 'gereja', 'cathedral', 'temple', 'pura',
-    'vihara', 'pagoda', 'shrine', 'monastery',
-    'shoes', 'shoe', 'sneaker', 'sneakers', 'sandal', 'sandals', 'slipper',
-    'slippers', 'footwear', 'high heels', 'stiletto', 'sendal', 'sepatu',
-]
-
-def cek_deskripsi_gambar(deskripsi):
-    d = (deskripsi or '').lower()
-    for k in KATA_HEWAN_SLUG:
-        if k.endswith('_') or k.endswith('-'):
-            if k in d:
-                return 'deskripsi gambar memuat kata hewan terlarang: ' + k
-        else:
-            if re.search(r'\b' + re.escape(k) + r'\b', d):
-                return 'deskripsi gambar memuat kata hewan terlarang: ' + k
-    for k in KATA_LARANG_GAMBAR_HARD:
-        if k.endswith('_') or k.endswith('-'):
-            if k in d:
-                return 'deskripsi gambar memuat kata terlarang: ' + k
-        else:
-            if re.search(r'\b' + re.escape(k) + r'\b', d):
-                return 'deskripsi gambar memuat kata terlarang: ' + k
-    return None
-
-def cek_url_gambar_hewan(url):
-    if not url:
-        return None
-    low = url.lower()
-    for k in KATA_HEWAN_SLUG:
-        if k.endswith('_') or k.endswith('-'):
-            if k in low:
-                return 'url gambar memuat kata hewan: ' + k
-        else:
-            if re.search(r'\b' + re.escape(k) + r'\b', low):
-                return 'url gambar memuat kata hewan: ' + k
-    for k in ['animal', 'puppy', 'kitten', 'wildlife', 'pet-', '-pet',
-              'dog-', '-dog', 'cat-', '-cat', 'bird-', '-bird']:
-        if k in low:
-            return 'url gambar memuat kata hewan: ' + k
-    return None
-
-def ambil_magnitude(teks):
-    m = re.search(r'(?:magnitudo|magnitude)\s*(?:m)?\s*[:=]?\s*(\d{1,2}[.,]\d{1,2})', teks)
-    if not m:
-        m = re.search(r'\bm\s*[:=]?\s*(\d{1,2}[.,]\d{1,2})\b', teks)
-    if not m:
-        m = re.search(r'(\d{1,2}[.,]\d{1,2})\s*(?:magnitude|magnitudo|sr)\b', teks)
-    if m:
-        try:
-            return float(m.group(1).replace(',', '.'))
-        except Exception:
-            return None
-    return None
-
-def skor_domestik(title, summary):
-    t = (title + ' ' + summary).lower()
-    if any(w in t for w in KATA_ANALISIS):
-        return 0
-    skor = 0
-    if 'gempa' in t:
-        if not any(w in t for w in INDO_GEO):
-            return 0
-        mag = ambil_magnitude(t)
-        if mag is None or mag < GEMPA_DOM_MIN:
-            return 0
-        skor = 60 + min(int(mag), 8)
-    hit = sum(1 for k in DOM_KRITIS if k in t)
-    if hit:
-        skor += 30 + (hit - 1) * 8
-    return skor
-
-def skor_dunia(title, summary):
-    t = (title + ' ' + summary).lower()
-    if any(w in t for w in KATA_ANALISIS):
-        return 0
-    for k in BREAKING_INT_TOLAK:
-        if k in t:
-            return 0
-    if 'earthquake' in t or 'gempa' in t or ' quake' in t or 'quake ' in t:
-        mag = ambil_magnitude(t)
-        if mag is None:
-            return 0
-        if mag < GEMPA_DUNIA_MIN:
-            return 0
-        skor = 60 + min(int(mag), 9)
-        hit = sum(1 for k in DUNIA_KRITIS if k in t)
-        if hit:
-            skor += 30 + (hit - 1) * 8
-        return skor
-    hit = sum(1 for k in DUNIA_KRITIS if k in t)
-    if hit >= 2:
-        return 30 + (hit - 1) * 8
-    return 0
-
-PANGKAT_TNI_POLRI = [
-    'jenderal', 'letnan jenderal', 'letjen', 'mayor jenderal', 'mayjen',
-    'brigadir jenderal', 'brigjen', 'kolonel', 'letnan kolonel', 'letkol',
-    'mayor', 'kapten', 'lettu', 'letda', 'letnan', 'pembantu letnan', 'pelda',
-    'pelton', 'peltu', 'sersan', 'kopral', 'prajurit', 'akbp', 'akp', 'iptu',
-    'ipda', 'bripka', 'brigpol', 'bripda', 'komisaris besar', 'kombes',
-    'ajun komisaris besar', 'komisaris', 'kompol', 'ajun komisaris',
-    'inspektur', 'inspektur polisi satu', 'inspektur polisi dua',
-    'ajun inspektur', 'bharada', 'bharatu', 'bharaka', 'abrip',
-]
-
-INSTITUSI_PUSAT_LEBIH_LONGGAR = [
-    'kementerian', 'kemenko', 'kemen', 'bank indonesia', 'ojk', 'kpk',
-    'bnpb', 'basarnas', 'bulog', 'pertamina', 'pln', 'telkom',
-]
-
-# V6.17.39: hapus 'komisi' — terlalu umum (seperti 'badan' di V6.17.37)
-INSTITUSI_LOKAL_BUTUH_NAMA = [
-    'dinas', 'kantor', 'pemkot', 'pemkab',
-    'pemprov', 'polres', 'polsek', 'polda', 'kodam', 'korem', 'kodim',
-    'koramil', 'kejaksaan', 'kejari', 'kejati', 'pengadilan', 'bawaslu',
-    'kpu', 'kppu', 'kppn', 'kpp', 'bpjs', 'perum', 'peruri', 'pelindo',
-    'angkasa pura',
-]
-
-INSTITUSI_BUTUH_NAMA = INSTITUSI_LOKAL_BUTUH_NAMA + INSTITUSI_PUSAT_LEBIH_LONGGAR
-
-KATA_KERJA_NARASUMBER = [
-    'mengatakan', 'menyatakan', 'menjelaskan', 'menuturkan', 'mengungkapkan',
-    'mengimbau', 'menghimbau', 'meminta', 'menegaskan', 'menambahkan',
-    'mengatakan bahwa', 'menyampaikan', 'menekankan', 'mengajak', 'memastikan',
-    'berbicara', 'menegaskan bahwa', 'menyebut', 'menyebutkan',
-    'menjelaskan bahwa', 'menuturkan bahwa',
-]
-
-def _ada_nama_orang_sebelum(teks, posisi):
-    awal = max(0, posisi - 150)
-    sebelum = teks[awal:posisi]
-    pola_nama = re.compile(r'[A-Z][a-z]+\s+(?:[A-Z]\.\s*)?[A-Z][a-z]+')
-    if pola_nama.search(sebelum):
-        return True
-    return False
-
-KOTA_LOKAL_KALTARA = ['tarakan', 'nunukan', 'bulungan', 'malinau',
-                      'tana tidung', 'tanjung selor', 'sesayap', 'sebatik']
-
-def _adalah_berita_kaltara(judul, isi):
-    gab = ((judul or '') + ' ' + (isi or '')).lower()
-    return any(re.search(r'\b' + re.escape(k) + r'\b', gab)
-               for k in KOTA_LOKAL_KALTARA)
-
-def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
-    if not isi:
-        return None
-    if kategori in ('internasional', 'internasional_asean', 'internasional_tt'):
-        return None
-    if kategori == 'kesehatan':
-        return None
-    if kategori in ('otomotif', 'teknologi'):
-        return None
-    gab_kaltara = ((judul or '') + ' ' + (isi or '')).lower()
-    is_kaltara_berita = any(re.search(r'\b' + re.escape(k) + r'\b', gab_kaltara)
-                            for k in KOTA_LOKAL_KALTARA)
-    if kategori == 'daerah' and is_kaltara_berita:
-        return None
-    teks = isi
-    for pangkat in PANGKAT_TNI_POLRI:
-        pola = re.compile(
-            r'\b' + re.escape(pangkat) + r'\s+('
-            + '|'.join(re.escape(k) for k in KATA_KERJA_NARASUMBER) + r')\b',
-            re.IGNORECASE
-        )
-        m = pola.search(teks)
-        if m:
-            if not _ada_nama_orang_sebelum(teks, m.start()):
-                return ('pangkat TNI/Polri "' + pangkat + '" muncul tanpa nama orang')
-        pola2 = re.compile(
-            r'\b' + re.escape(pangkat) + r'\s*,\s*('
-            + '|'.join(re.escape(k) for k in KATA_KERJA_NARASUMBER) + r')\b',
-            re.IGNORECASE
-        )
-        if pola2.search(teks):
-            return ('pangkat TNI/Polri "' + pangkat + '" diikuti koma langsung kata kerja (tanpa nama)')
-    for inst in INSTITUSI_LOKAL_BUTUH_NAMA:
-        pola = re.compile(
-            r'\b' + re.escape(inst) + r'\b[^\.]{0,60}?\s+('
-            + '|'.join(re.escape(k) for k in KATA_KERJA_NARASUMBER) + r')\b',
-            re.IGNORECASE
-        )
-        m = pola.search(teks)
-        if m:
-            if not _ada_nama_orang_sebelum(teks, m.start()):
-                return ('institusi "' + inst + '" muncul tanpa nama pejabat')
-    for inst in INSTITUSI_LOKAL_BUTUH_NAMA:
-        pola3 = re.compile(
-            r'\bmenurut\s+' + re.escape(inst) + r'\b[^\.]{0,30}?[,\.]',
-            re.IGNORECASE
-        )
-        if pola3.search(teks):
-            return ('"menurut ' + inst + '" tanpa nama pejabat')
-    return None
-
-KATA_BUKAN_BERITA = [
-    'zodiak', 'horoskop', 'ramalan bintang', 'ramalan cinta', 'ramalan nasib',
-    'ramalan zodiak', 'shio', 'primbon', 'arti mimpi', 'artinya mimpi',
-    'pertanda baik', 'pertanda buruk', 'keberuntungan hari ini', 'peruntungan',
-]
-
-def cek_bukan_berita(judul, isi):
-    gab = ((judul or '') + ' ' + (isi or '')).lower()
-    for k in KATA_BUKAN_BERITA:
-        if len(k) <= 4:
-            if re.search(r'\b' + re.escape(k) + r'\b', gab):
-                return True
-        else:
-            if k in gab:
-                return True
-    return False
-
-KATA_LUAR_NEGERI_WAJIB = [
-    'amerika', 'united states', ' u.s', 'usa', 'washington', 'trump', 'biden',
-    'putin', 'rusia', 'russia', 'moskow', 'moscow', 'ukraina', 'ukraine',
-    'eropa', 'europe', 'jerman', 'germany', 'perancis', 'france', 'inggris',
-    'britain', 'united kingdom', 'italia', 'italy', 'spanyol', 'spain',
-    'paris', 'berlin', 'london', 'timur tengah', 'middle east', 'gaza',
-    'israel', 'palestina', 'iran', 'iraq', 'suriah', 'syria', 'saudi',
-    'yaman', 'yemen', 'uni emirat', 'emirates', 'qatar', 'kuwait', 'libanon',
-    'jordan', 'turki', 'turkey', 'mesir', 'egypt', 'jepang', 'japan', 'china',
-    'tiongkok', 'korea', 'seoul', 'pyongyang', 'india', 'delhi', 'australia',
-    'kanada', 'canada', 'meksiko', 'mexico', 'brasil', 'brazil', 'argentina',
-    'afrika', 'africa', 'nigeria', 'kenya', 'pbb', 'united nations', 'nato',
-    'asean', 'who', 'unicef', 'bank dunia', 'world bank', 'imf', 'g20', 'g7',
-    'brics', 'pemilu amerika', 'us election', 'parlemen eropa', 'uni eropa',
-    'european union', 'taiwan', 'kamboja', 'cambodia', 'thailand',
-    'vietnam', 'filipina', 'singapura', 'myanmar', 'laos', 'brunei',
-]
-
-KATA_ASEAN_WAJIB = [
-    'asean', 'malaysia', 'thailand', 'vietnam', 'filipina', 'philippines',
-    'singapura', 'singapore', 'myanmar', 'kamboja', 'cambodia', 'laos',
-    'brunei', 'timor leste', 'jakarta', 'bangkok', 'manila', 'kuala lumpur',
-    'hanoi', 'indonesia',
-]
-
-KATA_TT = [
-    'timur tengah', 'middle east', 'gaza', 'israel', 'palestina', 'iran',
-    'iraq', 'suriah', 'syria', 'saudi', 'yaman', 'yemen', 'uni emirat',
-    'emirates', 'qatar', 'kuwait', 'libanon', 'jordan', 'turki',
-    'hamas', 'hezbollah', 'idf', 'netanyahu', 'west bank', 'teheran',
-    'lebanon', 'damaskus', 'beirut', 'golan', 'sinai',
-]
-
-KATA_EKONOMI_WAJIB = [
-    'ihsg', 'idx', 'bursa', 'saham', 'obligasi', 'reksa dana', 'bank indonesia',
-    'bi rate', 'suku bunga', 'inflasi', 'deflasi', 'pdb', 'gdp',
-    'pertumbuhan ekonomi', 'resesi', 'kurs', 'rupiah', 'dolar', 'usd', 'idr',
-    'ekspor', 'impor', 'neraca dagang', 'apbn', 'apbd', 'pajak', 'bea cukai',
-    'subsidi', 'ojk', 'kemenkeu', 'menteri keuangan', 'sri mulyani', 'umkm',
-    'startup', 'investasi', 'penanaman modal', 'asing', 'ipo', 'emiten',
-    'dividen', 'kapitalisasi', 'wall street', 'dow jones', 'nasdaq', 's&p',
-    'ftse', 'nikkei', 'hang seng', 'minyak mentah', 'brent', 'wti', 'emas',
-    'komoditas', 'perdagangan', 'pasar modal', 'pasar uang', 'fintech',
-    'kripto', 'bitcoin', 'ethereum', 'blockchain', 'pertamina', 'pln', 'telkom',
-    'bank bumn', 'bank swasta', 'kredit', 'pinjaman', 'utang', 'defisit',
-    'surplus', 'harga pangan', 'harga beras', 'harga cabai', 'bulog',
-    'penjualan ritel', 'konsumsi rumah tangga', 'daya beli', 'harga', 'petani',
-    'pangan', 'konsumen', 'pedagang', 'produksi', 'distribusi', 'industri',
-    'pertanian', 'perikanan', 'tambak', 'sawah', 'nelayan', 'ternak',
-    'perkebunan', 'sapi', 'beras', 'cabai', 'bawang', 'gula', 'minyak goreng',
-    'telur', 'ayam', 'daging', 'pasar tradisional', 'pasar modern', 'ritel',
-    'grosir', 'pengusaha', 'dagang', 'bisnis', 'usaha', 'toko', 'bumn',
-    'koperasi', 'pajak', 'bea', 'cukai', 'tarif', 'tbg', 'pendapatan',
-    'belanja', 'anggaran', 'fiskal', 'moneter', 'bank sentral', 'bank',
-    'kartu kredit', 'kpr', 'leasing', 'asuransi', 'jasa keuangan',
-    'ventures', 'request for startups', 'asia tenggara', 'malaysia',
-    'economy', 'economic', 'trade', 'growth', 'exports', 'imports',
-    'tariff', 'sanction', 'stimulus', 'resilient', 'domestic', 'grain',
-    'supply', 'factory', 'activity', 'expansion', 'beef', 'daging sapi',
-    'pertanian', 'peternakan', 'agrikultur', 'agriculture', 'hasil tani',
-]
-
-KATA_POLITIK_HUKUM_LOKAL = [
-    'tersangka', 'korupsi', 'kpk', 'kejaksaan', 'pengadilan', 'sidang',
-    'dakwaan', 'hukuman', 'pidana', 'penjara', 'ditahan', 'dpr', 'presiden',
-    'menteri', 'gubernur', 'walikota', 'bupati', 'pileg', 'pilpres', 'pilkada',
-    'partai', 'kampanye', 'demonstrasi', 'unjuk rasa', 'kerusuhan', 'kalapas',
-    'lapas', 'rutan', 'narapidana', 'warga binaan', 'dinonaktifkan', 'dicopot',
-    'diberhentikan', 'dilantik',
-]
-
-NAMA_TOKOH_INDONESIA = [
-    'prabowo', 'gibran', 'jokowi', 'joko widodo', 'megawati', 'anies',
-    'anies baswedan', 'ganjar', 'ganjar pranowo', 'ridwan kamil', 'ahok',
-    'basuki tjahaja', 'sri mulya', 'sri mulyani', 'mahfud', 'mahfud md',
-    'erick thohir', 'agus yudhoyono', 'sby', 'susilo bambang', 'puan maharani',
-    'bambang soesatyo', 'bamsoet', 'listyo sigit', 'sigit listyo',
-    'yudo margono', 'abdul muhaimin', 'muhaimin iskandar', 'cak imin',
-    'airlangga hartarto', 'luhut', 'luhut pandjaitan', 'tito karnavian',
-    'budi gunawan', 'bahlil', 'bahlil lahadalia', 'dito ariotedjo',
-    'sandiaga', 'sandiaga uno', 'yassierli', 'abdul mu\'ti', 'abdul muti',
-    'nadiem', 'nadiem makarim', 'khoirul anam', 'hadi tjahjanto',
-    'agum gumelar', 'agus gumiwang', 'budi karya', 'budi karya sumadi',
-    'sakti wahyu trenggono', 'trenggono', 'agus harimurti yudhoyono', 'ahy',
-    'zulkifli hasan', 'zulhas', 'sufmi dasco', 'dasco', 'ahmad muzani',
-    'muzani', 'yandri susanto', 'muhammad yusril', 'yusril ihza', 'pratikno',
-    'sekretaris negara', 'menteri sekretaris negara', 'setyo novanto', 'setyo',
-    'irsyad yusuf', 'muhammad tohir', 'gus ipul', 'saifullah yusuf',
-    'sri mulyani indrawati', 'menteri keuangan', 'kapolri', 'panglima tni',
-    'ma\'ruf amin', 'maruf amin', 'jenderal agus subiyanto', 'agus subiyanto',
-    'ibnu saud', 'rahman', 'khairul', 'amrullah',
-]
-
-LEMBAGA_INDONESIA = [
-    'kpk', 'dpr', 'mpr', 'dpd', 'dprd', 'kemenkeu', 'kemendag', 'kemenhub',
-    'kemendikbud', 'kemenkes', 'kemnaker', 'kemenkumham', 'kemensos', 'kemenag',
-    'kemenparekraf', 'kemenlu', 'kemenhan', 'kemendagri', 'kemenko',
-    'kemenpppa', 'kemenpora', 'polri', 'tni', 'kejagung', 'kejaksaan agung',
-    'mahkamah agung', 'mahkamah konstitusi', 'mk', 'bawaslu', 'kpu', 'ojk',
-    'bank indonesia', 'bi', 'bpk', 'bpn', 'bnpb', 'basarnas', 'bpom', 'bssn',
-    'bin', 'wantannas', 'setkab', 'setneg', 'perpres', 'inpres', 'keppres',
-]
-
-KOTA_INDONESIA_DATELINE = [
-    'jakarta', 'surabaya', 'bandung', 'semarang', 'yogyakarta', 'medan',
-    'palembang', 'makassar', 'denpasar', 'balikpapan', 'samarinda',
-    'pontianak', 'banjarmasin', 'palangka raya', 'manado', 'ambon',
-    'jayapura', 'kupang', 'mataram', 'tarakan', 'tanjung selor', 'nunukan',
-    'malinau', 'bulungan', 'tana tidung', 'bogor', 'depok', 'tangerang',
-    'bekasi', 'malang', 'solo', 'surakarta', 'pekanbaru', 'padang', 'bengkulu',
-    'lampung', 'bandar lampung', 'batam', 'gorontalo', 'palu', 'kendari', 'mamuju',
-    'selumit', 'selumit pantai', 'juata', 'karang anyar', 'karang balik',
-    'kampung enam', 'pamusian', 'sebengkok', 'gunung lingkas', 'karang harapan',
-]
-
-KATA_LOKAL_KALTARA = [
-    'tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau', 'tana tidung',
-    'sesayap', 'juata', 'tanjung selor', 'sebatik', 'kayu putih',
-]
-
-def cek_kategori_cocok(kategori_target, teks):
-    if not teks:
-        return None
-    t = teks.lower()
-    if kategori_target == 'internasional_asean':
-        if any(k in t for k in KATA_ASEAN_WAJIB):
-            return None
-        return 'kategori asean tapi tidak ada kata kunci asean'
-    if kategori_target in ('internasional', 'internasional_tt'):
-        if any(k in t for k in KATA_LUAR_NEGERI_WAJIB):
-            return None
-        return ('kategori ' + kategori_target + ' tapi tidak ada kata luar negeri')
-    if kategori_target == 'ekonomi':
-        if any(k in t for k in KATA_EKONOMI_WAJIB):
-            return None
-        return 'kategori ekonomi tapi tidak ada kata ekonomi'
-    if kategori_target == 'nasional':
-        if any(k in t for k in KATA_POLITIK_HUKUM_LOKAL):
-            return None
-        return None
-    return None
-
-def _kpk_konteks_indonesia(teks):
-    t = (teks or '').lower()
-    if 'kpk' not in t:
-        return False
-    konteks = ['kpk indonesia', 'komisi pemberantasan korupsi', 'kpk ri',
-               'kpk republik indonesia', 'kpk tangkap', 'kpk periksa',
-               'kpk sidik', 'kpk jerat', 'kpk tetapkan']
-    for k in konteks:
-        if k in t:
-            return True
-    for m in re.finditer(r'kpk', t):
-        awal = max(0, m.start() - 50)
-        akhir = min(len(t), m.end() + 50)
-        sekitar = t[awal:akhir]
-        if any(k in sekitar for k in ('indonesia', 'ri ', 'jakarta', 'korupsi',
-                                       'pemberantasan', 'tersangka', 'menteri')):
-            return True
-    return False
-
-def cek_kategori_dari_isi(isi, judul, kategori_target):
-    if not isi:
-        return None
-    if kategori_target not in ('internasional', 'internasional_asean', 'internasional_tt'):
-        return None
-    gab = (judul or '') + ' ' + (isi or '')
-    t = gab.lower()
-    for tokoh in NAMA_TOKOH_INDONESIA:
-        if re.search(r'\b' + re.escape(tokoh) + r'\b', t):
-            return ('isi AI memuat tokoh Indonesia "' + tokoh + '" tapi target kategori internasional')
-    for lem in LEMBAGA_INDONESIA:
-        if lem == 'kpk':
-            if _kpk_konteks_indonesia(t):
-                return ('isi AI memuat lembaga Indonesia "kpk" dengan konteks Indonesia tapi target kategori internasional')
-            continue
-        if lem == 'tni':
-            continue
-        if re.search(r'\b' + re.escape(lem) + r'\b', t):
-            return ('isi AI memuat lembaga Indonesia "' + lem + '" tapi target kategori internasional')
-    m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+', isi or '')
-    if m:
-        dp = m.group(1).strip().lower()
-        kota = dp.split(',')[0].strip()
-        if kota in KOTA_INDONESIA_DATELINE:
-            return ('dateline "' + kota + '" kota Indonesia tapi target kategori internasional')
-    return None
-
-def tentukan_kategori_dari_isi(judul, isi):
-    gab = (judul or '') + ' ' + (isi or '')
-    t = gab.lower()
-    is_indo = False
-    for tokoh in NAMA_TOKOH_INDONESIA:
-        if re.search(r'\b' + re.escape(tokoh) + r'\b', t):
-            is_indo = True
-            break
-    if not is_indo:
-        for lem in LEMBAGA_INDONESIA:
-            if re.search(r'\b' + re.escape(lem) + r'\b', t):
-                is_indo = True
-                break
-    if not is_indo:
-        return None
-    is_lokal = any(re.search(r'\b' + re.escape(k) + r'\b', t)
-                   for k in KATA_LOKAL_KALTARA)
-    if is_lokal:
-        return 'daerah'
-    return 'nasional'
-
 KATA_UMUM_EN = set([
     'the', 'and', 'for', 'with', 'from', 'that', 'this', 'have', 'will', 'been',
     'are', 'was', 'were', 'their', 'they', 'about', 'after', 'into', 'over',
@@ -3029,7 +2840,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
         return None
     return ('judul AI tidak nyambung materi: tidak ada irisan nama diri/angka/kata kunci')
 
-# AKHIR PART 3A
+# AKHIR PART 3A-3
 
 # PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.41)
 
@@ -5024,7 +4835,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.41'
+FILE_VERSI = 'V6.17.42'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
