@@ -2841,6 +2841,140 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
     return ('judul AI tidak nyambung materi: tidak ada irisan nama diri/angka/kata kunci')
 
 # AKHIR PART 3A-3
+# PART 3A-4 - COLLECT + MATCH + BARAT + DUA_TOPIK (V6.17.42)
+
+def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''):
+    if max_umur_jam is None:
+        max_umur_jam = MAX_UMUR_BERITA_JAM
+    rejected = muat_rejected_urls()
+    out = []
+    skip_layak = 0
+    skip_rejected = 0
+    for src in sources:
+        try:
+            feed = feedparser.parse(src['url'])
+        except Exception:
+            continue
+        for entry in feed.entries[:8]:
+            link = entry.get('link', '')
+            if not link or link in seen or link in today_urls:
+                continue
+            if link in rejected:
+                skip_rejected += 1
+                continue
+            u = umur_jam(entry)
+            if u is not None and u > max_umur_jam:
+                continue
+            title = entry.get('title', '')
+            summary = get_material(entry)
+            if not title or not summary:
+                continue
+
+            layak, alasan = _kandidat_layak(title, summary, kategori)
+            if not layak:
+                skip_layak += 1
+                if skip_layak <= 3:
+                    print('       Skip kandidat (AI Editor Luar): ' + alasan[:60] + ' — ' + title[:50])
+                continue
+
+            seen.add(link)
+            sname = src['source']
+            if src.get('gn'):
+                t2, portal = gn_split(title)
+                title = t2
+                if portal and portal != 'Google News':
+                    sname = portal
+            out.append({'title': title, 'summary': summary, 'link': link,
+                        'source': sname, 'entry': entry,
+                        'tgl_pub': tanggal_publikasi_str(entry)})
+    if skip_layak > 3:
+        print('       (Total skip AI Editor Luar: ' + str(skip_layak) + ')')
+    if skip_rejected > 0:
+        print('       (Total skip rejected_urls blacklist: ' + str(skip_rejected) + ')')
+    return out
+
+def match_articles(candidates):
+    STOP = set('di ke dari yang dan atau dengan untuk pada dalam akan telah '
+               'sudah karena jika agar itu ini para kami mereka ada tidak bisa '
+               'dapat juga lebih masih hanya setelah sebelum sekitar oleh '
+               'sebagai kata bilang katakan ujar menurut the and for with from '
+               'that this have will been are was were their they about after'.split())
+    def kw(s):
+        return set(re.findall(r'[a-z0-9]{4,}', s.lower())) - STOP
+    groups = []
+    for c in candidates:
+        k = kw(c['title'])
+        placed = False
+        for g in groups:
+            if len(g['items']) >= 4:
+                continue
+            sama = k & g['kw']
+            kecil = min(len(k), len(g['kw']))
+            if kecil == 0:
+                continue
+            rasio = len(sama) / kecil
+            if len(sama) >= MATCH_MIN_KATA and rasio >= MATCH_MIN_RASIO:
+                g['items'].append(c)
+                g['kw'] |= k
+                placed = True
+                break
+        if not placed:
+            groups.append({'kw': k, 'items': [c]})
+    return groups
+
+def kategori_barat(title, summary):
+    t = ((title or '') + ' ' + (summary or '')).lower()
+    if any(k in t for k in KATA_BARAT_USA):
+        return 'usa'
+    if any(k in t for k in KATA_BARAT_RUSIA):
+        return 'rusia'
+    if any(k in t for k in KATA_BARAT_EROPA):
+        return 'eropa'
+    return None
+
+def barat_terbit_jumlah(kelompok):
+    n = 0
+    try:
+        rows = rest_get('?select=title,created_at&order=created_at.desc&limit=300')
+        today = datetime.now(WITA).date()
+        for row in rows:
+            try:
+                d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00')).astimezone(WITA).date()
+                if d != today:
+                    continue
+                teks = (row.get('title') or '').lower()
+                if kelompok == 'usa' and any(k in teks for k in KATA_BARAT_USA):
+                    n += 1
+                elif kelompok == 'rusia' and any(k in teks for k in KATA_BARAT_RUSIA):
+                    n += 1
+                elif kelompok == 'eropa' and any(k in teks for k in KATA_BARAT_EROPA):
+                    n += 1
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return n
+
+def barat_sudah_terbit(kelompok, batas=2):
+    return barat_terbit_jumlah(kelompok) >= batas
+
+def deteksi_dua_topik(judul, isi):
+    try:
+        pola = re.compile(r'\b([A-Z][A-Z\s\.\'\-]{3,40}?)\s+[-–—]\s+')
+        lokasi = set()
+        daftar_kota = set(KOTA_INDONESIA_DATELINE) | set(VARIAN_KOTA_EN_ID.keys())
+        for m in pola.finditer(isi or ''):
+            kandidat = m.group(1).strip().lower()
+            kota = kandidat.split(',')[0].strip()
+            if kota in daftar_kota:
+                lokasi.add(kandidat)
+        if len(lokasi) >= 2:
+            return 'isi memuat lebih dari satu dateline kota: ' + '; '.join(list(lokasi)[:3])
+    except Exception:
+        pass
+    return None
+
+# AKHIR PART 3A-4
 
 # PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.41)
 
