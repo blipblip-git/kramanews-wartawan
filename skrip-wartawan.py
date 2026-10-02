@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.40)
+# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.43)
 
 import requests
 import json
@@ -381,7 +381,7 @@ DOMAIN_TEKNOLOGI = [
 ]
 JAM_TEKNOLOGI = {8: 0, 13: 1, 18: 2}
 
-# ═══ V6.17.40: TAMBAH RSS LANGSUNG DI HUNT SEMUA KATEGORI ═══
+# ═══ V6.17.43: TAMBAH RSS CHINA + EKONOMI + OTOMOTIF + ASIA ═══
 HUNT = {
     'nasional': [
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -415,6 +415,7 @@ HUNT = {
         RSSF('https://jateng.tribunnews.com/rss', 'Tribun Jateng'),
         RSSF('https://jabar.tribunnews.com/rss', 'Tribun Jabar'),
         RSSF('https://dki.tribunnews.com/rss', 'Tribun DKI Jakarta'),
+        RSSF('https://bali.tribunnews.com/rss', 'Tribun Bali'),
         GN('Surabaya', 'id', 'Google News Surabaya'),
         GN('Semarang', 'id', 'Google News Semarang'),
         GN('Bandung', 'id', 'Google News Bandung'),
@@ -425,8 +426,10 @@ HUNT = {
         GN('Pekanbaru', 'id', 'Google News Pekanbaru'),
         GN('Padang', 'id', 'Google News Padang'),
         RSSF('https://sulsel.tribunnews.com/rss', 'Tribun Sulsel'),
+        RSSF('https://sultra.tribunnews.com/rss', 'Tribun Sultra'),
         GN('Makassar', 'id', 'Google News Makassar'),
         GN('Manado', 'id', 'Google News Manado'),
+        GN('Kendari', 'id', 'Google News Kendari'),
         GN('Kalimantan Barat', 'id', 'Google News Kalbar'),
         GN('Pontianak', 'id', 'Google News Pontianak'),
         GN('Kalimantan Selatan', 'id', 'Google News Kalsel'),
@@ -453,6 +456,11 @@ HUNT = {
         RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
         RSSF('https://www.channelnewsasia.com/rssfeed/8395986/asia', 'CNA Asia'),
         RSSF('https://www.antaranews.com/rss/world', 'Antara Dunia'),
+        # V6.17.43: TAMBAH RSS ASIA
+        RSSF('https://e.vnexpress.net/rss/news.rss', 'VnExpress'),
+        RSSF('https://www.nationthailand.com/rss', 'The Nation Thailand'),
+        RSSF('https://www.manilatimes.net/feed', 'Manila Times'),
+        RSSF('https://www.thaipbsworld.com/feed/', 'Thai PBS World'),
         GN('asean', 'en', 'Google News ASEAN'),
         GN('malaysia indonesia', 'en', 'Google News Malaysia-Indonesia'),
         GN('thailand southeast asia', 'en', 'Google News Thailand'),
@@ -470,6 +478,10 @@ HUNT = {
         RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
         RSSF('https://www.middleeasteye.net/rss', 'Middle East Eye'),
         RSSF('https://www.timesofisrael.com/feed/', 'Times of Israel'),
+        # V6.17.43: TAMBAH RSS TIMUR TENGAH
+        RSSF('https://english.alarabiya.net/tools/rss', 'Al Arabiya'),
+        RSSF('https://gulfnews.com/rss', 'Gulf News'),
+        RSSF('https://www.jpost.com/rss/rssfeedsfrontpage.aspx', 'Jerusalem Post'),
         GN('middle east news', 'en', 'Google News Timur Tengah'),
         GN('gaza palestine', 'en', 'Google News Gaza-Palestina'),
         GN('saudi arabia uae', 'en', 'Google News Saudi-UEA'),
@@ -484,9 +496,25 @@ HUNT = {
         RSSF('https://apnews.com/index.rss', 'AP News'),
         RSSF('https://www.france24.com/en/rss', 'France24'),
         RSSF('http://rss.cnn.com/rss/edition_world.rss', 'CNN World'),
+        # ═══ V6.17.43: TAMBAH PORTAL CHINA BESAR ═══
+        RSSF('http://www.xinhuanet.com/english/rss/worldrss.xml', 'Xinhua World'),
+        RSSF('https://www.chinadaily.com.cn/rss/world_rss.xml', 'China Daily World'),
+        RSSF('https://www.chinadaily.com.cn/rss/bizchina_rss.xml', 'China Daily Biz'),
+        RSSF('https://www.cgtn.com/subscribe/rss/section/world.xml', 'CGTN World'),
+        RSSF('https://www.cgtn.com/subscribe/rss/section/business.xml', 'CGTN Business'),
+        RSSF('https://www.globaltimes.cn/rss/outbrain.xml', 'Global Times'),
+        RSSF('https://www.scmp.com/rss/91/feed', 'SCMP China'),
+        RSSF('https://www.scmp.com/rss/92/feed', 'SCMP Asia'),
+        # ═══ TAMBAH PORTAL ASIA LAIN ═══
+        RSSF('https://www.japantimes.co.jp/feed/', 'Japan Times'),
+        RSSF('https://www.koreaherald.com/common/rss_xml.php?ct=020000000000', 'Korea Herald'),
+        RSSF('https://www3.nhk.or.jp/nhkworld/en/news/rss/all.xml', 'NHK World'),
+        RSSF('https://timesofindia.indiatimes.com/rssfeedstopstories.cms', 'Times of India'),
         GN('us politics', 'en', 'Google News USA'),
         GN('russia politics', 'en', 'Google News Rusia'),
         GN('europe politics', 'en', 'Google News Eropa'),
+        GN('china politics', 'en', 'Google News China'),
+        GN('china economy', 'en', 'Google News China Economy'),
     ],
     'ekonomi': [
         RSSF('https://market.bisnis.com/feed', 'Bisnis Market'),
@@ -496,6 +524,17 @@ HUNT = {
         RSSF('https://www.antaranews.com/rss/ekonomi', 'Antara'),
         RSSF('https://economy.okezone.com/rss', 'Okezone Economy'),
         RSSF('https://www.kontan.co.id/rss', 'Kontan'),
+        # ═══ V6.17.43: TAMBAH RSS EKONOMI INTERNASIONAL ═══
+        RSSF('https://feeds.a.dj.com/rss/RSSMarketsMain.xml', 'WSJ Markets'),
+        RSSF('https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml', 'WSJ Business'),
+        RSSF('https://www.bloomberg.com/feed/podcast/etf-report.xml', 'Bloomberg ETF'),
+        RSSF('https://www.cnbc.com/id/100003114/device/rss/rss.html', 'CNBC World'),
+        RSSF('https://www.cnbc.com/id/10000664/device/rss/rss.html', 'CNBC Finance'),
+        RSSF('https://www.reutersagency.com/feed/?best-topics=business-finance', 'Reuters Biz'),
+        RSSF('https://www.ft.com/?format=rss', 'Financial Times'),
+        RSSF('https://www.chinadaily.com.cn/rss/bizchina_rss.xml', 'China Daily Biz'),
+        RSSF('https://www.scmp.com/rss/92/feed', 'SCMP Business'),
+        RSSF('https://www.japantimes.co.jp/feed/', 'Japan Times Biz'),
         GN('china economy', 'en', 'Google News Ekonomi China'),
         GN('japan economy', 'en', 'Google News Ekonomi Jepang'),
         GN('south korea economy', 'en', 'Google News Ekonomi Korea Selatan'),
@@ -511,6 +550,10 @@ HUNT = {
         RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
         RSSF('https://www.goal.com/feeds/en/news', 'Goal.com'),
         RSSF('https://www.espn.com/espn/rss/news', 'ESPN'),
+        # V6.17.43: TAMBAH RSS OLAHRAGA
+        RSSF('https://feeds.bbci.co.uk/sport/rss.xml', 'BBC Sport'),
+        RSSF('https://www.espn.com/espn/rss/soccer/news', 'ESPN Soccer'),
+        RSSF('https://www.skysports.com/rss/12040', 'Sky Sports Football'),
         GN('timnas indonesia', 'id', 'Google News Timnas'),
         GN('premier league', 'en', 'Google News Premier League'),
         GN('bundesliga', 'en', 'Google News Bundesliga'),
@@ -529,6 +572,12 @@ HUNT = {
         RSSF('https://www.gridoto.com/rss', 'GridOto'),
         RSSF('https://oto.detik.com/rss', 'Detik Oto'),
         RSSF('https://www.motorplus-online.com/rss', 'Motorplus'),
+        # ═══ V6.17.43: TAMBAH RSS OTOMOTIF INTERNASIONAL ═══
+        RSSF('https://www.autocar.co.uk/rss', 'Autocar'),
+        RSSF('https://www.motor1.com/rss/news/all/', 'Motor1'),
+        RSSF('https://www.carscoops.com/feed/', 'Carscoops'),
+        RSSF('https://www.autoblog.com/rss.xml', 'Autoblog'),
+        RSSF('https://www.caranddriver.com/rss/all.xml/', 'Car and Driver'),
         GN('mobil baru rilis Indonesia', 'id', 'GN Mobil Baru'),
         GN('motor baru rilis Indonesia', 'id', 'GN Motor Baru'),
         GN('kendaraan listrik Indonesia', 'id', 'GN Kendaraan Listrik'),
@@ -567,7 +616,7 @@ def judul_spam(judul):
 
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.41)
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.43)
 
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -598,6 +647,13 @@ BREAKING_DUNIA_FEEDS = [
     RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
     RSSF('https://apnews.com/index.rss', 'AP News'),
     RSSF('https://www.france24.com/en/rss', 'France24'),
+    # V6.17.43: TAMBAH PORTAL CHINA + ASIA
+    RSSF('http://www.xinhuanet.com/english/rss/worldrss.xml', 'Xinhua World'),
+    RSSF('https://www.chinadaily.com.cn/rss/world_rss.xml', 'China Daily World'),
+    RSSF('https://www.cgtn.com/subscribe/rss/section/world.xml', 'CGTN World'),
+    RSSF('https://www.scmp.com/rss/91/feed', 'SCMP China'),
+    RSSF('https://www.japantimes.co.jp/feed/', 'Japan Times'),
+    RSSF('https://www3.nhk.or.jp/nhkworld/en/news/rss/all.xml', 'NHK World'),
     GN('breaking world news', 'en', 'GN Breaking Dunia'),
     GN('major earthquake', 'en', 'GN Gempa Besar Dunia'),
     GN('war conflict missile', 'en', 'GN Perang'),
@@ -795,10 +851,8 @@ _GAMBAR_TERPAKAI_CACHE = None
 
 DEBUG_SCRAPE = True
 
-# ═══ V6.17.39: PEMOTONGAN MATERI PANJANG ═══
 MATERI_MAKS_KARAKTER = 1000
 
-# ═══ V6.17.30: BLACKLIST PERMANEN rejected_urls ═══
 REJECTED_URLS_CACHE = None
 
 def muat_rejected_urls():
@@ -825,7 +879,6 @@ def muat_rejected_urls():
     REJECTED_URLS_CACHE = out
     return out
 
-# ═══ V6.17.41: SKIP CATAT REJECTED KALAU ALASAN TRANSIENT / PENDEK ═══
 KATA_ALASAN_TRANSIENT = [
     'rate limit', 'timeout', 'koneksi', 'connection',
     'error sementara', 'coba lagi', 'retry',
@@ -884,14 +937,12 @@ def _url_valid_berita(u):
     m = re.match(r'^https?://[^/]+(/.*)?$', low)
     if not m or not m.group(1):
         return False
-    if not re.search(r'\.(com|id|net|co|org|tv|info|news|co\.id|or\.id|go\.id|ac\.id|my\.id|sch\.id)\b', low):
+    if not re.search(r'\.(com|id|net|co|org|tv|info|news|co\.id|or\.id|go\.id|ac\.id|my\.id|sch\.id|cn|jp|kr|uk|au|sg|my|th|vn|ph)\b', low):
         return False
     if low.endswith(('.svg', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.ico',
                      '.css', '.js', '.woff', '.woff2', '.ttf', '.eot')):
         return False
     return True
-
-# ═══ V6.17.40: DECODE GOOGLE NEWS — METODE BARU (BASE64 / AU_yqL) ═══
 
 def _gn_id_dari_url(url):
     try:
@@ -928,15 +979,12 @@ def _gn_decode_html(html):
     return ''
 
 def _gn_decode_base64(url):
-    """V6.17.40: decode ID Google News via base64 → ekstrak URL asli.
-    Google News ID biasanya base64 varian dari URL + signature."""
     if not url:
         return ''
     try:
         gid = _gn_id_dari_url(url)
         if not gid:
             return ''
-        # Padding base64
         gid_pad = gid + '=' * (-len(gid) % 4)
         try:
             raw = base64.urlsafe_b64decode(gid_pad)
@@ -947,12 +995,9 @@ def _gn_decode_base64(url):
                 return ''
         if not raw:
             return ''
-        # Cari URL di dalam raw bytes
         teks = raw.decode('utf-8', errors='ignore')
-        # Cari pola http di dalam
         for m in re.finditer(r'https?://[^\s\x00-\x1f"\'<>]+', teks):
             u = m.group(0)
-            # Bersihkan trailing garbage
             u = re.sub(r'[\x00-\x1f]+.*$', '', u)
             if _url_valid_berita(u) and GOOGLE_NEWS_HOST not in u:
                 return u
@@ -961,11 +1006,9 @@ def _gn_decode_base64(url):
     return ''
 
 def _gn_decode_batch_new(ids):
-    """V6.17.40: metode baru — coba beberapa endpoint + base64 fallback."""
     if not ids:
         return {}
     out = {}
-    # Coba metode AU_yqL (batchexecute baru)
     try:
         url = 'https://news.google.com/_/DotsSplashUi/data/batchexecute'
         payload = []
@@ -993,7 +1036,6 @@ def _gn_decode_batch_new(ids):
                 return out
     except Exception as e:
         print('       GN decode batch new gagal: ' + str(e)[:60])
-    # Fallback: metode AU_yqL endpoint alternatif
     try:
         url = 'https://news.google.com/rss/articles/' + ids[0]
         headers = {
@@ -1019,16 +1061,13 @@ def resolusi_link_google(url):
         print('       GN decode: ID tidak ditemukan di URL')
         STAT_SCRAPE['gn_gagal_decode'] += 1
         return ''
-    # V6.17.40: coba batch baru dulu
     hasil = _gn_decode_batch_new([gid])
     if hasil and gid in hasil:
         return hasil[gid]
-    # V6.17.40: coba base64 decode
     u_b64 = _gn_decode_base64(url)
     if u_b64:
         print('       GN decode base64 BERHASIL: ' + u_b64[:80])
         return u_b64
-    # Fallback: HTML scraping
     try:
         headers = {
             'User-Agent': random.choice(UA_LIST),
@@ -1168,9 +1207,7 @@ def scrape_artikel(url, judul_debug=''):
     _CACHE_SCRAPE[url] = ''
     return ''
 
-# ═══ V6.17.39: POTONG MATERI PANJANG (>1000 KAR) ═══
 def _potong_materi(teks, maks=MATERI_MAKS_KARAKTER):
-    """Potong materi > maks kar. Potong di kalimat terakhir sebelum maks."""
     if not teks or len(teks) <= maks:
         return teks
     potong = teks[:maks]
@@ -1344,6 +1381,7 @@ def tanggal_publikasi_str(entry):
     except Exception:
         return None
 
+# ═══ V6.17.43: BUILD SYSTEM PROMPT — PERKUAT ATURAN NAMA + GELAR ═══
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu AI Editor KramaNews Indonesia. TUGAS: Tulis berita dari materi yang sudah lolos filter. Materi SUDAH BERSIH — jangan tolak kecuali fatal.
@@ -1356,12 +1394,31 @@ ANTI-JIPLAK:
 FAKTA:
 - NAMA ORANG, LEMBAGA, TEMPAT, ANGKA wajib ada di materi.
 
-ATURAN NAMA (SANGAT PENTING):
-- Kalau materi SUDAH ADA nama orang → WAJIB tulis nama lengkap + jabatan.
-- Kalau materi HANYA jabatan (tanpa nama) → JANGAN paksa narasumber.
-  * Tulis berita sebagai KEGIATAN/PERISTIWA, bukan pernyataan pejabat.
-- TNI/Polri: nama + pangkat + jabatan (kalau ada di materi).
-- Gelar akademik tulis persis dari materi.
+ATURAN NAMA PEJABAT (SANGAT PENTING — PELANGGARAN = TOLAK):
+- WAJIB tulis NAMA PEJABAT dalam format: JABATAN + NAMA LENGKAP + GELAR (kalau ada di materi).
+- Contoh BENAR:
+  * "Wali Kota Tarakan Drs. H. Khairul, M.Si. menyerahkan..."
+  * "Kapolres Tarakan AKBP Rudi Hartono, S.I.K. mengatakan..."
+  * "Bupati Bulungan Dr. Ir. Syaiful, M.Si. meninjau..."
+- Contoh SALAH (DILARANG):
+  * "Walikota Khairul menyerahkan..." -> kurang gelar
+  * "Menurut Khairul..." -> kurang jabatan + gelar
+  * "Kapolres Rudi..." -> kurang pangkat + gelar
+  * "Khairul mengatakan..." -> TIDAK SOPAN, DILARANG
+- Sebutan WAJIB minimal: JABATAN + NAMA (kalau materi tak ada gelar).
+- DILARANG sebut nama orang TANPA jabatan.
+- DILARANG "menurut <nama depan>..." tanpa jabatan lengkap.
+- Setelah penyebutan pertama lengkap, sebutan berikut boleh nama saja.
+
+ATURAN TNI/POLRI (WAJIB):
+- Selalu sebut: PANGKAT + NAMA + JABATAN.
+- Contoh: "Kapolres Tarakan AKBP Rudi Hartono, S.I.K."
+- DILARANG sebut pangkat tanpa nama.
+- DILARANG sebut nama tanpa pangkat (kecuali sudah disebut lengkap sebelumnya).
+
+ATURAN GELAR AKADEMIK (WAJIB):
+- Kalau materi memuat gelar (Drs., Ir., S.T., S.H., M.Si., M.M., Dr., Prof., dll) -> WAJIB tulis persis.
+- JANGAN karang gelar kalau tidak ada di materi.
 
 NAMA LEMBAGA ASING: JANGAN diterjemahkan.
 
@@ -1371,7 +1428,7 @@ WAKTU:
 
 DATELINE (SANGAT PENTING):
 - WAJIB KOTA, PROVINSI spesifik (bukan cuma "INDONESIA").
-- Contoh: "JAKARTA, DKI JAKARTA - ", "YOGYAKARTA, DI YOGYAKARTA - ",
+- Contoh: "JAKARTA, DKI JAKARTA - ", "TARAKAN, KALIMANTAN UTARA - ",
   "LONDON, INGGRIS - ".
 - Kalau materi tidak sebut kota -> pakai ibu kota (Indonesia = JAKARTA).
 - DILARANG mengarang kota di luar materi.
@@ -1382,7 +1439,7 @@ DATELINE EVENT BESAR (WAJIB):
   → DATELINE WAJIB kota penyelenggara + negara penyelenggara.
   * Asian Games 2026 -> "AICHI-NAGOYA, JEPANG - "
   * SEA Games 2026 -> "BANGKOK, THAILAND - "
-  * Olimpiade 2026 -> "PARIS, PERANCIS - " (atau kota penyelenggara)
+  * Olimpiade 2026 -> "PARIS, PERANCIS - "
   * Piala Dunia 2026 -> "NEW YORK, AMERIKA SERIKAT - "
   * Winter Olympics 2026 -> "MILANO-CORTINA, ITALIA - "
 - DILARANG pakai "INDONESIA - " untuk event besar di luar negeri.
@@ -1398,8 +1455,6 @@ KATEGORI (WAJIB TEPAT):
 - ekonomi: IHSG, kurs, saham, BI, OJK, UMKM, bisnis, ekonomi dunia,
   EKSPOR, IMPOR, PERDAGANGAN, PERTUMBUHAN EKONOMI, PENJUALAN.
 - olahraga: sepak bola, basket, badminton, voli, tenis, MotoGP, F1.
-  * Olahraga global tanpa sebut cabang -> TETAP olahraga.
-  * Tim asing (Barcelona, Newcastle, dll) -> boleh internasional ATAU olahraga.
 - teknologi: gadget, AI, aplikasi, internet, startup, keamanan digital.
 - otomotif: mobil, motor, kendaraan listrik, spare part, modifikasi.
 - kesehatan: penyakit, gizi, obat, dokter, mental health.
@@ -1419,8 +1474,6 @@ PENTING — JANGAN TOLAK BERLEBIHAN:
 - Ekspor/impor/perdagangan/pendapatan negara -> TETAP ekonomi.
 - Perusahaan naik peringkat/valuasi/IPO -> TETAP ekonomi.
 - AI/teknologi yang bocor data -> TETAP teknologi (BUKAN politik).
-- Materi tentang perusahaan/startup/ekspor -> kategori ekonomi/teknologi,
-  BUKAN politik.
 - HANYA tolak kalau materi JELAS tentang kategori yang SALAH.
 
 TOLAK — HANYA kalau fatal. WAJIB tulis alasan tolak DETIL (1-2 kata
@@ -2635,7 +2688,7 @@ def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
     return None
 
 # AKHIR PART 3A-3
-# PART 3A-4 - BUKAN_BERITA + LUAR_NEGERI + TOKOH + KOTA + CEK_KATEGORI + TOPIK (V6.17.42)
+# PART 3A-4 - BUKAN_BERITA + LUAR_NEGERI + TOKOH + KOTA + CEK_KATEGORI + TOPIK (V6.17.43)
 
 KATA_BUKAN_BERITA = [
     'zodiak', 'horoskop', 'ramalan bintang', 'ramalan cinta', 'ramalan nasib',
@@ -2670,6 +2723,9 @@ KATA_LUAR_NEGERI_WAJIB = [
     'brics', 'pemilu amerika', 'us election', 'parlemen eropa', 'uni eropa',
     'european union', 'taiwan', 'kamboja', 'cambodia', 'thailand',
     'vietnam', 'filipina', 'singapura', 'myanmar', 'laos', 'brunei',
+    # V6.17.43: tambah portal China + Asia
+    'xinhua', 'cgtn', 'global times', 'scmp', 'south china morning post',
+    'nhk', 'korea herald', 'japan times', 'times of india',
 ]
 
 KATA_ASEAN_WAJIB = [
@@ -2685,8 +2741,11 @@ KATA_TT = [
     'emirates', 'qatar', 'kuwait', 'libanon', 'jordan', 'turki',
     'hamas', 'hezbollah', 'idf', 'netanyahu', 'west bank', 'teheran',
     'lebanon', 'damaskus', 'beirut', 'golan', 'sinai',
+    # V6.17.43: tambah portal TT
+    'al arabiya', 'gulf news', 'jerusalem post', 'middle east eye',
 ]
 
+# ═══ V6.17.43: PERLUAS KATA_EKONOMI_WAJIB ═══
 KATA_EKONOMI_WAJIB = [
     'ihsg', 'idx', 'bursa', 'saham', 'obligasi', 'reksa dana', 'bank indonesia',
     'bi rate', 'suku bunga', 'inflasi', 'deflasi', 'pdb', 'gdp',
@@ -2714,6 +2773,39 @@ KATA_EKONOMI_WAJIB = [
     'tariff', 'sanction', 'stimulus', 'resilient', 'domestic', 'grain',
     'supply', 'factory', 'activity', 'expansion', 'beef', 'daging sapi',
     'agrikultur', 'agriculture', 'hasil tani',
+    # ═══ V6.17.43: TAMBAH KATA KUNCI EKONOMI ═══
+    'nilai tukar', 'valuta', 'devisa', 'cadangan devisa', 'neraca pembayaran',
+    'transaksi berjalan', 'current account', 'capital flow', 'arus modal',
+    'portfolio', 'portofolio', 'instrumen', 'surat utang', 'sbn', 'sun',
+    'obligasi negara', 'yield', 'imbal hasil', 'rating', 'peringkat utang',
+    'lembaga pemeringkat', 'moody', 'fitch', 's&p global',
+    'suku bunga acuan', 'the fed', 'fed', 'bank sentral as', 'ecb',
+    'bank sentral eropa', 'boj', 'bank jepang', 'pboc', 'bank sentral china',
+    'perdagangan internasional', 'bilateral', 'multilateral', 'fta',
+    'kerja sama dagang', 'trade deal', 'tarif impor', 'kuota impor',
+    'dumping', 'antidumping', 'subsidi ekspor', 'proteksionisme',
+    'globalisasi', 'supply chain', 'rantai pasok', 'logistik',
+    'manufaktur', 'pabrik', 'produksi industri', 'output', 'kapasitas produksi',
+    'pmi', 'indeks manajer pembelian', 'indeks pmi',
+    'pertumbuhan', 'kontraksi', 'ekspansi', 'resesi teknis',
+    'unemployment', 'pengangguran', 'tenaga kerja', 'upah minimum',
+    'phk', 'pesangon', 'serikat pekerja',
+    'belanja negara', 'belanja pemerintah', 'stimulus fiskal',
+    'stimulus moneter', 'quantitative easing', 'qe', 'pelonggaran',
+    'pengetatan', 'hawkish', 'dovish',
+    'saham blue chip', 'saham perbankan', 'sektor keuangan', 'sektor energi',
+    'sektor teknologi', 'sektor konsumen', 'sektor properti',
+    'perbankan', 'perasuransian', 'multifinance', 'peer to peer', 'p2p',
+    'pinjaman online', 'pinjol', 'kredit macet', 'npl', 'kolektibilitas',
+    'bank digital', 'neobank', 'dompet digital', 'e-wallet',
+    'penjualan mobil', 'penjualan motor', 'industri otomotif',
+    'produk domestik bruto', 'pdb per kapita', 'pendapatan per kapita',
+    'inflasi inti', 'inflasi umum', 'deflasi', 'stagflasi', 'hiperinflasi',
+    'bi 7-day', 'bi7drr', 'suku bunga the fed', 'fed rate',
+    'obligasi pemerintah', 'obligasi korporasi', 'reksadana',
+    'investor asing', 'investor domestik', 'investor ritel',
+    'net buy', 'net sell', 'asing keluar', 'asing masuk', 'capital outflow',
+    'pasar berjangka', 'komoditas berjangka', 'kontrak berjangka',
 ]
 
 KATA_POLITIK_HUKUM_LOKAL = [
@@ -2931,6 +3023,8 @@ NAMA_DIRI_UMUM = set([
     'tesla', 'apple', 'google', 'microsoft', 'meta', 'openai', 'anthropic',
     'nvidia', 'intel', 'samsung', 'huawei', 'xiaomi', 'tiktok', 'bytedance',
     'covid', 'covid-19',
+    # V6.17.43: tambah media China + Asia
+    'xinhua', 'cgtn', 'scmp', 'global times', 'nhk', 'korea herald',
 ])
 
 def _kata_inti_nama_diri(teks, bahasa='id'):
@@ -2991,7 +3085,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
 
 # AKHIR PART 3A-4
 
-# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.41)
+# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.43)
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -3031,6 +3125,10 @@ def sumber_otomotif_hari_ini(jam):
         sumber.append(GN(q, lang, 'GN Otomotif: ' + dom['nama'], when='180d'))
     sumber.append(RSSF('https://www.otomotifnet.com/rss', 'Otomotifnet'))
     sumber.append(RSSF('https://www.gridoto.com/rss', 'GridOto'))
+    # V6.17.43: tambah RSS otomotif internasional
+    sumber.append(RSSF('https://www.autocar.co.uk/rss', 'Autocar'))
+    sumber.append(RSSF('https://www.motor1.com/rss/news/all/', 'Motor1'))
+    sumber.append(RSSF('https://www.carscoops.com/feed/', 'Carscoops'))
     print('   OTOMOTIF hari ini (jam ' + str(jam) + '): ' + dom['nama'])
     return dom, sumber
 
@@ -3492,6 +3590,7 @@ def _catatan_anti_jiplak():
         'WAJIB bikin judul BEDA dengan kalimatmu sendiri — jiplak judul = ditolak.\n'
     )
 
+# ═══ V6.17.43: PERKUAT CATATAN KATEGORI + GELAR ═══
 def _catatan_kategori_ketat(kategori_target):
     if not kategori_target or kategori_target == 'breaking':
         return ''
@@ -3501,6 +3600,20 @@ def _catatan_kategori_ketat(kategori_target):
     if not kata_kunci:
         return ''
     contoh = ', '.join(kata_kunci[:8])
+    catatan_gelar = ''
+    if kategori_target in ('nasional', 'daerah'):
+        catatan_gelar = (
+            '\n\nWAJIB NAMA PEJABAT LENGKAP (PELANGGARAN = TOLAK):\n'
+            '- Format: JABATAN + NAMA LENGKAP + GELAR (kalau ada di materi).\n'
+            '- Contoh BENAR: "Wali Kota Tarakan Drs. H. Khairul, M.Si."\n'
+            '- Contoh BENAR: "Kapolres Tarakan AKBP Rudi Hartono, S.I.K."\n'
+            '- Contoh SALAH: "Walikota Khairul" (kurang gelar).\n'
+            '- Contoh SALAH: "Menurut Khairul" (kurang jabatan — DILARANG).\n'
+            '- DILARANG sebut nama orang tanpa jabatan.\n'
+            '- TNI/Polri: PANGKAT + NAMA + JABATAN wajib.\n'
+            '- Kalau materi TIDAK memuat gelar → tulis JABATAN + NAMA saja.\n'
+            '- Kalau materi TIDAK memuat nama → tulis sebagai KEGIATAN.\n'
+        )
     return (
         '\n\nFILTER KATEGORI (WAJIB — kalau tidak cocok, tulis {"tolak": "tidak cocok kategori: <sebutkan materi apa>"}):\n'
         '- Kategori target: ' + kategori_target + '.\n'
@@ -3510,6 +3623,7 @@ def _catatan_kategori_ketat(kategori_target):
         '- Contoh: {"tolak": "tidak cocok kategori: materi kontes"}\n'
         '- Contoh: {"tolak": "tidak cocok kategori: materi pendidikan"}\n'
         '- Contoh: {"tolak": "tidak cocok kategori: materi negara asing"}\n'
+        + catatan_gelar
     )
 
 def ai_rewrite_single(c, kategori_target=''):
@@ -3540,9 +3654,10 @@ def ai_rewrite_single(c, kategori_target=''):
             'Tulis ulang sesuai SEMUA aturan:\n'
             '- TANGGAL KONKRET di isi berita.\n'
             '- DATELINE: WAJIB kota/provinsi spesifik (bukan "INDONESIA - ").\n'
-            '- NAMA + JABATAN NARASUMBER: WAJIB tulis jabatan lengkap + nama.\n'
+            '- NAMA + JABATAN NARASUMBER: WAJIB tulis JABATAN + NAMA LENGKAP + GELAR.\n'
             '- TNI/POLRI: WAJIB nama + pangkat + jabatan.\n'
             '- GELAR AKADEMIK: ikut kalau ada di materi (tulis persis).\n'
+            '- DILARANG sebut nama orang tanpa jabatan.\n'
             '- NAMA LEMBAGA: JANGAN diterjemahkan.\n'
             '- JUDUL DAN ISI: HARUS satu topik yang sama, sesuai materi. '
             'JANGAN mengarang judul yang tidak ada di materi.\n'
@@ -3607,9 +3722,10 @@ def ai_rewrite_multi(items, kategori_target=''):
             '\n\nGabungkan menjadi SATU berita KramaNews:\n'
             '- TANGGAL KONKRET di isi berita.\n'
             '- DATELINE: WAJIB kota/provinsi spesifik (bukan "INDONESIA - ").\n'
-            '- NAMA + JABATAN NARASUMBER: WAJIB tulis jabatan lengkap + nama.\n'
+            '- NAMA + JABATAN NARASUMBER: WAJIB tulis JABATAN + NAMA LENGKAP + GELAR.\n'
             '- TNI/POLRI: WAJIB nama + pangkat + jabatan.\n'
             '- GELAR AKADEMIK: ikut kalau ada di materi (tulis persis).\n'
+            '- DILARANG sebut nama orang tanpa jabatan.\n'
             '- NAMA LEMBAGA: JANGAN diterjemahkan.\n'
             '- JUDUL DAN ISI: HARUS satu topik yang sama, sesuai materi.\n'
             '- JUDUL: DILARANG sama/mirip judul asli materi — WAJIB judul BEDA.\n'
@@ -4984,7 +5100,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.42'
+FILE_VERSI = 'V6.17.43'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
