@@ -918,169 +918,7 @@ def ambil_materi_kaya(c):
 
 # AKHIR PART 2B
 
-# PART 2C - ANTI-DOBEL + JUDUL + SYSTEM PROMPT
-KATA_STOP_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
-                      'sudah oleh sebagai ada adalah kata ujar bilang menurut the and '
-                      'for with from that this have will been are was were their they '
-                      'about after'.split())
-
-def normalisasi_judul(s):
-    s = (s or '').lower()
-    s = re.sub(r'[^a-z0-9\s]', ' ', s)
-    return re.sub(r'\s+', ' ', s).strip()
-
-def kata_inti(judul):
-    return set(k for k in normalisasi_judul(judul).split()
-               if len(k) > 3 and k not in KATA_STOP_DOBEL)
-
-KAMUS_PERUSAHAAN_GLOBAL = [
-    'infineon', 'toyota', 'tesla', 'apple', 'google', 'microsoft', 'samsung',
-    'huawei', 'xiaomi', 'nvidia', 'intel', 'boeing', 'airbus', 'amazon',
-    'meta', 'facebook', 'netflix', 'openai', 'anthropic', 'bytedance', 'tiktok',
-    'sony', 'lg', 'panasonic', 'toshiba', 'sharp', 'canon', 'nikon', 'fujifilm',
-    'bmw', 'mercedes', 'volkswagen', 'audi', 'porsche', 'ferrari', 'lamborghini',
-    'hyundai', 'kia', 'nissan', 'honda', 'suzuki', 'mazda', 'mitsubishi',
-    'subaru', 'mclaren', 'bentley', 'rolls royce', 'jaguar', 'land rover',
-    'volvo', 'peugeot', 'renault', 'citroen', 'fiat', 'alfa romeo', 'maserati',
-    'chevrolet', 'ford', 'gmc', 'cadillac', 'chrysler', 'dodge', 'jeep',
-    'wuling', 'chery', 'geely', 'byd', 'nio', 'xpeng', 'li auto', 'great wall',
-    'renesas', 'tsmc', 'qualcomm', 'broadcom', 'amd', 'arm', 'asml', 'micron',
-    'texas instruments', 'stmicroelectronics', 'infineon technologies',
-    'bosch', 'continental', 'denso', 'zf', 'magna', 'aptiv', 'valeo',
-    'paypal', 'stripe', 'visa', 'mastercard', 'square', 'shopify', 'uber',
-    'airbnb', 'spotify', 'zoom', 'slack', 'salesforce', 'oracle', 'sap', 'ibm',
-    'cisco', 'dell', 'hp', 'lenovo', 'asus', 'acer', 'msi', 'razer',
-    'goldman sachs', 'morgan stanley', 'jp morgan', 'jpmorgan', 'citigroup',
-    'bank of america', 'wells fargo', 'hsbc', 'barclays', 'deutsche bank',
-    'ubs', 'credit suisse', 'bnp paribas', 'santander', 'standard chartered',
-    'exxon', 'chevron', 'shell', 'bp', 'total', 'petronas', 'aramco',
-    'nestle', 'unilever', 'pepsi', 'coca cola', 'cocacola', 'mcdonald',
-    'starbucks', 'kfc', 'pizza hut', 'domino', 'burger king',
-    'pfizer', 'moderna', 'biontech', 'astrazeneca', 'novartis', 'roche',
-    'johnson', 'merck', 'bayer', 'sanofi', 'gsk', 'sinovac', 'sinopharm',
-]
-
-def _ada_nama_diri_judul(judul):
-    if not judul:
-        return False
-    j_low = judul.lower()
-    for p in KAMUS_PERUSAHAAN_GLOBAL:
-        if len(p.split()) == 1:
-            if re.search(r'\b' + re.escape(p) + r'\b', j_low):
-                return True
-        else:
-            if p in j_low:
-                return True
-    pola = re.compile(r'\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b')
-    skip = ['jakarta', 'bandung', 'surabaya', 'medan', 'semarang', 'makassar',
-            'balikpapan', 'samarinda', 'tarakan', 'kaltara', 'kalimantan',
-            'sumatera', 'jawa', 'sulawesi', 'papua', 'bali', 'nusa',
-            'pemerintah', 'menteri', 'presiden', 'gubernur', 'bupati',
-            'walikota', 'wakil', 'kepala', 'ketua', 'komandan',
-            'sekretaris', 'direktur', 'pemkot', 'pemkab', 'pemprov',
-            'polres', 'kodim', 'bandara', 'kota', 'kabupaten',
-            'provinsi', 'dinas', 'badan', 'kantor', 'komisi',
-            'januari', 'februari', 'maret', 'april', 'mei', 'juni',
-            'juli', 'agustus', 'september', 'oktober', 'november',
-            'desember', 'senin', 'selasa', 'rabu', 'kamis', 'jumat',
-            'sabtu', 'minggu', 'breaking', 'news']
-    for m in pola.finditer(judul):
-        k1 = m.group(1).lower()
-        k2 = m.group(2).lower()
-        if k1 in skip or k2 in skip:
-            continue
-        return True
-    m1 = re.match(r'^([A-Z][a-z]{4,})\b', judul.strip())
-    if m1:
-        kata = m1.group(1).lower()
-        if kata not in skip and kata not in KATA_STOP_DOBEL:
-            if kata not in ['presiden', 'menteri', 'pemerintah', 'indonesia',
-                            'jakarta', 'breaking', 'update', 'hasil', 'resmi',
-                            'kementerian', 'polisi', 'kepala', 'jenderal']:
-                return True
-    return False
-
-def sudah_serupa(judul):
-    j = normalisasi_judul(judul)
-    if not j:
-        return False
-    ki = kata_inti(judul)
-    for t in JUDUL_TERPAKAI:
-        if not t:
-            continue
-        if SequenceMatcher(None, j, t).ratio() >= AMBANG_MIRIP:
-            return True
-        kt = kata_inti(t)
-        if ki and kt:
-            sama = ki & kt
-            if len(sama) >= 3 and len(sama) / min(len(ki), len(kt)) >= 0.7:
-                return True
-    for t in JUDUL_6JAM:
-        if not t:
-            continue
-        kt = kata_inti(t)
-        if ki and kt and len(ki & kt) >= DOBEL_6JAM_MIN_KATA:
-            if DOBEL_6JAM_BUTUH_NAMA:
-                if _ada_nama_diri_judul(judul) or _ada_nama_diri_judul(t):
-                    return True
-            else:
-                return True
-    return False
-
-def _dalam_jendela(row, jam):
-    try:
-        d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00'))
-        if d.tzinfo is None:
-            d = d.replace(tzinfo=timezone.utc)
-        return (datetime.now(timezone.utc) - d).total_seconds() <= jam * 3600
-    except Exception:
-        return False
-
-def muat_judul_hari_ini():
-    global JUDUL_6JAM
-    out = []
-    j6 = []
-    try:
-        rows = rest_get('?select=title,created_at&order=created_at.desc&limit=300')
-        for row in rows:
-            if row.get('title') and _dalam_jendela(row, JENDELA_DOBEL_JAM):
-                out.append(normalisasi_judul(row['title']))
-                if _dalam_jendela(row, 6):
-                    j6.append(normalisasi_judul(row['title']))
-    except Exception as e:
-        print('   Gagal memuat judul 36 jam:', str(e)[:60])
-    JUDUL_6JAM = j6
-    return out
-
-def masih_barusan_terbit(judul):
-    try:
-        q = ('?select=id&title=ilike.' + quote_plus('%' + judul[:40] + '%')
-             + '&created_at=gte.'
-             + (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat())
-        rows = rest_get(q)
-        return len(rows) > 0
-    except Exception:
-        return False
-
-def tanggal_panjang(d):
-    return HARI_ID[d.weekday()] + ' (' + str(d.day) + ' ' + BULAN_ID[d.month] + ' ' + str(d.year) + ')'
-
-def konteks_waktu():
-    now = datetime.now(WITA)
-    kemarin = (now - timedelta(days=1)).date()
-    return {'hari_ini': tanggal_panjang(now.date()),
-            'kemarin': tanggal_panjang(kemarin),
-            'tahun': str(now.year)}
-
-def tanggal_publikasi_str(entry):
-    t = entry.get('published_parsed') or entry.get('updated_parsed')
-    if not t:
-        return None
-    try:
-        pub = datetime.fromtimestamp(mktime(t), tz=timezone.utc).astimezone(WITA)
-        return tanggal_panjang(pub.date())
-    except Exception:
-        return None
+# PART 2C - SYSTEM PROMPT + OTOMOTIF
 
 def build_system_prompt():
     k = konteks_waktu()
@@ -1202,6 +1040,21 @@ FORMAT JAWABAN - HANYA JSON valid:
  "deskripsi_gambar": "visual keywords",
  "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """)"}
 """
+
+KATA_KUNCI_OTOMOTIF = [
+    'mobil', 'motor', 'skutik', 'matic', 'bebek', 'sport touring',
+    'kendaraan listrik', 'mobil listrik', 'motor listrik', 'tesla', 'byd',
+    'geely', 'nissan', 'toyota', 'honda', 'yamaha', 'suzuki', 'mitsubishi',
+    'hyundai', 'kia', 'wuling', 'chery', 'bmw', 'mercedes', 'audi',
+    'volkswagen', 'ford', 'chevrolet', 'facelift', 'sedan', 'suv', 'mpv',
+    'pickup', 'hatchback', 'spesifikasi mobil', 'spesifikasi motor',
+    'harga mobil', 'harga motor', 'test drive', 'review mobil', 'review motor',
+    'modifikasi', 'mesin mobil', 'mesin motor',
+]
+
+def adalah_konten_otomotif(teks):
+    t = (teks or '').lower()
+    return any(k in t for k in KATA_KUNCI_OTOMOTIF)
 
 # AKHIR PART 2C
 
@@ -1751,7 +1604,7 @@ KATA_KUNCI_KATEGORI = {
 }
 
 # AKHIR PART 3A-1
-# PART 3A-2 - MATERI_COCOK + KANDIDAT_KATEGORI + COLLECT + MATCH + DOBEL_DATELINE_TOPIK (V6.17.44)
+# PART 3A-2 - MATERI_COCOK + KANDIDAT_KATEGORI + COLLECT + MATCH + DOBEL_DATELINE_TOPIK
 
 def _materi_cocok_kategori(kategori, judul, summary):
     if not kategori:
@@ -1787,10 +1640,6 @@ def _kandidat_kategori_materi(kategori, judul, summary):
     elif kategori == 'ekonomi':
         if not any(k in gab for k in KATA_EKONOMI_WAJIB):
             return False, 'kategori ekonomi tapi materi tidak ada kata ekonomi'
-        ada_tokoh = any(k in gab for k in TOKOH_POLITIK_ASING)
-        ada_politik = any(k in gab for k in KATA_POLITIK_EKSPLISIT)
-        if ada_tokoh and ada_politik:
-            return False, 'kategori ekonomi tapi materi politik luar negeri (tokoh + kata politik)'
     ok, alasan = _materi_cocok_kategori(kategori, judul, summary)
     if not ok:
         return False, alasan
@@ -1975,16 +1824,7 @@ def _kandidat_bukan_dobel(judul):
                 return False, 'dobel-6jam dengan "' + t[:40] + '"'
     return True, ''
 
-# ═══ V6.17.44: FUNGSI BARU — CEK DOBEL DATELINE + TOPIK ═══
 def _dobel_dateline_topik(judul_baru, isi_baru):
-    """Tolak kalau judul baru mirip (dateline + 2 kata kunci) judul lama 36 jam.
-
-    Cara kerja:
-    - Ambil dateline dari isi_baru (kota pertama sebelum ' - ')
-    - Bandingkan dengan JUDUL_TERPAKAI (36 jam)
-    - Tolak kalau: kata_inti(judul_baru) ∩ kata_inti(judul_lama) >= 2
-      DAN dateline_baru muncul di judul_lama (atau sebaliknya)
-    """
     if not judul_baru or not isi_baru:
         return None
     m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+', isi_baru)
@@ -2006,7 +1846,6 @@ def _dobel_dateline_topik(judul_baru, isi_baru):
         irisan = ki_baru & kt
         if len(irisan) < 2:
             continue
-        # dateline sama: kota_baru ada di judul lama
         if kota_baru in t:
             return ('dobel dateline+topik: "' + kota_baru + '" + '
                     + str(len(irisan)) + ' kata kunci sama — '
