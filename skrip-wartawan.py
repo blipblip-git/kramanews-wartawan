@@ -918,6 +918,69 @@ def ambil_materi_kaya(c):
 
 # AKHIR PART 2B
 # PART 2C - ANTI-DOBEL + JUDUL + SYSTEM PROMPT
+# PART 2D - REJECTED_URLS + CATAT_TOLAK
+
+KATA_ALASAN_TRANSIENT = [
+    'rate limit', 'timeout', 'koneksi', 'connection',
+    'error sementara', 'coba lagi', 'retry',
+    'materi terlalu pendek', 'materi tidak valid',
+    'materi kosong', 'materi gabungan tidak valid',
+]
+
+def muat_rejected_urls():
+    global REJECTED_URLS_CACHE
+    if REJECTED_URLS_CACHE is not None:
+        return REJECTED_URLS_CACHE
+    out = set()
+    try:
+        r = requests.get(SUPABASE_URL + '/rest/v1/rejected_urls'
+                         + '?select=source_url&order=created_at.desc&limit=500',
+            headers={'apikey': SUPABASE_PUBLISHABLE,
+                     'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE},
+            timeout=30)
+        if r.ok:
+            for row in (r.json() or []):
+                u = (row.get('source_url') or '').strip()
+                if u:
+                    out.add(u)
+            print('   ' + str(len(out)) + ' URL rejected dimuat (blacklist permanen).')
+        else:
+            print('   Gagal muat rejected_urls: HTTP ' + str(r.status_code))
+    except Exception as e:
+        print('   Gagal muat rejected_urls: ' + str(e)[:60])
+    REJECTED_URLS_CACHE = out
+    return out
+
+def catat_tolak_ai_token(source_url, alasan):
+    if not source_url:
+        return
+    alasan_str = (alasan or '').strip()
+    if not alasan_str:
+        return
+    alasan_low = alasan_str.lower()
+    for k in KATA_ALASAN_TRANSIENT:
+        if k in alasan_low:
+            return
+    try:
+        r = requests.post(SUPABASE_URL + '/rest/v1/rejected_urls',
+            headers={'apikey': SUPABASE_PUBLISHABLE,
+                     'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE,
+                     'Content-Type': 'application/json',
+                     'Prefer': 'resolution=merge-duplicates,return=minimal'},
+            json={'source_url': source_url, 'alasan': alasan_str[:500]},
+            timeout=30)
+        if not r.ok:
+            print('   Gagal catat rejected_urls: HTTP ' + str(r.status_code)
+                  + ' - ' + r.text[:80])
+        else:
+            if REJECTED_URLS_CACHE is not None:
+                REJECTED_URLS_CACHE.add(source_url)
+            print('   URL dicatat ke rejected_urls: ' + source_url[:60])
+    except Exception as e:
+        print('   Gagal catat rejected_urls: ' + str(e)[:60])
+
+# AKHIR PART 2D
+
 
 KATA_STOP_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
                       'sudah oleh sebagai ada adalah kata ujar bilang menurut the and '
