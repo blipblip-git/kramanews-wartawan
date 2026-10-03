@@ -648,9 +648,8 @@ def judul_spam(judul):
 
 # AKHIR PART 1
 
-# PART 2A - HEADER + IMPORT + KONSTANTA
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT
 
-# GN decode pakai library gnews-decoder (batchexecute resmi)
 try:
     from gnews_decoder import decode_many as _gn_decode_many
     _GN_DECODER_OK = True
@@ -667,8 +666,347 @@ _GN_DECODE_CACHE = {}
 
 DEBUG_SCRAPE = True
 
-# AKHIR PART 2A
-# PART 2B - FUNGSI GN DECODE + SCRAPER + AMBIL MATERI
+BREAKING_DOMESTIK_FEEDS = [
+    RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
+    RSSF('https://www.detik.com/feed', 'Detik'),
+    RSSF('https://nasional.kompas.com/rss', 'Kompas Nasional'),
+    RSSF('https://www.liputan6.com/rss', 'Liputan6'),
+    RSSF('https://www.antaranews.com/rss/nasional', 'Antara'),
+    RSSF('https://www.cnbcindonesia.com/market/rss', 'CNBC Indonesia'),
+    RSSF('https://nasional.tribunnews.com/rss', 'Tribun Nasional'),
+    RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
+    RSSF('https://www.bola.net/feed', 'Bola.net'),
+    RSSF('https://www.cnnindonesia.com/olahraga/rss', 'CNN Olahraga'),
+    GN('breaking news indonesia', 'id', 'GN Breaking Indonesia'),
+    GN('gempa indonesia hari ini', 'id', 'GN Gempa Indonesia'),
+    GN('banjir indonesia hari ini', 'id', 'GN Banjir Indonesia'),
+    GN('kecelakaan besar indonesia', 'id', 'GN Kecelakaan'),
+    GN('kebakaran besar indonesia', 'id', 'GN Kebakaran'),
+]
+
+BREAKING_DUNIA_FEEDS = [
+    RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
+    RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
+    RSSF('http://rss.cnn.com/rss/edition_world.rss', 'CNN World'),
+    RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
+    RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
+    RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
+    RSSF('https://vietnamnews.vn/rss.html', 'Vietnam News'),
+    RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
+    RSSF('https://apnews.com/index.rss', 'AP News'),
+    RSSF('https://www.france24.com/en/rss', 'France24'),
+    RSSF('http://www.xinhuanet.com/english/rss/worldrss.xml', 'Xinhua World'),
+    RSSF('https://www.chinadaily.com.cn/rss/world_rss.xml', 'China Daily World'),
+    RSSF('https://www.cgtn.com/subscribe/rss/section/world.xml', 'CGTN World'),
+    RSSF('https://www.scmp.com/rss/91/feed', 'SCMP China'),
+    RSSF('https://www.japantimes.co.jp/feed/', 'Japan Times'),
+    RSSF('https://www3.nhk.or.jp/nhkworld/en/news/rss/all.xml', 'NHK World'),
+    GN('breaking world news', 'en', 'GN Breaking Dunia'),
+    GN('major earthquake', 'en', 'GN Gempa Besar Dunia'),
+    GN('war conflict missile', 'en', 'GN Perang'),
+    GN('breaking asia news', 'en', 'GN Breaking Asia'),
+    GN('flood disaster', 'en', 'GN Banjir Dunia'),
+    GN('plane crash', 'en', 'GN Pesawat Jatuh'),
+]
+
+LUAR_NEGERI_WORDS = ['jepang', 'china', 'amerika', 'eropa', 'luar negeri', 'inggris',
+                     'india', 'korea', 'australia', 'turki', 'israel', 'gaza',
+                     'ukraina', 'rusia', 'malaysia', 'thailand', 'taiwan', 'timor leste']
+
+INDO_GEO = ['indonesia', 'bmkg', 'aceh', 'sumatera', 'sumatra', 'jawa', 'kalimantan',
+            'sulawesi', 'papua', 'bali', 'nusa tenggara', 'lombok', 'ntb', 'ntt',
+            'maluku', 'ambon', 'manado', 'makassar', 'medan', 'padang', 'jakarta',
+            'bandung', 'surabaya', 'yogyakarta', 'jayapura', 'bengkulu', 'lampung',
+            'palu', 'mamuju', 'cilacap', 'garut', 'cianjur', 'tasikmalaya',
+            'jember', 'lumajang', 'semarang', 'banggai', 'tarakan', 'kaltara',
+            'nunukan', 'bulungan', 'malinau', 'pontianak', 'kalbar', 'banjarmasin',
+            'kalsel', 'kalteng', 'palangka raya', 'denpasar', 'mataram', 'kupang',
+            'gorontalo', 'batam', 'pekanbaru', 'palembang']
+
+DOM_KRITIS = [
+    'tsunami', 'erupsi', 'gunung meletus', 'banjir bandang', 'banjir besar',
+    'tanah longsor', 'longsor', 'karhutla', 'kebakaran hutan', 'kebakaran hebat',
+    'kebakaran massal', 'keracunan massal', 'angin puting beliung', 'korban jiwa',
+    'mengungsi', 'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perahu tenggelam',
+    'pesawat jatuh', 'pesawat hilang', 'kecelakaan pesawat', 'pesawat tergelincir',
+    'pembunuhan', 'dibunuh', 'ditemukan mati', 'penembakan', 'ledakan', 'bom meledak',
+    'perampokan bersenjata', 'rampok bank', 'ott kpk', 'ditangkap kpk',
+    'tersangka korupsi', 'tertangkap tangan', 'reshuffle', 'pergantian menteri',
+    'menteri diganti', 'menteri meninggal', 'menteri wafat', 'menteri ditangkap',
+    'menteri tersangka', 'presiden meninggal', 'wapres meninggal',
+    'kerusuhan', 'ricuh', 'bentrok massa', 'demo besar', 'demonstrasi besar',
+    'massa membakar', 'membakar massal', 'tawuran besar',
+]
+
+BREAKING_INT_KRITIS = [
+    'banjir besar', 'major flood', 'flash flood', 'devastating flood',
+    'tsunami', 'tsunami warning',
+    'gempa bumi', 'earthquake', 'magnitude',
+    'angin topan', 'typhoon', 'hurricane', 'cyclone', 'super typhoon',
+    'letusan gunung', 'volcanic eruption', 'volcano',
+    'kebakaran hutan', 'wildfire', 'forest fire',
+    'tanah longsor', 'landslide',
+
+    'pesawat komersial jatuh', 'commercial plane crash',
+    'airliner crash', 'passenger plane crash',
+    'pesawat penumpang jatuh', 'pesawat hilang', 'plane missing',
+    'kapal tenggelam', 'ferry sinks', 'ship sinks', 'boat capsizes',
+    'kapal terbakar', 'ferry fire', 'ship fire',
+    'kereta anjlok', 'train derailment', 'train crash', 'train collision',
+
+    'deklarasi perang', 'declaration of war',
+    'serangan rudal', 'missile strike', 'missile attack', 'rocket attack',
+    'kudeta', 'coup', 'military coup',
+    'uji coba nuklir', 'nuclear test', 'nuclear attack',
+    'serangan teroris', 'terror attack', 'terrorist attack',
+    'gencatan senjata besar', 'ceasefire deal', 'peace deal', 'peace agreement',
+    'embargo minyak', 'oil embargo',
+
+    'presiden meninggal', 'president dies', 'president dead',
+    'pm meninggal', 'prime minister dies',
+    'presiden mundur', 'president resigns', 'president steps down',
+    'pembunuhan pejabat', 'assassination',
+    'penculikan pejabat', 'kidnapping',
+    'presiden terpilih', 'elected president', 'wins election',
+    'referendum kemerdekaan', 'independence referendum',
+    'pejabat ditangkap', 'official arrested', 'minister arrested',
+    'bandar narkoba', 'drug lord arrested', 'drug kingpin',
+
+    'krisis mata uang', 'currency crisis', 'devaluation',
+    'bank runtuh', 'bank collapse', 'bank fails',
+    'kebangkrutan negara', 'sovereign default',
+    'opec memangkas', 'opec cuts',
+
+    'peluncuran roket berawak', 'crewed launch', 'manned launch',
+    'nasa launch', 'spacex launch', 'cnsa launch',
+
+    'pandemi', 'pandemic', 'who emergency', 'global health emergency',
+]
+
+BREAKING_INT_TOLAK = [
+    'small plane', 'small aircraft', 'private plane', 'private jet',
+    'single-engine', 'single engine', 'small plane crash',
+    'military plane', 'military aircraft', 'fighter jet', 'fighter plane',
+    'warplane', 'helicopter crash', 'chopper crash',
+    'pesawat kecil', 'pesawat pribadi', 'pesawat militer',
+    'jet tempur', 'helikopter jatuh',
+    'skydivers', 'skydiving',
+    'plane crash drill', 'simulasi', 'latihan',
+    'plane crash warning', 'memorial', 'peringatan',
+    'anniversary', '30th anniversary', '40th anniversary',
+    'larangan impor alkohol', 'alcohol import ban', 'liquor ban',
+    'larangan susu', 'dairy ban', 'milk ban',
+    'ban on alcohol', 'ban on dairy',
+    'tarif kecil', 'minor tariff', 'small tariff',
+    'sanksi ringan', 'minor sanctions',
+    'keluhan dagang', 'trade complaint',
+    'tarif baja', 'tarif aluminium', 'steel tariff', 'aluminum tariff',
+]
+
+DUNIA_KRITIS = BREAKING_INT_KRITIS
+
+def _pesawat_kecil(text):
+    t = (text or '').lower()
+    for k in BREAKING_INT_TOLAK:
+        if k in t:
+            return True
+    return False
+
+KATA_TURNAMEN_OLAHRAGA = [
+    'fifa', 'aff', 'uefa', 'afc', 'piala dunia', 'world cup', 'sea games',
+    'asian games', 'olimpiade', 'olympic', 'piala asia', 'asian cup',
+    'piala aff', 'aff cup', 'fifa asean cup', 'piala eropa', 'euro 202',
+    'copa america', 'liga champions', 'champions league', 'europa league',
+    'premier league', 'la liga', 'serie a', 'bundesliga', 'ligue 1',
+    'eredivisie', 'nba', 'wnba', 'ibl', 'badminton', 'bulu tangkis', 'bwf',
+    'voli', 'volleyball', 'fivb', 'motogp', 'formula 1', 'f1',
+]
+
+def adalah_turnamen_olahraga(teks):
+    t = (teks or '').lower()
+    return any(k in t for k in KATA_TURNAMEN_OLAHRAGA)
+
+KATA_WAJIB_OLAHRAGA = [
+    'bola', 'sepak bola', 'sepakbola', 'football', 'soccer', 'basket', 'nba',
+    'wnba', 'ibl', 'badminton', 'bulu tangkis', 'bwf', 'voli', 'volleyball',
+    'fivb', 'tenis', 'tennis', 'atp', 'wta', 'motogp', 'formula 1', 'f1',
+    'balap', 'liga', 'piala', 'turnamen', 'kejuaraan', 'kompetisi', 'timnas',
+    'atlet', 'pemain', 'klub', 'klub sepak', 'pertandingan', 'laga', 'skor',
+    'klasemen', 'gol', 'olimpiade', 'olympic', 'sea games', 'asian games',
+    'stadion', 'kick-off', 'kick off',
+]
+
+KATA_BUKAN_OLAHRAGA = [
+    'haji', 'umroh', 'umrah', 'arbain', 'kabah', 'mekkah', 'mekah',
+    'madinah', 'ibadah haji', 'jamaah haji', 'kuota haji', 'antrean haji',
+    'calon haji', 'manasik', 'ihram', 'tawaf', 'sa\'i',
+    'puasa', 'ramadan', 'idul fitri', 'idul adha', 'qurban', 'zakat',
+    'isra miraj', 'maulid', 'nabi muhammad', 'pesantren', 'ulama',
+    'pendidikan', 'kurikulum', 'sekolah', 'siswa', 'mahasiswa', 'guru',
+    'kampus', 'universitas', 'beasiswa', 'ujian', 'unbk',
+    'pajak', 'anggaran', 'apbn', 'apbd', 'subsidi', 'bantuan sosial',
+    'bansos', 'pkh', 'blt', 'sembako',
+    'kesehatan', 'rumah sakit', 'dokter', 'obat', 'vaksin', 'imunisasi',
+    'penyakit', 'gizi', 'stunting',
+    'politik', 'pemilu', 'pilpres', 'pilkada', 'partai', 'dpr', 'presiden',
+    'menteri', 'gubernur', 'bupati', 'walikota', 'kepala daerah',
+    'polisi', 'pencurian', 'pembunuhan', 'kriminal', 'narkoba',
+    'ekonomi', 'bisnis', 'keuangan', 'bank', 'saham', 'ihsg', 'rupiah',
+    'dolar', 'kurs', 'investasi', 'ekspor', 'impor',
+    'teknologi', 'gadget', 'aplikasi', 'internet', 'ai', 'kecerdasan buatan',
+    'otomotif', 'mobil', 'motor',
+]
+
+def adalah_konten_olahraga(teks):
+    t = (teks or '').lower()
+    for k in KATA_BUKAN_OLAHRAGA:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', t):
+                return False
+        else:
+            if k in t:
+                return False
+    return any(k in t for k in KATA_WAJIB_OLAHRAGA)
+
+KATA_KUNCI_OTOMOTIF = [
+    'mobil', 'motor', 'skutik', 'matic', 'bebek', 'sport touring',
+    'kendaraan listrik', 'mobil listrik', 'motor listrik', 'tesla', 'byd',
+    'geely', 'nissan', 'toyota', 'honda', 'yamaha', 'suzuki', 'mitsubishi',
+    'hyundai', 'kia', 'wuling', 'chery', 'bmw', 'mercedes', 'audi',
+    'volkswagen', 'ford', 'chevrolet', 'facelift', 'sedan', 'suv', 'mpv',
+    'pickup', 'hatchback', 'spesifikasi mobil', 'spesifikasi motor',
+    'harga mobil', 'harga motor', 'test drive', 'review mobil', 'review motor',
+    'modifikasi', 'mesin mobil', 'mesin motor',
+]
+
+def adalah_konten_otomotif(teks):
+    t = (teks or '').lower()
+    return any(k in t for k in KATA_KUNCI_OTOMOTIF)
+
+class BeritaLama(Exception):
+    pass
+
+STAT_SCRAPE = {'ok': 0, 'gagal': 0, 'skip': 0, 'irisan_gagal': 0,
+               'gn_gagal_decode': 0, 'gn_fallback_rss': 0}
+JUDUL_TERPAKAI = []
+JUDUL_6JAM = []
+_GAMBAR_TERPAKAI_CACHE = None
+
+TOPIK_BESAR_GATE = [
+    'tsunami', 'gempa', 'erupsi', 'gunung meletus', 'banjir bandang',
+    'banjir', 'flood', 'tanah longsor', 'longsor', 'kebakaran',
+    'karhutla', 'kebakaran hutan', 'kecelakaan', 'ledakan', 'tabrakan',
+    'hurricane', 'typhoon', 'cyclone', 'wildfire', 'earthquake',
+    'perang', 'war', 'invasi', 'missile', 'nuclear',
+    'asian games', 'sea games', 'piala dunia', 'world cup',
+    'olimpiade', 'olympic', 'piala asia', 'asian cup',
+    'piala eropa', 'euro 202', 'copa america',
+    'nba finals', 'liga champions final', 'pemilu', 'pilpres', 'pilkada',
+]
+
+def judul_topik_besar(judul):
+    j = (judul or '').lower()
+    return any(k in j for k in TOPIK_BESAR_GATE)
+
+KATA_SPAM_JUDUL = ['【', '】', 'livestream', 'live stream', 'live free',
+                   'tv channel', 'watch online', 'live streaming',
+                   'free tv', 'kualitas hd', 'link live', 'nonton live']
+
+def judul_spam(judul):
+    j = (judul or '').lower()
+    for k in KATA_SPAM_JUDUL:
+        if k in j:
+            return True
+    return False
+
+KATA_ALASAN_TRANSIENT = [
+    'rate limit', 'timeout', 'koneksi', 'connection',
+    'error sementara', 'coba lagi', 'retry',
+    'materi terlalu pendek', 'materi tidak valid',
+    'materi kosong', 'materi gabungan tidak valid',
+]
+
+def muat_rejected_urls():
+    global REJECTED_URLS_CACHE
+    if REJECTED_URLS_CACHE is not None:
+        return REJECTED_URLS_CACHE
+    out = set()
+    try:
+        r = requests.get(SUPABASE_URL + '/rest/v1/rejected_urls'
+                         + '?select=source_url&order=created_at.desc&limit=500',
+            headers={'apikey': SUPABASE_PUBLISHABLE,
+                     'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE},
+            timeout=30)
+        if r.ok:
+            for row in (r.json() or []):
+                u = (row.get('source_url') or '').strip()
+                if u:
+                    out.add(u)
+            print('   ' + str(len(out)) + ' URL rejected dimuat (blacklist permanen).')
+        else:
+            print('   Gagal muat rejected_urls: HTTP ' + str(r.status_code))
+    except Exception as e:
+        print('   Gagal muat rejected_urls: ' + str(e)[:60])
+    REJECTED_URLS_CACHE = out
+    return out
+
+def catat_tolak_ai_token(source_url, alasan):
+    if not source_url:
+        return
+    alasan_str = (alasan or '').strip()
+    if not alasan_str:
+        return
+    alasan_low = alasan_str.lower()
+    for k in KATA_ALASAN_TRANSIENT:
+        if k in alasan_low:
+            return
+    try:
+        r = requests.post(SUPABASE_URL + '/rest/v1/rejected_urls',
+            headers={'apikey': SUPABASE_PUBLISHABLE,
+                     'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE,
+                     'Content-Type': 'application/json',
+                     'Prefer': 'resolution=merge-duplicates,return=minimal'},
+            json={'source_url': source_url, 'alasan': alasan_str[:500]},
+            timeout=30)
+        if not r.ok:
+            print('   Gagal catat rejected_urls: HTTP ' + str(r.status_code)
+                  + ' - ' + r.text[:80])
+        else:
+            if REJECTED_URLS_CACHE is not None:
+                REJECTED_URLS_CACHE.add(source_url)
+            print('   URL dicatat ke rejected_urls: ' + source_url[:60])
+    except Exception as e:
+        print('   Gagal catat rejected_urls: ' + str(e)[:60])
+
+DOMAIN_NON_BERITA = [
+    'www.w3.org', 'w3.org', 'schema.org', 'ogp.me', 'purl.org', 'gstatic.com',
+    'googleapis.com', 'googleusercontent.com', 'fonts.googleapis.com',
+    'fonts.gstatic.com', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'unpkg.com',
+    'facebook.com', 'twitter.com', 'instagram.com', 'youtube.com', 'tiktok.com',
+    'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
+    'googletagmanager.com', 'google-analytics.com', 'accounts.google.com',
+    'consent.google.com', 'policies.google.com', 'support.google.com',
+    'myaccount.google.com',
+]
+
+def _url_valid_berita(u):
+    if not u:
+        return False
+    low = u.lower().strip()
+    if not low.startswith(('http://', 'https://')):
+        return False
+    for blok in DOMAIN_NON_BERITA:
+        if blok in low:
+            return False
+    m = re.match(r'^https?://[^/]+(/.*)?$', low)
+    if not m or not m.group(1):
+        return False
+    if not re.search(r'\.(com|id|net|co|org|tv|info|news|co\.id|or\.id|go\.id|ac\.id|my\.id|sch\.id|cn|jp|kr|uk|au|sg|my|th|vn|ph)\b', low):
+        return False
+    if low.endswith(('.svg', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.ico',
+                     '.css', '.js', '.woff', '.woff2', '.ttf', '.eot')):
+        return False
+    return True
 
 def _gn_decode_satu(url):
     if not url:
@@ -710,36 +1048,6 @@ def _gn_id_dari_url(url):
     except Exception:
         pass
     return ''
-
-DOMAIN_NON_BERITA = [
-    'www.w3.org', 'w3.org', 'schema.org', 'ogp.me', 'purl.org', 'gstatic.com',
-    'googleapis.com', 'googleusercontent.com', 'fonts.googleapis.com',
-    'fonts.gstatic.com', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'unpkg.com',
-    'facebook.com', 'twitter.com', 'instagram.com', 'youtube.com', 'tiktok.com',
-    'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
-    'googletagmanager.com', 'google-analytics.com', 'accounts.google.com',
-    'consent.google.com', 'policies.google.com', 'support.google.com',
-    'myaccount.google.com',
-]
-
-def _url_valid_berita(u):
-    if not u:
-        return False
-    low = u.lower().strip()
-    if not low.startswith(('http://', 'https://')):
-        return False
-    for blok in DOMAIN_NON_BERITA:
-        if blok in low:
-            return False
-    m = re.match(r'^https?://[^/]+(/.*)?$', low)
-    if not m or not m.group(1):
-        return False
-    if not re.search(r'\.(com|id|net|co|org|tv|info|news|co\.id|or\.id|go\.id|ac\.id|my\.id|sch\.id|cn|jp|kr|uk|au|sg|my|th|vn|ph)\b', low):
-        return False
-    if low.endswith(('.svg', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.ico',
-                     '.css', '.js', '.woff', '.woff2', '.ttf', '.eot')):
-        return False
-    return True
 
 def domain_skip_scrape(url):
     low = (url or '').lower()
@@ -916,9 +1224,168 @@ def ambil_materi_kaya(c):
           + str(panjang_asli) + ' → ' + str(len(gabung)) + ' kar)')
     return gabung, False
 
-# AKHIR PART 2B
+KATA_STOP_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
+                      'sudah oleh sebagai ada adalah kata ujar bilang menurut the and '
+                      'for with from that this have will been are was were their they '
+                      'about after'.split())
 
-# PART 2C - SYSTEM PROMPT + OTOMOTIF
+def normalisasi_judul(s):
+    s = (s or '').lower()
+    s = re.sub(r'[^a-z0-9\s]', ' ', s)
+    return re.sub(r'\s+', ' ', s).strip()
+
+def kata_inti(judul):
+    return set(k for k in normalisasi_judul(judul).split()
+               if len(k) > 3 and k not in KATA_STOP_DOBEL)
+
+KAMUS_PERUSAHAAN_GLOBAL = [
+    'infineon', 'toyota', 'tesla', 'apple', 'google', 'microsoft', 'samsung',
+    'huawei', 'xiaomi', 'nvidia', 'intel', 'boeing', 'airbus', 'amazon',
+    'meta', 'facebook', 'netflix', 'openai', 'anthropic', 'bytedance', 'tiktok',
+    'sony', 'lg', 'panasonic', 'toshiba', 'sharp', 'canon', 'nikon', 'fujifilm',
+    'bmw', 'mercedes', 'volkswagen', 'audi', 'porsche', 'ferrari', 'lamborghini',
+    'hyundai', 'kia', 'nissan', 'honda', 'suzuki', 'mazda', 'mitsubishi',
+    'subaru', 'mclaren', 'bentley', 'rolls royce', 'jaguar', 'land rover',
+    'volvo', 'peugeot', 'renault', 'citroen', 'fiat', 'alfa romeo', 'maserati',
+    'chevrolet', 'ford', 'gmc', 'cadillac', 'chrysler', 'dodge', 'jeep',
+    'wuling', 'chery', 'geely', 'byd', 'nio', 'xpeng', 'li auto', 'great wall',
+    'renesas', 'tsmc', 'qualcomm', 'broadcom', 'amd', 'arm', 'asml', 'micron',
+    'texas instruments', 'stmicroelectronics', 'infineon technologies',
+    'bosch', 'continental', 'denso', 'zf', 'magna', 'aptiv', 'valeo',
+    'paypal', 'stripe', 'visa', 'mastercard', 'square', 'shopify', 'uber',
+    'airbnb', 'spotify', 'zoom', 'slack', 'salesforce', 'oracle', 'sap', 'ibm',
+    'cisco', 'dell', 'hp', 'lenovo', 'asus', 'acer', 'msi', 'razer',
+    'goldman sachs', 'morgan stanley', 'jp morgan', 'jpmorgan', 'citigroup',
+    'bank of america', 'wells fargo', 'hsbc', 'barclays', 'deutsche bank',
+    'ubs', 'credit suisse', 'bnp paribas', 'santander', 'standard chartered',
+    'exxon', 'chevron', 'shell', 'bp', 'total', 'petronas', 'aramco',
+    'nestle', 'unilever', 'pepsi', 'coca cola', 'cocacola', 'mcdonald',
+    'starbucks', 'kfc', 'pizza hut', 'domino', 'burger king',
+    'pfizer', 'moderna', 'biontech', 'astrazeneca', 'novartis', 'roche',
+    'johnson', 'merck', 'bayer', 'sanofi', 'gsk', 'sinovac', 'sinopharm',
+]
+
+def _ada_nama_diri_judul(judul):
+    if not judul:
+        return False
+    j_low = judul.lower()
+    for p in KAMUS_PERUSAHAAN_GLOBAL:
+        if len(p.split()) == 1:
+            if re.search(r'\b' + re.escape(p) + r'\b', j_low):
+                return True
+        else:
+            if p in j_low:
+                return True
+    pola = re.compile(r'\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b')
+    skip = ['jakarta', 'bandung', 'surabaya', 'medan', 'semarang', 'makassar',
+            'balikpapan', 'samarinda', 'tarakan', 'kaltara', 'kalimantan',
+            'sumatera', 'jawa', 'sulawesi', 'papua', 'bali', 'nusa',
+            'pemerintah', 'menteri', 'presiden', 'gubernur', 'bupati',
+            'walikota', 'wakil', 'kepala', 'ketua', 'komandan',
+            'sekretaris', 'direktur', 'pemkot', 'pemkab', 'pemprov',
+            'polres', 'kodim', 'bandara', 'kota', 'kabupaten',
+            'provinsi', 'dinas', 'badan', 'kantor', 'komisi',
+            'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+            'juli', 'agustus', 'september', 'oktober', 'november',
+            'desember', 'senin', 'selasa', 'rabu', 'kamis', 'jumat',
+            'sabtu', 'minggu', 'breaking', 'news']
+    for m in pola.finditer(judul):
+        k1 = m.group(1).lower()
+        k2 = m.group(2).lower()
+        if k1 in skip or k2 in skip:
+            continue
+        return True
+    m1 = re.match(r'^([A-Z][a-z]{4,})\b', judul.strip())
+    if m1:
+        kata = m1.group(1).lower()
+        if kata not in skip and kata not in KATA_STOP_DOBEL:
+            if kata not in ['presiden', 'menteri', 'pemerintah', 'indonesia',
+                            'jakarta', 'breaking', 'update', 'hasil', 'resmi',
+                            'kementerian', 'polisi', 'kepala', 'jenderal']:
+                return True
+    return False
+
+def sudah_serupa(judul):
+    j = normalisasi_judul(judul)
+    if not j:
+        return False
+    ki = kata_inti(judul)
+    for t in JUDUL_TERPAKAI:
+        if not t:
+            continue
+        if SequenceMatcher(None, j, t).ratio() >= AMBANG_MIRIP:
+            return True
+        kt = kata_inti(t)
+        if ki and kt:
+            sama = ki & kt
+            if len(sama) >= 3 and len(sama) / min(len(ki), len(kt)) >= 0.7:
+                return True
+    for t in JUDUL_6JAM:
+        if not t:
+            continue
+        kt = kata_inti(t)
+        if ki and kt and len(ki & kt) >= DOBEL_6JAM_MIN_KATA:
+            if DOBEL_6JAM_BUTUH_NAMA:
+                if _ada_nama_diri_judul(judul) or _ada_nama_diri_judul(t):
+                    return True
+            else:
+                return True
+    return False
+
+def _dalam_jendela(row, jam):
+    try:
+        d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00'))
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - d).total_seconds() <= jam * 3600
+    except Exception:
+        return False
+
+def muat_judul_hari_ini():
+    global JUDUL_6JAM
+    out = []
+    j6 = []
+    try:
+        rows = rest_get('?select=title,created_at&order=created_at.desc&limit=300')
+        for row in rows:
+            if row.get('title') and _dalam_jendela(row, JENDELA_DOBEL_JAM):
+                out.append(normalisasi_judul(row['title']))
+                if _dalam_jendela(row, 6):
+                    j6.append(normalisasi_judul(row['title']))
+    except Exception as e:
+        print('   Gagal memuat judul 36 jam:', str(e)[:60])
+    JUDUL_6JAM = j6
+    return out
+
+def masih_barusan_terbit(judul):
+    try:
+        q = ('?select=id&title=ilike.' + quote_plus('%' + judul[:40] + '%')
+             + '&created_at=gte.'
+             + (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat())
+        rows = rest_get(q)
+        return len(rows) > 0
+    except Exception:
+        return False
+
+def tanggal_panjang(d):
+    return HARI_ID[d.weekday()] + ' (' + str(d.day) + ' ' + BULAN_ID[d.month] + ' ' + str(d.year) + ')'
+
+def konteks_waktu():
+    now = datetime.now(WITA)
+    kemarin = (now - timedelta(days=1)).date()
+    return {'hari_ini': tanggal_panjang(now.date()),
+            'kemarin': tanggal_panjang(kemarin),
+            'tahun': str(now.year)}
+
+def tanggal_publikasi_str(entry):
+    t = entry.get('published_parsed') or entry.get('updated_parsed')
+    if not t:
+        return None
+    try:
+        pub = datetime.fromtimestamp(mktime(t), tz=timezone.utc).astimezone(WITA)
+        return tanggal_panjang(pub.date())
+    except Exception:
+        return None
 
 def build_system_prompt():
     k = konteks_waktu()
@@ -1041,170 +1508,7 @@ FORMAT JAWABAN - HANYA JSON valid:
  "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """)"}
 """
 
-KATA_KUNCI_OTOMOTIF = [
-    'mobil', 'motor', 'skutik', 'matic', 'bebek', 'sport touring',
-    'kendaraan listrik', 'mobil listrik', 'motor listrik', 'tesla', 'byd',
-    'geely', 'nissan', 'toyota', 'honda', 'yamaha', 'suzuki', 'mitsubishi',
-    'hyundai', 'kia', 'wuling', 'chery', 'bmw', 'mercedes', 'audi',
-    'volkswagen', 'ford', 'chevrolet', 'facelift', 'sedan', 'suv', 'mpv',
-    'pickup', 'hatchback', 'spesifikasi mobil', 'spesifikasi motor',
-    'harga mobil', 'harga motor', 'test drive', 'review mobil', 'review motor',
-    'modifikasi', 'mesin mobil', 'mesin motor',
-]
-
-def adalah_konten_otomotif(teks):
-    t = (teks or '').lower()
-    return any(k in t for k in KATA_KUNCI_OTOMOTIF)
-
-# AKHIR PART 2C
-
-# PART 2D - REJECTED_URLS + CATAT_TOLAK + GLOBAL STATE
-
-KATA_ALASAN_TRANSIENT = [
-    'rate limit', 'timeout', 'koneksi', 'connection',
-    'error sementara', 'coba lagi', 'retry',
-    'materi terlalu pendek', 'materi tidak valid',
-    'materi kosong', 'materi gabungan tidak valid',
-]
-
-class BeritaLama(Exception):
-    pass
-
-STAT_SCRAPE = {'ok': 0, 'gagal': 0, 'skip': 0, 'irisan_gagal': 0,
-               'gn_gagal_decode': 0, 'gn_fallback_rss': 0}
-JUDUL_TERPAKAI = []
-JUDUL_6JAM = []
-_GAMBAR_TERPAKAI_CACHE = None
-
-def muat_rejected_urls():
-    global REJECTED_URLS_CACHE
-    if REJECTED_URLS_CACHE is not None:
-        return REJECTED_URLS_CACHE
-    out = set()
-    try:
-        r = requests.get(SUPABASE_URL + '/rest/v1/rejected_urls'
-                         + '?select=source_url&order=created_at.desc&limit=500',
-            headers={'apikey': SUPABASE_PUBLISHABLE,
-                     'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE},
-            timeout=30)
-        if r.ok:
-            for row in (r.json() or []):
-                u = (row.get('source_url') or '').strip()
-                if u:
-                    out.add(u)
-            print('   ' + str(len(out)) + ' URL rejected dimuat (blacklist permanen).')
-        else:
-            print('   Gagal muat rejected_urls: HTTP ' + str(r.status_code))
-    except Exception as e:
-        print('   Gagal muat rejected_urls: ' + str(e)[:60])
-    REJECTED_URLS_CACHE = out
-    return out
-
-def catat_tolak_ai_token(source_url, alasan):
-    if not source_url:
-        return
-    alasan_str = (alasan or '').strip()
-    if not alasan_str:
-        return
-    alasan_low = alasan_str.lower()
-    for k in KATA_ALASAN_TRANSIENT:
-        if k in alasan_low:
-            return
-    try:
-        r = requests.post(SUPABASE_URL + '/rest/v1/rejected_urls',
-            headers={'apikey': SUPABASE_PUBLISHABLE,
-                     'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE,
-                     'Content-Type': 'application/json',
-                     'Prefer': 'resolution=merge-duplicates,return=minimal'},
-            json={'source_url': source_url, 'alasan': alasan_str[:500]},
-            timeout=30)
-        if not r.ok:
-            print('   Gagal catat rejected_urls: HTTP ' + str(r.status_code)
-                  + ' - ' + r.text[:80])
-        else:
-            if REJECTED_URLS_CACHE is not None:
-                REJECTED_URLS_CACHE.add(source_url)
-            print('   URL dicatat ke rejected_urls: ' + source_url[:60])
-    except Exception as e:
-        print('   Gagal catat rejected_urls: ' + str(e)[:60])
-
-# AKHIR PART 2D
-
-# PART 2E - FILTER OLAHRAGA + TOPIK BESAR
-
-TOPIK_BESAR_GATE = [
-    'tsunami', 'gempa', 'erupsi', 'gunung meletus', 'banjir bandang',
-    'banjir', 'flood', 'tanah longsor', 'longsor', 'kebakaran',
-    'karhutla', 'kebakaran hutan', 'kecelakaan', 'ledakan', 'tabrakan',
-    'hurricane', 'typhoon', 'cyclone', 'wildfire', 'earthquake',
-    'perang', 'war', 'invasi', 'missile', 'nuclear',
-    'asian games', 'sea games', 'piala dunia', 'world cup',
-    'olimpiade', 'olympic', 'piala asia', 'asian cup',
-    'piala eropa', 'euro 202', 'copa america',
-    'nba finals', 'liga champions final', 'pemilu', 'pilpres', 'pilkada',
-]
-
-KATA_TURNAMEN_OLAHRAGA = [
-    'fifa', 'aff', 'uefa', 'afc', 'piala dunia', 'world cup', 'sea games',
-    'asian games', 'olimpiade', 'olympic', 'piala asia', 'asian cup',
-    'piala aff', 'aff cup', 'fifa asean cup', 'piala eropa', 'euro 202',
-    'copa america', 'liga champions', 'champions league', 'europa league',
-    'premier league', 'la liga', 'serie a', 'bundesliga', 'ligue 1',
-    'eredivisie', 'nba', 'wnba', 'ibl', 'badminton', 'bulu tangkis', 'bwf',
-    'voli', 'volleyball', 'fivb', 'motogp', 'formula 1', 'f1',
-]
-
-KATA_WAJIB_OLAHRAGA = [
-    'bola', 'sepak bola', 'sepakbola', 'football', 'soccer', 'basket', 'nba',
-    'wnba', 'ibl', 'badminton', 'bulu tangkis', 'bwf', 'voli', 'volleyball',
-    'fivb', 'tenis', 'tennis', 'atp', 'wta', 'motogp', 'formula 1', 'f1',
-    'balap', 'liga', 'piala', 'turnamen', 'kejuaraan', 'kompetisi', 'timnas',
-    'atlet', 'pemain', 'klub', 'klub sepak', 'pertandingan', 'laga', 'skor',
-    'klasemen', 'gol', 'olimpiade', 'olympic', 'sea games', 'asian games',
-    'stadion', 'kick-off', 'kick off',
-]
-
-KATA_BUKAN_OLAHRAGA = [
-    'haji', 'umroh', 'umrah', 'arbain', 'kabah', 'mekkah', 'mekah',
-    'madinah', 'ibadah haji', 'jamaah haji', 'kuota haji', 'antrean haji',
-    'calon haji', 'manasik', 'ihram', 'tawaf', 'sa\'i',
-    'puasa', 'ramadan', 'idul fitri', 'idul adha', 'qurban', 'zakat',
-    'isra miraj', 'maulid', 'nabi muhammad', 'pesantren', 'ulama',
-    'pendidikan', 'kurikulum', 'sekolah', 'siswa', 'mahasiswa', 'guru',
-    'kampus', 'universitas', 'beasiswa', 'ujian', 'unbk',
-    'pajak', 'anggaran', 'apbn', 'apbd', 'subsidi', 'bantuan sosial',
-    'bansos', 'pkh', 'blt', 'sembako',
-    'kesehatan', 'rumah sakit', 'dokter', 'obat', 'vaksin', 'imunisasi',
-    'penyakit', 'gizi', 'stunting',
-    'politik', 'pemilu', 'pilpres', 'pilkada', 'partai', 'dpr', 'presiden',
-    'menteri', 'gubernur', 'bupati', 'walikota', 'kepala daerah',
-    'polisi', 'pencurian', 'pembunuhan', 'kriminal', 'narkoba',
-    'ekonomi', 'bisnis', 'keuangan', 'bank', 'saham', 'ihsg', 'rupiah',
-    'dolar', 'kurs', 'investasi', 'ekspor', 'impor',
-    'teknologi', 'gadget', 'aplikasi', 'internet', 'ai', 'kecerdasan buatan',
-    'otomotif', 'mobil', 'motor',
-]
-
-def judul_topik_besar(judul):
-    j = (judul or '').lower()
-    return any(k in j for k in TOPIK_BESAR_GATE)
-
-def adalah_turnamen_olahraga(teks):
-    t = (teks or '').lower()
-    return any(k in t for k in KATA_TURNAMEN_OLAHRAGA)
-
-def adalah_konten_olahraga(teks):
-    t = (teks or '').lower()
-    for k in KATA_BUKAN_OLAHRAGA:
-        if len(k) <= 4:
-            if re.search(r'\b' + re.escape(k) + r'\b', t):
-                return False
-        else:
-            if k in t:
-                return False
-    return any(k in t for k in KATA_WAJIB_OLAHRAGA)
-
-# AKHIR PART 2E
+# AKHIR PART 2
 
 # PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI
 
