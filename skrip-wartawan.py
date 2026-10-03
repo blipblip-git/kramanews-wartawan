@@ -5283,7 +5283,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.47'
+FILE_VERSI = 'V6.17.48'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
