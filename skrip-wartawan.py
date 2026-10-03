@@ -227,21 +227,28 @@ def GN(q, lang='id', label=None, when='1d'):
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
+# ═══ V6.17.52: JADWAL BARU — ekonomi 6 slot, kesehatan 4x, otomotif 4x, olahraga 6x ═══
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
-    7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1},
-    8:  {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'teknologi': 1},
-    9:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1},
+    7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1, 'ekonomi': 1},
+    8:  {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'teknologi': 1, 'kesehatan': 1},
+    9:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'olahraga': 1, 'ekonomi': 1},
     10: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'kesehatan': 1},
-    11: {'nasional': 1, 'daerah': 2, 'ekonomi': 1, 'olahraga': 1},
-    12: {'nasional': 1, 'daerah': 1},
-    13: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'olahraga': 1},
-    14: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1},
+    11: {'nasional': 1, 'daerah': 2, 'ekonomi': 1, 'olahraga': 1, 'otomotif': 1},
+    12: {'nasional': 1, 'daerah': 1, 'ekonomi': 1, 'olahraga': 1},
+    13: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'otomotif': 1},
+    14: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1, 'ekonomi': 1},
     15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1},
-    16: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'kesehatan': 1},
+    16: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'kesehatan': 1, 'olahraga': 1},
     17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1, 'ekonomi': 1},
     18: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'olahraga': 1},
 }
+
+# ═══ V6.17.52: JAM EKONOMI — DOMESTIK vs ASING ═══
+# Domestik (feed Indonesia): 06, 09, 11, 12, 17
+# Asing (feed luar): 07, 14
+EKONOMI_JAM_DOMESTIK = [6, 9, 11, 12, 17]
+EKONOMI_JAM_ASING    = [7, 14]
 
 TOPIK_NASIONAL_WAJIB = [
     ['makan bergizi gratis', 'mbg'],
@@ -351,7 +358,7 @@ DOMAIN_KESEHATAN = [
         ('senior health tips doctor', 'en'),
     ]},
 ]
-JAM_KESEHATAN = {10: 0, 15: 1, 16: 2}
+JAM_KESEHATAN = {8: 0, 10: 1, 15: 2, 16: 3}
 
 DOMAIN_OTOMOTIF = [
     {'nama': 'Mobil Baru & Rilis', 'query': [
@@ -385,7 +392,7 @@ DOMAIN_OTOMOTIF = [
         ('aksesori mobil baru', 'id'),
     ]},
 ]
-JAM_OTOMOTIF = {9: 0, 16: 1}
+JAM_OTOMOTIF = {9: 0, 11: 1, 13: 2, 16: 3}
 
 DOMAIN_TEKNOLOGI = [
     {'nama': 'Gadget & Smartphone', 'aturan': 'Berita HARUS BANYAK, boleh hingga 2 halaman. WAJIB memuat SEBANYAK mungkin gadget/baru yang ada di materi sekaligus. SPESIFIKASI setiap gadget WAJIB lengkap (layar, chipset, RAM, kamera, baterai, sistem operasi - sesuai yang tertulis di materi). Estimasi harga WAJIB disebut jika ada di materi.', 'query': [
@@ -420,6 +427,69 @@ DOMAIN_TEKNOLOGI = [
     ]},
 ]
 JAM_TEKNOLOGI = {8: 0, 13: 1, 18: 2}
+
+# ═══ V6.17.52: FEED EKONOMI DIPISAH — DOMESTIK vs ASING ═══
+EKONOMI_DOMESTIK_FEEDS = [
+    RSSF('https://market.bisnis.com/feed', 'Bisnis Market'),
+    RSSF('https://www.antaranews.com/rss/pasar-modal', 'Antara Pasar Modal'),
+    RSSF('https://www.antaranews.com/rss/ekonomi', 'Antara Ekonomi'),
+    RSSF('https://www.cnnindonesia.com/ekonomi/rss', 'CNN Ekonomi'),
+    RSSF('https://www.cnbcindonesia.com/market/rss', 'CNBC Indonesia Market'),
+    RSSF('https://www.cnbcindonesia.com/news/rss', 'CNBC Indonesia News'),
+    RSSF('https://economy.okezone.com/rss', 'Okezone Economy'),
+    RSSF('https://www.kontan.co.id/rss', 'Kontan'),
+    RSSF('https://investor.id/rss', 'Investor.id'),
+    RSSF('https://www.katadata.co.id/rss', 'Katadata'),
+    RSSF('https://www.wartaekonomi.co.id/rss', 'Warta Ekonomi'),
+    RSSF('https://ekonomi.bisnis.com/rss', 'Bisnis Ekonomi'),
+    RSSF('https://www.idxchannel.com/rss', 'IDX Channel'),
+    RSSF('https://www.liputan6.com/rss', 'Liputan6'),
+    GN('ekonomi indonesia hari ini', 'id', 'GN Ekonomi Indonesia'),
+    GN('IHSG hari ini', 'id', 'GN IHSG'),
+    GN('rupiah dolar hari ini', 'id', 'GN Kurs Rupiah'),
+    GN('inflasi indonesia', 'id', 'GN Inflasi'),
+    GN('ekspor impor indonesia', 'id', 'GN Ekspor Impor'),
+    GN('BI rate suku bunga', 'id', 'GN BI Rate'),
+    GN('APBN pajak indonesia', 'id', 'GN APBN Pajak'),
+    GN('UMKM Indonesia', 'id', 'GN UMKM'),
+    GN('PHK tenaga kerja Indonesia', 'id', 'GN PHK'),
+    GN('harga beras jagung cabai', 'id', 'GN Harga Pangan'),
+    GN('sawit CPO batu bara nikel Indonesia', 'id', 'GN Komoditas'),
+    GN('pertambangan smelter hilirisasi Indonesia', 'id', 'GN Tambang'),
+    GN('properti perumahan Indonesia', 'id', 'GN Properti'),
+    GN('kripto aset digital Indonesia', 'id', 'GN Kripto'),
+]
+
+EKONOMI_ASING_FEEDS = [
+    RSSF('https://feeds.a.dj.com/rss/RSSMarketsMain.xml', 'WSJ Markets'),
+    RSSF('https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml', 'WSJ Business'),
+    RSSF('https://www.bloomberg.com/feed/podcast/etf-report.xml', 'Bloomberg ETF'),
+    RSSF('https://www.cnbc.com/id/100003114/device/rss/rss.html', 'CNBC World'),
+    RSSF('https://www.cnbc.com/id/10000664/device/rss/rss.html', 'CNBC Finance'),
+    RSSF('https://www.reutersagency.com/feed/?best-topics=business-finance', 'Reuters Biz'),
+    RSSF('https://www.ft.com/?format=rss', 'Financial Times'),
+    RSSF('https://www.chinadaily.com.cn/rss/bizchina_rss.xml', 'China Daily Biz'),
+    RSSF('https://www.scmp.com/rss/92/feed', 'SCMP Business'),
+    RSSF('https://www.japantimes.co.jp/feed/', 'Japan Times Biz'),
+    GN('china economy', 'en', 'GN Ekonomi China'),
+    GN('japan economy', 'en', 'GN Ekonomi Jepang'),
+    GN('south korea economy', 'en', 'GN Ekonomi Korea Selatan'),
+    GN('vietnam economy', 'en', 'GN Ekonomi Vietnam'),
+    GN('india economy', 'en', 'GN Ekonomi India'),
+    GN('us economy', 'en', 'GN Ekonomi USA'),
+    GN('european union economy', 'en', 'GN Ekonomi Eropa'),
+    GN('china exports imports', 'en', 'GN Ekspor Impor China'),
+    GN('china manufacturing factory', 'en', 'GN Manufaktur China'),
+    GN('china lithium battery mining', 'en', 'GN Tambang China'),
+    GN('global oil opec', 'en', 'GN Minyak Global'),
+    GN('fed interest rate', 'en', 'GN Fed'),
+    GN('ecb boj pboc interest rate', 'en', 'GN Bank Sentral'),
+    GN('dow jones nasdaq nikkei hang seng', 'en', 'GN Index Saham'),
+    GN('gold copper lithium price', 'en', 'GN Komoditas Global'),
+    GN('global inflation', 'en', 'GN Inflasi Global'),
+    GN('global trade tariff', 'en', 'GN Perdagangan Global'),
+    GN('taiwan semiconductor tsmc chip', 'en', 'GN Semikonduktor'),
+]
 
 HUNT = {
     'nasional': [
@@ -495,7 +565,6 @@ HUNT = {
         RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
         RSSF('https://www.channelnewsasia.com/rssfeed/8395986/asia', 'CNA Asia'),
         RSSF('https://www.antaranews.com/rss/world', 'Antara Dunia'),
-        RSSF('https://e.vnexpress.net/rss/news.rss', 'VnExpress'),
         RSSF('https://www.nationthailand.com/rss', 'The Nation Thailand'),
         RSSF('https://www.manilatimes.net/feed', 'Manila Times'),
         RSSF('https://www.thaipbsworld.com/feed/', 'Thai PBS World'),
@@ -552,6 +621,8 @@ HUNT = {
         GN('china economy', 'en', 'Google News China Economy'),
     ],
     'ekonomi': [
+        # V6.17.52: HUNT['ekonomi'] tetap ada sebagai fallback,
+        # tapi sesi produksi ambil dari EKONOMI_DOMESTIK / EKONOMI_ASING sesuai jam
         RSSF('https://market.bisnis.com/feed', 'Bisnis Market'),
         RSSF('https://www.antaranews.com/rss/pasar-modal', 'Antara Pasar Modal'),
         RSSF('https://www.cnnindonesia.com/ekonomi/rss', 'CNN Indonesia'),
@@ -560,23 +631,10 @@ HUNT = {
         RSSF('https://economy.okezone.com/rss', 'Okezone Economy'),
         RSSF('https://www.kontan.co.id/rss', 'Kontan'),
         RSSF('https://feeds.a.dj.com/rss/RSSMarketsMain.xml', 'WSJ Markets'),
-        RSSF('https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml', 'WSJ Business'),
-        RSSF('https://www.bloomberg.com/feed/podcast/etf-report.xml', 'Bloomberg ETF'),
         RSSF('https://www.cnbc.com/id/100003114/device/rss/rss.html', 'CNBC World'),
-        RSSF('https://www.cnbc.com/id/10000664/device/rss/rss.html', 'CNBC Finance'),
         RSSF('https://www.reutersagency.com/feed/?best-topics=business-finance', 'Reuters Biz'),
         RSSF('https://www.ft.com/?format=rss', 'Financial Times'),
-        RSSF('https://www.chinadaily.com.cn/rss/bizchina_rss.xml', 'China Daily Biz'),
         RSSF('https://www.scmp.com/rss/92/feed', 'SCMP Business'),
-        RSSF('https://www.japantimes.co.jp/feed/', 'Japan Times Biz'),
-        GN('china economy', 'en', 'Google News Ekonomi China'),
-        GN('japan economy', 'en', 'Google News Ekonomi Jepang'),
-        GN('south korea economy', 'en', 'Google News Ekonomi Korea Selatan'),
-        GN('malaysia economy', 'en', 'Google News Ekonomi Malaysia'),
-        GN('european union economy', 'en', 'Google News Ekonomi Eropa'),
-        GN('russia economy', 'en', 'Google News Ekonomi Rusia'),
-        GN('us economy', 'en', 'Google News Ekonomi USA'),
-        GN('latin america economy', 'en', 'Google News Ekonomi Amerika Latin'),
     ],
     'olahraga': [
         RSSF('https://www.cnnindonesia.com/olahraga/rss', 'CNN Indonesia'),
@@ -1464,7 +1522,7 @@ KATEGORI (WAJIB TEPAT):
 - otomotif: mobil, motor, kendaraan listrik, spare part, modifikasi.
 - kesehatan: penyakit, gizi, obat, dokter, mental health.
 
-EKONOMI — DEFINISI LUAS (WAJIB):
+EKONOMI — DEFINISI SANGAT LUAS (WAJIB):
 - EKONOMI mencakup: IHSG, kurs, saham, BI, OJK, UMKM, bisnis, ekonomi dunia,
   EKSPOR, IMPOR, PERDAGANGAN, PERTUMBUHAN EKONOMI, PENJUALAN.
 - EKONOMI JUGA mencakup (JANGAN TOLAK):
@@ -1475,8 +1533,25 @@ EKONOMI — DEFINISI LUAS (WAJIB):
   * Sektor industri, manufaktur, pabrik, produksi
   * Perbankan, kredit, pinjaman, asuransi, fintech
   * Wisata, pariwisata (aspek ekonomi)
-- Kalau materi memuat kata di atas -> TETAP EKONOMI meski ada nama politikus
-  atau kunjungan diplomatik.
+  * Perusahaan naik/turun/rugi/ekspansi/PHK
+  * Pemasaran, brand, campaign, marketing (kalau ada angka)
+  * Tambang, litium, nikel, baterai, smelter, mining
+  * Rantai pasok, supply chain, logistik
+  * Pertumbuhan ekonomi China/USA/Jepang/Korsel/India/Vietnam/Eropa
+  * Inflasi/ekspor/impor negara asing
+  * Index saham China/Jepang/Singapura/Thailand/USA/Eropa (Nikkei,
+    Hang Seng, KOSPI, STI, SET, Dow Jones, S&P 500, Nasdaq, FTSE)
+  * Fed, ECB, BOJ, BOE, PBOC (bank sentral global)
+  * Minyak OPEC, emas global, tembaga, litium global
+  * Sanksi ekonomi, tarif, perang dagang, trade war
+  * WTO, IMF, World Bank, ADB, G20, G7, BRICS, APEC
+  * PHK global, unemployment, tech layoff
+- Kalau materi memuat SALAH SATU dari atas -> TETAP EKONOMI meski ada
+  nama pejabat asing atau kunjungan diplomatik.
+- KATEGORI EKONOMI JUGA untuk materi perusahaan asing/China/USA yang
+  membahas bisnis, produksi, penjualan, ekspansi, merger.
+- HANYA tolak kalau materi 100% politik/militer/olahraga/kesehatan/
+  pendidikan tanpa sudut ekonomi sama sekali.
 
 JANGAN SALAH KATEGORI:
 - Haji/umroh/agama -> nasional (BUKAN olahraga).
@@ -1494,6 +1569,9 @@ PENTING — JANGAN TOLAK BERLEBIHAN:
 - Perusahaan naik peringkat/valuasi/IPO -> TETAP ekonomi.
 - Properti/perumahan/housing -> TETAP ekonomi.
 - Kunjungan dagang/kerja sama ekonomi -> TETAP ekonomi.
+- Tambang/mining/baterai/litium -> TETAP ekonomi.
+- Marketing/brand/campaign (dengan angka) -> TETAP ekonomi.
+- Pertumbuhan ekonomi negara asing -> TETAP ekonomi.
 - AI/teknologi yang bocor data -> TETAP teknologi (BUKAN politik).
 - HANYA tolak kalau materi JELAS tentang kategori yang SALAH.
 
@@ -2298,6 +2376,7 @@ def match_articles(candidates):
     return groups
 
 # AKHIR PART 3A-1
+
 # PART 3A-2 - BARAT + DATELINE + JANJI + SKOR + NARASUMBER + BUKAN_BERITA + LUAR_NEGERI + TOKOH + KOTA + CEK_KATEGORI + TOPIK
 
 def kategori_barat(title, summary):
@@ -2803,80 +2882,147 @@ KATA_TT = [
     'al arabiya', 'gulf news', 'jerusalem post', 'middle east eye',
 ]
 
-KATA_EKONOMI_WAJIB = [
-    'ihsg', 'idx', 'bursa', 'saham', 'obligasi', 'reksa dana', 'bank indonesia',
-    'bi rate', 'suku bunga', 'inflasi', 'deflasi', 'pdb', 'gdp',
-    'pertumbuhan ekonomi', 'resesi', 'kurs', 'rupiah', 'dolar', 'usd', 'idr',
-    'ekspor', 'impor', 'neraca dagang', 'apbn', 'apbd', 'pajak', 'bea cukai',
-    'subsidi', 'ojk', 'kemenkeu', 'umkm',
-    'startup', 'investasi', 'penanaman modal', 'asing', 'ipo', 'emiten',
-    'dividen', 'kapitalisasi', 'wall street', 'dow jones', 'nasdaq', 's&p',
-    'ftse', 'nikkei', 'hang seng', 'minyak mentah', 'brent', 'wti', 'emas',
-    'komoditas', 'perdagangan', 'pasar modal', 'pasar uang', 'fintech',
-    'kripto', 'bitcoin', 'ethereum', 'blockchain', 'pertamina', 'pln', 'telkom',
-    'bank bumn', 'bank swasta', 'kredit', 'pinjaman', 'utang', 'defisit',
-    'surplus', 'harga pangan', 'harga beras', 'harga cabai', 'bulog',
-    'penjualan ritel', 'konsumsi rumah tangga', 'daya beli', 'harga', 'petani',
-    'pangan', 'konsumen', 'pedagang', 'produksi', 'distribusi', 'industri',
-    'pertanian', 'perikanan', 'tambak', 'sawah', 'nelayan', 'ternak',
-    'perkebunan', 'sapi', 'beras', 'cabai', 'bawang', 'gula', 'minyak goreng',
-    'telur', 'ayam', 'daging', 'pasar tradisional', 'pasar modern', 'ritel',
-    'grosir', 'pengusaha', 'dagang', 'bisnis', 'usaha', 'toko', 'bumn',
-    'koperasi', 'pajak', 'bea', 'cukai', 'tarif', 'tbg', 'pendapatan',
-    'belanja', 'anggaran', 'fiskal', 'moneter', 'bank sentral', 'bank',
-    'kartu kredit', 'kpr', 'leasing', 'asuransi', 'jasa keuangan',
-    'asia tenggara', 'malaysia',
-    'economy', 'economic', 'trade', 'growth', 'exports', 'imports',
-    'tariff', 'sanction', 'stimulus', 'resilient', 'domestic', 'grain',
-    'supply', 'factory', 'activity', 'expansion', 'beef', 'daging sapi',
-    'agrikultur', 'agriculture', 'hasil tani',
-    'nilai tukar', 'valuta', 'devisa', 'cadangan devisa', 'neraca pembayaran',
-    'transaksi berjalan', 'current account', 'capital flow', 'arus modal',
-    'portfolio', 'portofolio', 'instrumen', 'surat utang', 'sbn', 'sun',
-    'obligasi negara', 'yield', 'imbal hasil', 'rating', 'peringkat utang',
-    'lembaga pemeringkat', 'moody', 'fitch', 's&p global',
-    'suku bunga acuan', 'the fed', 'fed', 'bank sentral as', 'ecb',
-    'bank sentral eropa', 'boj', 'bank jepang', 'pboc', 'bank sentral china',
-    'perdagangan internasional', 'bilateral', 'multilateral', 'fta',
-    'kerja sama dagang', 'trade deal', 'tarif impor', 'kuota impor',
-    'dumping', 'antidumping', 'subsidi ekspor', 'proteksionisme',
-    'globalisasi', 'supply chain', 'rantai pasok', 'logistik',
-    'manufaktur', 'pabrik', 'produksi industri', 'output', 'kapasitas produksi',
-    'pmi', 'indeks manajer pembelian', 'indeks pmi',
-    'pertumbuhan', 'kontraksi', 'ekspansi', 'resesi teknis',
-    'unemployment', 'pengangguran', 'tenaga kerja', 'upah minimum',
-    'phk', 'pesangon', 'serikat pekerja',
-    'belanja negara', 'belanja pemerintah', 'stimulus fiskal',
-    'stimulus moneter', 'quantitative easing', 'qe', 'pelonggaran',
-    'pengetatan', 'hawkish', 'dovish',
-    'saham blue chip', 'saham perbankan', 'sektor keuangan', 'sektor energi',
-    'sektor teknologi', 'sektor konsumen', 'sektor properti',
-    'perbankan', 'perasuransian', 'multifinance', 'peer to peer', 'p2p',
-    'pinjaman online', 'pinjol', 'kredit macet', 'npl', 'kolektibilitas',
-    'bank digital', 'neobank', 'dompet digital', 'e-wallet',
-    'penjualan mobil', 'penjualan motor', 'industri otomotif',
-    'produk domestik bruto', 'pdb per kapita', 'pendapatan per kapita',
-    'inflasi inti', 'inflasi umum', 'deflasi', 'stagflasi', 'hiperinflasi',
-    'bi 7-day', 'bi7drr', 'suku bunga the fed', 'fed rate',
-    'obligasi pemerintah', 'obligasi korporasi', 'reksadana',
-    'investor asing', 'investor domestik', 'investor ritel',
-    'net buy', 'net sell', 'asing keluar', 'asing masuk', 'capital outflow',
-    'pasar berjangka', 'komoditas berjangka', 'kontrak berjangka',
-    'properti', 'properti china', 'real estate', 'perumahan', 'housing',
-    'sektor properti', 'pengembang', 'developer properti',
-    'hunian', 'apartemen', 'kondominium', 'rusun', 'rumah tapak',
-    'kpr subsidi', 'kpr non subsidi', 'harga rumah', 'harga tanah',
-    'sewa properti', 'sewa rumah', 'sewa apartemen',
-    'kunjungan dagang', 'kunjungan ekonomi', 'delegasi dagang',
-    'delegasi ekonomi', 'kerja sama ekonomi', 'kerja sama dagang',
-    'kemiraan dagang', 'kemitraan ekonomi',
-    'merger', 'akuisisi', 'akuisisi perusahaan', 'takeover',
-    'ipo perusahaan', 'go public', 'rights issue', 'private placement',
-    'valuasi perusahaan', 'valuasi startup', 'pendanaan startup',
-    'series a', 'series b', 'series c', 'putaran pendanaan',
-    'harga properti', 'harga properti china', 'pasar properti',
-    'sektor jasa', 'sektor pariwisata', 'sektor manufaktur', 'sektor agrikultur',
+# ═══ V6.17.52: KAMUS EKONOMI DIPISAH — DOMESTIK + ASING + UMUM ═══
+
+KATA_EKONOMI_DOMESTIK = [
+    # Pasar & Keuangan
+    'ihsg', 'idx', 'bei', 'bursa efek', 'saham indonesia', 'obligasi',
+    'reksa dana', 'sbn', 'sun', 'ori', 'sukuk', 'obligasi syariah',
+    'surat utang negara', 'yield', 'imbal hasil',
+    'bank indonesia', 'bi rate', 'bi7drr', 'suku bunga acuan',
+    'ojk', 'lps', 'penjaminan simpanan', 'kredit', 'kpr', 'leasing',
+    'multifinance', 'asuransi', 'bpjs ketenagakerjaan',
+    'kripto indonesia', 'aset digital',
+    'rupiah', 'kurs rupiah', 'nilai tukar rupiah', 'idr',
+    'inflasi indonesia', 'inflasi inti', 'deflasi', 'bi 7-day',
+    # Fiskal & Moneter
+    'apbn', 'apbd', 'defisit anggaran', 'surplus anggaran',
+    'pajak', 'ppn', 'pph', 'bea masuk', 'cukai', 'tax amnesty',
+    'pengampunan pajak', 'subsidi', 'subsidi bbm', 'subsidi listrik',
+    'subsidi pupuk', 'blt', 'bansos', 'pkh', 'kartu sembako',
+    'kemenkeu', 'kementerian keuangan', 'djp', 'bea cukai',
+    'cadangan devisa', 'devisa hasil ekspor', 'dhe',
+    'neraca pembayaran', 'current account', 'transaksi berjalan',
+    # Pertanian & Pangan
+    'beras', 'padi', 'gabah', 'jagung', 'kedelai', 'gandum',
+    'cabai', 'bawang', 'gula', 'minyak goreng', 'telur', 'ayam',
+    'daging', 'sapi', 'kambing', 'ikan', 'udang', 'tuna',
+    'bulog', 'harga pangan', 'ketahanan pangan', 'petani', 'nelayan',
+    'sawah', 'tambak', 'pertanian', 'perikanan', 'peternakan',
+    # Perkebunan & SDA
+    'sawit', 'cpo', 'karet', 'kakao', 'kopi', 'teh', 'rempah',
+    'batu bara', 'nikel', 'tembaga', 'emas', 'timah', 'bauksit',
+    'minyak', 'gas', 'lng', 'pertamina', 'pln', 'tarif listrik',
+    'tambang', 'smelter', 'hilirisasi', 'kawasan industri', 'kek',
+    # Industri & Manufaktur
+    'manufaktur', 'pabrik', 'industri', 'semen', 'baja', 'tekstil',
+    'garmen', 'sepatu', 'makanan minuman', 'rokok', 'tembakau',
+    'pupuk', 'pestisida', 'alat pertanian', 'otomotif nasional',
+    'pmi', 'indeks manajer pembelian', 'ikk', 'indeks keyakinan konsumen',
+    # Perdagangan
+    'ekspor indonesia', 'impor indonesia', 'neraca dagang',
+    'ekspor', 'impor', 'bea cukai', 'karantina',
+    'barang ilegal', 'selundup', 'penyelundupan', 'impor ilegal',
+    'ekspor ilegal', 'dumping', 'antidumping', 'safeguard',
+    'fta', 'rcep', 'ieucepa',
+    # Tenaga Kerja
+    'phk', 'pesangon', 'upah minimum', 'umr', 'ump', 'umk',
+    'serikat pekerja', 'demo buruh', 'tki', 'pmi', 'pekerja migran',
+    'pelatihan kerja', 'blk', 'kartu prakerja', 'pekerja asing',
+    'tenaga kerja indonesia', 'pengangguran',
+    # UMKM & Ekonomi Digital
+    'umkm', 'bumdes', 'koperasi', 'kredit usaha rakyat', 'kur',
+    'ekonomi digital', 'e-wallet', 'qris', 'bi-fast',
+    'marketplace', 'e-commerce', 'startup indonesia',
+    'fintech', 'p2p lending', 'pinjol', 'pinjaman online',
+    # Properti & Infrastruktur
+    'properti', 'perumahan', 'apartemen', 'rusun', 'kpr subsidi',
+    'developer', 'pengembang', 'kawasan ekonomi khusus',
+    'infrastruktur', 'tol', 'pelabuhan', 'bandara', 'kereta',
+    'pasar modal', 'pasar uang', 'pasar tradisional', 'pasar modern',
+    'ritel', 'grosir', 'retail', 'konsumen', 'daya beli',
+    'konsumsi rumah tangga', 'penjualan ritel',
+    # Ekonomi Hijau
+    'pasar karbon', 'carbon credit', 'esg', 'ekonomi hijau',
+    'transisi energi', 'net zero', 'energi terbarukan',
+    # Syariah
+    'ekonomi syariah', 'keuangan syariah', 'bank syariah',
 ]
+
+KATA_EKONOMI_ASING = [
+    # Pertumbuhan & Ekonomi Global
+    'pertumbuhan ekonomi', 'growth', 'economic growth', 'gdp', 'pdb',
+    'resesi', 'resesi teknis', 'kontraksi', 'ekspansi', 'stagflasi',
+    'hiperinflasi', 'resilient',
+    # Pasar & Keuangan Global
+    'wall street', 'dow jones', 'nasdaq', 's&p 500', 'ftse', 'nikkei',
+    'hang seng', 'kospi', 'sse composite', 'szse', 'sti', 'set index',
+    'us treasury', 'obligasi global', 'bond market',
+    'fed', 'the fed', 'federal reserve', 'fed rate', 'ecb', 'boj',
+    'bank of england', 'boe', 'pboc', 'bank sentral',
+    'dovish', 'hawkish', 'quantitative easing', 'qe', 'pelonggaran',
+    'pengetatan', 'suku bunga global',
+    'dolar', 'usd', 'euro', 'yen', 'yuan', 'renminbi', 'won',
+    'ringgit', 'baht', 'dollar index',
+    'kripto', 'bitcoin', 'ethereum', 'blockchain',
+    # Komoditas Global
+    'minyak mentah', 'brent', 'wti', 'opec', 'oil embargo',
+    'emas global', 'perak', 'tembaga global', 'litium',
+    'gandum global', 'jagung global', 'kedelai global',
+    # Perusahaan Global
+    'tesla', 'toyota', 'byd', 'apple', 'microsoft', 'nvidia',
+    'alphabet', 'amazon', 'meta', 'boeing', 'airbus',
+    'pfizer', 'moderna', 'astrazeneca',
+    'tsmc', 'samsung', 'semikonduktor', 'chip', 'chip war',
+    'hsbc', 'jpmorgan', 'citigroup', 'goldman sachs',
+    'bank of america', 'morgan stanley', 'wells fargo',
+    'deutsche bank', 'barclays', 'bnp paribas',
+    # Perdagangan Global
+    'tarif', 'tariff', 'sanctions', 'sanksi ekonomi',
+    'perang dagang', 'trade war', 'tarif as china',
+    'kerja sama dagang', 'trade deal', 'bilateral', 'multilateral',
+    'wto', 'imf', 'world bank', 'bank dunia', 'adb',
+    'g20', 'g7', 'brics', 'apec',
+    'supply chain', 'rantai pasok', 'logistik global',
+    # Sektor Global
+    'manufaktur global', 'factory activity', 'pmi global',
+    'pertambangan global', 'mining', 'smelter global',
+    'baterai', 'battery', 'kendaraan listrik global',
+    'farmasi global', 'pertahanan', 'defense industry',
+    # Ketenagakerjaan Global
+    'unemployment', 'pengangguran global', 'phk global',
+    'tech layoff', 'visa kerja', 'pekerja migran global',
+    # Index & Pasar
+    'index saham', 'stock market', 'stock index',
+    'market rally', 'market crash', 'bear market', 'bull market',
+    'ipo global', 'merger global', 'akuisisi global',
+    'valuasi global', 'pendanaan global', 'venture capital',
+    # Ekonomi Digital Global
+    'crypto market', 'fintech global', 'e-commerce global',
+    'digital economy', 'big tech',
+    # Ekonomi Hijau Global
+    'carbon market', 'green economy', 'renewable energy',
+    'energy transition', 'net zero global',
+]
+
+# KATA_EKONOMI_WAJIB = gabungan DOMESTIK + ASING + UMUM (untuk gate umum)
+KATA_EKONOMI_UMUM = [
+    'ekonomi', 'economic', 'economy', 'economist',
+    'inflasi', 'inflation', 'deflasi', 'ekspor', 'impor',
+    'perdagangan', 'trade', 'industri', 'industry',
+    'perusahaan', 'company', 'bisnis', 'business',
+    'saham', 'stock', 'obligasi', 'bond',
+    'bank', 'banking', 'keuangan', 'finance',
+    'investasi', 'investment', 'modal', 'capital',
+    'harga', 'price', 'pasar', 'market',
+    'penjualan', 'sales', 'pendapatan', 'revenue',
+    'laba', 'profit', 'rugi', 'loss',
+    'utang', 'debt', 'kredit', 'credit',
+    'pajak', 'tax', 'subsidi', 'subsidy',
+    'anggaran', 'budget', 'belanja', 'spending',
+]
+
+KATA_EKONOMI_WAJIB = KATA_EKONOMI_DOMESTIK + KATA_EKONOMI_ASING + KATA_EKONOMI_UMUM
 
 KATA_POLITIK_HUKUM_LOKAL = [
     'tersangka', 'korupsi', 'kpk', 'kejaksaan', 'pengadilan', 'sidang',
@@ -4984,6 +5130,7 @@ def sesi_olahraga_api(jenis):
         return 0
     return 0
 
+# ═══ V6.17.52: SESI KATEGORI — EKONOMI PILIH FEED SESUAI JAM ═══
 def sesi_kategori(today_urls, seen):
     jam = datetime.now(WITA).hour
     kuota = JADWAL_JAM.get(jam)
@@ -5030,6 +5177,20 @@ def sesi_kategori(today_urls, seen):
         dom_oto, sumber_oto = sumber_otomotif_hari_ini(jam)
         if not dom_oto:
             sumber_oto = None
+    # ═══ V6.17.52: EKONOMI PILIH FEED SESUAI JAM ═══
+    sumber_ekonomi = None
+    jenis_ekonomi = None
+    if kuota.get('ekonomi'):
+        if jam in EKONOMI_JAM_DOMESTIK:
+            sumber_ekonomi = EKONOMI_DOMESTIK_FEEDS
+            jenis_ekonomi = 'domestik'
+        elif jam in EKONOMI_JAM_ASING:
+            sumber_ekonomi = EKONOMI_ASING_FEEDS
+            jenis_ekonomi = 'asing'
+        else:
+            sumber_ekonomi = EKONOMI_DOMESTIK_FEEDS
+            jenis_ekonomi = 'domestik'
+        print('   EKONOMI jam ' + str(jam) + ' - feed ' + jenis_ekonomi)
     total = 0
     for cat, n in kuota.items():
         prio = utamakan_topik if cat == 'nasional' else None
@@ -5046,6 +5207,9 @@ def sesi_kategori(today_urls, seen):
             sumber = sumber_oto
             if dom_oto:
                 sumber_fallback = 'Otomotif: ' + dom_oto['nama']
+        elif cat == 'ekonomi':
+            sumber = sumber_ekonomi
+            sumber_fallback = 'Ekonomi ' + (jenis_ekonomi or 'domestik').title()
         elif cat == 'olahraga':
             wajib_regional = True
             if olahraga_sudah_terbit_dengan_data('Event Besar Dunia') and jam in (11, 17):
@@ -5225,7 +5389,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.51'
+FILE_VERSI = 'V6.17.52'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
