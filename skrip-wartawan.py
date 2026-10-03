@@ -648,303 +648,90 @@ def judul_spam(judul):
 
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT (V6.17.44)
+# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT
 
-BREAKING_DOMESTIK_FEEDS = [
-    RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
-    RSSF('https://www.detik.com/feed', 'Detik'),
-    RSSF('https://nasional.kompas.com/rss', 'Kompas Nasional'),
-    RSSF('https://www.liputan6.com/rss', 'Liputan6'),
-    RSSF('https://www.antaranews.com/rss/nasional', 'Antara'),
-    RSSF('https://www.cnbcindonesia.com/market/rss', 'CNBC Indonesia'),
-    RSSF('https://nasional.tribunnews.com/rss', 'Tribun Nasional'),
-    RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
-    RSSF('https://www.bola.net/feed', 'Bola.net'),
-    RSSF('https://www.cnnindonesia.com/olahraga/rss', 'CNN Olahraga'),
-    GN('breaking news indonesia', 'id', 'GN Breaking Indonesia'),
-    GN('gempa indonesia hari ini', 'id', 'GN Gempa Indonesia'),
-    GN('banjir indonesia hari ini', 'id', 'GN Banjir Indonesia'),
-    GN('kecelakaan besar indonesia', 'id', 'GN Kecelakaan'),
-    GN('kebakaran besar indonesia', 'id', 'GN Kebakaran'),
-]
+# ═══ GN DECODE FIX — gnews-decoder (V6.17.49) ═══
+# Metode lama (base64 decode, HTML parse, follow redirect) MATI TOTAL
+# sejak Google ubah format URL akhir 2024.
+# Format baru: ID opaque, butuh signature + batchexecute RPC.
+# gnews-decoder pakai batchexecute resmi — 50 URL resolve dalam ~6.8 detik.
+# Ref: https://pypi.org/project/gnews-decoder/
 
-BREAKING_DUNIA_FEEDS = [
-    RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
-    RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
-    RSSF('http://rss.cnn.com/rss/edition_world.rss', 'CNN World'),
-    RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
-    RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
-    RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
-    RSSF('https://vietnamnews.vn/rss.html', 'Vietnam News'),
-    RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
-    RSSF('https://apnews.com/index.rss', 'AP News'),
-    RSSF('https://www.france24.com/en/rss', 'France24'),
-    RSSF('http://www.xinhuanet.com/english/rss/worldrss.xml', 'Xinhua World'),
-    RSSF('https://www.chinadaily.com.cn/rss/world_rss.xml', 'China Daily World'),
-    RSSF('https://www.cgtn.com/subscribe/rss/section/world.xml', 'CGTN World'),
-    RSSF('https://www.scmp.com/rss/91/feed', 'SCMP China'),
-    RSSF('https://www.japantimes.co.jp/feed/', 'Japan Times'),
-    RSSF('https://www3.nhk.or.jp/nhkworld/en/news/rss/all.xml', 'NHK World'),
-    GN('breaking world news', 'en', 'GN Breaking Dunia'),
-    GN('major earthquake', 'en', 'GN Gempa Besar Dunia'),
-    GN('war conflict missile', 'en', 'GN Perang'),
-    GN('breaking asia news', 'en', 'GN Breaking Asia'),
-    GN('flood disaster', 'en', 'GN Banjir Dunia'),
-    GN('plane crash', 'en', 'GN Pesawat Jatuh'),
-]
+try:
+    from gnews_decoder import decode_many as _gn_decode_many
+    _GN_DECODER_OK = True
+except Exception:
+    _GN_DECODER_OK = False
+    _gn_decode_many = None
 
-LUAR_NEGERI_WORDS = ['jepang', 'china', 'amerika', 'eropa', 'luar negeri', 'inggris',
-                     'india', 'korea', 'australia', 'turki', 'israel', 'gaza',
-                     'ukraina', 'rusia', 'malaysia', 'thailand', 'taiwan', 'timor leste']
+_GN_DECODE_CACHE = {}
 
-INDO_GEO = ['indonesia', 'bmkg', 'aceh', 'sumatera', 'sumatra', 'jawa', 'kalimantan',
-            'sulawesi', 'papua', 'bali', 'nusa tenggara', 'lombok', 'ntb', 'ntt',
-            'maluku', 'ambon', 'manado', 'makassar', 'medan', 'padang', 'jakarta',
-            'bandung', 'surabaya', 'yogyakarta', 'jayapura', 'bengkulu', 'lampung',
-            'palu', 'mamuju', 'cilacap', 'garut', 'cianjur', 'tasikmalaya',
-            'jember', 'lumajang', 'semarang', 'banggai', 'tarakan', 'kaltara',
-            'nunukan', 'bulungan', 'malinau', 'pontianak', 'kalbar', 'banjarmasin',
-            'kalsel', 'kalteng', 'palangka raya', 'denpasar', 'mataram', 'kupang',
-            'gorontalo', 'batam', 'pekanbaru', 'palembang']
-
-DOM_KRITIS = [
-    'tsunami', 'erupsi', 'gunung meletus', 'banjir bandang', 'banjir besar',
-    'tanah longsor', 'longsor', 'karhutla', 'kebakaran hutan', 'kebakaran hebat',
-    'kebakaran massal', 'keracunan massal', 'angin puting beliung', 'korban jiwa',
-    'mengungsi', 'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perahu tenggelam',
-    'pesawat jatuh', 'pesawat hilang', 'kecelakaan pesawat', 'pesawat tergelincir',
-    'pembunuhan', 'dibunuh', 'ditemukan mati', 'penembakan', 'ledakan', 'bom meledak',
-    'perampokan bersenjata', 'rampok bank', 'ott kpk', 'ditangkap kpk',
-    'tersangka korupsi', 'tertangkap tangan', 'reshuffle', 'pergantian menteri',
-    'menteri diganti', 'menteri meninggal', 'menteri wafat', 'menteri ditangkap',
-    'menteri tersangka', 'presiden meninggal', 'wapres meninggal',
-    'kerusuhan', 'ricuh', 'bentrok massa', 'demo besar', 'demonstrasi besar',
-    'massa membakar', 'membakar massal', 'tawuran besar',
-]
-
-BREAKING_INT_KRITIS = [
-    'banjir besar', 'major flood', 'flash flood', 'devastating flood',
-    'tsunami', 'tsunami warning',
-    'gempa bumi', 'earthquake', 'magnitude',
-    'angin topan', 'typhoon', 'hurricane', 'cyclone', 'super typhoon',
-    'letusan gunung', 'volcanic eruption', 'volcano',
-    'kebakaran hutan', 'wildfire', 'forest fire',
-    'tanah longsor', 'landslide',
-
-    'pesawat komersial jatuh', 'commercial plane crash',
-    'airliner crash', 'passenger plane crash',
-    'pesawat penumpang jatuh', 'pesawat hilang', 'plane missing',
-    'kapal tenggelam', 'ferry sinks', 'ship sinks', 'boat capsizes',
-    'kapal terbakar', 'ferry fire', 'ship fire',
-    'kereta anjlok', 'train derailment', 'train crash', 'train collision',
-
-    'deklarasi perang', 'declaration of war',
-    'serangan rudal', 'missile strike', 'missile attack', 'rocket attack',
-    'kudeta', 'coup', 'military coup',
-    'uji coba nuklir', 'nuclear test', 'nuclear attack',
-    'serangan teroris', 'terror attack', 'terrorist attack',
-    'gencatan senjata besar', 'ceasefire deal', 'peace deal', 'peace agreement',
-    'embargo minyak', 'oil embargo',
-
-    'presiden meninggal', 'president dies', 'president dead',
-    'pm meninggal', 'prime minister dies',
-    'presiden mundur', 'president resigns', 'president steps down',
-    'pembunuhan pejabat', 'assassination',
-    'penculikan pejabat', 'kidnapping',
-    'presiden terpilih', 'elected president', 'wins election',
-    'referendum kemerdekaan', 'independence referendum',
-    'pejabat ditangkap', 'official arrested', 'minister arrested',
-    'bandar narkoba', 'drug lord arrested', 'drug kingpin',
-
-    'krisis mata uang', 'currency crisis', 'devaluation',
-    'bank runtuh', 'bank collapse', 'bank fails',
-    'kebangkrutan negara', 'sovereign default',
-    'opec memangkas', 'opec cuts',
-
-    'peluncuran roket berawak', 'crewed launch', 'manned launch',
-    'nasa launch', 'spacex launch', 'cnsa launch',
-
-    'pandemi', 'pandemic', 'who emergency', 'global health emergency',
-]
-
-BREAKING_INT_TOLAK = [
-    'small plane', 'small aircraft', 'private plane', 'private jet',
-    'single-engine', 'single engine', 'small plane crash',
-    'military plane', 'military aircraft', 'fighter jet', 'fighter plane',
-    'warplane', 'helicopter crash', 'chopper crash',
-    'pesawat kecil', 'pesawat pribadi', 'pesawat militer',
-    'jet tempur', 'helikopter jatuh',
-    'skydivers', 'skydiving',
-    'plane crash drill', 'simulasi', 'latihan',
-    'plane crash warning', 'memorial', 'peringatan',
-    'anniversary', '30th anniversary', '40th anniversary',
-    'larangan impor alkohol', 'alcohol import ban', 'liquor ban',
-    'larangan susu', 'dairy ban', 'milk ban',
-    'ban on alcohol', 'ban on dairy',
-    'tarif kecil', 'minor tariff', 'small tariff',
-    'sanksi ringan', 'minor sanctions',
-    'keluhan dagang', 'trade complaint',
-    'tarif baja', 'tarif aluminium', 'steel tariff', 'aluminum tariff',
-]
-
-DUNIA_KRITIS = BREAKING_INT_KRITIS
-
-def _pesawat_kecil(text):
-    t = (text or '').lower()
-    for k in BREAKING_INT_TOLAK:
-        if k in t:
-            return True
-    return False
-
-def judul_topik_besar(judul):
-    j = (judul or '').lower()
-    return any(k in j for k in TOPIK_BESAR_GATE)
-
-KATA_TURNAMEN_OLAHRAGA = [
-    'fifa', 'aff', 'uefa', 'afc', 'piala dunia', 'world cup', 'sea games',
-    'asian games', 'olimpiade', 'olympic', 'piala asia', 'asian cup',
-    'piala aff', 'aff cup', 'fifa asean cup', 'piala eropa', 'euro 202',
-    'copa america', 'liga champions', 'champions league', 'europa league',
-    'premier league', 'la liga', 'serie a', 'bundesliga', 'ligue 1',
-    'eredivisie', 'nba', 'wnba', 'ibl', 'badminton', 'bulu tangkis', 'bwf',
-    'voli', 'volleyball', 'fivb', 'motogp', 'formula 1', 'f1',
-]
-
-def adalah_turnamen_olahraga(teks):
-    t = (teks or '').lower()
-    return any(k in t for k in KATA_TURNAMEN_OLAHRAGA)
-
-KATA_WAJIB_OLAHRAGA = [
-    'bola', 'sepak bola', 'sepakbola', 'football', 'soccer', 'basket', 'nba',
-    'wnba', 'ibl', 'badminton', 'bulu tangkis', 'bwf', 'voli', 'volleyball',
-    'fivb', 'tenis', 'tennis', 'atp', 'wta', 'motogp', 'formula 1', 'f1',
-    'balap', 'liga', 'piala', 'turnamen', 'kejuaraan', 'kompetisi', 'timnas',
-    'atlet', 'pemain', 'klub', 'klub sepak', 'pertandingan', 'laga', 'skor',
-    'klasemen', 'gol', 'olimpiade', 'olympic', 'sea games', 'asian games',
-    'stadion', 'kick-off', 'kick off',
-]
-
-KATA_BUKAN_OLAHRAGA = [
-    'haji', 'umroh', 'umrah', 'arbain', 'kabah', 'mekkah', 'mekah',
-    'madinah', 'ibadah haji', 'jamaah haji', 'kuota haji', 'antrean haji',
-    'calon haji', 'manasik', 'ihram', 'tawaf', 'sa\'i',
-    'puasa', 'ramadan', 'idul fitri', 'idul adha', 'qurban', 'zakat',
-    'isra miraj', 'maulid', 'nabi muhammad', 'pesantren', 'ulama',
-    'pendidikan', 'kurikulum', 'sekolah', 'siswa', 'mahasiswa', 'guru',
-    'kampus', 'universitas', 'beasiswa', 'ujian', 'unbk',
-    'pajak', 'anggaran', 'apbn', 'apbd', 'subsidi', 'bantuan sosial',
-    'bansos', 'pkh', 'blt', 'sembako',
-    'kesehatan', 'rumah sakit', 'dokter', 'obat', 'vaksin', 'imunisasi',
-    'penyakit', 'gizi', 'stunting',
-    'politik', 'pemilu', 'pilpres', 'pilkada', 'partai', 'dpr', 'presiden',
-    'menteri', 'gubernur', 'bupati', 'walikota', 'kepala daerah',
-    'polisi', 'pencurian', 'pembunuhan', 'kriminal', 'narkoba',
-    'ekonomi', 'bisnis', 'keuangan', 'bank', 'saham', 'ihsg', 'rupiah',
-    'dolar', 'kurs', 'investasi', 'ekspor', 'impor',
-    'teknologi', 'gadget', 'aplikasi', 'internet', 'ai', 'kecerdasan buatan',
-    'otomotif', 'mobil', 'motor',
-]
-
-def adalah_konten_olahraga(teks):
-    t = (teks or '').lower()
-    for k in KATA_BUKAN_OLAHRAGA:
-        if len(k) <= 4:
-            if re.search(r'\b' + re.escape(k) + r'\b', t):
-                return False
-        else:
-            if k in t:
-                return False
-    return any(k in t for k in KATA_WAJIB_OLAHRAGA)
-TOKOH_POLITIK_ASING = [...]
-KATA_POLITIK_EKSPLISIT = [...]
-KATA_KUNCI_OTOMOTIF = [
-    'mobil', 'motor', 'skutik', 'matic', 'bebek', 'sport touring',
-    'kendaraan listrik', 'mobil listrik', 'motor listrik', 'tesla', 'byd',
-    'geely', 'nissan', 'toyota', 'honda', 'yamaha', 'suzuki', 'mitsubishi',
-    'hyundai', 'kia', 'wuling', 'chery', 'bmw', 'mercedes', 'audi',
-    'volkswagen', 'ford', 'chevrolet', 'facelift', 'sedan', 'suv', 'mpv',
-    'pickup', 'hatchback', 'spesifikasi mobil', 'spesifikasi motor',
-    'harga mobil', 'harga motor', 'test drive', 'review mobil', 'review motor',
-    'modifikasi', 'mesin mobil', 'mesin motor',
-]
-
-def adalah_konten_otomotif(teks):
-    t = (teks or '').lower()
-    return any(k in t for k in KATA_KUNCI_OTOMOTIF)
-
-class BeritaLama(Exception):
-    pass
-
-STAT_SCRAPE = {'ok': 0, 'gagal': 0, 'skip': 0, 'irisan_gagal': 0,
-               'gn_gagal_decode': 0, 'gn_fallback_rss': 0}
-JUDUL_TERPAKAI = []
-JUDUL_6JAM = []
-_GAMBAR_TERPAKAI_CACHE = None
-
-DEBUG_SCRAPE = True
-
-MATERI_MAKS_KARAKTER = 1000
-
-REJECTED_URLS_CACHE = None
-
-def muat_rejected_urls():
-    global REJECTED_URLS_CACHE
-    if REJECTED_URLS_CACHE is not None:
-        return REJECTED_URLS_CACHE
-    out = set()
+def _gn_decode_satu(url):
+    """Decode 1 URL Google News → URL publisher asli. Return '' kalau gagal."""
+    if not url:
+        return ''
+    if url in _GN_DECODE_CACHE:
+        return _GN_DECODE_CACHE[url]
+    if not _GN_DECODER_OK:
+        _GN_DECODE_CACHE[url] = ''
+        return ''
     try:
-        r = requests.get(SUPABASE_URL + '/rest/v1/rejected_urls'
-                         + '?select=source_url&order=created_at.desc&limit=500',
-            headers={'apikey': SUPABASE_PUBLISHABLE,
-                     'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE},
-            timeout=30)
-        if r.ok:
-            for row in (r.json() or []):
-                u = (row.get('source_url') or '').strip()
-                if u:
-                    out.add(u)
-            print('   ' + str(len(out)) + ' URL rejected dimuat (blacklist permanen).')
-        else:
-            print('   Gagal muat rejected_urls: HTTP ' + str(r.status_code))
+        hasil = _gn_decode_many([url])
+        u = (hasil or {}).get(url) or ''
+        if u and GOOGLE_NEWS_HOST not in u:
+            _GN_DECODE_CACHE[url] = u
+            return u
     except Exception as e:
-        print('   Gagal muat rejected_urls: ' + str(e)[:60])
-    REJECTED_URLS_CACHE = out
-    return out
+        print('       GN decode gagal: ' + str(e)[:80])
+    _GN_DECODE_CACHE[url] = ''
+    return ''
 
-KATA_ALASAN_TRANSIENT = [
-    'rate limit', 'timeout', 'koneksi', 'connection',
-    'error sementara', 'coba lagi', 'retry',
-    'materi terlalu pendek', 'materi tidak valid',
-    'materi kosong', 'materi gabungan tidak valid',
-]
-
-def catat_tolak_ai_token(source_url, alasan):
-    if not source_url:
-        return
-    alasan_str = (alasan or '').strip()
-    if not alasan_str:
-        return
-    alasan_low = alasan_str.lower()
-    for k in KATA_ALASAN_TRANSIENT:
-        if k in alasan_low:
-            return
+def _gn_decode_batch(urls):
+    """Decode banyak URL sekaligus (batch — 1 request untuk semua)."""
+    if not urls or not _GN_DECODER_OK:
+        return {}
+    perlu = [u for u in urls if u and u not in _GN_DECODE_CACHE]
+    if not perlu:
+        return {u: _GN_DECODE_CACHE.get(u, '') for u in urls}
     try:
-        r = requests.post(SUPABASE_URL + '/rest/v1/rejected_urls',
-            headers={'apikey': SUPABASE_PUBLISHABLE,
-                     'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE,
-                     'Content-Type': 'application/json',
-                     'Prefer': 'resolution=merge-duplicates,return=minimal'},
-            json={'source_url': source_url, 'alasan': alasan_str[:500]},
-            timeout=30)
-        if not r.ok:
-            print('   Gagal catat rejected_urls: HTTP ' + str(r.status_code)
-                  + ' - ' + r.text[:80])
-        else:
-            if REJECTED_URLS_CACHE is not None:
-                REJECTED_URLS_CACHE.add(source_url)
-            print('   URL dicatat ke rejected_urls: ' + source_url[:60])
+        hasil = _gn_decode_many(perlu) or {}
+        for u in perlu:
+            v = hasil.get(u) or ''
+            if v and GOOGLE_NEWS_HOST not in v:
+                _GN_DECODE_CACHE[u] = v
+            else:
+                _GN_DECODE_CACHE[u] = ''
+        print('       GN decode batch: ' + str(sum(1 for u in perlu if _GN_DECODE_CACHE.get(u)))
+              + '/' + str(len(perlu)) + ' berhasil')
     except Exception as e:
-        print('   Gagal catat rejected_urls: ' + str(e)[:60])
+        print('       GN decode batch gagal: ' + str(e)[:80])
+        for u in perlu:
+            _GN_DECODE_CACHE.setdefault(u, '')
+    return {u: _GN_DECODE_CACHE.get(u, '') for u in urls}
+
+def resolusi_link_google(url):
+    """Ganti metode lama. Pakai gnews-decoder — batchexecute resmi Google."""
+    if not url or GOOGLE_NEWS_HOST not in url:
+        return url
+    hasil = _gn_decode_satu(url)
+    if hasil:
+        return hasil
+    print('       GN decode GAGAL — skip artikel ini')
+    STAT_SCRAPE['gn_gagal_decode'] += 1
+    return ''
+
+def _gn_id_dari_url(url):
+    """Fallback extractor ID — untuk kompatibilitas internal saja."""
+    try:
+        m = re.search(r'/articles/([A-Za-z0-9_\-]+)', url or '')
+        if m:
+            return m.group(1)
+        m = re.search(r'/([A-Za-z0-9_\-]{30,})(?:\?|$)', url or '')
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return ''
 
 DOMAIN_NON_BERITA = [
     'www.w3.org', 'w3.org', 'schema.org', 'ogp.me', 'purl.org', 'gstatic.com',
@@ -975,146 +762,6 @@ def _url_valid_berita(u):
                      '.css', '.js', '.woff', '.woff2', '.ttf', '.eot')):
         return False
     return True
-
-def _gn_id_dari_url(url):
-    try:
-        m = re.search(r'/articles/([A-Za-z0-9_\-]+)', url or '')
-        if m:
-            return m.group(1)
-        m = re.search(r'/([A-Za-z0-9_\-]{30,})(?:\?|$)', url or '')
-        if m:
-            return m.group(1)
-    except Exception:
-        pass
-    return ''
-
-def _gn_decode_html(html):
-    if not html:
-        return ''
-    for pola in (r'data-n-au="(https?://[^"]+)"',
-                 r'data-n-href="(https?://[^"]+)"',
-                 r'"url"\s*:\s*"(https?://[^"]+)"',
-                 r'"canonicalUrl"\s*:\s*"(https?://[^"]+)"'):
-        try:
-            for m in re.finditer(pola, html):
-                kandidat = m.group(1).replace('\\u003d', '=').replace('\\u0026', '&')
-                if _url_valid_berita(kandidat) and GOOGLE_NEWS_HOST not in kandidat:
-                    return kandidat
-        except Exception:
-            continue
-    for m in re.finditer(r'href="(https?://[^"]+)"', html):
-        kandidat = m.group(1).replace('\\u003d', '=').replace('\\u0026', '&')
-        if GOOGLE_NEWS_HOST in kandidat:
-            continue
-        if _url_valid_berita(kandidat):
-            return kandidat
-    return ''
-
-def _gn_decode_base64(url):
-    if not url:
-        return ''
-    try:
-        gid = _gn_id_dari_url(url)
-        if not gid:
-            return ''
-        gid_pad = gid + '=' * (-len(gid) % 4)
-        try:
-            raw = base64.urlsafe_b64decode(gid_pad)
-        except Exception:
-            try:
-                raw = base64.b64decode(gid_pad)
-            except Exception:
-                return ''
-        if not raw:
-            return ''
-        teks = raw.decode('utf-8', errors='ignore')
-        for m in re.finditer(r'https?://[^\s\x00-\x1f"\'<>]+', teks):
-            u = m.group(0)
-            u = re.sub(r'[\x00-\x1f]+.*$', '', u)
-            if _url_valid_berita(u) and GOOGLE_NEWS_HOST not in u:
-                return u
-    except Exception as e:
-        print('       GN decode base64 gagal: ' + str(e)[:60])
-    return ''
-
-def _gn_decode_batch_new(ids):
-    if not ids:
-        return {}
-    out = {}
-    try:
-        url = 'https://news.google.com/_/DotsSplashUi/data/batchexecute'
-        payload = []
-        for gid in ids:
-            payload.append(['Fbv4je',
-                            '["garturlreq",[["X","X",["X","X"],null,null,1,1,"US:en",null,1,null,null,null,null,null,0,1],"X","X",1,[1,1,1],1,1,null,0,0,null,0],"' + gid + '",0,0]'])
-        import json as _json
-        body = 'f.req=' + _json.dumps([[['Fbv4je', _json.dumps(payload), None, 'generic']]])
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-            'User-Agent': random.choice(UA_LIST),
-        }
-        r = requests.post(url, data=body, headers=headers, timeout=GN_DECODE_TIMEOUT)
-        if r.ok:
-            teks = r.text or ''
-            for m in re.finditer(r'"(https?://[^"]+)"', teks):
-                u = m.group(1).replace('\\u003d', '=').replace('\\u0026', '&')
-                if _url_valid_berita(u) and GOOGLE_NEWS_HOST not in u:
-                    out.setdefault('_first', u)
-                    break
-            if out.get('_first'):
-                for gid in ids:
-                    out[gid] = out['_first']
-                out.pop('_first', None)
-                return out
-    except Exception as e:
-        print('       GN decode batch new gagal: ' + str(e)[:60])
-    try:
-        url = 'https://news.google.com/rss/articles/' + ids[0]
-        headers = {
-            'User-Agent': random.choice(UA_LIST),
-            'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
-        }
-        r = requests.get(url, headers=headers, timeout=GN_DECODE_TIMEOUT, allow_redirects=True)
-        if r.ok:
-            u = _gn_decode_html(r.text or '')
-            if u:
-                for gid in ids:
-                    out[gid] = u
-                return out
-    except Exception as e:
-        print('       GN decode endpoint alt gagal: ' + str(e)[:60])
-    return out
-
-def resolusi_link_google(url):
-    if not url or GOOGLE_NEWS_HOST not in url:
-        return url
-    gid = _gn_id_dari_url(url)
-    if not gid:
-        print('       GN decode: ID tidak ditemukan di URL')
-        STAT_SCRAPE['gn_gagal_decode'] += 1
-        return ''
-    hasil = _gn_decode_batch_new([gid])
-    if hasil and gid in hasil:
-        return hasil[gid]
-    u_b64 = _gn_decode_base64(url)
-    if u_b64:
-        print('       GN decode base64 BERHASIL: ' + u_b64[:80])
-        return u_b64
-    try:
-        headers = {
-            'User-Agent': random.choice(UA_LIST),
-            'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
-        }
-        r = requests.get(url, headers=headers, timeout=GN_DECODE_TIMEOUT, allow_redirects=True)
-        if r.ok:
-            url_decoded = _gn_decode_html(r.text or '')
-            if url_decoded:
-                return url_decoded
-    except Exception as e:
-        print('       GN decode HTML gagal: ' + str(e)[:60])
-    print('       GN decode GAGAL — skip artikel ini')
-    STAT_SCRAPE['gn_gagal_decode'] += 1
-    return ''
 
 def domain_skip_scrape(url):
     low = (url or '').lower()
@@ -1338,7 +985,6 @@ KAMUS_PERUSAHAAN_GLOBAL = [
 def _ada_nama_diri_judul(judul):
     if not judul:
         return False
-    # Cek kamus perusahaan dulu (1 kata)
     j_low = judul.lower()
     for p in KAMUS_PERUSAHAAN_GLOBAL:
         if len(p.split()) == 1:
@@ -1347,7 +993,6 @@ def _ada_nama_diri_judul(judul):
         else:
             if p in j_low:
                 return True
-    # Cek pola 2 kata kapital (heuristik)
     pola = re.compile(r'\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b')
     skip = ['jakarta', 'bandung', 'surabaya', 'medan', 'semarang', 'makassar',
             'balikpapan', 'samarinda', 'tarakan', 'kaltara', 'kalimantan',
@@ -1367,12 +1012,10 @@ def _ada_nama_diri_judul(judul):
         if k1 in skip or k2 in skip:
             continue
         return True
-    # Heuristik: 1 kata kapital di awal judul (diikuti huruf kecil)
     m1 = re.match(r'^([A-Z][a-z]{4,})\b', judul.strip())
     if m1:
         kata = m1.group(1).lower()
         if kata not in skip and kata not in KATA_STOP_DOBEL:
-            # Cek bukan kata umum Indonesia
             if kata not in ['presiden', 'menteri', 'pemerintah', 'indonesia',
                             'jakarta', 'breaking', 'update', 'hasil', 'resmi',
                             'kementerian', 'polisi', 'kepala', 'jenderal']:
@@ -5290,7 +4933,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.49'
+FILE_VERSI = 'V6.17.50'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
