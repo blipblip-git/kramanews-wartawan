@@ -4481,7 +4481,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.38)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.47)
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -4660,11 +4660,29 @@ def _breaking_ada_lokasi(judul, isi):
             return True
     return False
 
+# ═══ V6.17.47: KATEGORI BREAKING — PERKUAT DOMINASI INDONESIA ═══
+KATA_DOMINAN_INDONESIA = [
+    'indonesia', 'jakarta', 'jawa', 'sumatera', 'sumatra', 'kalimantan',
+    'sulawesi', 'papua', 'bali', 'nusa tenggara', 'maluku', 'aceh', 'riau',
+    'lampung', 'banten', 'jateng', 'jabar', 'jatim', 'kaltara', 'kaltim',
+    'kalbar', 'kalsel', 'kalteng', 'sulut', 'sulteng', 'sulsel', 'sultra',
+    'tarakan', 'balikpapan', 'samarinda', 'pontianak', 'banjarmasin',
+    'makassar', 'manado', 'medan', 'palembang', 'pekanbaru', 'padang',
+    'semarang', 'surabaya', 'bandung', 'yogyakarta', 'denpasar', 'mataram',
+    'kupang', 'jayapura', 'ambon', 'bmkg', 'bnpb', 'basarnas', 'kemenkes',
+    'kemenhut', 'klhk', 'polri', 'tni', 'prabowo', 'jokowi', 'menteri ri',
+]
+
 def kategori_breaking(c, tip):
     if tip == 'dun':
         return 'internasional'
-    t = (c.get('title', '') + ' ' + c.get('summary', '')).lower()
-    if any(w in t for w in LUAR_NEGERI_WORDS):
+    teks = (c.get('title', '') + ' ' + c.get('summary', '')).lower()
+    # V6.17.47: kalau dominan Indonesia → nasional, meski ada kata negara asing
+    hit_indo = sum(1 for k in KATA_DOMINAN_INDONESIA if k in teks)
+    hit_asing = sum(1 for k in LUAR_NEGERI_WORDS if k in teks)
+    if hit_indo >= 2 and hit_indo > hit_asing:
+        return 'nasional'
+    if any(w in teks for w in LUAR_NEGERI_WORDS):
         return 'internasional'
     return 'nasional'
 
@@ -5252,7 +5270,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.38 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS V6.17.47 - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -5266,7 +5284,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.46'
+FILE_VERSI = 'V6.17.47'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
