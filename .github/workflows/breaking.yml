@@ -1,10 +1,11 @@
 name: AI Wartawan KramaNews - Breaking
 
 # ══════════════════════════════════════════════════════
-#  WARTAWAN-BREAKING.YML — V1.2
-#  Perubahan dari V1.1:
-#   - HAPUS blok `schedule:` (penyebab run liar)
-#   - Pemicu HANYA dari cron-job.org via workflow_dispatch
+#  BREAKING.YML — V1.3
+#  Perubahan dari V1.2:
+#   - Install library pakai requirements.txt
+#   - Tambah gnews-decoder (fix GN decode)
+#  ATURAN EMAS: FILE INI TIDAK PERNAH BERISI KUNCI ASLI.
 # ══════════════════════════════════════════════════════
 
 on:
@@ -23,12 +24,12 @@ jobs:
           python-version: '3.12'
 
       - name: Install library
-        run: pip install requests feedparser
+        run: pip install -r requirements.txt
 
       - name: Cek versi & struktur file
         run: python cek_versi.py
 
-      - name: Wartawan cek breaking
+      - name: Wartawan berburu breaking
         run: python3 skrip-wartawan.py --sekali --breaking
         env:
           DEEPSEEK_KEY: ${{ secrets.DEEPSEEK_KEY }}
