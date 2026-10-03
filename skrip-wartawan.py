@@ -1505,8 +1505,12 @@ DATELINE EVENT BESAR (WAJIB):
   * Olimpiade 2026 -> "PARIS, PERANCIS - "
   * Piala Dunia 2026 -> "NEW YORK, AMERIKA SERIKAT - "
   * Winter Olympics 2026 -> "MILANO-CORTINA, ITALIA - "
-- DILARANG pakai "INDONESIA - " untuk event besar di luar negeri.
-- DILARANG pakai "JAKARTA - " untuk event besar di luar negeri.
+- DILARANG pakai "INDONESIA - " atau "JAKARTA - " untuk event besar
+  yang diselenggarakan di luar negeri.
+- MATERI INDONESIA vs THAILAND di Asian Games Aichi-Nagoya -> dateline
+  WAJIB "AICHI-NAGOYA, JEPANG - " BUKAN "JAKARTA".
+- Event besar yang diselenggarakan di luar negeri -> dateline WAJIB
+  kota penyelenggara, meskipun atlet/pesertanya dari Indonesia.
 
 PERSEN: selalu simbol % ("95%").
 
@@ -1546,12 +1550,24 @@ EKONOMI — DEFINISI SANGAT LUAS (WAJIB):
   * Sanksi ekonomi, tarif, perang dagang, trade war
   * WTO, IMF, World Bank, ADB, G20, G7, BRICS, APEC
   * PHK global, unemployment, tech layoff
-- Kalau materi memuat SALAH SATU dari atas -> TETAP EKONOMI meski ada
-  nama pejabat asing atau kunjungan diplomatik.
 - KATEGORI EKONOMI JUGA untuk materi perusahaan asing/China/USA yang
   membahas bisnis, produksi, penjualan, ekspansi, merger.
+- KUNJUNGAN MENTERI LUAR NEGERI / DIPLOMATIK yang isinya:
+  * Kerja sama dagang, kerja sama ekonomi, trade deal
+  * Kunjungan untuk bahas investasi/perdagangan/ekspor-impor
+  * Pertemuan bilateral/multilateral dengan agenda ekonomi
+  → TETAP EKONOMI. JANGAN tolak karena ada kata "menteri luar negeri"
+    atau "diplomatik". Fokus ke ISI: kalau ada kata ekonomi/dagang/
+    investasi/ekspor/impor/trade → TETAP EKONOMI.
 - HANYA tolak kalau materi 100% politik/militer/olahraga/kesehatan/
   pendidikan tanpa sudut ekonomi sama sekali.
+
+JUDUL EKONOMI — WAJIB MEMUAT KATA EKONOMI:
+- Untuk berita kategori ekonomi, JUDUL WAJIB memuat minimal 1 kata
+  ekonomi (ekonomi, bisnis, dagang, ekspor, impor, investasi, saham,
+  pasar, perusahaan, industri, properti, tambang, dll).
+- Contoh: "Thai PM Bahas Kerja Sama Ekonomi dengan Korsel" ✅
+- JANGAN judul yang tidak ada kaitannya dengan ekonomi.
 
 JANGAN SALAH KATEGORI:
 - Haji/umroh/agama -> nasional (BUKAN olahraga).
@@ -1569,6 +1585,7 @@ PENTING — JANGAN TOLAK BERLEBIHAN:
 - Perusahaan naik peringkat/valuasi/IPO -> TETAP ekonomi.
 - Properti/perumahan/housing -> TETAP ekonomi.
 - Kunjungan dagang/kerja sama ekonomi -> TETAP ekonomi.
+- Kunjungan menteri luar negeri yang bahas ekonomi -> TETAP ekonomi.
 - Tambang/mining/baterai/litium -> TETAP ekonomi.
 - Marketing/brand/campaign (dengan angka) -> TETAP ekonomi.
 - Pertumbuhan ekonomi negara asing -> TETAP ekonomi.
@@ -2296,13 +2313,58 @@ def _kandidat_layak(judul, summary, kategori=''):
         return False, alasan
     return True, ''
 
+def _judul_dari_url_supabase():
+    """Ambil semua judul 36 jam dari database — untuk cek topik mirip."""
+    out = []
+    try:
+        rows = rest_get('?select=title,source_url,created_at&order=created_at.desc&limit=300')
+        for row in rows:
+            if row.get('title') and _dalam_jendela(row, JENDELA_DOBEL_JAM):
+                out.append(row['title'])
+    except Exception:
+        pass
+    return out
+
+def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
+    """Cek apakah topik kandidat sudah terbit sebelumnya — pakai kata kunci inti.
+
+    Beda dengan _kandidat_bukan_dobel yang pakai judul 100%.
+    Ini cek KATA KUNCI INTI (nama tokoh, tempat, topik) — 3 kata kunci sama
+    → anggap dobel topik.
+
+    Contoh:
+    - "Philippines voices concern over Myanmar airstrike deaths"
+    - "Filipina Dorong ASEAN Bahas Serangan Myanmar"
+    - Kata kunci: filipina/philippines, myanmar, airstrike/serangan
+    - 2 kata kunci sama + topik sama → TOLAK
+    """
+    if not judul_kandidat or not judul_lama_list:
+        return None
+    ki_baru = kata_inti(judul_kandidat)
+    if not ki_baru:
+        return None
+    # Kata kunci wajib (nama negara/kota/tokoh) — tidak boleh di-stopword
+    for t_lama in judul_lama_list:
+        if not t_lama:
+            continue
+        ki_lama = kata_inti(t_lama)
+        if not ki_lama:
+            continue
+        irisan = ki_baru & ki_lama
+        if len(irisan) >= 3:
+            return ('dobel topik: ' + str(len(irisan)) + ' kata kunci sama — '
+                    + 'irisan: ' + str(sorted(list(irisan))[:5]))
+    return None
+
 def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''):
     if max_umur_jam is None:
         max_umur_jam = MAX_UMUR_BERITA_JAM
     rejected = muat_rejected_urls()
+    judul_database = _judul_dari_url_supabase()
     out = []
     skip_layak = 0
     skip_rejected = 0
+    skip_topik = 0
     for src in sources:
         try:
             feed = feedparser.parse(src['url'])
@@ -2321,6 +2383,14 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
             title = entry.get('title', '')
             summary = get_material(entry)
             if not title or not summary:
+                continue
+
+            # V6.17.53: CEK DOBEL TOPIK dari judul yang sudah terbit
+            topik_dobel = _topik_sudah_terbit(title, judul_database)
+            if topik_dobel:
+                skip_topik += 1
+                if skip_topik <= 3:
+                    print('       Skip kandidat (dobel topik): ' + topik_dobel[:70] + ' — ' + title[:50])
                 continue
 
             layak, alasan = _kandidat_layak(title, summary, kategori)
@@ -2342,6 +2412,8 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                         'tgl_pub': tanggal_publikasi_str(entry)})
     if skip_layak > 3:
         print('       (Total skip AI Editor Luar: ' + str(skip_layak) + ')')
+    if skip_topik > 0:
+        print('       (Total skip dobel topik: ' + str(skip_topik) + ')')
     if skip_rejected > 0:
         print('       (Total skip rejected_urls blacklist: ' + str(skip_rejected) + ')')
     return out
@@ -3656,13 +3728,49 @@ def _catatan_ekonomi_khusus(kategori_target, judul, materi):
                 '- Fokus: angka, data perdagangan, pertumbuhan, dampak ekonomi.\n')
     return ''
 
+def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
+    """V6.17.53: Cek kategori pakai JUDUL ATAU ISI PENUH.
+
+    Kalau judul tidak ada kata ekonomi, tapi isi ada kata ekonomi → LOLOS.
+    Judul tidak wajib ada kata ekonomi, yang penting ISI.
+    """
+    if not kategori_target or kategori_target == 'breaking':
+        return True, ''
+    kata_kunci = KATA_KUNCI_KATEGORI.get(kategori_target, [])
+    if not kata_kunci:
+        return True, ''
+    # Cek judul dulu
+    judul_low = (judul_ai or '').lower()
+    for kk in kata_kunci:
+        if len(kk) <= 4:
+            if re.search(r'\b' + re.escape(kk) + r'\b', judul_low):
+                return True, ''
+        else:
+            if kk in judul_low:
+                return True, ''
+    # Judul tidak ada → cek ISI PENUH
+    isi_low = (isi_ai or '').lower()
+    hit = 0
+    for kk in kata_kunci:
+        if len(kk) <= 4:
+            if re.search(r'\b' + re.escape(kk) + r'\b', isi_low):
+                hit += 1
+        else:
+            if kk in isi_low:
+                hit += 1
+        if hit >= 2:
+            return True, ''
+    if hit >= 1:
+        return True, ''
+    return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
+
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
              judul_materi='', summary_materi='', wajib_topik=True,
              source_url=''):
     obj = None
     materi_asli = user_content
     koneksi_retry = 0
-    MAX_KONEKSI_RETRY = 1
+    MAX_KONEKSI_RETRY = 0
     MAX_LOOP = 1
     FRASA_TOLAK_AI = ['materi tidak tersedia', 'materi sumber tidak tersedia',
                       'materi tidak relevan', 'tidak dapat menulis', 'tidak ada materi']
@@ -3769,7 +3877,13 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
     if jiplak:
         raise Exception('diblokir ANTI-JIPLAK: ' + jiplak[:80])
+    # V6.17.53: cek kategori pakai judul ATAU isi penuh
     if wajib_topik and judul_materi:
+        ok_kat, alasan_kat = _cek_kategori_isi_penuh(judul, isi, kategori)
+        if not ok_kat:
+            if source_url:
+                catat_tolak_ai_token(source_url, 'DITOLAK kategori: ' + alasan_kat[:80])
+            raise Exception('DITOLAK - ' + alasan_kat[:100])
         topik_masalah = cek_topik_ai_vs_materi(judul, isi, judul_materi,
                                                  summary_materi or materi_sumber,
                                                  kategori=kategori)
@@ -3801,6 +3915,8 @@ def _catatan_khusus_kategori(kategori_target):
             '- EVENT BESAR (Asian Games, SEA Games, Olimpiade, dll) → '
             'dateline WAJIB kota penyelenggara (Aichi-Nagoya/Jepang untuk '
             'Asian Games, Bangkok/Thailand untuk SEA Games, dst).\n'
+            '- Materi Indonesia vs Thailand di Asian Games Aichi-Nagoya → '
+            'dateline WAJIB "AICHI-NAGOYA, JEPANG - " BUKAN "JAKARTA".\n'
         )
     return ''
 
@@ -3839,16 +3955,25 @@ def _catatan_kategori_ketat(kategori_target):
             '- Kalau materi TIDAK memuat gelar → tulis JABATAN + NAMA saja.\n'
             '- Kalau materi TIDAK memuat nama → tulis sebagai KEGIATAN.\n'
         )
+    catatan_ekonomi = ''
+    if kategori_target == 'ekonomi':
+        catatan_ekonomi = (
+            '\n\nCATATAN KHUSUS EKONOMI:\n'
+            '- JUDUL WAJIB memuat minimal 1 kata ekonomi (ekonomi, bisnis, '
+            'dagang, ekspor, impor, investasi, saham, pasar, perusahaan, '
+            'industri, properti, tambang, dll).\n'
+            '- Contoh judul BENAR: "Thai PM Bahas Kerja Sama Ekonomi dengan Korsel".\n'
+            '- Kalau judul tidak ada kata ekonomi → tulis ulang judulnya.\n'
+            '- ISI WAJIB memuat angka/data konkret dari materi.\n'
+        )
     return (
         '\n\nFILTER KATEGORI (WAJIB — kalau tidak cocok, tulis {"tolak": "tidak cocok kategori: <sebutkan materi apa>"}):\n'
         '- Kategori target: ' + kategori_target + '.\n'
         '- Materi WAJIB memuat kata kunci kategori: ' + contoh + '.\n'
         '- Kalau materi TIDAK tentang kategori ini → TULIS tolak.\n'
         '- WAJIB tulis alasan tolak DETIL 1-2 kata setelah titik dua.\n'
-        '- Contoh: {"tolak": "tidak cocok kategori: materi kontes"}\n'
-        '- Contoh: {"tolak": "tidak cocok kategori: materi pendidikan"}\n'
-        '- Contoh: {"tolak": "tidak cocok kategori: materi negara asing"}\n'
         + catatan_gelar
+        + catatan_ekonomi
     )
 
 def _catatan_ibu_kota_provinsi(judul_materi, summary_materi, kategori_target):
@@ -4142,6 +4267,7 @@ def ai_rewrite_teknologi_multi(items, dom):
                     source_url=items[0].get('link', '') if items else '')
 
 # AKHIR PART 3B
+
 # PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS (V6.17.27)
 
 KALENDER_EVENT = [
@@ -4665,24 +4791,24 @@ def sesi_breaking(today_urls, seen):
         print('   Tidak ada kandidat breaking layak - skip.')
         return 0
 
-    slot1_dom = skor_dom[0] if skor_dom else None
-    slot1_dun = skor_dun[0] if skor_dun else None
+    # V6.17.53: KUMPULKAN 3 KANDIDAT TERATAS (dom + dun), bukan cuma 1+1
+    kandidat_gabung = []
+    for c, s in skor_dom[:3]:
+        kandidat_gabung.append((c, 'dom', s))
+    for c, s in skor_dun[:3]:
+        kandidat_gabung.append((c, 'dun', s))
+    # Ambil 3 teratas secara total
+    kandidat_gabung = sorted(kandidat_gabung, key=lambda x: -x[2])[:3]
 
-    if slot1_dom and slot1_dun:
-        pilihan = [(slot1_dom[0], 'dom'), (slot1_dun[0], 'dun')]
-    elif slot1_dom:
-        pilihan = [(slot1_dom[0], 'dom')]
-    elif slot1_dun:
-        pilihan = [(slot1_dun[0], 'dun')]
-    else:
+    if not kandidat_gabung:
         print('   Tidak ada kandidat breaking layak - skip.')
         return 0
 
     percobaan = 0
-    for c, tip in pilihan:
+    for c, tip, _skor in kandidat_gabung:
         if made >= slots:
             break
-        if percobaan >= 2:
+        if percobaan >= 3:
             break
         if sudah_serupa(c['title']):
             print('   Skip (dobel): ' + c['title'][:50])
@@ -4942,10 +5068,11 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                 return 2 if barat_sudah_terbit(b) else 1
             return 1
         groups.sort(key=asean_prio)
+    # V6.17.53: 1 percobaan per kategori (hemat AI token)
     percobaan = 0
     kandidat_terpakai = []
     for g in groups:
-        if percobaan >= 2:
+        if percobaan >= 1:
             break
         items = g['items']
         top = items[0]
@@ -5130,7 +5257,6 @@ def sesi_olahraga_api(jenis):
         return 0
     return 0
 
-# ═══ V6.17.52: SESI KATEGORI — EKONOMI PILIH FEED SESUAI JAM ═══
 def sesi_kategori(today_urls, seen):
     jam = datetime.now(WITA).hour
     kuota = JADWAL_JAM.get(jam)
@@ -5177,7 +5303,6 @@ def sesi_kategori(today_urls, seen):
         dom_oto, sumber_oto = sumber_otomotif_hari_ini(jam)
         if not dom_oto:
             sumber_oto = None
-    # ═══ V6.17.52: EKONOMI PILIH FEED SESUAI JAM ═══
     sumber_ekonomi = None
     jenis_ekonomi = None
     if kuota.get('ekonomi'):
@@ -5389,7 +5514,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.52'
+FILE_VERSI = 'V6.17.53'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
