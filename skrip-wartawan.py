@@ -856,7 +856,8 @@ def adalah_konten_olahraga(teks):
             if k in t:
                 return False
     return any(k in t for k in KATA_WAJIB_OLAHRAGA)
-
+TOKOH_POLITIK_ASING = [...]
+KATA_POLITIK_EKSPLISIT = [...]
 KATA_KUNCI_OTOMOTIF = [
     'mobil', 'motor', 'skutik', 'matic', 'bebek', 'sport touring',
     'kendaraan listrik', 'mobil listrik', 'motor listrik', 'tesla', 'byd',
@@ -2374,7 +2375,7 @@ def match_articles(candidates):
     return groups
 
 # AKHIR PART 3A-2
-# PART 3A-3 - BARAT + DATELINE + JANJI + SKOR + NARASUMBER (V6.17.46)
+# PART 3A-3 - BARAT + DATELINE + JANJI + SKOR + NARASUMBER (V6.17.48)
 
 def kategori_barat(title, summary):
     t = ((title or '') + ' ' + (summary or '')).lower()
@@ -2523,8 +2524,6 @@ IBU_KOTA_NEGARA = {
 
 # ═══ V6.17.46: CEK APAKAH KOTA ADALAH IBU KOTA PROVINSI YANG DISEBUT DI MATERI ═══
 def _kota_ibu_kota_provinsi_di_materi(kota, sumber):
-    """Cek apakah 'kota' adalah ibu kota provinsi yang disebut di materi.
-    Contoh: kota='merauke', materi sebut 'papua selatan' → True (merauke ibu kota papua selatan)."""
     kota_low = (kota or '').lower().strip()
     sumber_low = (sumber or '').lower()
     for prov, ibukota in KAMUS_PROVINSI_IBUKOTA.items():
@@ -2547,7 +2546,6 @@ def cek_dateline(isi, user_content):
         return None
     if kota in KOTA_INDONESIA_DATELINE:
         return None
-    # ═══ V6.17.46: IZINKAN IBU KOTA PROVINSI JIKA PROVINSI DISEBUT DI MATERI ═══
     if _kota_ibu_kota_provinsi_di_materi(kota, sumber):
         return None
     if kota and not _varian_cocok(kota, sumber):
@@ -2734,9 +2732,10 @@ INSTITUSI_PUSAT_LEBIH_LONGGAR = [
     'bnpb', 'basarnas', 'bulog', 'pertamina', 'pln', 'telkom',
 ]
 
+# ═══ V6.17.48: HAPUS pemprov/pemkab/pemkot dari INSTITUSI_LOKAL_BUTUH_NAMA ═══
 INSTITUSI_LOKAL_BUTUH_NAMA = [
-    'dinas', 'kantor', 'pemkot', 'pemkab',
-    'pemprov', 'polres', 'polsek', 'polda', 'kodam', 'korem', 'kodim',
+    'dinas', 'kantor',
+    'polres', 'polsek', 'polda', 'kodam', 'korem', 'kodim',
     'koramil', 'kejaksaan', 'kejari', 'kejati', 'pengadilan', 'bawaslu',
     'kpu', 'kppu', 'kppn', 'kpp', 'bpjs', 'perum', 'peruri', 'pelindo',
     'angkasa pura',
@@ -5284,7 +5283,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.47'
+FILE_VERSI = 'V6.17.48'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
