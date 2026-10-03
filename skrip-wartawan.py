@@ -917,80 +917,8 @@ def ambil_materi_kaya(c):
     return gabung, False
 
 # AKHIR PART 2B
+
 # PART 2C - ANTI-DOBEL + JUDUL + SYSTEM PROMPT
-# PART 2D - REJECTED_URLS + CATAT_TOLAK + GLOBAL STATE
-
-KATA_ALASAN_TRANSIENT = [
-    'rate limit', 'timeout', 'koneksi', 'connection',
-    'error sementara', 'coba lagi', 'retry',
-    'materi terlalu pendek', 'materi tidak valid',
-    'materi kosong', 'materi gabungan tidak valid',
-]
-
-class BeritaLama(Exception):
-    pass
-
-STAT_SCRAPE = {'ok': 0, 'gagal': 0, 'skip': 0, 'irisan_gagal': 0,
-               'gn_gagal_decode': 0, 'gn_fallback_rss': 0}
-JUDUL_TERPAKAI = []
-JUDUL_6JAM = []
-_GAMBAR_TERPAKAI_CACHE = None
-
-def muat_rejected_urls():
-    global REJECTED_URLS_CACHE
-    if REJECTED_URLS_CACHE is not None:
-        return REJECTED_URLS_CACHE
-    out = set()
-    try:
-        r = requests.get(SUPABASE_URL + '/rest/v1/rejected_urls'
-                         + '?select=source_url&order=created_at.desc&limit=500',
-            headers={'apikey': SUPABASE_PUBLISHABLE,
-                     'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE},
-            timeout=30)
-        if r.ok:
-            for row in (r.json() or []):
-                u = (row.get('source_url') or '').strip()
-                if u:
-                    out.add(u)
-            print('   ' + str(len(out)) + ' URL rejected dimuat (blacklist permanen).')
-        else:
-            print('   Gagal muat rejected_urls: HTTP ' + str(r.status_code))
-    except Exception as e:
-        print('   Gagal muat rejected_urls: ' + str(e)[:60])
-    REJECTED_URLS_CACHE = out
-    return out
-
-def catat_tolak_ai_token(source_url, alasan):
-    if not source_url:
-        return
-    alasan_str = (alasan or '').strip()
-    if not alasan_str:
-        return
-    alasan_low = alasan_str.lower()
-    for k in KATA_ALASAN_TRANSIENT:
-        if k in alasan_low:
-            return
-    try:
-        r = requests.post(SUPABASE_URL + '/rest/v1/rejected_urls',
-            headers={'apikey': SUPABASE_PUBLISHABLE,
-                     'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE,
-                     'Content-Type': 'application/json',
-                     'Prefer': 'resolution=merge-duplicates,return=minimal'},
-            json={'source_url': source_url, 'alasan': alasan_str[:500]},
-            timeout=30)
-        if not r.ok:
-            print('   Gagal catat rejected_urls: HTTP ' + str(r.status_code)
-                  + ' - ' + r.text[:80])
-        else:
-            if REJECTED_URLS_CACHE is not None:
-                REJECTED_URLS_CACHE.add(source_url)
-            print('   URL dicatat ke rejected_urls: ' + source_url[:60])
-    except Exception as e:
-        print('   Gagal catat rejected_urls: ' + str(e)[:60])
-
-# AKHIR PART 2D
-
-
 KATA_STOP_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
                       'sudah oleh sebagai ada adalah kata ujar bilang menurut the and '
                       'for with from that this have will been are was were their they '
@@ -1276,6 +1204,154 @@ FORMAT JAWABAN - HANYA JSON valid:
 """
 
 # AKHIR PART 2C
+
+# PART 2D - REJECTED_URLS + CATAT_TOLAK + GLOBAL STATE
+
+KATA_ALASAN_TRANSIENT = [
+    'rate limit', 'timeout', 'koneksi', 'connection',
+    'error sementara', 'coba lagi', 'retry',
+    'materi terlalu pendek', 'materi tidak valid',
+    'materi kosong', 'materi gabungan tidak valid',
+]
+
+class BeritaLama(Exception):
+    pass
+
+STAT_SCRAPE = {'ok': 0, 'gagal': 0, 'skip': 0, 'irisan_gagal': 0,
+               'gn_gagal_decode': 0, 'gn_fallback_rss': 0}
+JUDUL_TERPAKAI = []
+JUDUL_6JAM = []
+_GAMBAR_TERPAKAI_CACHE = None
+
+def muat_rejected_urls():
+    global REJECTED_URLS_CACHE
+    if REJECTED_URLS_CACHE is not None:
+        return REJECTED_URLS_CACHE
+    out = set()
+    try:
+        r = requests.get(SUPABASE_URL + '/rest/v1/rejected_urls'
+                         + '?select=source_url&order=created_at.desc&limit=500',
+            headers={'apikey': SUPABASE_PUBLISHABLE,
+                     'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE},
+            timeout=30)
+        if r.ok:
+            for row in (r.json() or []):
+                u = (row.get('source_url') or '').strip()
+                if u:
+                    out.add(u)
+            print('   ' + str(len(out)) + ' URL rejected dimuat (blacklist permanen).')
+        else:
+            print('   Gagal muat rejected_urls: HTTP ' + str(r.status_code))
+    except Exception as e:
+        print('   Gagal muat rejected_urls: ' + str(e)[:60])
+    REJECTED_URLS_CACHE = out
+    return out
+
+def catat_tolak_ai_token(source_url, alasan):
+    if not source_url:
+        return
+    alasan_str = (alasan or '').strip()
+    if not alasan_str:
+        return
+    alasan_low = alasan_str.lower()
+    for k in KATA_ALASAN_TRANSIENT:
+        if k in alasan_low:
+            return
+    try:
+        r = requests.post(SUPABASE_URL + '/rest/v1/rejected_urls',
+            headers={'apikey': SUPABASE_PUBLISHABLE,
+                     'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE,
+                     'Content-Type': 'application/json',
+                     'Prefer': 'resolution=merge-duplicates,return=minimal'},
+            json={'source_url': source_url, 'alasan': alasan_str[:500]},
+            timeout=30)
+        if not r.ok:
+            print('   Gagal catat rejected_urls: HTTP ' + str(r.status_code)
+                  + ' - ' + r.text[:80])
+        else:
+            if REJECTED_URLS_CACHE is not None:
+                REJECTED_URLS_CACHE.add(source_url)
+            print('   URL dicatat ke rejected_urls: ' + source_url[:60])
+    except Exception as e:
+        print('   Gagal catat rejected_urls: ' + str(e)[:60])
+
+# AKHIR PART 2D
+
+# PART 2E - FILTER OLAHRAGA + TOPIK BESAR
+
+TOPIK_BESAR_GATE = [
+    'tsunami', 'gempa', 'erupsi', 'gunung meletus', 'banjir bandang',
+    'banjir', 'flood', 'tanah longsor', 'longsor', 'kebakaran',
+    'karhutla', 'kebakaran hutan', 'kecelakaan', 'ledakan', 'tabrakan',
+    'hurricane', 'typhoon', 'cyclone', 'wildfire', 'earthquake',
+    'perang', 'war', 'invasi', 'missile', 'nuclear',
+    'asian games', 'sea games', 'piala dunia', 'world cup',
+    'olimpiade', 'olympic', 'piala asia', 'asian cup',
+    'piala eropa', 'euro 202', 'copa america',
+    'nba finals', 'liga champions final', 'pemilu', 'pilpres', 'pilkada',
+]
+
+KATA_TURNAMEN_OLAHRAGA = [
+    'fifa', 'aff', 'uefa', 'afc', 'piala dunia', 'world cup', 'sea games',
+    'asian games', 'olimpiade', 'olympic', 'piala asia', 'asian cup',
+    'piala aff', 'aff cup', 'fifa asean cup', 'piala eropa', 'euro 202',
+    'copa america', 'liga champions', 'champions league', 'europa league',
+    'premier league', 'la liga', 'serie a', 'bundesliga', 'ligue 1',
+    'eredivisie', 'nba', 'wnba', 'ibl', 'badminton', 'bulu tangkis', 'bwf',
+    'voli', 'volleyball', 'fivb', 'motogp', 'formula 1', 'f1',
+]
+
+KATA_WAJIB_OLAHRAGA = [
+    'bola', 'sepak bola', 'sepakbola', 'football', 'soccer', 'basket', 'nba',
+    'wnba', 'ibl', 'badminton', 'bulu tangkis', 'bwf', 'voli', 'volleyball',
+    'fivb', 'tenis', 'tennis', 'atp', 'wta', 'motogp', 'formula 1', 'f1',
+    'balap', 'liga', 'piala', 'turnamen', 'kejuaraan', 'kompetisi', 'timnas',
+    'atlet', 'pemain', 'klub', 'klub sepak', 'pertandingan', 'laga', 'skor',
+    'klasemen', 'gol', 'olimpiade', 'olympic', 'sea games', 'asian games',
+    'stadion', 'kick-off', 'kick off',
+]
+
+KATA_BUKAN_OLAHRAGA = [
+    'haji', 'umroh', 'umrah', 'arbain', 'kabah', 'mekkah', 'mekah',
+    'madinah', 'ibadah haji', 'jamaah haji', 'kuota haji', 'antrean haji',
+    'calon haji', 'manasik', 'ihram', 'tawaf', 'sa\'i',
+    'puasa', 'ramadan', 'idul fitri', 'idul adha', 'qurban', 'zakat',
+    'isra miraj', 'maulid', 'nabi muhammad', 'pesantren', 'ulama',
+    'pendidikan', 'kurikulum', 'sekolah', 'siswa', 'mahasiswa', 'guru',
+    'kampus', 'universitas', 'beasiswa', 'ujian', 'unbk',
+    'pajak', 'anggaran', 'apbn', 'apbd', 'subsidi', 'bantuan sosial',
+    'bansos', 'pkh', 'blt', 'sembako',
+    'kesehatan', 'rumah sakit', 'dokter', 'obat', 'vaksin', 'imunisasi',
+    'penyakit', 'gizi', 'stunting',
+    'politik', 'pemilu', 'pilpres', 'pilkada', 'partai', 'dpr', 'presiden',
+    'menteri', 'gubernur', 'bupati', 'walikota', 'kepala daerah',
+    'polisi', 'pencurian', 'pembunuhan', 'kriminal', 'narkoba',
+    'ekonomi', 'bisnis', 'keuangan', 'bank', 'saham', 'ihsg', 'rupiah',
+    'dolar', 'kurs', 'investasi', 'ekspor', 'impor',
+    'teknologi', 'gadget', 'aplikasi', 'internet', 'ai', 'kecerdasan buatan',
+    'otomotif', 'mobil', 'motor',
+]
+
+def judul_topik_besar(judul):
+    j = (judul or '').lower()
+    return any(k in j for k in TOPIK_BESAR_GATE)
+
+def adalah_turnamen_olahraga(teks):
+    t = (teks or '').lower()
+    return any(k in t for k in KATA_TURNAMEN_OLAHRAGA)
+
+def adalah_konten_olahraga(teks):
+    t = (teks or '').lower()
+    for k in KATA_BUKAN_OLAHRAGA:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', t):
+                return False
+        else:
+            if k in t:
+                return False
+    return any(k in t for k in KATA_WAJIB_OLAHRAGA)
+
+# AKHIR PART 2E
 
 # PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI
 
