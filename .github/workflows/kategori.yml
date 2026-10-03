@@ -1,12 +1,10 @@
 name: AI Wartawan KramaNews
 
 # ══════════════════════════════════════════════════════
-#  WARTAWAN.YML — V6.14
-#  Perubahan dari V6.9:
-#   - HAPUS semua cron `schedule:` (penyebab run liar jam 03:22,
-#     04:00, 14:00, 16:00, 20:00, 22:00)
-#   - Pemicu HANYA dari cron-job.org via workflow_dispatch
-#   - Command: --sekali --kategori
+#  KATEGORI.YML — V6.15
+#  Perubahan dari V6.14:
+#   - Install library pakai requirements.txt
+#   - Tambah gnews-decoder (fix GN decode)
 #  ATURAN EMAS: FILE INI TIDAK PERNAH BERISI KUNCI ASLI.
 # ══════════════════════════════════════════════════════
 
@@ -26,7 +24,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install library
-        run: pip install requests feedparser
+        run: pip install -r requirements.txt
 
       - name: Cek versi & struktur file
         run: python cek_versi.py
