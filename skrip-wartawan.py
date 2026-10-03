@@ -918,7 +918,7 @@ def ambil_materi_kaya(c):
 
 # AKHIR PART 2B
 # PART 2C - ANTI-DOBEL + JUDUL + SYSTEM PROMPT
-# PART 2D - REJECTED_URLS + CATAT_TOLAK
+# PART 2D - REJECTED_URLS + CATAT_TOLAK + GLOBAL STATE
 
 KATA_ALASAN_TRANSIENT = [
     'rate limit', 'timeout', 'koneksi', 'connection',
@@ -926,6 +926,15 @@ KATA_ALASAN_TRANSIENT = [
     'materi terlalu pendek', 'materi tidak valid',
     'materi kosong', 'materi gabungan tidak valid',
 ]
+
+class BeritaLama(Exception):
+    pass
+
+STAT_SCRAPE = {'ok': 0, 'gagal': 0, 'skip': 0, 'irisan_gagal': 0,
+               'gn_gagal_decode': 0, 'gn_fallback_rss': 0}
+JUDUL_TERPAKAI = []
+JUDUL_6JAM = []
+_GAMBAR_TERPAKAI_CACHE = None
 
 def muat_rejected_urls():
     global REJECTED_URLS_CACHE
