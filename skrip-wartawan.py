@@ -648,15 +648,9 @@ def judul_spam(judul):
 
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT
+# PART 2A - HEADER + IMPORT + KONSTANTA
 
-# ═══ GN DECODE FIX — gnews-decoder (V6.17.49) ═══
-# Metode lama (base64 decode, HTML parse, follow redirect) MATI TOTAL
-# sejak Google ubah format URL akhir 2024.
-# Format baru: ID opaque, butuh signature + batchexecute RPC.
-# gnews-decoder pakai batchexecute resmi — 50 URL resolve dalam ~6.8 detik.
-# Ref: https://pypi.org/project/gnews-decoder/
-
+# GN decode pakai library gnews-decoder (batchexecute resmi)
 try:
     from gnews_decoder import decode_many as _gn_decode_many
     _GN_DECODER_OK = True
@@ -664,10 +658,19 @@ except Exception:
     _GN_DECODER_OK = False
     _gn_decode_many = None
 
+MATERI_MAKS_KARAKTER = 1000
+
+REJECTED_URLS_CACHE = None
+
+_CACHE_SCRAPE = {}
 _GN_DECODE_CACHE = {}
 
+DEBUG_SCRAPE = True
+
+# AKHIR PART 2A
+# PART 2B - FUNGSI GN DECODE + SCRAPER + AMBIL MATERI
+
 def _gn_decode_satu(url):
-    """Decode 1 URL Google News → URL publisher asli. Return '' kalau gagal."""
     if not url:
         return ''
     if url in _GN_DECODE_CACHE:
@@ -686,31 +689,7 @@ def _gn_decode_satu(url):
     _GN_DECODE_CACHE[url] = ''
     return ''
 
-def _gn_decode_batch(urls):
-    """Decode banyak URL sekaligus (batch — 1 request untuk semua)."""
-    if not urls or not _GN_DECODER_OK:
-        return {}
-    perlu = [u for u in urls if u and u not in _GN_DECODE_CACHE]
-    if not perlu:
-        return {u: _GN_DECODE_CACHE.get(u, '') for u in urls}
-    try:
-        hasil = _gn_decode_many(perlu) or {}
-        for u in perlu:
-            v = hasil.get(u) or ''
-            if v and GOOGLE_NEWS_HOST not in v:
-                _GN_DECODE_CACHE[u] = v
-            else:
-                _GN_DECODE_CACHE[u] = ''
-        print('       GN decode batch: ' + str(sum(1 for u in perlu if _GN_DECODE_CACHE.get(u)))
-              + '/' + str(len(perlu)) + ' berhasil')
-    except Exception as e:
-        print('       GN decode batch gagal: ' + str(e)[:80])
-        for u in perlu:
-            _GN_DECODE_CACHE.setdefault(u, '')
-    return {u: _GN_DECODE_CACHE.get(u, '') for u in urls}
-
 def resolusi_link_google(url):
-    """Ganti metode lama. Pakai gnews-decoder — batchexecute resmi Google."""
     if not url or GOOGLE_NEWS_HOST not in url:
         return url
     hasil = _gn_decode_satu(url)
@@ -721,7 +700,6 @@ def resolusi_link_google(url):
     return ''
 
 def _gn_id_dari_url(url):
-    """Fallback extractor ID — untuk kompatibilitas internal saja."""
     try:
         m = re.search(r'/articles/([A-Za-z0-9_\-]+)', url or '')
         if m:
@@ -831,8 +809,6 @@ def _bersihkan_html_artikel(html):
         return ''
     return re.sub(r'\s+', ' ', ' '.join(baris_ok)).strip()[:2500]
 
-_CACHE_SCRAPE = {}
-
 def scrape_artikel(url, judul_debug=''):
     if not url:
         return ''
@@ -940,6 +916,9 @@ def ambil_materi_kaya(c):
           + str(panjang_asli) + ' → ' + str(len(gabung)) + ' kar)')
     return gabung, False
 
+# AKHIR PART 2B
+# PART 2C - ANTI-DOBEL + JUDUL + SYSTEM PROMPT
+
 KATA_STOP_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
                       'sudah oleh sebagai ada adalah kata ujar bilang menurut the and '
                       'for with from that this have will been are was were their they '
@@ -954,7 +933,6 @@ def kata_inti(judul):
     return set(k for k in normalisasi_judul(judul).split()
                if len(k) > 3 and k not in KATA_STOP_DOBEL)
 
-# ═══ V6.17.44: KAMUS PERUSAHAAN GLOBAL UNTUK DETEKSI NAMA DIRI ═══
 KAMUS_PERUSAHAAN_GLOBAL = [
     'infineon', 'toyota', 'tesla', 'apple', 'google', 'microsoft', 'samsung',
     'huawei', 'xiaomi', 'nvidia', 'intel', 'boeing', 'airbus', 'amazon',
@@ -1104,7 +1082,6 @@ def tanggal_publikasi_str(entry):
     except Exception:
         return None
 
-# ═══ V6.17.43: BUILD SYSTEM PROMPT — PERKUAT ATURAN NAMA + GELAR ═══
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu AI Editor KramaNews Indonesia. TUGAS: Tulis berita dari materi yang sudah lolos filter. Materi SUDAH BERSIH — jangan tolak kecuali fatal.
@@ -1226,7 +1203,7 @@ FORMAT JAWABAN - HANYA JSON valid:
  "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """)"}
 """
 
-# AKHIR PART 2
+# AKHIR PART 2C
 
 # PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI
 
@@ -4933,7 +4910,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.50'
+FILE_VERSI = ' V6.17.51'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
