@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.46)
+# PART 1 - KONFIGURASI, JADWAL & SUMBER
 
 import requests
 import json
@@ -43,7 +43,7 @@ BLUR_SKOR_MINIMUM       = 5
 VISION_TIMEOUT          = 30
 MATCH_MIN_KATA          = 2
 MATCH_MIN_RASIO         = 0.50
-DOMAIN_SKIP_SCRAPE      = ['berita.tarakankota.go.id']
+DOMAIN_SKIP_SCRAPE      = ['berita.tarakankota.go.id', 'vnexpress.net']
 
 DOBEL_6JAM_MIN_KATA     = 3
 DOBEL_6JAM_BUTUH_NAMA   = True
@@ -53,7 +53,6 @@ GOOGLE_NEWS_DECODE_MIN  = 5
 GOOGLE_NEWS_BATCH_MAX   = 10
 GN_DECODE_TIMEOUT       = 15
 
-# ═══ V6.17.46: KAMUS PROVINSI → IBU KOTA INDONESIA ═══
 KAMUS_PROVINSI_IBUKOTA = {
     'aceh': 'banda aceh',
     'sumatera utara': 'medan', 'sumut': 'medan',
@@ -1586,7 +1585,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI (V6.17.44)
+# PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1734,7 +1733,7 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-MATERI_MIN_KARAKTER_RSS = 150
+MATERI_MIN_KARAKTER_RSS = 130
 MATERI_MIN_KARAKTER_BREAKING = 100
 
 def _materi_dominan_url(teks):
@@ -2375,7 +2374,7 @@ def match_articles(candidates):
     return groups
 
 # AKHIR PART 3A-2
-# PART 3A-3 - BARAT + DATELINE + JANJI + SKOR + NARASUMBER (V6.17.48)
+# PART 3A-3 - BARAT + DATELINE + JANJI + SKOR + NARASUMBER
 
 def kategori_barat(title, summary):
     t = ((title or '') + ' ' + (summary or '')).lower()
@@ -2475,6 +2474,12 @@ VARIAN_KOTA_EN_ID = {
     'philadelphia': ['philadelphia'], 'san francisco': ['san francisco'],
     'los angeles': ['los angeles'], 'sydney': ['sydney'], 'melbourne': ['melbourne'],
     'auckland': ['auckland'], 'wellington': ['wellington'],
+    'ho chi minh': ['ho chi minh city', 'hcmc', 'saigon', 'ho chi minh'],
+    'ho chi minh city': ['ho chi minh', 'hcmc', 'saigon', 'ho chi minh city'],
+    'hcmc': ['ho chi minh', 'ho chi minh city', 'saigon', 'hcmc'],
+    'saigon': ['ho chi minh', 'ho chi minh city', 'hcmc', 'saigon'],
+    'hanoi': ['hanoi', 'ha noi'],
+    'ha noi': ['hanoi', 'ha noi'],
 }
 
 def _varian_cocok(kota, sumber):
@@ -2520,9 +2525,12 @@ IBU_KOTA_NEGARA = {
     'auckland': ['selandia baru', 'new zealand'], 'wellington': ['selandia baru', 'new zealand'],
     'nagoya': ['jepang', 'japan'], 'osaka': ['jepang', 'japan'],
     'aichi-nagoya': ['jepang', 'japan'], 'aichi': ['jepang', 'japan'],
+    'ho chi minh': ['vietnam', 'ho chi minh city', 'hcmc', 'saigon'],
+    'ho chi minh city': ['vietnam', 'ho chi minh', 'hcmc', 'saigon'],
+    'hcmc': ['vietnam', 'ho chi minh', 'ho chi minh city', 'saigon'],
+    'saigon': ['vietnam', 'ho chi minh', 'ho chi minh city', 'hcmc'],
 }
 
-# ═══ V6.17.46: CEK APAKAH KOTA ADALAH IBU KOTA PROVINSI YANG DISEBUT DI MATERI ═══
 def _kota_ibu_kota_provinsi_di_materi(kota, sumber):
     kota_low = (kota or '').lower().strip()
     sumber_low = (sumber or '').lower()
@@ -2732,7 +2740,6 @@ INSTITUSI_PUSAT_LEBIH_LONGGAR = [
     'bnpb', 'basarnas', 'bulog', 'pertamina', 'pln', 'telkom',
 ]
 
-# ═══ V6.17.48: HAPUS pemprov/pemkab/pemkot dari INSTITUSI_LOKAL_BUTUH_NAMA ═══
 INSTITUSI_LOKAL_BUTUH_NAMA = [
     'dinas', 'kantor',
     'polres', 'polsek', 'polda', 'kodam', 'korem', 'kodim',
@@ -5283,7 +5290,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.48'
+FILE_VERSI = 'V6.17.49'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
