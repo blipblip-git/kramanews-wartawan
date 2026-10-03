@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.44)
+# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.45)
 
 import requests
 import json
@@ -33,11 +33,11 @@ GEMPA_DOM_MIN           = 5.5
 GEMPA_DUNIA_MIN         = 6.5
 SKOR_BREAKING_MIN       = 20
 SKOR_BREAKING_MIN_DOM   = 15
-# ═══ V6.17.44: ANTI-DOBEL INFINEON — TURUNKAN 2 ANGKA ═══
 AMBANG_MIRIP            = 0.55
 SCRAPER_TIMEOUT         = 12
 SCRAPE_MIN_KARAKTER     = 600
-MATERI_MIN_KARAKTER     = 800
+# ═══ V6.17.45: MATERI_MIN_KARAKTER 800 → 700 ═══
+MATERI_MIN_KARAKTER     = 700
 JINA_READER             = 'https://r.jina.ai/'
 GAMBAR_MIN_LEBAR        = 400
 BLUR_SKOR_MINIMUM       = 5
@@ -46,11 +46,9 @@ MATCH_MIN_KATA          = 2
 MATCH_MIN_RASIO         = 0.50
 DOMAIN_SKIP_SCRAPE      = ['berita.tarakankota.go.id']
 
-# ═══ V6.17.44: ANTI-DOBEL INFINEON — TURUNKAN 5 → 3 ═══
 DOBEL_6JAM_MIN_KATA     = 3
 DOBEL_6JAM_BUTUH_NAMA   = True
 
-# ═══ V6.17.32: GOOGLE NEWS DECODE ═══
 GOOGLE_NEWS_HOST        = 'news.google.com'
 GOOGLE_NEWS_DECODE_MIN  = 5
 GOOGLE_NEWS_BATCH_MAX   = 10
@@ -383,7 +381,6 @@ DOMAIN_TEKNOLOGI = [
 ]
 JAM_TEKNOLOGI = {8: 0, 13: 1, 18: 2}
 
-# ═══ V6.17.43: TAMBAH RSS CHINA + EKONOMI + OTOMOTIF + ASIA ═══
 HUNT = {
     'nasional': [
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -5184,7 +5181,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.44'
+FFILE_VERSI = 'V6.17.45'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
