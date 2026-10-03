@@ -1,4 +1,4 @@
-# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.45)
+# PART 1 - KONFIGURASI, JADWAL & SUMBER (V6.17.46)
 
 import requests
 import json
@@ -36,7 +36,6 @@ SKOR_BREAKING_MIN_DOM   = 15
 AMBANG_MIRIP            = 0.55
 SCRAPER_TIMEOUT         = 12
 SCRAPE_MIN_KARAKTER     = 600
-# ═══ V6.17.45: MATERI_MIN_KARAKTER 800 → 700 ═══
 MATERI_MIN_KARAKTER     = 700
 JINA_READER             = 'https://r.jina.ai/'
 GAMBAR_MIN_LEBAR        = 400
@@ -53,6 +52,48 @@ GOOGLE_NEWS_HOST        = 'news.google.com'
 GOOGLE_NEWS_DECODE_MIN  = 5
 GOOGLE_NEWS_BATCH_MAX   = 10
 GN_DECODE_TIMEOUT       = 15
+
+# ═══ V6.17.46: KAMUS PROVINSI → IBU KOTA INDONESIA ═══
+KAMUS_PROVINSI_IBUKOTA = {
+    'aceh': 'banda aceh',
+    'sumatera utara': 'medan', 'sumut': 'medan',
+    'sumatera barat': 'padang', 'sumbar': 'padang',
+    'riau': 'pekanbaru',
+    'kepulauan riau': 'tanjung pinang', 'kepri': 'tanjung pinang',
+    'jambi': 'jambi',
+    'bengkulu': 'bengkulu',
+    'sumatera selatan': 'palembang', 'sumsel': 'palembang',
+    'bangka belitung': 'pangkal pinang', 'babel': 'pangkal pinang',
+    'lampung': 'bandar lampung',
+    'dki jakarta': 'jakarta', 'jakarta': 'jakarta',
+    'jawa barat': 'bandung', 'jabar': 'bandung',
+    'jawa tengah': 'semarang', 'jateng': 'semarang',
+    'di yogyakarta': 'yogyakarta', 'yogyakarta': 'yogyakarta', 'diy': 'yogyakarta',
+    'jawa timur': 'surabaya', 'jatim': 'surabaya',
+    'banten': 'serang',
+    'bali': 'denpasar',
+    'nusa tenggara barat': 'mataram', 'ntb': 'mataram',
+    'nusa tenggara timur': 'kupang', 'ntt': 'kupang',
+    'kalimantan barat': 'pontianak', 'kalbar': 'pontianak',
+    'kalimantan tengah': 'palangka raya', 'kalteng': 'palangka raya',
+    'kalimantan selatan': 'banjarmasin', 'kalsel': 'banjarmasin',
+    'kalimantan timur': 'samarinda', 'kaltim': 'samarinda',
+    'kalimantan utara': 'tarakan', 'kaltara': 'tarakan',
+    'sulawesi utara': 'manado', 'sulut': 'manado',
+    'sulawesi tengah': 'palu', 'sulteng': 'palu',
+    'sulawesi selatan': 'makassar', 'sulsel': 'makassar',
+    'sulawesi tenggara': 'kendari', 'sultra': 'kendari',
+    'gorontalo': 'gorontalo',
+    'sulawesi barat': 'mamuju', 'sulbar': 'mamuju',
+    'maluku': 'ambon',
+    'maluku utara': 'sofifi', 'malut': 'sofifi',
+    'papua': 'jayapura',
+    'papua barat': 'manokwari',
+    'papua barat daya': 'sorong',
+    'papua selatan': 'merauke',
+    'papua tengah': 'nabire',
+    'papua pegunungan': 'jayawijaya',
+}
 
 UMUR_BERITA_PER_KATEGORI = {
     'nasional': 30, 'daerah': 30, 'internasional_asean': 30,
@@ -2333,7 +2374,7 @@ def match_articles(candidates):
     return groups
 
 # AKHIR PART 3A-2
-# PART 3A-3 - BARAT + DATELINE + JANJI + SKOR + NARASUMBER (V6.17.42)
+# PART 3A-3 - BARAT + DATELINE + JANJI + SKOR + NARASUMBER (V6.17.46)
 
 def kategori_barat(title, summary):
     t = ((title or '') + ' ' + (summary or '')).lower()
@@ -2480,6 +2521,17 @@ IBU_KOTA_NEGARA = {
     'aichi-nagoya': ['jepang', 'japan'], 'aichi': ['jepang', 'japan'],
 }
 
+# ═══ V6.17.46: CEK APAKAH KOTA ADALAH IBU KOTA PROVINSI YANG DISEBUT DI MATERI ═══
+def _kota_ibu_kota_provinsi_di_materi(kota, sumber):
+    """Cek apakah 'kota' adalah ibu kota provinsi yang disebut di materi.
+    Contoh: kota='merauke', materi sebut 'papua selatan' → True (merauke ibu kota papua selatan)."""
+    kota_low = (kota or '').lower().strip()
+    sumber_low = (sumber or '').lower()
+    for prov, ibukota in KAMUS_PROVINSI_IBUKOTA.items():
+        if kota_low == ibukota and prov in sumber_low:
+            return True
+    return False
+
 def cek_dateline(isi, user_content):
     m = re.match(r'^([A-Z][^\n\-–—]{1,60}?)\s+[-–—]\s+', (isi or '').strip())
     if not m:
@@ -2494,6 +2546,9 @@ def cek_dateline(isi, user_content):
     if kota in IBU_KOTA_NEGARA:
         return None
     if kota in KOTA_INDONESIA_DATELINE:
+        return None
+    # ═══ V6.17.46: IZINKAN IBU KOTA PROVINSI JIKA PROVINSI DISEBUT DI MATERI ═══
+    if _kota_ibu_kota_provinsi_di_materi(kota, sumber):
         return None
     if kota and not _varian_cocok(kota, sumber):
         return 'kota dateline "' + kota + '" tidak ada di materi sumber'
@@ -3162,7 +3217,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
 
 # AKHIR PART 3A-4
 
-# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.44)
+# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.46)
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -3600,7 +3655,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     cek_dl = cek_dateline(isi, materi_asli)
     if cek_dl:
         raise Exception('diblokir dateline: ' + cek_dl[:60])
-    # ═══ V6.17.44: CEK DOBEL DATELINE + TOPIK SEBELUM CEK 6JAM ═══
     dobel_dt = _dobel_dateline_topik(judul, isi)
     if dobel_dt:
         if source_url:
@@ -3707,6 +3761,29 @@ def _catatan_kategori_ketat(kategori_target):
         + catatan_gelar
     )
 
+# ═══ V6.17.46: CATATAN IBU KOTA PROVINSI UNTUK AI ═══
+def _catatan_ibu_kota_provinsi(judul_materi, summary_materi, kategori_target):
+    if kategori_target not in ('nasional', 'daerah'):
+        return ''
+    gab = ((judul_materi or '') + ' ' + (summary_materi or '')).lower()
+    prov_ditemukan = []
+    for prov, ibukota in KAMUS_PROVINSI_IBUKOTA.items():
+        if prov in gab:
+            prov_ditemukan.append((prov, ibukota))
+    if not prov_ditemukan:
+        return ''
+    baris = []
+    for prov, ibukota in prov_ditemukan[:3]:
+        baris.append('  * "' + prov.title() + '" → ibukota: ' + ibukota.upper())
+    return (
+        '\n\nDATELINE — IBU KOTA PROVINSI (WAJIB):\n'
+        '- Materi menyebut provinsi berikut. Kalau materi TIDAK sebut kota '
+        'spesifik, WAJIB pakai ibu kota provinsi:\n'
+        + '\n'.join(baris) + '\n'
+        '- Contoh: "Pemprov Papua Selatan..." → dateline "MERAUKE, PAPUA SELATAN - "\n'
+        '- DILARANG karang kota lain di luar provinsi itu.\n'
+    )
+
 def ai_rewrite_single(c, kategori_target=''):
     k = konteks_waktu()
     materi, kaya = ambil_materi_kaya(c)
@@ -3725,6 +3802,7 @@ def ai_rewrite_single(c, kategori_target=''):
         baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia.\n'
                      'WAJIB: tulis kejadian sebagai peristiwa TERKINI dengan tanggal konkret.\n')
     catatan_eko = _catatan_ekonomi_khusus(kategori_target, c.get('title', ''), materi)
+    catatan_ibukota = _catatan_ibu_kota_provinsi(c.get('title', ''), c.get('summary', ''), kategori_target)
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
             + baris_tgl +
             'JENIS MATERI: ' + label_materi + '\n'
@@ -3748,6 +3826,7 @@ def ai_rewrite_single(c, kategori_target=''):
             '- Tulis ulang dengan kalimatmu sendiri.\n'
             '- Jangan sebut portal/media sumber.'
             + catatan_eko
+            + catatan_ibukota
             + _catatan_khusus_kategori(kategori_target)
             + _catatan_anti_jiplak()
             + _catatan_kategori_ketat(kategori_target))
@@ -3795,6 +3874,7 @@ def ai_rewrite_multi(items, kategori_target=''):
         baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia.\n'
                      'WAJIB: tulis kejadian sebagai peristiwa TERKINI.\n')
     catatan_eko = _catatan_ekonomi_khusus(kategori_target, judul_materi_gabung, semua_materi)
+    catatan_ibukota = _catatan_ibu_kota_provinsi(judul_materi_gabung, summary_materi_gabung, kategori_target)
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
             + baris_tgl +
             'TARGET PANJANG: ' + target_kata(total_len) + '\n\n'
@@ -3814,6 +3894,7 @@ def ai_rewrite_multi(items, kategori_target=''):
             '- deskripsi_gambar: 3-6 kata kunci DARI ELEMEN UTAMA BERITA.\n'
             '- Tulis ulang dengan kalimatmu sendiri.'
             + catatan_eko
+            + catatan_ibukota
             + _catatan_khusus_kategori(kategori_target)
             + _catatan_anti_jiplak()
             + _catatan_kategori_ketat(kategori_target))
@@ -3885,6 +3966,7 @@ def ai_rewrite_teknologi_single(c, dom):
     else:
         baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia.\n'
                      'WAJIB: tulis kejadian TERKINI dengan tanggal konkret.\n')
+    catatan_ibukota = _catatan_ibu_kota_provinsi(c.get('title', ''), c.get('summary', ''), 'teknologi')
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
             + baris_tgl +
             'JENIS MATERI: ' + label_materi + '\n'
@@ -3904,6 +3986,7 @@ def ai_rewrite_teknologi_single(c, dom):
             '- PERSEN: selalu simbol %.\n'
             '- deskripsi_gambar: 3-6 kata kunci DARI ELEMEN UTAMA BERITA.\n'
             '- Tulis ulang kalimatmu sendiri.'
+            + catatan_ibukota
             + _catatan_anti_jiplak()
             + _catatan_kategori_ketat('teknologi'))
     return ai_write(user, materi_sumber=materi, kategori='teknologi',
@@ -3945,6 +4028,7 @@ def ai_rewrite_teknologi_multi(items, dom):
     else:
         baris_tgl = ('TANGGAL PUBLIKASI SUMBER: tidak tersedia.\n'
                      'WAJIB: tulis kejadian TERKINI.\n')
+    catatan_ibukota = _catatan_ibu_kota_provinsi(judul_materi_gabung, summary_materi_gabung, 'teknologi')
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
             + baris_tgl +
             'TARGET PANJANG: ' + _target_teknologi(dom) + '\n\n'
@@ -3960,6 +4044,7 @@ def ai_rewrite_teknologi_multi(items, dom):
             '- PERSEN: selalu simbol %.\n'
             '- deskripsi_gambar tanpa manusia/hewan/alas kaki/ibadah.\n'
             '- Jangan sebut media sumber.'
+            + catatan_ibukota
             + _catatan_anti_jiplak()
             + _catatan_kategori_ketat('teknologi'))
     return ai_write(user, timeout=180, materi_sumber=semua_materi, kategori='teknologi',
@@ -5181,7 +5266,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FFILE_VERSI = 'V6.17.45'
+FILE_VERSI = 'V6.17.46'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
