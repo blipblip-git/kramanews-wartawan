@@ -1464,6 +1464,20 @@ KATEGORI (WAJIB TEPAT):
 - otomotif: mobil, motor, kendaraan listrik, spare part, modifikasi.
 - kesehatan: penyakit, gizi, obat, dokter, mental health.
 
+EKONOMI — DEFINISI LUAS (WAJIB):
+- EKONOMI mencakup: IHSG, kurs, saham, BI, OJK, UMKM, bisnis, ekonomi dunia,
+  EKSPOR, IMPOR, PERDAGANGAN, PERTUMBUHAN EKONOMI, PENJUALAN.
+- EKONOMI JUGA mencakup (JANGAN TOLAK):
+  * Properti, perumahan, housing, real estate, sektor properti
+  * IPO, merger, akuisisi, valuasi, pendanaan, investasi
+  * Kunjungan dagang, kerja sama dagang, delegasi ekonomi
+  * Pasar, harga, komoditas, obligasi, yield
+  * Sektor industri, manufaktur, pabrik, produksi
+  * Perbankan, kredit, pinjaman, asuransi, fintech
+  * Wisata, pariwisata (aspek ekonomi)
+- Kalau materi memuat kata di atas -> TETAP EKONOMI meski ada nama politikus
+  atau kunjungan diplomatik.
+
 JANGAN SALAH KATEGORI:
 - Haji/umroh/agama -> nasional (BUKAN olahraga).
 - Pendidikan/sekolah -> nasional (BUKAN olahraga).
@@ -1478,6 +1492,8 @@ PENTING — JANGAN TOLAK BERLEBIHAN:
   "kepolisian", atau "pemerintahan" di dalamnya.
 - Ekspor/impor/perdagangan/pendapatan negara -> TETAP ekonomi.
 - Perusahaan naik peringkat/valuasi/IPO -> TETAP ekonomi.
+- Properti/perumahan/housing -> TETAP ekonomi.
+- Kunjungan dagang/kerja sama ekonomi -> TETAP ekonomi.
 - AI/teknologi yang bocor data -> TETAP teknologi (BUKAN politik).
 - HANYA tolak kalau materi JELAS tentang kategori yang SALAH.
 
@@ -1510,7 +1526,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 
 # AKHIR PART 2
 
-# PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI
+# PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI + MATERI_COCOK + KANDIDAT + COLLECT + MATCH + DOBEL_DATELINE
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -1907,9 +1923,6 @@ KATA_KUNCI_KATEGORI = {
                   'folat', 'asam folat', 'yodium', 'zinc', 'magnesium'],
 }
 
-# AKHIR PART 3A-1
-# PART 3A-2 - MATERI_COCOK + KANDIDAT_KATEGORI + COLLECT + MATCH + DOBEL_DATELINE_TOPIK
-
 def _materi_cocok_kategori(kategori, judul, summary):
     if not kategori:
         return True, ''
@@ -2284,8 +2297,8 @@ def match_articles(candidates):
             groups.append({'kw': k, 'items': [c]})
     return groups
 
-# AKHIR PART 3A-2
-# PART 3A-3 - BARAT + DATELINE + JANJI + SKOR + NARASUMBER
+# AKHIR PART 3A-1
+# PART 3A-2 - BARAT + DATELINE + JANJI + SKOR + NARASUMBER + BUKAN_BERITA + LUAR_NEGERI + TOKOH + KOTA + CEK_KATEGORI + TOPIK
 
 def kategori_barat(title, summary):
     t = ((title or '') + ' ' + (summary or '')).lower()
@@ -2736,9 +2749,6 @@ def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
             return ('"menurut ' + inst + '" tanpa nama pejabat')
     return None
 
-# AKHIR PART 3A-3
-# PART 3A-4 - BUKAN_BERITA + LUAR_NEGERI + TOKOH + KOTA + CEK_KATEGORI + TOPIK (V6.17.43)
-
 KATA_BUKAN_BERITA = [
     'zodiak', 'horoskop', 'ramalan bintang', 'ramalan cinta', 'ramalan nasib',
     'ramalan zodiak', 'shio', 'primbon', 'arti mimpi', 'artinya mimpi',
@@ -2772,9 +2782,9 @@ KATA_LUAR_NEGERI_WAJIB = [
     'brics', 'pemilu amerika', 'us election', 'parlemen eropa', 'uni eropa',
     'european union', 'taiwan', 'kamboja', 'cambodia', 'thailand',
     'vietnam', 'filipina', 'singapura', 'myanmar', 'laos', 'brunei',
-    # V6.17.43: tambah portal China + Asia
     'xinhua', 'cgtn', 'global times', 'scmp', 'south china morning post',
     'nhk', 'korea herald', 'japan times', 'times of india',
+    'nagoya', 'aichi-nagoya', 'aichi', 'osaka',
 ]
 
 KATA_ASEAN_WAJIB = [
@@ -2790,11 +2800,9 @@ KATA_TT = [
     'emirates', 'qatar', 'kuwait', 'libanon', 'jordan', 'turki',
     'hamas', 'hezbollah', 'idf', 'netanyahu', 'west bank', 'teheran',
     'lebanon', 'damaskus', 'beirut', 'golan', 'sinai',
-    # V6.17.43: tambah portal TT
     'al arabiya', 'gulf news', 'jerusalem post', 'middle east eye',
 ]
 
-# ═══ V6.17.43: PERLUAS KATA_EKONOMI_WAJIB ═══
 KATA_EKONOMI_WAJIB = [
     'ihsg', 'idx', 'bursa', 'saham', 'obligasi', 'reksa dana', 'bank indonesia',
     'bi rate', 'suku bunga', 'inflasi', 'deflasi', 'pdb', 'gdp',
@@ -2822,7 +2830,6 @@ KATA_EKONOMI_WAJIB = [
     'tariff', 'sanction', 'stimulus', 'resilient', 'domestic', 'grain',
     'supply', 'factory', 'activity', 'expansion', 'beef', 'daging sapi',
     'agrikultur', 'agriculture', 'hasil tani',
-    # ═══ V6.17.43: TAMBAH KATA KUNCI EKONOMI ═══
     'nilai tukar', 'valuta', 'devisa', 'cadangan devisa', 'neraca pembayaran',
     'transaksi berjalan', 'current account', 'capital flow', 'arus modal',
     'portfolio', 'portofolio', 'instrumen', 'surat utang', 'sbn', 'sun',
@@ -2855,6 +2862,20 @@ KATA_EKONOMI_WAJIB = [
     'investor asing', 'investor domestik', 'investor ritel',
     'net buy', 'net sell', 'asing keluar', 'asing masuk', 'capital outflow',
     'pasar berjangka', 'komoditas berjangka', 'kontrak berjangka',
+    'properti', 'properti china', 'real estate', 'perumahan', 'housing',
+    'sektor properti', 'pengembang', 'developer properti',
+    'hunian', 'apartemen', 'kondominium', 'rusun', 'rumah tapak',
+    'kpr subsidi', 'kpr non subsidi', 'harga rumah', 'harga tanah',
+    'sewa properti', 'sewa rumah', 'sewa apartemen',
+    'kunjungan dagang', 'kunjungan ekonomi', 'delegasi dagang',
+    'delegasi ekonomi', 'kerja sama ekonomi', 'kerja sama dagang',
+    'kemiraan dagang', 'kemitraan ekonomi',
+    'merger', 'akuisisi', 'akuisisi perusahaan', 'takeover',
+    'ipo perusahaan', 'go public', 'rights issue', 'private placement',
+    'valuasi perusahaan', 'valuasi startup', 'pendanaan startup',
+    'series a', 'series b', 'series c', 'putaran pendanaan',
+    'harga properti', 'harga properti china', 'pasar properti',
+    'sektor jasa', 'sektor pariwisata', 'sektor manufaktur', 'sektor agrikultur',
 ]
 
 KATA_POLITIK_HUKUM_LOKAL = [
@@ -3072,7 +3093,6 @@ NAMA_DIRI_UMUM = set([
     'tesla', 'apple', 'google', 'microsoft', 'meta', 'openai', 'anthropic',
     'nvidia', 'intel', 'samsung', 'huawei', 'xiaomi', 'tiktok', 'bytedance',
     'covid', 'covid-19',
-    # V6.17.43: tambah media China + Asia
     'xinhua', 'cgtn', 'scmp', 'global times', 'nhk', 'korea herald',
 ])
 
@@ -3132,9 +3152,9 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
         return None
     return ('judul AI tidak nyambung materi: tidak ada irisan nama diri/angka/kata kunci')
 
-# AKHIR PART 3A-4
+# AKHIR PART 3A-2
 
-# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI (V6.17.46)
+# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -3301,9 +3321,9 @@ def cek_jiplak(materi_sumber, isi_ai):
     frasa_mesin = _frasa_janggal_terjemahan(isi_ai)
     if frasa_mesin:
         return frasa_mesin
-    n_kata = 13
+    n_kata = 15
     if len(materi_sumber) < 500:
-        n_kata = 15
+        n_kata = 17
     sumber_grams = _gram_set(materi_sumber, n_kata)
     if sumber_grams:
         for gram in _gram_list(isi_ai, n_kata):
@@ -3466,6 +3486,9 @@ KATA_SINYAL_EKONOMI = [
     'neraca dagang', 'gdp', 'pdb', 'pertumbuhan ekonomi', 'produksi',
     'manufaktur', 'factory', 'manufacturing', 'supply chain',
     'penjualan ritel', 'retail sales', 'indeks pmi', 'pmi index',
+    'properti', 'property', 'real estate', 'housing', 'perumahan',
+    'kunjungan dagang', 'kunjungan ekonomi', 'delegasi dagang',
+    'merger', 'akuisisi', 'ipo', 'valuasi', 'investasi',
 ]
 
 def _catatan_ekonomi_khusus(kategori_target, judul, materi):
@@ -3477,9 +3500,13 @@ def _catatan_ekonomi_khusus(kategori_target, judul, materi):
                         or 'economic' in gab_low or 'economist' in gab_low)
     if ada_sinyal and not ada_kata_ekonomi:
         return ('\n\nCATATAN PENTING — MATERI INI ADALAH BERITA EKONOMI:\n'
-                '- Materi memuat kata perdagangan/ekspor/impor/produksi/manufaktur.\n'
+                '- Materi memuat kata perdagangan/ekspor/impor/produksi/manufaktur\n'
+                '  ATAU properti/perumahan/housing/real estate/IPO/merger/\n'
+                '  kunjungan dagang.\n'
                 '- WAJIB tulis sebagai berita EKONOMI, BUKAN politik luar negeri.\n'
-                '- JANGAN tolak dengan alasan "politik luar negeri" atau "materi politik".\n'
+                '- JANGAN tolak dengan alasan "politik luar negeri", "materi politik",\n'
+                '  "kunjungan diplomatik", atau "materi properti".\n'
+                '- Properti, perumahan, kunjungan dagang, IPO, merger TETAP EKONOMI.\n'
                 '- Fokus: angka, data perdagangan, pertumbuhan, dampak ekonomi.\n')
     return ''
 
@@ -3634,7 +3661,7 @@ def _catatan_khusus_kategori(kategori_target):
 def _catatan_anti_jiplak():
     return (
         '\n\nANTI-JIPLAK (WAJIB):\n'
-        '- Tulis kalimatmu SENDIRI — jangan salin 13+ kata berurutan.\n'
+        '- Tulis kalimatmu SENDIRI — jangan salin 15+ kata berurutan.\n'
         '- JANGAN terjemahkan langsung dari materi bahasa Inggris.\n'
         '- HINDARI frasa janggal terjemahan mesin.\n'
         '- Ganti sinonim: "mengatakan" → "menuturkan/ujar".\n'
@@ -3678,7 +3705,6 @@ def _catatan_kategori_ketat(kategori_target):
         + catatan_gelar
     )
 
-# ═══ V6.17.46: CATATAN IBU KOTA PROVINSI UNTUK AI ═══
 def _catatan_ibu_kota_provinsi(judul_materi, summary_materi, kategori_target):
     if kategori_target not in ('nasional', 'daerah'):
         return ''
@@ -4398,7 +4424,7 @@ def sesi_olahraga_api(jenis):
 
 # AKHIR PART 4A
 
-# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION (V6.17.47)
+# PART 4B - BREAKING, PASAR MODAL, SESI KATEGORI, RUN SESSION
 
 def is_berita_politik_hukum(teks):
     t = (teks or '').lower()
@@ -4577,7 +4603,6 @@ def _breaking_ada_lokasi(judul, isi):
             return True
     return False
 
-# ═══ V6.17.47: KATEGORI BREAKING — PERKUAT DOMINASI INDONESIA ═══
 KATA_DOMINAN_INDONESIA = [
     'indonesia', 'jakarta', 'jawa', 'sumatera', 'sumatra', 'kalimantan',
     'sulawesi', 'papua', 'bali', 'nusa tenggara', 'maluku', 'aceh', 'riau',
@@ -4594,7 +4619,6 @@ def kategori_breaking(c, tip):
     if tip == 'dun':
         return 'internasional'
     teks = (c.get('title', '') + ' ' + c.get('summary', '')).lower()
-    # V6.17.47: kalau dominan Indonesia → nasional, meski ada kata negara asing
     hit_indo = sum(1 for k in KATA_DOMINAN_INDONESIA if k in teks)
     hit_asing = sum(1 for k in LUAR_NEGERI_WORDS if k in teks)
     if hit_indo >= 2 and hit_indo > hit_asing:
@@ -5187,7 +5211,7 @@ def main_sekali():
         run_session()
 
 def main():
-    print('AI WARTAWAN KRAMANEWS V6.17.47 - mode loop 30 menit (Ctrl+C untuk berhenti)')
+    print('AI WARTAWAN KRAMANEWS - mode loop 30 menit (Ctrl+C untuk berhenti)')
     while True:
         try:
             main_sekali()
@@ -5201,7 +5225,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = ' V6.17.51'
+FILE_VERSI = 'V6.17.51'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
