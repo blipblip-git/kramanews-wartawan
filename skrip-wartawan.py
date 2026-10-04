@@ -975,11 +975,10 @@ def judul_spam(judul):
             return True
     return False
 
+# V6.17.61: hapus filter transient — semua konten dicatat (kecuali koneksi)
 KATA_ALASAN_TRANSIENT = [
     'rate limit', 'timeout', 'koneksi', 'connection',
     'error sementara', 'coba lagi', 'retry',
-    'materi terlalu pendek', 'materi tidak valid',
-    'materi kosong', 'materi gabungan tidak valid',
 ]
 
 def muat_rejected_urls():
@@ -989,7 +988,7 @@ def muat_rejected_urls():
     out = set()
     try:
         r = requests.get(SUPABASE_URL + '/rest/v1/rejected_urls'
-                         + '?select=source_url&order=created_at.desc&limit=500',
+                         + '?select=source_url&order=created_at.desc&limit=2000',
             headers={'apikey': SUPABASE_PUBLISHABLE,
                      'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE},
             timeout=30)
@@ -1006,14 +1005,9 @@ def muat_rejected_urls():
     REJECTED_URLS_CACHE = out
     return out
 
-def _url_google_news(url):
-    return url and GOOGLE_NEWS_HOST in url
-
+# V6.17.61: catat SEMUA tolak, termasuk URL Google News
 def catat_tolak_ai_token(source_url, alasan):
     if not source_url:
-        return
-    # V6.17.55: JANGAN catat URL Google News RSS (link sementara, bikin blacklist bengkak)
-    if _url_google_news(source_url):
         return
     alasan_str = (alasan or '').strip()
     if not alasan_str:
@@ -1122,28 +1116,48 @@ def _domain_dari_url(url):
     except Exception:
         return '?'
 
-def scrape_via_jina(url):
+# V6.17.61: Firecrawl ganti Jina
+FIRECRAWL_URL = 'https://api.firecrawl.dev/v1/scrape'
+
+def scrape_via_firecrawl(url):
+    """Scrape via Firecrawl API. Pakai API key (FIRECRAWL_API_KEY)."""
+    api_key = os.environ.get('FIRECRAWL_API_KEY', '').strip()
+    if not api_key:
+        print('       FIRECRAWL_API_KEY belum ada di Secrets - lewati Firecrawl.')
+        return ''
     try:
-        headers = {'User-Agent': random.choice(UA_LIST)}
-        r = requests.get(JINA_READER + url, headers=headers,
-                         timeout=SCRAPER_TIMEOUT + 8, allow_redirects=True)
+        headers = {
+            'Authorization': 'Bearer ' + api_key,
+            'Content-Type': 'application/json',
+        }
+        payload = {
+            'url': url,
+            'formats': ['markdown'],
+            'onlyMainContent': True,
+        }
+        r = requests.post(FIRECRAWL_URL, headers=headers,
+                         json=payload, timeout=SCRAPER_TIMEOUT + 15)
         if not r.ok:
-            print('       Jina HTTP ' + str(r.status_code) + ' - ' + url[:60])
+            print('       Firecrawl HTTP ' + str(r.status_code) + ' - ' + url[:60])
             return ''
-        teks = r.text or ''
+        data = r.json()
+        if not data.get('success'):
+            print('       Firecrawl gagal: ' + str(data.get('error', ''))[:80])
+            return ''
+        teks = (data.get('data') or {}).get('markdown') or ''
         teks = re.sub(r'!\[[^\]]*\]\([^)]*\)', ' ', teks)
         teks = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', teks)
         teks = re.sub(r'[#*_`>]{1,3}', ' ', teks)
         teks = re.sub(r'\s+', ' ', teks).strip()
         if len(teks) < SCRAPE_MIN_KARAKTER:
-            print('       Jina hasil PENDEK: ' + str(len(teks)) + ' kar (butuh ' + str(SCRAPE_MIN_KARAKTER) + ') - ' + url[:60])
+            print('       Firecrawl hasil PENDEK: ' + str(len(teks)) + ' kar - ' + url[:60])
             return ''
         return teks
     except requests.exceptions.Timeout:
-        print('       Jina TIMEOUT - ' + url[:60])
+        print('       Firecrawl TIMEOUT - ' + url[:60])
         return ''
     except Exception as e:
-        print('       Jina EXCEPTION: ' + str(e)[:80] + ' - ' + url[:60])
+        print('       Firecrawl EXCEPTION: ' + str(e)[:80] + ' - ' + url[:60])
         return ''
 
 def _bersihkan_html_artikel(html):
@@ -1210,6 +1224,7 @@ def scrape_artikel(url, judul_debug=''):
         print('       [DEBUG] URL final: ' + url_asli[:100])
         print('       [DEBUG] Domain: ' + _domain_dari_url(url_asli))
     hasil = ''
+    # 1. Coba langsung scrape
     try:
         headers = {
             'User-Agent': random.choice(UA_LIST),
@@ -1225,7 +1240,8 @@ def scrape_artikel(url, judul_debug=''):
         print('       Langsung scrape pendek: ' + str(len(hasil)) + ' kar - ' + url_asli[:60])
     except Exception as e:
         print('       Langsung scrape gagal: ' + str(e)[:60])
-    hasil = scrape_via_jina(url_asli)
+    # 2. Firecrawl
+    hasil = scrape_via_firecrawl(url_asli)
     if hasil:
         _CACHE_SCRAPE[url] = hasil
         return hasil
@@ -1263,6 +1279,7 @@ def ambil_materi_kaya(c):
         potongan.append('Ringkasan: ' + s)
     try:
         entry = c.get('entry') or {}
+        # V6.17.61: cek content:encoded juga
         konten_rss = ''
         cc = entry.get('content')
         if cc and isinstance(cc, list):
@@ -1271,6 +1288,21 @@ def ambil_materi_kaya(c):
                     v = part.get('value') or ''
                     if len(v) > len(konten_rss):
                         konten_rss = v
+        # V6.17.61: cek content_encoded (feedparser)
+        try:
+            ce = entry.get('content_encoded') or ''
+            if ce and len(ce) > len(konten_rss):
+                konten_rss = ce
+        except Exception:
+            pass
+        # V6.17.61: cek summary_detail
+        try:
+            sd = entry.get('summary_detail') or {}
+            sv = sd.get('value') or ''
+            if sv and len(sv) > len(konten_rss):
+                konten_rss = sv
+        except Exception:
+            pass
         konten_rss = clean(konten_rss, 2500)
         if konten_rss and len(konten_rss) > len(s):
             potongan.append('Konten RSS: ' + konten_rss)
@@ -1408,7 +1440,7 @@ def muat_judul_hari_ini():
     out = []
     j6 = []
     try:
-        rows = rest_get('?select=title,created_at&order=created_at.desc&limit=300')
+        rows = rest_get('?select=title,created_at&order=created_at.desc&limit=500')
         for row in rows:
             if row.get('title') and _dalam_jendela(row, JENDELA_DOBEL_JAM):
                 out.append(normalisasi_judul(row['title']))
@@ -1813,7 +1845,8 @@ def gn_split(title):
     return title.strip(), 'Google News'
 
 MATERI_MIN_KARAKTER_RSS = 120
-MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL = 140
+# V6.17.61: threshold RSS daerah/nasional 140 → 300
+MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL = 300
 MATERI_MIN_KARAKTER_BREAKING = 100
 
 def _materi_dominan_url(teks):
@@ -2312,7 +2345,6 @@ def _kandidat_bukan_dobel(judul):
                 return False, 'dobel-6jam dengan "' + t[:40] + '"'
     return True, ''
 
-# V6.17.60: _dobel_dateline_topik threshold 2 → 3 (kembali ke asal)
 def _dobel_dateline_topik(judul_baru, isi_baru):
     if not judul_baru or not isi_baru:
         return None
@@ -2333,7 +2365,6 @@ def _dobel_dateline_topik(judul_baru, isi_baru):
         if not kt:
             continue
         irisan = ki_baru & kt
-        # V6.17.60: threshold kembali 3
         if len(irisan) < 3:
             continue
         if kota_baru in t:
@@ -2445,7 +2476,6 @@ def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
     ki_baru = kata_inti(judul_kandidat)
     if not ki_baru:
         return None
-    # V6.17.60: threshold kembali 3 untuk semua (V6.17.59 yang 2 terlalu agresif)
     min_irisan = 3
     for t_lama in judul_lama_list:
         if not t_lama:
@@ -3661,7 +3691,6 @@ FRASA_UMUM_JIPLAK = [
     'tawaf ifadah',
     'sa i antara safa dan marwah',
     'antara safa dan marwah',
-    # V6.17.60: kalimat baku IHSG/pasar modal
     'penguatan itu ditopang volume beli',
     'ditopang volume beli yang',
     'ihsg ditutup menguat',
@@ -4026,13 +4055,31 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
         return True, ''
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
 
-KATA_UMUM_NAMA_PEJABAT = [
+# V6.17.61: KATA_BUKAN_NAMA_PEJABAT + KATA_UMUM_NAMA_PEJABAT digabung
+KATA_BUKAN_NAMA_PEJABAT = [
+    # kata kerja/keterangan
     'menilai', 'menyebut', 'mengatakan', 'menjelaskan', 'menuturkan',
-    'nilai', 'sebut', 'kata', 'ujar', 'tutur', 'jelas',
-    'penanganan', 'masa', 'lebih', 'baik', 'buruk', 'dari', 'untuk',
-    'yang', 'dan', 'di', 'ke', 'pada', 'dengan', 'dalam',
-    'akan', 'telah', 'sudah', 'oleh', 'sebagai', 'adalah',
-    'bandingkan', 'peristiwa', 'lintas', 'era', 'karhutla',
+    'nilai', 'sebut', 'kata', 'ujar', 'tutur', 'jelas', 'ungkap',
+    'bandingkan', 'membandingkan', 'peristiwa', 'kejadian', 'perkara',
+    'penanganan', 'penanggulangan', 'pencegahan', 'penindakan',
+    'masa', 'zaman', 'era', 'periode',
+    'lebih', 'kurang', 'baik', 'buruk', 'bagus', 'jelek',
+    'dari', 'untuk', 'pada', 'dalam', 'dengan', 'oleh', 'sebagai',
+    'yang', 'dan', 'atau', 'di', 'ke', 'akan', 'telah', 'sudah',
+    'lintas', 'antar', 'antarwilayah', 'nasional', 'regional', 'lokal',
+    # wilayah/provinsi (sering muncul setelah jabatan)
+    'kalteng', 'kaltim', 'kalsel', 'kalbar', 'kaltara', 'kalimantan',
+    'jabar', 'jateng', 'jatim', 'jakarta', 'banten', 'bali',
+    'sumut', 'sumbar', 'sumsel', 'riau', 'jambi', 'lampung', 'bengkulu',
+    'aceh', 'sulut', 'sulteng', 'sulsel', 'sultra', 'gorontalo',
+    'maluku', 'malut', 'papua', 'ntb', 'ntt',
+    # kata umum lainnya
+    'indonesia', 'nasional', 'pemerintah', 'pemerintahan', 'negara',
+    'kabupaten', 'kota', 'provinsi', 'kecamatan', 'kelurahan', 'desa',
+    'karhutla', 'kebakaran', 'banjir', 'gempa', 'tsunami', 'longsor',
+    'kunjungan', 'kegiatan', 'acara', 'perayaan', 'pesta', 'upacara',
+    'rapat', 'pertemuan', 'sidang', 'konferensi', 'seminar', 'lokakarya',
+    'gotong', 'royong', 'gotong royong', 'kerja', 'bakti',
 ]
 
 def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
@@ -4057,15 +4104,18 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
         bagian = re.findall(r'\b[A-Z][a-z]+\b', after_jabatan)
         nama_bersih = []
         for k in bagian:
-            if k.lower() in KATA_UMUM_NAMA_PEJABAT:
+            if k.lower() in KATA_BUKAN_NAMA_PEJABAT:
                 break
             nama_bersih.append(k)
             if len(nama_bersih) >= 2:
                 break
-        if len(nama_bersih) >= 1:
-            nama_kunci = nama_bersih[-1]
-        else:
+        if len(nama_bersih) < 1:
             continue
+        # V6.17.61: wajib 2 kata nama (nama depan + belakang)
+        # Kalau cuma 1 kata → bukan nama orang, kemungkinan wilayah
+        if len(nama_bersih) < 2:
+            continue
+        nama_kunci = nama_bersih[-1]
         if len(nama_kunci) < 3:
             continue
         nama_materi.append((nama_full, nama_kunci))
@@ -4074,8 +4124,7 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     kata_ai = set(re.findall(r'\b[A-Z][a-zA-Z]{2,}\b', isi_ai))
     materi_low = materi.lower()
     for nama_full, nama_kunci in nama_materi[:3]:
-        # V6.17.60: cek nama_kunci ada di materi DAN minimal 3 huruf DAN bukan kata umum
-        if nama_kunci.lower() in KATA_UMUM_NAMA_PEJABAT:
+        if nama_kunci.lower() in KATA_BUKAN_NAMA_PEJABAT:
             continue
         if nama_kunci.lower() not in materi_low:
             continue
@@ -4151,10 +4200,16 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
                                    'isi tak sesuai judul', 'tidak dapat diolah',
                                    'materi tidak relevan', 'materi tidak cocok',
                                    'tidak bisa diolah', 'tidak dapat diproses')):
+        if source_url:
+            catat_tolak_ai_token(source_url, 'AI output error: ' + judul[:80])
         raise BeritaLama('AI output error: ' + judul[:60])
     if not judul or len(judul.strip()) < 10:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'judul AI terlalu pendek: ' + judul[:40])
         raise BeritaLama('judul AI kosong/terlalu pendek: "' + judul[:30] + '"')
     if not isi or len(isi.strip()) < 100:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'isi AI terlalu pendek: ' + str(len(isi)))
         raise BeritaLama('isi AI kosong/terlalu pendek: ' + str(len(isi)) + ' char')
 
     waktu = (obj.get('waktu_kejadian') or '').strip()
@@ -4166,12 +4221,18 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         raise Exception('diblokir pemeriksa: ' + str(frasa_akhir)[:50])
     alasan_janji = cek_janji_judul(judul, isi)
     if alasan_janji:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'promise-check: ' + str(alasan_janji)[:80])
         raise Exception('diblokir promise-check: ' + alasan_janji)
     dua_topik = deteksi_dua_topik(judul, isi)
     if dua_topik:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'anti-2-topik: ' + str(dua_topik)[:80])
         raise Exception('diblokir anti-2-topik: ' + dua_topik[:60])
     cek_dl = cek_dateline(isi, materi_asli)
     if cek_dl:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'dateline: ' + str(cek_dl)[:80])
         raise Exception('diblokir dateline: ' + cek_dl[:60])
     dobel_dt = _dobel_dateline_topik(judul, isi)
     if dobel_dt:
@@ -4183,13 +4244,19 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
             if len(kata_inti(judul) & kata_inti(t)) >= DOBEL_6JAM_MIN_KATA:
                 if DOBEL_6JAM_BUTUH_NAMA:
                     if _ada_nama_diri_judul(judul) or _ada_nama_diri_judul(t):
+                        if source_url:
+                            catat_tolak_ai_token(source_url, 'dobel-6jam: ' + t[:40])
                         raise Exception('diblokir anti-dobel-6jam: mirip "' + t[:40] + '"')
                 else:
+                    if source_url:
+                        catat_tolak_ai_token(source_url, 'dobel-6jam: ' + t[:40])
                     raise Exception('diblokir anti-dobel-6jam: mirip "' + t[:40] + '"')
     else:
         print('       Topik besar terdeteksi - gate 6jam dilewati.')
     nama_final = cek_narasumber_tanpa_nama(isi, kategori, judul)
     if nama_final:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'narasumber tanpa nama: ' + nama_final[:80])
         raise Exception('DITOLAK - narasumber tanpa nama (' + nama_final[:60] + ')')
     nama_pejabat = _cek_nama_pejabat_dari_materi(materi_sumber, isi, kategori)
     if nama_pejabat:
@@ -4198,9 +4265,13 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         raise Exception('DITOLAK - ' + nama_pejabat[:100])
     gambar_terlarang = cek_deskripsi_gambar(gambar)
     if gambar_terlarang:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'filter gambar: ' + gambar_terlarang[:60])
         raise Exception('diblokir filter gambar: ' + gambar_terlarang[:60])
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
     if jiplak:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'anti-jiplak: ' + jiplak[:80])
         raise Exception('diblokir ANTI-JIPLAK: ' + jiplak[:80])
     kualitas = _cek_kualitas_isi(isi, kategori)
     if kualitas:
@@ -4222,6 +4293,8 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
             raise Exception('DITOLAK - ' + topik_masalah[:100])
     kateg_masalah = cek_kategori_dari_isi(isi, judul, kategori)
     if kateg_masalah:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'kategori isi: ' + kateg_masalah[:80])
         raise Exception('DITOLAK - ' + kateg_masalah[:80])
     return judul, isi, ringkasan, waktu, gambar
 
@@ -4285,6 +4358,9 @@ def _catatan_kategori_ketat(kategori_target):
             '- WAJIB tulis SEMUA nama pejabat yang ada di materi, BUKAN cuma 1.\n'
             '- Kalau materi memuat 2 nama pejabat (contoh Bupati + Menhan),\n'
             '  WAJIB tulis keduanya dengan jabatan masing-masing.\n'
+            '- JANGAN tulis jabatan berulang-ulang tanpa nama (contoh: "Wagub... Wagub... Wagub...")\n'
+            '  Kalau tidak ada nama, cukup sekali sebut jabatan, berikutnya pakai "Ia/ujarnya".\n'
+            '- WAJIB sebut LOKASI spesifik (kelurahan/kecamatan/jalan) kalau materi memuatnya.\n'
         )
     catatan_ekonomi = ''
     if kategori_target == 'ekonomi':
@@ -5865,7 +5941,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.60'
+FILE_VERSI = 'V6.17.61'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
