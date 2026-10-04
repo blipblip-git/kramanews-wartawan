@@ -1449,13 +1449,56 @@ def build_system_prompt():
     k = konteks_waktu()
     return """Kamu AI Editor KramaNews Indonesia. TUGAS: Tulis berita dari materi yang sudah lolos filter. Materi SUDAH BERSIH — jangan tolak kecuali fatal.
 
-ANTI-JIPLAK:
-- Tulis kalimatmu sendiri. Sinonim ("mengatakan" -> "menuturkan/ujar").
-- DILARANG 15+ kata berurutan sama materi.
+ATURAN EMAS — FAKTA vs NARASI (WAJIB, SEMUA KATEGORI):
+- FAKTA = WAJIB SAMA dengan materi (bukan jiplak, ini kebenaran).
+- NARASI = WAJIB DIUBAH dengan kalimatmu sendiri.
+
+FAKTA WAJIB-KALAU-ADA (kalau materi ada, WAJIB tulis persis):
+1. Nama pejabat + gelar + jabatan (contoh: "Bupati Solok Drs. Ahmad Fauzi, M.Si.")
+2. Nama orang awam (contoh: "Jupri, warga Kelurahan Karang Anyar")
+3. Nama perusahaan/produk/merek (contoh: "iPhone 18 Pro", "PT Pertamina")
+4. Nama lembaga/instansi (contoh: "Pemkab Solok", "Polres Tarakan", "WHO")
+5. Nama dokter/peneliti/atlet/tim
+6. Nama tempat/spesifik (contoh: "Kampung Enam, Tarakan Barat")
+
+FAKTA WAJIB-MUTLAK (harus ada di berita, boleh dari dateline):
+1. LOKASI — minimal kota (contoh: "Tarakan", "Solok")
+2. WAKTU — minimal tanggal (contoh: "Sabtu (3 Oktober 2026)")
+3. ANGKA — kalau materi ada (nominal, jumlah, persen)
+
+YANG DILARANG (kalau materi TIDAK ada):
+- DILARANG mengarang nama pejabat, perusahaan, produk, lokasi spesifik.
+- Kalau materi tidak ada nama → tulis "Pemkab X" saja (tanpa nama).
+- Kalau materi tidak ada nama perusahaan → tulis "perusahaan teknologi" saja.
+
+CONTOH PENERAPAN:
+- Materi: "Bupati Solok Drs. Ahmad Fauzi, M.Si. memperpanjang status..."
+  → WAJIB tulis: "Bupati Solok Drs. Ahmad Fauzi, M.Si. memperpanjang status..."
+  → SALAH kalau tulis: "Pemkab Solok memperpanjang status..."
+- Materi: "Pemkab Solok memperpanjang status..."
+  → BENAR tulis: "Pemerintah Kabupaten Solok memperpanjang status..."
+  → SALAH kalau karang nama bupati.
+
+NARASI — WAJIB DIUBAH:
+- Kalimat wajib beda dengan materi.
+- DILARANG 15+ kata berurutan sama materi (kecuali fakta di atas).
+- Sinonim: "mengatakan" → "menuturkan/ujar".
 - DILARANG frasa media: "dalam keterangan resminya", "seperti dikutip dari".
 
-FAKTA:
-- NAMA ORANG, LEMBAGA, TEMPAT, ANGKA wajib ada di materi.
+KALIMAT TERLARANG (JANGAN PAKAI):
+- "Menurut informasi yang dihimpun"
+- "Kejadian itu berlangsung cepat"
+- "Menjadi pengingat bagi masyarakat"
+- "Peran aktif warga dinilai efektif"
+- "Warga diimbau tetap waspada" (kecuali materi sebut)
+- "Koordinasi lintas instansi tetap berjalan" (kecuali materi sebut)
+- Semua kalimat pengisi tanpa fakta konkret.
+
+WAJIB KONKRET — JANGAN UMUM:
+- Sebut nama pejabat (kalau ada di materi).
+- Sebut lokasi spesifik (kecamatan/kelurahan/jalan kalau ada).
+- Sebut angka konkret (kalau ada).
+- Sebut kronologi jelas: siapa, apa, di mana, kapan, mengapa.
 
 ATURAN NAMA PEJABAT (SANGAT PENTING — PELANGGARAN = TOLAK):
 - WAJIB tulis NAMA PEJABAT dalam format: JABATAN + NAMA LENGKAP + GELAR (kalau ada di materi).
@@ -1464,13 +1507,11 @@ ATURAN NAMA PEJABAT (SANGAT PENTING — PELANGGARAN = TOLAK):
   * "Kapolres Tarakan AKBP Rudi Hartono, S.I.K. mengatakan..."
   * "Bupati Bulungan Dr. Ir. Syaiful, M.Si. meninjau..."
 - Contoh SALAH (DILARANG):
-  * "Walikota Khairul menyerahkan..." -> kurang gelar
-  * "Menurut Khairul..." -> kurang jabatan + gelar
-  * "Kapolres Rudi..." -> kurang pangkat + gelar
-  * "Khairul mengatakan..." -> TIDAK SOPAN, DILARANG
-- Sebutan WAJIB minimal: JABATAN + NAMA (kalau materi tak ada gelar).
+  * "Walikota Khairul menyerahkan..." → kurang gelar
+  * "Menurut Khairul..." → kurang jabatan + gelar
+  * "Kapolres Rudi..." → kurang pangkat + gelar
+  * "Khairul mengatakan..." → TIDAK SOPAN, DILARANG
 - DILARANG sebut nama orang TANPA jabatan.
-- DILARANG "menurut <nama depan>..." tanpa jabatan lengkap.
 - Setelah penyebutan pertama lengkap, sebutan berikut boleh nama saja.
 
 ATURAN TNI/POLRI (WAJIB):
@@ -1480,7 +1521,7 @@ ATURAN TNI/POLRI (WAJIB):
 - DILARANG sebut nama tanpa pangkat (kecuali sudah disebut lengkap sebelumnya).
 
 ATURAN GELAR AKADEMIK (WAJIB):
-- Kalau materi memuat gelar (Drs., Ir., S.T., S.H., M.Si., M.M., Dr., Prof., dll) -> WAJIB tulis persis.
+- Kalau materi memuat gelar (Drs., Ir., S.T., S.H., M.Si., M.M., Dr., Prof., dll) → WAJIB tulis persis.
 - JANGAN karang gelar kalau tidak ada di materi.
 
 NAMA LEMBAGA ASING: JANGAN diterjemahkan.
@@ -1493,24 +1534,22 @@ DATELINE (SANGAT PENTING):
 - WAJIB KOTA, PROVINSI spesifik (bukan cuma "INDONESIA").
 - Contoh: "JAKARTA, DKI JAKARTA - ", "TARAKAN, KALIMANTAN UTARA - ",
   "LONDON, INGGRIS - ".
-- Kalau materi tidak sebut kota -> pakai ibu kota (Indonesia = JAKARTA).
+- Kalau materi tidak sebut kota → pakai ibu kota (Indonesia = JAKARTA).
 - DILARANG mengarang kota di luar materi.
 
 DATELINE EVENT BESAR (WAJIB):
 - Event besar (Asian Games, SEA Games, Piala Dunia, Olimpiade,
   Winter Olympics, Copa America, Piala Eropa, Piala Asia, dll)
   → DATELINE WAJIB kota penyelenggara + negara penyelenggara.
-  * Asian Games 2026 -> "AICHI-NAGOYA, JEPANG - "
-  * SEA Games 2026 -> "BANGKOK, THAILAND - "
-  * Olimpiade 2026 -> "PARIS, PERANCIS - "
-  * Piala Dunia 2026 -> "NEW YORK, AMERIKA SERIKAT - "
-  * Winter Olympics 2026 -> "MILANO-CORTINA, ITALIA - "
+  * Asian Games 2026 → "AICHI-NAGOYA, JEPANG - "
+  * SEA Games 2026 → "BANGKOK, THAILAND - "
+  * Olimpiade 2026 → "PARIS, PERANCIS - "
+  * Piala Dunia 2026 → "NEW YORK, AMERIKA SERIKAT - "
+  * Winter Olympics 2026 → "MILANO-CORTINA, ITALIA - "
 - DILARANG pakai "INDONESIA - " atau "JAKARTA - " untuk event besar
   yang diselenggarakan di luar negeri.
-- MATERI INDONESIA vs THAILAND di Asian Games Aichi-Nagoya -> dateline
+- MATERI INDONESIA vs THAILAND di Asian Games Aichi-Nagoya → dateline
   WAJIB "AICHI-NAGOYA, JEPANG - " BUKAN "JAKARTA".
-- Event besar yang diselenggarakan di luar negeri -> dateline WAJIB
-  kota penyelenggara, meskipun atlet/pesertanya dari Indonesia.
 
 PERSEN: selalu simbol % ("95%").
 
@@ -1570,26 +1609,26 @@ JUDUL EKONOMI — WAJIB MEMUAT KATA EKONOMI:
 - JANGAN judul yang tidak ada kaitannya dengan ekonomi.
 
 JANGAN SALAH KATEGORI:
-- Haji/umroh/agama -> nasional (BUKAN olahraga).
-- Pendidikan/sekolah -> nasional (BUKAN olahraga).
-- Pajak/anggaran/bansos -> ekonomi/nasional.
-- Kesehatan/vaksin/penyakit -> kesehatan.
+- Haji/umroh/agama → nasional (BUKAN olahraga).
+- Pendidikan/sekolah → nasional (BUKAN olahraga).
+- Pajak/anggaran/bansos → ekonomi/nasional.
+- Kesehatan/vaksin/penyakit → kesehatan.
 - "hasil", "skor", "klasemen" TIDAK cukup untuk olahraga.
-- Kontes/kecantikan (Miss, pageant) -> BUKAN nasional/daerah.
-- Jadwal transportasi (kapal, ferry) -> BUKAN daerah.
+- Kontes/kecantikan (Miss, pageant) → BUKAN nasional/daerah.
+- Jadwal transportasi (kapal, ferry) → BUKAN daerah.
 
 PENTING — JANGAN TOLAK BERLEBIHAN:
 - JANGAN tolak materi hanya karena ada 1 kata "politik", "ekonomi",
   "kepolisian", atau "pemerintahan" di dalamnya.
-- Ekspor/impor/perdagangan/pendapatan negara -> TETAP ekonomi.
-- Perusahaan naik peringkat/valuasi/IPO -> TETAP ekonomi.
-- Properti/perumahan/housing -> TETAP ekonomi.
-- Kunjungan dagang/kerja sama ekonomi -> TETAP ekonomi.
-- Kunjungan menteri luar negeri yang bahas ekonomi -> TETAP ekonomi.
-- Tambang/mining/baterai/litium -> TETAP ekonomi.
-- Marketing/brand/campaign (dengan angka) -> TETAP ekonomi.
-- Pertumbuhan ekonomi negara asing -> TETAP ekonomi.
-- AI/teknologi yang bocor data -> TETAP teknologi (BUKAN politik).
+- Ekspor/impor/perdagangan/pendapatan negara → TETAP ekonomi.
+- Perusahaan naik peringkat/valuasi/IPO → TETAP ekonomi.
+- Properti/perumahan/housing → TETAP ekonomi.
+- Kunjungan dagang/kerja sama ekonomi → TETAP ekonomi.
+- Kunjungan menteri luar negeri yang bahas ekonomi → TETAP ekonomi.
+- Tambang/mining/baterai/litium → TETAP ekonomi.
+- Marketing/brand/campaign (dengan angka) → TETAP ekonomi.
+- Pertumbuhan ekonomi negara asing → TETAP ekonomi.
+- AI/teknologi yang bocor data → TETAP teknologi (BUKAN politik).
 - HANYA tolak kalau materi JELAS tentang kategori yang SALAH.
 
 TOLAK — HANYA kalau fatal. WAJIB tulis alasan tolak DETIL (1-2 kata
@@ -1770,6 +1809,7 @@ def gn_split(title):
     return title.strip(), 'Google News'
 
 MATERI_MIN_KARAKTER_RSS = 130
+MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL = 200
 MATERI_MIN_KARAKTER_BREAKING = 100
 
 def _materi_dominan_url(teks):
@@ -1809,13 +1849,20 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
         return False, 'materi kosong'
     if kategori == 'breaking':
         min_kar = MATERI_MIN_KARAKTER_BREAKING
+    elif kategori in ('nasional', 'daerah'):
+        # V6.17.54: nasional/daerah butuh materi lebih tebal
+        if dari_scraping:
+            min_kar = MATERI_MIN_KARAKTER
+        else:
+            min_kar = MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL
     elif dari_scraping:
         min_kar = MATERI_MIN_KARAKTER
     else:
         min_kar = MATERI_MIN_KARAKTER_RSS
     if len(materi) < min_kar:
         return False, ('materi terlalu pendek (' + str(len(materi)) + ' < '
-                       + str(min_kar) + ', dari_scraping=' + str(dari_scraping) + ')')
+                       + str(min_kar) + ', dari_scraping=' + str(dari_scraping)
+                       + ', kategori=' + str(kategori) + ')')
     if _materi_dominan_url(materi):
         return False, 'materi dominan URL/link (bukan artikel asli)'
     ok, alasan = _materi_nyambung_judul(judul, materi)
@@ -2314,7 +2361,6 @@ def _kandidat_layak(judul, summary, kategori=''):
     return True, ''
 
 def _judul_dari_url_supabase():
-    """Ambil semua judul 36 jam dari database — untuk cek topik mirip."""
     out = []
     try:
         rows = rest_get('?select=title,source_url,created_at&order=created_at.desc&limit=300')
@@ -2326,24 +2372,11 @@ def _judul_dari_url_supabase():
     return out
 
 def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
-    """Cek apakah topik kandidat sudah terbit sebelumnya — pakai kata kunci inti.
-
-    Beda dengan _kandidat_bukan_dobel yang pakai judul 100%.
-    Ini cek KATA KUNCI INTI (nama tokoh, tempat, topik) — 3 kata kunci sama
-    → anggap dobel topik.
-
-    Contoh:
-    - "Philippines voices concern over Myanmar airstrike deaths"
-    - "Filipina Dorong ASEAN Bahas Serangan Myanmar"
-    - Kata kunci: filipina/philippines, myanmar, airstrike/serangan
-    - 2 kata kunci sama + topik sama → TOLAK
-    """
     if not judul_kandidat or not judul_lama_list:
         return None
     ki_baru = kata_inti(judul_kandidat)
     if not ki_baru:
         return None
-    # Kata kunci wajib (nama negara/kota/tokoh) — tidak boleh di-stopword
     for t_lama in judul_lama_list:
         if not t_lama:
             continue
@@ -2385,7 +2418,6 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
             if not title or not summary:
                 continue
 
-            # V6.17.53: CEK DOBEL TOPIK dari judul yang sudah terbit
             topik_dobel = _topik_sudah_terbit(title, judul_database)
             if topik_dobel:
                 skip_topik += 1
@@ -2815,12 +2847,15 @@ INSTITUSI_PUSAT_LEBIH_LONGGAR = [
     'bnpb', 'basarnas', 'bulog', 'pertamina', 'pln', 'telkom',
 ]
 
+# V6.17.54: KEMBALIKAN pemkab/pemkot/pemprov supaya AI wajib sebut nama pejabat
 INSTITUSI_LOKAL_BUTUH_NAMA = [
     'dinas', 'kantor',
     'polres', 'polsek', 'polda', 'kodam', 'korem', 'kodim',
     'koramil', 'kejaksaan', 'kejari', 'kejati', 'pengadilan', 'bawaslu',
     'kpu', 'kppu', 'kppn', 'kpp', 'bpjs', 'perum', 'peruri', 'pelindo',
     'angkasa pura',
+    'pemkab', 'pemkot', 'pemprov',
+    'pemerintah kabupaten', 'pemerintah kota', 'pemerintah provinsi',
 ]
 
 INSTITUSI_BUTUH_NAMA = INSTITUSI_LOKAL_BUTUH_NAMA + INSTITUSI_PUSAT_LEBIH_LONGGAR
@@ -2954,10 +2989,7 @@ KATA_TT = [
     'al arabiya', 'gulf news', 'jerusalem post', 'middle east eye',
 ]
 
-# ═══ V6.17.52: KAMUS EKONOMI DIPISAH — DOMESTIK + ASING + UMUM ═══
-
 KATA_EKONOMI_DOMESTIK = [
-    # Pasar & Keuangan
     'ihsg', 'idx', 'bei', 'bursa efek', 'saham indonesia', 'obligasi',
     'reksa dana', 'sbn', 'sun', 'ori', 'sukuk', 'obligasi syariah',
     'surat utang negara', 'yield', 'imbal hasil',
@@ -2967,7 +2999,6 @@ KATA_EKONOMI_DOMESTIK = [
     'kripto indonesia', 'aset digital',
     'rupiah', 'kurs rupiah', 'nilai tukar rupiah', 'idr',
     'inflasi indonesia', 'inflasi inti', 'deflasi', 'bi 7-day',
-    # Fiskal & Moneter
     'apbn', 'apbd', 'defisit anggaran', 'surplus anggaran',
     'pajak', 'ppn', 'pph', 'bea masuk', 'cukai', 'tax amnesty',
     'pengampunan pajak', 'subsidi', 'subsidi bbm', 'subsidi listrik',
@@ -2975,58 +3006,47 @@ KATA_EKONOMI_DOMESTIK = [
     'kemenkeu', 'kementerian keuangan', 'djp', 'bea cukai',
     'cadangan devisa', 'devisa hasil ekspor', 'dhe',
     'neraca pembayaran', 'current account', 'transaksi berjalan',
-    # Pertanian & Pangan
     'beras', 'padi', 'gabah', 'jagung', 'kedelai', 'gandum',
     'cabai', 'bawang', 'gula', 'minyak goreng', 'telur', 'ayam',
     'daging', 'sapi', 'kambing', 'ikan', 'udang', 'tuna',
     'bulog', 'harga pangan', 'ketahanan pangan', 'petani', 'nelayan',
     'sawah', 'tambak', 'pertanian', 'perikanan', 'peternakan',
-    # Perkebunan & SDA
     'sawit', 'cpo', 'karet', 'kakao', 'kopi', 'teh', 'rempah',
     'batu bara', 'nikel', 'tembaga', 'emas', 'timah', 'bauksit',
     'minyak', 'gas', 'lng', 'pertamina', 'pln', 'tarif listrik',
     'tambang', 'smelter', 'hilirisasi', 'kawasan industri', 'kek',
-    # Industri & Manufaktur
     'manufaktur', 'pabrik', 'industri', 'semen', 'baja', 'tekstil',
     'garmen', 'sepatu', 'makanan minuman', 'rokok', 'tembakau',
     'pupuk', 'pestisida', 'alat pertanian', 'otomotif nasional',
     'pmi', 'indeks manajer pembelian', 'ikk', 'indeks keyakinan konsumen',
-    # Perdagangan
     'ekspor indonesia', 'impor indonesia', 'neraca dagang',
     'ekspor', 'impor', 'bea cukai', 'karantina',
     'barang ilegal', 'selundup', 'penyelundupan', 'impor ilegal',
     'ekspor ilegal', 'dumping', 'antidumping', 'safeguard',
     'fta', 'rcep', 'ieucepa',
-    # Tenaga Kerja
     'phk', 'pesangon', 'upah minimum', 'umr', 'ump', 'umk',
     'serikat pekerja', 'demo buruh', 'tki', 'pmi', 'pekerja migran',
     'pelatihan kerja', 'blk', 'kartu prakerja', 'pekerja asing',
     'tenaga kerja indonesia', 'pengangguran',
-    # UMKM & Ekonomi Digital
     'umkm', 'bumdes', 'koperasi', 'kredit usaha rakyat', 'kur',
     'ekonomi digital', 'e-wallet', 'qris', 'bi-fast',
     'marketplace', 'e-commerce', 'startup indonesia',
     'fintech', 'p2p lending', 'pinjol', 'pinjaman online',
-    # Properti & Infrastruktur
     'properti', 'perumahan', 'apartemen', 'rusun', 'kpr subsidi',
     'developer', 'pengembang', 'kawasan ekonomi khusus',
     'infrastruktur', 'tol', 'pelabuhan', 'bandara', 'kereta',
     'pasar modal', 'pasar uang', 'pasar tradisional', 'pasar modern',
     'ritel', 'grosir', 'retail', 'konsumen', 'daya beli',
     'konsumsi rumah tangga', 'penjualan ritel',
-    # Ekonomi Hijau
     'pasar karbon', 'carbon credit', 'esg', 'ekonomi hijau',
     'transisi energi', 'net zero', 'energi terbarukan',
-    # Syariah
     'ekonomi syariah', 'keuangan syariah', 'bank syariah',
 ]
 
 KATA_EKONOMI_ASING = [
-    # Pertumbuhan & Ekonomi Global
     'pertumbuhan ekonomi', 'growth', 'economic growth', 'gdp', 'pdb',
     'resesi', 'resesi teknis', 'kontraksi', 'ekspansi', 'stagflasi',
     'hiperinflasi', 'resilient',
-    # Pasar & Keuangan Global
     'wall street', 'dow jones', 'nasdaq', 's&p 500', 'ftse', 'nikkei',
     'hang seng', 'kospi', 'sse composite', 'szse', 'sti', 'set index',
     'us treasury', 'obligasi global', 'bond market',
@@ -3037,11 +3057,9 @@ KATA_EKONOMI_ASING = [
     'dolar', 'usd', 'euro', 'yen', 'yuan', 'renminbi', 'won',
     'ringgit', 'baht', 'dollar index',
     'kripto', 'bitcoin', 'ethereum', 'blockchain',
-    # Komoditas Global
     'minyak mentah', 'brent', 'wti', 'opec', 'oil embargo',
     'emas global', 'perak', 'tembaga global', 'litium',
     'gandum global', 'jagung global', 'kedelai global',
-    # Perusahaan Global
     'tesla', 'toyota', 'byd', 'apple', 'microsoft', 'nvidia',
     'alphabet', 'amazon', 'meta', 'boeing', 'airbus',
     'pfizer', 'moderna', 'astrazeneca',
@@ -3049,35 +3067,28 @@ KATA_EKONOMI_ASING = [
     'hsbc', 'jpmorgan', 'citigroup', 'goldman sachs',
     'bank of america', 'morgan stanley', 'wells fargo',
     'deutsche bank', 'barclays', 'bnp paribas',
-    # Perdagangan Global
     'tarif', 'tariff', 'sanctions', 'sanksi ekonomi',
     'perang dagang', 'trade war', 'tarif as china',
     'kerja sama dagang', 'trade deal', 'bilateral', 'multilateral',
     'wto', 'imf', 'world bank', 'bank dunia', 'adb',
     'g20', 'g7', 'brics', 'apec',
     'supply chain', 'rantai pasok', 'logistik global',
-    # Sektor Global
     'manufaktur global', 'factory activity', 'pmi global',
     'pertambangan global', 'mining', 'smelter global',
     'baterai', 'battery', 'kendaraan listrik global',
     'farmasi global', 'pertahanan', 'defense industry',
-    # Ketenagakerjaan Global
     'unemployment', 'pengangguran global', 'phk global',
     'tech layoff', 'visa kerja', 'pekerja migran global',
-    # Index & Pasar
     'index saham', 'stock market', 'stock index',
     'market rally', 'market crash', 'bear market', 'bull market',
     'ipo global', 'merger global', 'akuisisi global',
     'valuasi global', 'pendanaan global', 'venture capital',
-    # Ekonomi Digital Global
     'crypto market', 'fintech global', 'e-commerce global',
     'digital economy', 'big tech',
-    # Ekonomi Hijau Global
     'carbon market', 'green economy', 'renewable energy',
     'energy transition', 'net zero global',
 ]
 
-# KATA_EKONOMI_WAJIB = gabungan DOMESTIK + ASING + UMUM (untuk gate umum)
 KATA_EKONOMI_UMUM = [
     'ekonomi', 'economic', 'economy', 'economist',
     'inflasi', 'inflation', 'deflasi', 'ekspor', 'impor',
@@ -3447,11 +3458,63 @@ POLA_LARANG = [
     'seorang pejabat tinggi', 'seorang tokoh', 'seorang bos', 'seorang pejabat',
 ]
 
+KALIMAT_TEMPLATE_KOSONG = [
+    'menurut informasi yang dihimpun',
+    'kejadian itu berlangsung cepat',
+    'kejadian berlangsung cepat',
+    'menjadi pengingat bagi masyarakat',
+    'menjadi pengingat',
+    'peran aktif warga dinilai efektif',
+    'warga diimbau tetap waspada',
+    'koordinasi lintas instansi tetap berjalan',
+    'situasi berjalan kondusif',
+    'kegiatan berjalan lancar',
+    'acara berlangsung meriah',
+    'suasana begitu meriah',
+    'para hadirin tampak antusias',
+    'hal ini disampaikan',
+    'demikian disampaikan',
+    'diharapkan dapat bermanfaat',
+    'sangat penting untuk',
+    'perlu dicatat bahwa',
+    'patut dicatat bahwa',
+    'dalam konteks ini',
+    'pada kenyataannya',
+]
+
 def _frasa_tertangkap(isi):
     isi_lower = (isi or '').lower()
     for p in POLA_LARANG:
         if p in isi_lower:
             return p
+    return None
+
+def _cek_kalimat_template(isi):
+    if not isi:
+        return None
+    low = (isi or '').lower()
+    hit = 0
+    contoh = []
+    for f in KALIMAT_TEMPLATE_KOSONG:
+        if f in low:
+            hit += 1
+            if len(contoh) < 3:
+                contoh.append(f)
+    if hit >= 3:
+        return ('kalimat template kosong berlebihan (' + str(hit) + '): '
+                + '; '.join(contoh))
+    return None
+
+def _cek_kualitas_isi(isi, kategori):
+    if not isi:
+        return 'isi kosong'
+    if kategori in ('internasional', 'internasional_asean', 'internasional_tt'):
+        return None
+    if kategori in ('teknologi', 'kesehatan', 'otomotif'):
+        return None
+    template = _cek_kalimat_template(isi)
+    if template:
+        return template
     return None
 
 def _panggil_deepseek(user_content, temperature):
@@ -3533,23 +3596,76 @@ def _kemiripan_struktur_kalimat(isi_ai, materi_sumber):
                 return 'struktur kalimat mirip (' + str(int(ratio * 100)) + '%): "' + ka[:60] + '"'
     return None
 
+# V6.17.54: FAKTA WAJIB KALAU ADA — jangan blokir N-gram untuk nama/jabatan/lokasi
+def _buang_fakta_wajib(teks):
+    """Hapus nama pejabat + jabatan + lokasi + angka dari teks.
+    Tujuannya: N-gram check tidak blokir frasa fakta yang WAJIB sama.
+    """
+    if not teks:
+        return ''
+    t = teks
+    # 1. Buang pola jabatan + nama + gelar
+    # Contoh: "Kepala Lapas Kelas IIA Tarakan, Jupri"
+    # Contoh: "Wali Kota Tarakan Drs. H. Khairul, M.Si."
+    pola_jabatan = re.compile(
+        r'\b(?:'
+        r'wali\s+kota|wakil\s+wali\s+kota|bupati|wakil\s+bupati|gubernur|wakil\s+gubernur|'
+        r'presiden|wakil\s+presiden|menteri|wakil\s+menteri|'
+        r'kepala\s+lapas|kepala\s+dinas|kepala\s+badan|kepala\s+kantor|'
+        r'kepala\s+uptd|kepala\s+upt|kepala\s+bagian|kepala\s+bidang|'
+        r'kapolres|kapolsek|kapolda|kadiv|kabid|kasat|kanit|kasubbag|'
+        r'danrem|dandim|danramil|danyon|danki|'
+        r'kajari|kajati|ketua\s+pengadilan|hakim|jaksa|'
+        r'direktur|direktur\s+utama|komisaris|manajer|'
+        r'ketua|sekretaris|bendahara|anggota|staf|'
+        r'kades|kepala\s+desa|lurah|camat|rt|rw|'
+        r'profesor|dokter|dr|drs|ir|prof|h|hj'
+        r')\s+'
+        r'(?:[A-Z][a-zA-Z\.\'\-\s]{2,80})',
+        re.IGNORECASE
+    )
+    t = pola_jabatan.sub(' ', t)
+    # 2. Buang pola pangkat TNI/Polri + nama
+    pola_pangkat = re.compile(
+        r'\b(?:jenderal|letnan\s+jenderal|letjen|mayor\s+jenderal|mayjen|'
+        r'brigadir\s+jenderal|brigjen|kolonel|letnan\s+kolonel|letkol|'
+        r'mayor|kapten|lettu|letda|letnan|akbp|akp|iptu|ipda|bripka|bripda|'
+        r'kombes|kompol|inspektur|bharada|bharatu|bharaka)'
+        r'\s+[A-Z][a-zA-Z\.\'\-\s]{2,80}',
+        re.IGNORECASE
+    )
+    t = pola_pangkat.sub(' ', t)
+    # 3. Buang pola lokasi (kecamatan/kelurahan/desa/jalan)
+    pola_lokasi = re.compile(
+        r'\b(?:kecamatan|kelurahan|desa|kampung|jalan|jl\.|gang|rt|rw)'
+        r'\s+[A-Z][a-zA-Z\.\'\-\s]{2,60}',
+        re.IGNORECASE
+    )
+    t = pola_lokasi.sub(' ', t)
+    # 4. Normalisasi spasi
+    t = re.sub(r'\s+', ' ', t).strip()
+    return t
+
 def cek_jiplak(materi_sumber, isi_ai):
     if not materi_sumber or not isi_ai:
         return None
     frasa_mesin = _frasa_janggal_terjemahan(isi_ai)
     if frasa_mesin:
         return frasa_mesin
+    # V6.17.54: buang fakta wajib sebelum cek N-gram
+    materi_bersih = _buang_fakta_wajib(materi_sumber)
+    isi_bersih = _buang_fakta_wajib(isi_ai)
     n_kata = 15
-    if len(materi_sumber) < 500:
+    if len(materi_bersih) < 500:
         n_kata = 17
-    sumber_grams = _gram_set(materi_sumber, n_kata)
+    sumber_grams = _gram_set(materi_bersih, n_kata)
     if sumber_grams:
-        for gram in _gram_list(isi_ai, n_kata):
+        for gram in _gram_list(isi_bersih, n_kata):
             if gram in sumber_grams:
                 if _frasa_umum(gram):
                     continue
                 return 'N-gram tersalin: ' + ' '.join(gram)
-    struktur = _kemiripan_struktur_kalimat(isi_ai, materi_sumber)
+    struktur = _kemiripan_struktur_kalimat(isi_bersih, materi_bersih)
     if struktur:
         return struktur
     return None
@@ -3729,17 +3845,11 @@ def _catatan_ekonomi_khusus(kategori_target, judul, materi):
     return ''
 
 def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
-    """V6.17.53: Cek kategori pakai JUDUL ATAU ISI PENUH.
-
-    Kalau judul tidak ada kata ekonomi, tapi isi ada kata ekonomi → LOLOS.
-    Judul tidak wajib ada kata ekonomi, yang penting ISI.
-    """
     if not kategori_target or kategori_target == 'breaking':
         return True, ''
     kata_kunci = KATA_KUNCI_KATEGORI.get(kategori_target, [])
     if not kata_kunci:
         return True, ''
-    # Cek judul dulu
     judul_low = (judul_ai or '').lower()
     for kk in kata_kunci:
         if len(kk) <= 4:
@@ -3748,7 +3858,6 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
         else:
             if kk in judul_low:
                 return True, ''
-    # Judul tidak ada → cek ISI PENUH
     isi_low = (isi_ai or '').lower()
     hit = 0
     for kk in kata_kunci:
@@ -3763,6 +3872,43 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
     if hit >= 1:
         return True, ''
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
+
+# V6.17.54: CEK NAMA PEJABAT DARI MATERI WAJIB DITULIS DI ISI AI
+def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
+    if not materi or not isi_ai:
+        return None
+    if kategori in ('internasional', 'internasional_asean', 'internasional_tt'):
+        return None
+    if kategori in ('teknologi', 'kesehatan', 'otomotif'):
+        return None
+    # Cari nama pejabat di materi
+    pola_nama_pejabat = re.compile(
+        r'\b(?:'
+        r'wali\s+kota|wakil\s+wali\s+kota|bupati|wakil\s+bupati|gubernur|wakil\s+gubernur|'
+        r'presiden|menteri|kepala\s+lapas|kepala\s+dinas|kepala\s+badan|kepala\s+uptd|'
+        r'kepala\s+bidang|kapolres|kapolsek|kajari|direktur|ketua|kades|lurah|camat'
+        r')\s+([A-Z][a-zA-Z\.\'\-\s]{3,80})',
+        re.IGNORECASE
+    )
+    nama_materi = []
+    for m in pola_nama_pejabat.finditer(materi):
+        nama = m.group(0).strip()
+        nama_materi.append(nama)
+    if not nama_materi:
+        return None
+    # Ambil kata kunci nama unik
+    kata_ai = set(re.findall(r'\b[A-Z][a-zA-Z]{2,}\b', isi_ai))
+    for nama in nama_materi[:3]:
+        # Ambil 2 kata terakhir dari nama sebagai kunci
+        bagian = nama.split()
+        if len(bagian) >= 2:
+            nama_kunci = bagian[-1]
+            if len(nama_kunci) < 3:
+                continue
+            if nama_kunci not in kata_ai:
+                return ('nama pejabat "' + nama[:60] + '" ada di materi tapi tidak '
+                        'ditulis AI — wajib tulis lengkap dengan jabatan')
+    return None
 
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
              judul_materi='', summary_materi='', wajib_topik=True,
@@ -3871,13 +4017,24 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     nama_final = cek_narasumber_tanpa_nama(isi, kategori, judul)
     if nama_final:
         raise Exception('DITOLAK - narasumber tanpa nama (' + nama_final[:60] + ')')
+    # V6.17.54: cek nama pejabat dari materi wajib ditulis AI
+    nama_pejabat = _cek_nama_pejabat_dari_materi(materi_sumber, isi, kategori)
+    if nama_pejabat:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'nama pejabat hilang: ' + nama_pejabat[:80])
+        raise Exception('DITOLAK - ' + nama_pejabat[:100])
     gambar_terlarang = cek_deskripsi_gambar(gambar)
     if gambar_terlarang:
         raise Exception('diblokir filter gambar: ' + gambar_terlarang[:60])
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
     if jiplak:
         raise Exception('diblokir ANTI-JIPLAK: ' + jiplak[:80])
-    # V6.17.53: cek kategori pakai judul ATAU isi penuh
+    # V6.17.54: cek kualitas isi — template kosong
+    kualitas = _cek_kualitas_isi(isi, kategori)
+    if kualitas:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'kualitas isi: ' + kualitas[:80])
+        raise Exception('DITOLAK - kualitas isi: ' + kualitas[:100])
     if wajib_topik and judul_materi:
         ok_kat, alasan_kat = _cek_kategori_isi_penuh(judul, isi, kategori)
         if not ok_kat:
@@ -3930,6 +4087,7 @@ def _catatan_anti_jiplak():
         '- JANGAN salin struktur kalimat materi — ubah susunan kata.\n'
         '- JUDUL: DILARANG pakai judul yang sama/mirip dengan materi sumber. '
         'WAJIB bikin judul BEDA dengan kalimatmu sendiri — jiplak judul = ditolak.\n'
+        '- FAKTA (nama, jabatan, lokasi, angka, lembaga) BOLEH sama — ini bukan jiplak.\n'
     )
 
 def _catatan_kategori_ketat(kategori_target):
@@ -3945,15 +4103,13 @@ def _catatan_kategori_ketat(kategori_target):
     if kategori_target in ('nasional', 'daerah'):
         catatan_gelar = (
             '\n\nWAJIB NAMA PEJABAT LENGKAP (PELANGGARAN = TOLAK):\n'
-            '- Format: JABATAN + NAMA LENGKAP + GELAR (kalau ada di materi).\n'
-            '- Contoh BENAR: "Wali Kota Tarakan Drs. H. Khairul, M.Si."\n'
-            '- Contoh BENAR: "Kapolres Tarakan AKBP Rudi Hartono, S.I.K."\n'
-            '- Contoh SALAH: "Walikota Khairul" (kurang gelar).\n'
-            '- Contoh SALAH: "Menurut Khairul" (kurang jabatan — DILARANG).\n'
-            '- DILARANG sebut nama orang tanpa jabatan.\n'
-            '- TNI/Polri: PANGKAT + NAMA + JABATAN wajib.\n'
-            '- Kalau materi TIDAK memuat gelar → tulis JABATAN + NAMA saja.\n'
-            '- Kalau materi TIDAK memuat nama → tulis sebagai KEGIATAN.\n'
+            '- Kalau materi memuat nama pejabat → WAJIB tulis JABATAN + NAMA + GELAR.\n'
+            '- Kalau materi TIDAK memuat nama → tulis "Pemkab X"/"Pemkot X" saja.\n'
+            '- JANGAN karang nama pejabat yang tidak ada di materi.\n'
+            '- DILARANG tulis "Pemkab X" kalau materi memuat nama bupati.\n'
+            '- TNI/Polri: PANGKAT + NAMA + JABATAN wajib kalau ada di materi.\n'
+            '- Contoh BENAR: "Bupati Solok Drs. Ahmad Fauzi, M.Si. mengatakan..."\n'
+            '- Contoh SALAH: "Pemkab Solok mengatakan..." (padahal materi ada nama).\n'
         )
     catatan_ekonomi = ''
     if kategori_target == 'ekonomi':
@@ -4027,13 +4183,16 @@ def ai_rewrite_single(c, kategori_target=''):
             'Tulis ulang sesuai SEMUA aturan:\n'
             '- TANGGAL KONKRET di isi berita.\n'
             '- DATELINE: WAJIB kota/provinsi spesifik (bukan "INDONESIA - ").\n'
-            '- NAMA + JABATAN NARASUMBER: WAJIB tulis JABATAN + NAMA LENGKAP + GELAR.\n'
-            '- TNI/POLRI: WAJIB nama + pangkat + jabatan.\n'
+            '- NAMA + JABATAN NARASUMBER: WAJIB tulis JABATAN + NAMA LENGKAP + GELAR (kalau ada di materi).\n'
+            '- Kalau materi TIDAK ada nama pejabat → tulis "Pemkab X"/"Pemkot X" saja.\n'
+            '- TNI/POLRI: WAJIB nama + pangkat + jabatan (kalau ada di materi).\n'
             '- GELAR AKADEMIK: ikut kalau ada di materi (tulis persis).\n'
-            '- DILARANG sebut nama orang tanpa jabatan.\n'
+            '- DILARANG karang nama pejabat yang tidak ada di materi.\n'
+            '- DILARANG pakai kalimat template kosong: "Menurut informasi yang dihimpun", "Kejadian berlangsung cepat", "Menjadi pengingat bagi masyarakat", "Peran aktif warga dinilai efektif".\n'
+            '- WAJIB sebut LOKASI spesifik (kecamatan/kelurahan/jalan kalau ada di materi).\n'
+            '- WAJIB sebut KRONOLOGI: siapa, apa, di mana, kapan, mengapa.\n'
             '- NAMA LEMBAGA: JANGAN diterjemahkan.\n'
-            '- JUDUL DAN ISI: HARUS satu topik yang sama, sesuai materi. '
-            'JANGAN mengarang judul yang tidak ada di materi.\n'
+            '- JUDUL DAN ISI: HARUS satu topik yang sama, sesuai materi.\n'
             '- JUDUL: DILARANG sama/mirip judul asli materi — WAJIB judul BEDA.\n'
             '- PERSEN: selalu simbol %.\n'
             '- deskripsi_gambar: 3-6 kata kunci DARI ELEMEN UTAMA BERITA.\n'
@@ -4097,10 +4256,13 @@ def ai_rewrite_multi(items, kategori_target=''):
             '\n\nGabungkan menjadi SATU berita KramaNews:\n'
             '- TANGGAL KONKRET di isi berita.\n'
             '- DATELINE: WAJIB kota/provinsi spesifik (bukan "INDONESIA - ").\n'
-            '- NAMA + JABATAN NARASUMBER: WAJIB tulis JABATAN + NAMA LENGKAP + GELAR.\n'
-            '- TNI/POLRI: WAJIB nama + pangkat + jabatan.\n'
-            '- GELAR AKADEMIK: ikut kalau ada di materi (tulis persis).\n'
-            '- DILARANG sebut nama orang tanpa jabatan.\n'
+            '- NAMA + JABATAN NARASUMBER: WAJIB tulis JABATAN + NAMA LENGKAP + GELAR (kalau ada di materi).\n'
+            '- Kalau materi TIDAK ada nama pejabat → tulis "Pemkab X"/"Pemkot X" saja.\n'
+            '- TNI/POLRI: WAJIB nama + pangkat + jabatan (kalau ada).\n'
+            '- GELAR AKADEMIK: ikut kalau ada di materi.\n'
+            '- DILARANG karang nama pejabat yang tidak ada di materi.\n'
+            '- DILARANG pakai kalimat template kosong.\n'
+            '- WAJIB sebut LOKASI spesifik + KRONOLOGI.\n'
             '- NAMA LEMBAGA: JANGAN diterjemahkan.\n'
             '- JUDUL DAN ISI: HARUS satu topik yang sama, sesuai materi.\n'
             '- JUDUL: DILARANG sama/mirip judul asli materi — WAJIB judul BEDA.\n'
@@ -5514,7 +5676,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.53'
+FILE_VERSI = 'V6.17.54'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
