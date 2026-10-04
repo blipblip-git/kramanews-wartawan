@@ -1,4 +1,5 @@
-# KRAMANEWS — SKRIP SOSMED V1.15 (FB + INSTAGRAM)
+# KRAMANEWS — SKRIP SOSMED V1.16 (FB + INSTAGRAM)
+# V1.16: ganti tanggal+jam di gambar jadi link + hashtag
 # V1.15: render overlay gambar pakai Pillow (badge kategori + judul +
 #        lokasi + tanggal + jam), upload ke Supabase Storage, caption FB
 #        dipendekkan
@@ -167,8 +168,8 @@ def _tanggal_jam_wita(created_at):
         return '', ''
 
 def render_gambar_fb(n):
-    """Render gambar FB dengan overlay: badge kategori + judul + lokasi + tanggal + jam.
-    Return: bytes gambar (PNG) atau None kalau gagal."""
+    """Render gambar FB dengan overlay: badge kategori + judul + lokasi + link + hashtag.
+    Return: bytes gambar (JPEG) atau None kalau gagal."""
     img_url = (n.get('img') or '').strip()
     if not img_url:
         return None
@@ -187,14 +188,12 @@ def render_gambar_fb(n):
     rasio_img = img.width / img.height
     rasio_target = target_w / target_h
     if rasio_img > rasio_target:
-        # gambar lebih lebar → crop kiri-kanan
         new_h = target_h
         new_w = int(new_h * rasio_img)
         img = img.resize((new_w, new_h), Image.LANCZOS)
         kiri = (new_w - target_w) // 2
         img = img.crop((kiri, 0, kiri + target_w, target_h))
     else:
-        # gambar lebih tinggi → crop atas-bawah
         new_w = target_w
         new_h = int(new_w / rasio_img)
         img = img.resize((new_w, new_h), Image.LANCZOS)
@@ -207,7 +206,6 @@ def render_gambar_fb(n):
     overlay = Image.new('RGBA', (target_w, target_h), (0, 0, 0, 0))
     draw_o = ImageDraw.Draw(overlay)
     for y in range(target_h):
-        # gradien dari atas (transparan) ke bawah (gelap)
         alpha = int(200 * (y / target_h) ** 1.2)
         draw_o.line([(0, y), (target_w, y)], fill=(0, 0, 0, alpha))
     img = Image.alpha_composite(img, overlay)
@@ -217,7 +215,7 @@ def render_gambar_fb(n):
     font_badge = _font(FONT_BOLD_PATH, 32)
     font_judul = _font(FONT_BOLD_PATH, 56)
     font_lokasi = _font(FONT_BOLD_PATH, 34)
-    font_meta = _font(FONT_REG_PATH, 30)
+    font_caption = _font(FONT_BOLD_PATH, 30)
 
     # ═══ Badge kategori (kiri atas) ═══
     cat = (n.get('category') or '').upper()
@@ -229,7 +227,6 @@ def render_gambar_fb(n):
         badge_w = w_badge + pad_x * 2
         badge_h = h_badge + pad_y * 2
         badge_x, badge_y = 40, 40
-        # rounded rectangle biru
         draw.rounded_rectangle(
             [badge_x, badge_y, badge_x + badge_w, badge_y + badge_h],
             radius=badge_h // 2, fill=(30, 90, 210, 255)
@@ -250,53 +247,46 @@ def render_gambar_fb(n):
 
         line_h = 70
         total_h = len(baris_judul) * line_h
-        # posisi mulai: tinggi 630 - 200 (untuk lokasi + meta) - total_h
-        y_judul = target_h - 210 - total_h + 20
+        # V1.16: ruang bawah lebih lebar (lokasi + link + hashtag)
+        y_judul = target_h - 240 - total_h + 20
 
         for i, baris in enumerate(baris_judul):
             y = y_judul + i * line_h
-            # shadow tebal
             for dx, dy in [(-3, 0), (3, 0), (0, -3), (0, 3), (-2, -2), (2, 2), (-2, 2), (2, -2)]:
                 draw.text((40 + dx, y + dy), baris, font=font_judul, fill=(0, 0, 0, 220))
             draw.text((40, y), baris, font=font_judul, fill=(255, 255, 255, 255))
 
     # ═══ Lokasi ═══
     dateline = (n.get('dateline') or '').strip().upper()
-    y_meta = target_h - 130
+    y_lokasi = target_h - 155
     if dateline:
         pin_x = 40
-        pin_y = y_meta - 5
-        # ikon pin sederhana (segitiga + lingkaran)
+        pin_y = y_lokasi - 5
         draw.ellipse([pin_x, pin_y + 4, pin_x + 20, pin_y + 24], fill=(255, 255, 255, 255))
         draw.polygon(
             [(pin_x + 10, pin_y + 34), (pin_x + 2, pin_y + 20), (pin_x + 18, pin_y + 20)],
             fill=(255, 255, 255, 255)
         )
         for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
-            draw.text((pin_x + 32 + dx, y_meta + dy), dateline, font=font_lokasi, fill=(0, 0, 0, 220))
-        draw.text((pin_x + 32, y_meta), dateline, font=font_lokasi, fill=(255, 255, 255, 255))
+            draw.text((pin_x + 32 + dx, y_lokasi + dy), dateline, font=font_lokasi, fill=(0, 0, 0, 220))
+        draw.text((pin_x + 32, y_lokasi), dateline, font=font_lokasi, fill=(255, 255, 255, 255))
 
-    # ═══ Tanggal · Jam ═══
-    tgl, jam = _tanggal_jam_wita(n.get('created_at'))
-    y_tanggal = target_h - 70
-    if tgl or jam:
-        x_cur = 40
-        # ikon kalender
-        draw.rectangle([x_cur, y_tanggal + 4, x_cur + 26, y_tanggal + 30],
-                       outline=(255, 255, 255, 255), width=3)
-        draw.line([(x_cur, y_tanggal + 12), (x_cur + 26, y_tanggal + 12)],
-                  fill=(255, 255, 255, 255), width=3)
-        x_cur += 40
-        meta_txt = tgl
-        if tgl and jam:
-            meta_txt = tgl + '   ·   ' + jam
-        elif jam:
-            meta_txt = jam
-        for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
-            draw.text((x_cur + dx, y_tanggal + dy), meta_txt, font=font_meta, fill=(0, 0, 0, 220))
-        draw.text((x_cur, y_tanggal), meta_txt, font=font_meta, fill=(255, 255, 255, 255))
+    # ═══ Link + Hashtag (V1.16: ganti tanggal+jam) ═══
+    cat_label = KATEGORI_LABEL.get(n.get('category', ''), n.get('category', ''))
+    tag_line = '#' + str(cat_label).replace(' ', '') + ' #KramaNews #BeritaTerkini'
+    link_line = '🔗 Baca selengkapnya di komentar 👇'
+    y_link = target_h - 85
+    # Link
+    for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
+        draw.text((40 + dx, y_link + dy), link_line, font=font_caption, fill=(0, 0, 0, 220))
+    draw.text((40, y_link), link_line, font=font_caption, fill=(255, 255, 255, 255))
+    # Hashtag
+    y_tag = y_link + 42
+    for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
+        draw.text((40 + dx, y_tag + dy), tag_line, font=font_caption, fill=(0, 0, 0, 220))
+    draw.text((40, y_tag), tag_line, font=font_caption, fill=(255, 255, 255, 255))
 
-    # Simpan ke bytes PNG
+    # Simpan ke bytes JPEG
     out = io.BytesIO()
     img.convert('RGB').save(out, format='JPEG', quality=88)
     return out.getvalue()
@@ -456,7 +446,7 @@ def pilih_berita_untuk_slot(rows, slot):
 
 def mode_fb():
     slot = slot_saat_ini()
-    print('📘 MODE FB V1.15 — slot: ' + slot.upper() + ' (1 berita)')
+    print('📘 MODE FB V1.16 — slot: ' + slot.upper() + ' (1 berita)')
 
     rows = supabase_get_safe(
         'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking,created_at'
@@ -545,7 +535,7 @@ def buat_pesan_ig(n):
 
 def mode_ig():
     slot = slot_saat_ini()
-    print('📸 MODE IG V1.15 — slot: ' + slot.upper() + ' (1 berita)')
+    print('📸 MODE IG V1.16 — slot: ' + slot.upper() + ' (1 berita)')
     if not IG_TOKEN:
         print('⏭️ IG_PAGE_TOKEN belum ada di Secrets — IG dilewati.')
         return
@@ -585,7 +575,7 @@ def mode_ig():
     print('📋 Terpilih 1 berita IG:')
     print('   • [' + label + '] ' + (n.get('title') or '')[:70])
 
-    # V1.15: IG juga pakai gambar overlay
+    # V1.16: IG juga pakai gambar overlay
     img_kirim = n['img'].strip()
     try:
         print('   🎨 Render overlay gambar IG...')
@@ -613,7 +603,7 @@ def mode_ig():
     print('🏁 Mode IG selesai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.15 — FB + INSTAGRAM (5 siklus)')
+    print('📣 KRAMANEWS SOSMED V1.16 — FB + INSTAGRAM (5 siklus)')
     print('   06:17 Nasional · 09:17 Tarakan · 12:17 Kaltara · 15:17 Tarakan · 18:17 Kaltara')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
