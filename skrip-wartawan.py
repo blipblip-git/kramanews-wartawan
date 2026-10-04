@@ -227,7 +227,7 @@ def GN(q, lang='id', label=None, when='1d'):
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
-# ═══ V6.17.52: JADWAL BARU — ekonomi 6 slot, kesehatan 4x, otomotif 4x, olahraga 6x ═══
+# V6.17.57: JADWAL — tambah ekonomi jam 13 (geser ASEAN)
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1, 'ekonomi': 1},
@@ -236,7 +236,7 @@ JADWAL_JAM = {
     10: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'kesehatan': 1},
     11: {'nasional': 1, 'daerah': 2, 'ekonomi': 1, 'olahraga': 1, 'otomotif': 1},
     12: {'nasional': 1, 'daerah': 1, 'ekonomi': 1, 'olahraga': 1},
-    13: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'otomotif': 1},
+    13: {'nasional': 1, 'daerah': 1, 'ekonomi': 1, 'teknologi': 1, 'otomotif': 1},
     14: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1, 'ekonomi': 1},
     15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1},
     16: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'kesehatan': 1, 'olahraga': 1},
@@ -244,10 +244,8 @@ JADWAL_JAM = {
     18: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'olahraga': 1},
 }
 
-# ═══ V6.17.52: JAM EKONOMI — DOMESTIK vs ASING ═══
-# Domestik (feed Indonesia): 06, 09, 11, 12, 17
-# Asing (feed luar): 07, 14
-EKONOMI_JAM_DOMESTIK = [6, 9, 11, 12, 17]
+# V6.17.57: JAM EKONOMI — DOMESTIK tambah jam 13 (total 6 slot domestik + 1 asing)
+EKONOMI_JAM_DOMESTIK = [6, 9, 11, 12, 13, 17]
 EKONOMI_JAM_ASING    = [7, 14]
 
 TOPIK_NASIONAL_WAJIB = [
@@ -428,7 +426,7 @@ DOMAIN_TEKNOLOGI = [
 ]
 JAM_TEKNOLOGI = {8: 0, 13: 1, 18: 2}
 
-# ═══ V6.17.52: FEED EKONOMI DIPISAH — DOMESTIK vs ASING ═══
+# V6.17.57: FEED EKONOMI DOMESTIK — tambah 5 feed ekonomi Indonesia
 EKONOMI_DOMESTIK_FEEDS = [
     RSSF('https://market.bisnis.com/feed', 'Bisnis Market'),
     RSSF('https://www.antaranews.com/rss/pasar-modal', 'Antara Pasar Modal'),
@@ -444,6 +442,12 @@ EKONOMI_DOMESTIK_FEEDS = [
     RSSF('https://ekonomi.bisnis.com/rss', 'Bisnis Ekonomi'),
     RSSF('https://www.idxchannel.com/rss', 'IDX Channel'),
     RSSF('https://www.liputan6.com/rss', 'Liputan6'),
+    # V6.17.57: tambahan feed ekonomi Indonesia
+    RSSF('https://www.idntimes.com/rss', 'IDN Times'),
+    RSSF('https://www.antaranews.com/rss/ekonomi-bisnis', 'Antara Ekonomi Bisnis'),
+    RSSF('https://www.kompas.com/ekonomi/rss', 'Kompas Ekonomi'),
+    RSSF('https://money.kompas.com/rss', 'Kompas Money'),
+    RSSF('https://www.medcom.id/rss/ekonomi', 'Medcom Ekonomi'),
     GN('ekonomi indonesia hari ini', 'id', 'GN Ekonomi Indonesia'),
     GN('IHSG hari ini', 'id', 'GN IHSG'),
     GN('rupiah dolar hari ini', 'id', 'GN Kurs Rupiah'),
@@ -621,8 +625,6 @@ HUNT = {
         GN('china economy', 'en', 'Google News China Economy'),
     ],
     'ekonomi': [
-        # V6.17.52: HUNT['ekonomi'] tetap ada sebagai fallback,
-        # tapi sesi produksi ambil dari EKONOMI_DOMESTIK / EKONOMI_ASING sesuai jam
         RSSF('https://market.bisnis.com/feed', 'Bisnis Market'),
         RSSF('https://www.antaranews.com/rss/pasar-modal', 'Antara Pasar Modal'),
         RSSF('https://www.cnnindonesia.com/ekonomi/rss', 'CNN Indonesia'),
@@ -1815,7 +1817,8 @@ def gn_split(title):
     return title.strip(), 'Google News'
 
 MATERI_MIN_KARAKTER_RSS = 130
-MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL = 180
+# V6.17.57: threshold RSS nasional/daerah 180 → 140
+MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL = 140
 MATERI_MIN_KARAKTER_BREAKING = 100
 
 def _materi_dominan_url(teks):
@@ -1835,7 +1838,6 @@ def _materi_dominan_url(teks):
         return True
     return False
 
-# V6.17.56: min_irisan 2 → 1 untuk judul < 6 kata
 def _materi_nyambung_judul(judul, materi, min_irisan=2):
     if not judul or not materi:
         return False, 'judul/materi kosong'
@@ -1843,7 +1845,6 @@ def _materi_nyambung_judul(judul, materi, min_irisan=2):
                      if k not in KATA_STOP_DOBEL)
     if not kata_judul:
         return True, ''
-    # V6.17.56: judul pendek (< 6 kata) → min_irisan 1
     if len(judul.split()) < 6:
         min_irisan = 1
     kata_materi = set(re.findall(r'[a-z]{3,}', materi.lower()))
@@ -2090,6 +2091,19 @@ def _materi_cocok_kategori(kategori, judul, summary):
                 return True, ''
     return False, 'materi tidak ada kata kunci kategori ' + kategori
 
+# V6.17.57: KATA_SINYAL_EKONOMI_KUAT — deteksi materi ekonomi di gate luar negeri
+KATA_SINYAL_EKONOMI_KUAT = [
+    'return', 'annualized', 'annualised', 'portfolio', 'portofolio',
+    'investor', 'investasi', 'saham', 'stock', 'yield', 'dividend',
+    'dividen', 'index saham', 'stock market', 'equity', 'ekuitas',
+    'reksa dana', 'obligasi', 'bond', 'bursa', 'trading', 'trader',
+    'market cap', 'valuasi', 'funding', 'pendanaan', 'ipo', 'merger',
+    'akuisisi', 'gain', 'profit', 'laba', 'loss', 'rugi',
+    'inflation', 'inflasi', 'gdp', 'pdb', 'growth', 'pertumbuhan',
+    'ekspor', 'impor', 'exports', 'imports', 'trade balance',
+    'neraca dagang', 'quarterly', 'kuartal', 'fiscal', 'fiskal',
+]
+
 def _kandidat_kategori_materi(kategori, judul, summary):
     if not kategori:
         return True, ''
@@ -2097,12 +2111,24 @@ def _kandidat_kategori_materi(kategori, judul, summary):
     if kategori == 'internasional_asean':
         if adalah_turnamen_olahraga(gab):
             return False, 'kategori asean tapi materi turnamen olahraga (ke olahraga)'
+        # V6.17.57: tolak materi ekonomi di gate ASEAN
+        hit_eko = sum(1 for k in KATA_SINYAL_EKONOMI_KUAT if k in gab)
+        if hit_eko >= 3:
+            return False, 'kategori asean tapi materi ekonomi (hit ' + str(hit_eko) + ')'
         if not any(k in gab for k in KATA_ASEAN_WAJIB):
             return False, 'kategori asean tapi materi tidak ada kata ASEAN'
     elif kategori == 'internasional_tt':
+        # V6.17.57: tolak materi ekonomi di gate TT
+        hit_eko = sum(1 for k in KATA_SINYAL_EKONOMI_KUAT if k in gab)
+        if hit_eko >= 3:
+            return False, 'kategori tt tapi materi ekonomi (hit ' + str(hit_eko) + ')'
         if not any(k in gab for k in KATA_TT):
             return False, 'kategori tt tapi materi tidak ada kata Timur Tengah'
     elif kategori == 'internasional':
+        # V6.17.57: tolak materi ekonomi di gate internasional
+        hit_eko = sum(1 for k in KATA_SINYAL_EKONOMI_KUAT if k in gab)
+        if hit_eko >= 3:
+            return False, 'kategori internasional tapi materi ekonomi (hit ' + str(hit_eko) + ')'
         if not any(k in gab for k in KATA_LUAR_NEGERI_WAJIB):
             return False, 'kategori internasional tapi materi tidak ada kata luar negeri'
     elif kategori == 'ekonomi':
@@ -2323,7 +2349,6 @@ def _dobel_dateline_topik(judul_baru, isi_baru):
                     + 'irisan: ' + str(sorted(list(irisan))[:4]))
     return None
 
-# V6.17.56: skip kandidat olahraga dari sports.yahoo.com (portal inggris, judul tidak kontekstual)
 DOMAIN_OLAHRAGA_SKIP = ['sports.yahoo.com']
 
 def _kandidat_domain_olahraga_skip(kategori, judul, link):
@@ -2340,7 +2365,6 @@ def _kandidat_layak(judul, summary, kategori='', link=''):
     summary = (summary or '').strip()
     if not judul or not summary:
         return False, 'judul/summary kosong'
-    # V6.17.56: skip domain olahraga inggris
     if _kandidat_domain_olahraga_skip(kategori, judul, link):
         return False, 'portal olahraga inggris (judul tidak kontekstual)'
     tl = judul.lower()
@@ -5736,7 +5760,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.56'
+FILE_VERSI = 'V6.17.57'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
