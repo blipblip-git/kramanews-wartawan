@@ -1693,7 +1693,6 @@ def rest_get(query):
     return r.json() or []
 
 def get_today_state():
-    # V6.17.59: limit 300 → 500
     rows = rest_get('?select=source_url,created_at&order=created_at.desc&limit=500')
     urls = set()
     for row in rows:
@@ -1813,7 +1812,6 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# V6.17.59: threshold RSS 130 → 120
 MATERI_MIN_KARAKTER_RSS = 120
 MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL = 140
 MATERI_MIN_KARAKTER_BREAKING = 100
@@ -2314,6 +2312,7 @@ def _kandidat_bukan_dobel(judul):
                 return False, 'dobel-6jam dengan "' + t[:40] + '"'
     return True, ''
 
+# V6.17.60: _dobel_dateline_topik threshold 2 → 3 (kembali ke asal)
 def _dobel_dateline_topik(judul_baru, isi_baru):
     if not judul_baru or not isi_baru:
         return None
@@ -2334,7 +2333,8 @@ def _dobel_dateline_topik(judul_baru, isi_baru):
         if not kt:
             continue
         irisan = ki_baru & kt
-        if len(irisan) < 2:
+        # V6.17.60: threshold kembali 3
+        if len(irisan) < 3:
             continue
         if kota_baru in t:
             return ('dobel dateline+topik: "' + kota_baru + '" + '
@@ -2407,7 +2407,6 @@ def _kandidat_layak(judul, summary, kategori='', link=''):
 def _judul_dari_url_supabase():
     out = []
     try:
-        # V6.17.59: limit 300 → 500
         rows = rest_get('?select=title,source_url,created_at&order=created_at.desc&limit=500')
         for row in rows:
             if row.get('title') and _dalam_jendela(row, JENDELA_DOBEL_JAM):
@@ -2416,14 +2415,12 @@ def _judul_dari_url_supabase():
         pass
     return out
 
-# V6.17.59: threshold irisan turun 3 → 2 untuk judul dengan nama diri
 BULAN_NAMA_DIRI = set([
     'januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli',
     'agustus', 'september', 'oktober', 'november', 'desember',
 ])
 
 def _ada_nama_diri_teks(teks):
-    """Deteksi nama diri di teks: nama orang, tempat, bulan, tokoh."""
     if not teks:
         return False
     t_low = teks.lower()
@@ -2448,9 +2445,8 @@ def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
     ki_baru = kata_inti(judul_kandidat)
     if not ki_baru:
         return None
-    # V6.17.59: threshold 3 → 2 kalau ada nama diri
-    nama_diri_baru = _ada_nama_diri_teks(judul_kandidat)
-    min_irisan = 2 if nama_diri_baru else 3
+    # V6.17.60: threshold kembali 3 untuk semua (V6.17.59 yang 2 terlalu agresif)
+    min_irisan = 3
     for t_lama in judul_lama_list:
         if not t_lama:
             continue
@@ -3641,7 +3637,6 @@ def _gram_set(teks, n):
     kata = _kata_bersih(teks)
     return set(tuple(kata[i:i+n]) for i in range(len(kata) - n + 1)) if len(kata) >= n else set()
 
-# V6.17.59: tambah frasa haji/arafah/muzdalifah (kata baku tidak bisa diubah)
 FRASA_UMUM_JIPLAK = [
     'kalau kita ingin', 'jika kita ingin', 'untuk menghasilkan',
     'generasi yang', 'masa depan', 'anak anak kita', 'pada dasarnya',
@@ -3652,7 +3647,6 @@ FRASA_UMUM_JIPLAK = [
     'harus kita', 'mari kita',
     'presiden republik indonesia', 'kementerian koperasi dan ukm',
     'pemerintah provinsi', 'pemerintah kabupaten', 'pemerintah kota',
-    # V6.17.59: frasa haji/umroh baku
     'menjelang puncak ibadah haji di arafah muzdalifah',
     'puncak ibadah haji di arafah muzdalifah',
     'ibadah haji di arafah muzdalifah',
@@ -3667,6 +3661,20 @@ FRASA_UMUM_JIPLAK = [
     'tawaf ifadah',
     'sa i antara safa dan marwah',
     'antara safa dan marwah',
+    # V6.17.60: kalimat baku IHSG/pasar modal
+    'penguatan itu ditopang volume beli',
+    'ditopang volume beli yang',
+    'ihsg ditutup menguat',
+    'ihsg ditutup melemah',
+    'ihsg menguat ke level',
+    'ihsg melemah ke level',
+    'level support terdekat',
+    'level resistance terdekat',
+    'secara teknikal',
+    'analis merekomendasikan',
+    'rekomendasi beli',
+    'rekomendasi jual',
+    'rekomendasi hold',
 ]
 
 FRASA_JANGGAL_TERJEMAHAN = [
@@ -3972,6 +3980,7 @@ def _catatan_ekonomi_khusus(kategori_target, judul, materi):
 DOMAIN_PORTAL_DAERAH = [
     'radartarakan', 'benuanta', 'kaltara.tribunnews', 'tarakankota',
     'jawapos.com', 'tribunnews.com', 'antaradaerah', 'metrokaltara',
+    'diskominfo.kaltaraprov',
 ]
 
 def _catatan_portal_daerah(link, kategori_target):
@@ -4023,6 +4032,7 @@ KATA_UMUM_NAMA_PEJABAT = [
     'penanganan', 'masa', 'lebih', 'baik', 'buruk', 'dari', 'untuk',
     'yang', 'dan', 'di', 'ke', 'pada', 'dengan', 'dalam',
     'akan', 'telah', 'sudah', 'oleh', 'sebagai', 'adalah',
+    'bandingkan', 'peristiwa', 'lintas', 'era', 'karhutla',
 ]
 
 def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
@@ -4064,6 +4074,9 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     kata_ai = set(re.findall(r'\b[A-Z][a-zA-Z]{2,}\b', isi_ai))
     materi_low = materi.lower()
     for nama_full, nama_kunci in nama_materi[:3]:
+        # V6.17.60: cek nama_kunci ada di materi DAN minimal 3 huruf DAN bukan kata umum
+        if nama_kunci.lower() in KATA_UMUM_NAMA_PEJABAT:
+            continue
         if nama_kunci.lower() not in materi_low:
             continue
         if nama_kunci not in kata_ai:
@@ -5852,7 +5865,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.59'
+FILE_VERSI = 'V6.17.60'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
