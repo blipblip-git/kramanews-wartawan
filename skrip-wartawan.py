@@ -3638,6 +3638,28 @@ def _kemiripan_struktur_kalimat(isi_ai, materi_sumber):
                 return 'struktur kalimat mirip (' + str(int(ratio * 100)) + '%): "' + ka[:60] + '"'
     return None
 
+# V6.17.55: buang frasa OPERASI (tim sar, evakuasi, pencarian, dll) biar N-gram lolos
+FRASA_OPERASI_BUANG = [
+    'tim sar', 'tim gabungan', 'tim pencarian', 'tim evakuasi',
+    'tim penanganan', 'tim penanggulangan', 'tim kemanusiaan',
+    'operasi sar', 'operasi pencarian', 'operasi evakuasi',
+    'pencarian', 'evakuasi', 'penanganan', 'penanggulangan',
+    'penyelamatan', 'pertolongan', 'pemberian bantuan',
+    'basarnas', 'bnpb', 'bpbd', 'tagana', 'sar gabungan',
+]
+
+def _buang_frasa_operasi(teks):
+    if not teks:
+        return ''
+    t = teks
+    for f in FRASA_OPERASI_BUANG:
+        if ' ' in f:
+            t = re.sub(r'\b' + re.escape(f) + r'\b', ' ', t, flags=re.IGNORECASE)
+        else:
+            t = re.sub(r'\b' + re.escape(f) + r'\b', ' ', t, flags=re.IGNORECASE)
+    t = re.sub(r'\s+', ' ', t).strip()
+    return t
+
 def _buang_fakta_wajib(teks):
     if not teks:
         return ''
@@ -3675,6 +3697,8 @@ def _buang_fakta_wajib(teks):
         re.IGNORECASE
     )
     t = pola_lokasi.sub(' ', t)
+    # V6.17.55: buang frasa operasi juga
+    t = _buang_frasa_operasi(t)
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
@@ -3686,9 +3710,10 @@ def cek_jiplak(materi_sumber, isi_ai):
         return frasa_mesin
     materi_bersih = _buang_fakta_wajib(materi_sumber)
     isi_bersih = _buang_fakta_wajib(isi_ai)
-    n_kata = 15
+    # V6.17.55: N-gram 15 → 18
+    n_kata = 18
     if len(materi_bersih) < 500:
-        n_kata = 17
+        n_kata = 20
     sumber_grams = _gram_set(materi_bersih, n_kata)
     if sumber_grams:
         for gram in _gram_list(isi_bersih, n_kata):
@@ -4105,7 +4130,7 @@ def _catatan_khusus_kategori(kategori_target):
 def _catatan_anti_jiplak():
     return (
         '\n\nANTI-JIPLAK (WAJIB):\n'
-        '- Tulis kalimatmu SENDIRI — jangan salin 15+ kata berurutan.\n'
+        '- Tulis kalimatmu SENDIRI — jangan salin 18+ kata berurutan.\n'
         '- JANGAN terjemahkan langsung dari materi bahasa Inggris.\n'
         '- HINDARI frasa janggal terjemahan mesin.\n'
         '- Ganti sinonim: "mengatakan" → "menuturkan/ujar".\n'
