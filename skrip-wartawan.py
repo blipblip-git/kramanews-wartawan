@@ -3932,6 +3932,26 @@ def _catatan_ekonomi_khusus(kategori_target, judul, materi):
                 '- Fokus: angka, data perdagangan, pertumbuhan, dampak ekonomi.\n')
     return ''
 
+# V6.17.58: kalau sumber portal daerah → paksa kategori daerah
+DOMAIN_PORTAL_DAERAH = [
+    'radartarakan', 'benuanta', 'kaltara.tribunnews', 'tarakankota',
+    'jawapos.com', 'tribunnews.com', 'antaradaerah',
+]
+
+def _catatan_portal_daerah(link, kategori_target):
+    if kategori_target != 'daerah':
+        return ''
+    low = (link or '').lower()
+    if not any(d in low for d in DOMAIN_PORTAL_DAERAH):
+        return ''
+    return ('\n\nCATATAN PENTING — SUMBER PORTAL DAERAH:\n'
+            '- Materi ini dari portal berita DAERAH (Radar Tarakan/Benuanta/Tribun Daerah).\n'
+            '- WAJIB tulis sebagai berita DAERAH, BUKAN nasional/ekonomi/teknologi.\n'
+            '- JANGAN tolak dengan alasan "tidak cocok kategori: materi jargas/infrastruktur/proyek".\n'
+            '- Walaupun isi materi tentang proyek/infrastruktur/energi nasional,\n'
+            '  karena sumber portal daerah → TETAP kategori DAERAH.\n'
+            '- Fokus: dampak lokal, lokasi daerah, tokoh daerah.\n')
+
 def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
     if not kategori_target or kategori_target == 'breaking':
         return True, ''
@@ -3961,7 +3981,15 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
         return True, ''
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
 
-# V6.17.56: KOREKSI — cek nama_kunci eksplisit di materi dulu
+# V6.17.58: KOREKSI regex nama pejabat — ambil nama_kunci SEBELUM kata umum
+KATA_UMUM_NAMA_PEJABAT = [
+    'menilai', 'menyebut', 'mengatakan', 'menjelaskan', 'menuturkan',
+    'nilai', 'sebut', 'kata', 'ujar', 'tutur', 'jelas',
+    'penanganan', 'masa', 'lebih', 'baik', 'buruk', 'dari', 'untuk',
+    'yang', 'dan', 'di', 'ke', 'pada', 'dengan', 'dalam',
+    'akan', 'telah', 'sudah', 'oleh', 'sebagai', 'adalah',
+]
+
 def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     if not materi or not isi_ai:
         return None
@@ -3979,24 +4007,35 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     )
     nama_materi = []
     for m in pola_nama_pejabat.finditer(materi):
-        nama = m.group(0).strip()
-        nama_materi.append(nama)
+        nama_full = m.group(0).strip()
+        # V6.17.58: cari kata nama setelah jabatan, buang kata umum
+        after_jabatan = m.group(1) if m.group(1) else ''
+        bagian = re.findall(r'\b[A-Z][a-z]+\b', after_jabatan)
+        # Filter kata umum
+        nama_bersih = []
+        for k in bagian:
+            if k.lower() in KATA_UMUM_NAMA_PEJABAT:
+                break
+            nama_bersih.append(k)
+            if len(nama_bersih) >= 2:
+                break
+        if len(nama_bersih) >= 1:
+            nama_kunci = nama_bersih[-1]
+        else:
+            continue
+        if len(nama_kunci) < 3:
+            continue
+        nama_materi.append((nama_full, nama_kunci))
     if not nama_materi:
         return None
     kata_ai = set(re.findall(r'\b[A-Z][a-zA-Z]{2,}\b', isi_ai))
     materi_low = materi.lower()
-    for nama in nama_materi[:3]:
-        bagian = nama.split()
-        if len(bagian) >= 2:
-            nama_kunci = bagian[-1]
-            if len(nama_kunci) < 3:
-                continue
-            # V6.17.56: kalau nama_kunci tidak eksplisit di materi → skip
-            if nama_kunci.lower() not in materi_low:
-                continue
-            if nama_kunci not in kata_ai:
-                return ('nama pejabat "' + nama[:60] + '" ada di materi tapi tidak '
-                        'ditulis AI — wajib tulis lengkap dengan jabatan')
+    for nama_full, nama_kunci in nama_materi[:3]:
+        if nama_kunci.lower() not in materi_low:
+            continue
+        if nama_kunci not in kata_ai:
+            return ('nama pejabat "' + nama_full[:60] + '" ada di materi tapi tidak '
+                    'ditulis AI — wajib tulis lengkap dengan jabatan')
     return None
 
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
@@ -4260,6 +4299,7 @@ def ai_rewrite_single(c, kategori_target=''):
                      'WAJIB: tulis kejadian sebagai peristiwa TERKINI dengan tanggal konkret.\n')
     catatan_eko = _catatan_ekonomi_khusus(kategori_target, c.get('title', ''), materi)
     catatan_ibukota = _catatan_ibu_kota_provinsi(c.get('title', ''), c.get('summary', ''), kategori_target)
+    catatan_portal_daerah = _catatan_portal_daerah(c.get('link', ''), kategori_target)
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
             + baris_tgl +
             'JENIS MATERI: ' + label_materi + '\n'
@@ -4287,6 +4327,7 @@ def ai_rewrite_single(c, kategori_target=''):
             '- Jangan sebut portal/media sumber.'
             + catatan_eko
             + catatan_ibukota
+            + catatan_portal_daerah
             + _catatan_khusus_kategori(kategori_target)
             + _catatan_anti_jiplak()
             + _catatan_kategori_ketat(kategori_target))
@@ -4335,6 +4376,7 @@ def ai_rewrite_multi(items, kategori_target=''):
                      'WAJIB: tulis kejadian sebagai peristiwa TERKINI.\n')
     catatan_eko = _catatan_ekonomi_khusus(kategori_target, judul_materi_gabung, semua_materi)
     catatan_ibukota = _catatan_ibu_kota_provinsi(judul_materi_gabung, summary_materi_gabung, kategori_target)
+    catatan_portal_daerah = _catatan_portal_daerah(items[0].get('link', '') if items else '', kategori_target)
     user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
             + baris_tgl +
             'TARGET PANJANG: ' + target_kata(total_len) + '\n\n'
@@ -4358,6 +4400,7 @@ def ai_rewrite_multi(items, kategori_target=''):
             '- Tulis ulang dengan kalimatmu sendiri.'
             + catatan_eko
             + catatan_ibukota
+            + catatan_portal_daerah
             + _catatan_khusus_kategori(kategori_target)
             + _catatan_anti_jiplak()
             + _catatan_kategori_ketat(kategori_target))
@@ -5760,7 +5803,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.57'
+FILE_VERSI = 'V6.17.58'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
