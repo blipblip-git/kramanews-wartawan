@@ -1008,8 +1008,14 @@ def muat_rejected_urls():
     REJECTED_URLS_CACHE = out
     return out
 
+def _url_google_news(url):
+    return url and GOOGLE_NEWS_HOST in url
+
 def catat_tolak_ai_token(source_url, alasan):
     if not source_url:
+        return
+    # V6.17.55: JANGAN catat URL Google News RSS (link sementara, bikin blacklist bengkak)
+    if _url_google_news(source_url):
         return
     alasan_str = (alasan or '').strip()
     if not alasan_str:
@@ -1809,7 +1815,7 @@ def gn_split(title):
     return title.strip(), 'Google News'
 
 MATERI_MIN_KARAKTER_RSS = 130
-MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL = 200
+MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL = 250
 MATERI_MIN_KARAKTER_BREAKING = 100
 
 def _materi_dominan_url(teks):
@@ -1850,7 +1856,6 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
     if kategori == 'breaking':
         min_kar = MATERI_MIN_KARAKTER_BREAKING
     elif kategori in ('nasional', 'daerah'):
-        # V6.17.54: nasional/daerah butuh materi lebih tebal
         if dari_scraping:
             min_kar = MATERI_MIN_KARAKTER
         else:
@@ -2122,12 +2127,17 @@ def _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary):
             return False, 'kategori luar tapi ada lembaga Indonesia: ' + lem
     return True, ''
 
+# V6.17.55: cek lokasi — tambah cek provinsi di judul/summary
 def _kandidat_ada_lokasi(judul, summary, kategori=''):
     if kategori in ('nasional', 'breaking', 'teknologi', 'kesehatan'):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
     for kota in KOTA_INDONESIA_DATELINE:
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
+            return True, ''
+    # V6.17.55: cek provinsi Indonesia juga (Kaltara, Kaltim, dll)
+    for prov in KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN:
+        if re.search(r'\b' + re.escape(prov) + r'\b', gab):
             return True, ''
     for kota_asing in IBU_KOTA_NEGARA.keys():
         if re.search(r'\b' + re.escape(kota_asing) + r'\b', gab):
@@ -2371,14 +2381,21 @@ def _judul_dari_url_supabase():
         pass
     return out
 
+# V6.17.55: KECUALIKAN TOPIK BESAR dari cek dobel topik
 def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
     if not judul_kandidat or not judul_lama_list:
+        return None
+    # Topik besar (trending) boleh terbit berulang — jangan blokir
+    if judul_topik_besar(judul_kandidat):
         return None
     ki_baru = kata_inti(judul_kandidat)
     if not ki_baru:
         return None
     for t_lama in judul_lama_list:
         if not t_lama:
+            continue
+        # Kalau kandidat lama juga topik besar, skip
+        if judul_topik_besar(t_lama):
             continue
         ki_lama = kata_inti(t_lama)
         if not ki_lama:
@@ -2847,7 +2864,6 @@ INSTITUSI_PUSAT_LEBIH_LONGGAR = [
     'bnpb', 'basarnas', 'bulog', 'pertamina', 'pln', 'telkom',
 ]
 
-# V6.17.54: KEMBALIKAN pemkab/pemkot/pemprov supaya AI wajib sebut nama pejabat
 INSTITUSI_LOKAL_BUTUH_NAMA = [
     'dinas', 'kantor',
     'polres', 'polsek', 'polda', 'kodam', 'korem', 'kodim',
@@ -3141,6 +3157,31 @@ LEMBAGA_INDONESIA = [
     'bin', 'wantannas', 'setkab', 'setneg', 'perpres', 'inpres', 'keppres',
 ]
 
+# V6.17.55: tambah provinsi Indonesia biar gate lokasi lolos
+PROVINSI_INDONESIA_LAIN = [
+    'aceh', 'sumatera utara', 'sumut', 'sumatera barat', 'sumbar',
+    'riau', 'jambi', 'bengkulu', 'sumatera selatan', 'sumsel',
+    'bangka belitung', 'babel', 'lampung', 'banten',
+    'jawa barat', 'jabar', 'jawa tengah', 'jateng',
+    'di yogyakarta', 'diy', 'jawa timur', 'jatim',
+    'bali', 'nusa tenggara barat', 'ntb', 'nusa tenggara timur', 'ntt',
+    'maluku', 'maluku utara', 'malut',
+    'papua', 'papua barat', 'papua selatan', 'papua tengah',
+    'papua pegunungan', 'papua barat daya',
+    'sulawesi utara', 'sulut', 'sulawesi tengah', 'sulteng',
+    'sulawesi selatan', 'sulsel', 'sulawesi tenggara', 'sultra',
+    'gorontalo', 'sulawesi barat', 'sulbar',
+]
+
+# V6.17.55: provinsi Kalimantan (termasuk Kaltara) — biar ASDP Kaltara lolos
+KALIMANTAN_PROVINSI = [
+    'kalimantan', 'kalimantan barat', 'kalbar',
+    'kalimantan tengah', 'kalteng',
+    'kalimantan selatan', 'kalsel',
+    'kalimantan timur', 'kaltim',
+    'kalimantan utara', 'kaltara',
+]
+
 KOTA_INDONESIA_DATELINE = [
     'jakarta', 'surabaya', 'bandung', 'semarang', 'yogyakarta', 'medan',
     'palembang', 'makassar', 'denpasar', 'balikpapan', 'samarinda',
@@ -3151,6 +3192,7 @@ KOTA_INDONESIA_DATELINE = [
     'lampung', 'bandar lampung', 'batam', 'gorontalo', 'palu', 'kendari', 'mamuju',
     'selumit', 'selumit pantai', 'juata', 'karang anyar', 'karang balik',
     'kampung enam', 'pamusian', 'sebengkok', 'gunung lingkas', 'karang harapan',
+    'kaltara',
 ]
 
 KATA_LOKAL_KALTARA = [
@@ -3592,21 +3634,14 @@ def _kemiripan_struktur_kalimat(isi_ai, materi_sumber):
     for ka in kalimat_ai:
         for km in kalimat_materi:
             ratio = SequenceMatcher(None, ka.lower(), km.lower()).ratio()
-            if ratio >= 0.82:
+            if ratio >= 0.92:
                 return 'struktur kalimat mirip (' + str(int(ratio * 100)) + '%): "' + ka[:60] + '"'
     return None
 
-# V6.17.54: FAKTA WAJIB KALAU ADA — jangan blokir N-gram untuk nama/jabatan/lokasi
 def _buang_fakta_wajib(teks):
-    """Hapus nama pejabat + jabatan + lokasi + angka dari teks.
-    Tujuannya: N-gram check tidak blokir frasa fakta yang WAJIB sama.
-    """
     if not teks:
         return ''
     t = teks
-    # 1. Buang pola jabatan + nama + gelar
-    # Contoh: "Kepala Lapas Kelas IIA Tarakan, Jupri"
-    # Contoh: "Wali Kota Tarakan Drs. H. Khairul, M.Si."
     pola_jabatan = re.compile(
         r'\b(?:'
         r'wali\s+kota|wakil\s+wali\s+kota|bupati|wakil\s+bupati|gubernur|wakil\s+gubernur|'
@@ -3625,7 +3660,6 @@ def _buang_fakta_wajib(teks):
         re.IGNORECASE
     )
     t = pola_jabatan.sub(' ', t)
-    # 2. Buang pola pangkat TNI/Polri + nama
     pola_pangkat = re.compile(
         r'\b(?:jenderal|letnan\s+jenderal|letjen|mayor\s+jenderal|mayjen|'
         r'brigadir\s+jenderal|brigjen|kolonel|letnan\s+kolonel|letkol|'
@@ -3635,14 +3669,12 @@ def _buang_fakta_wajib(teks):
         re.IGNORECASE
     )
     t = pola_pangkat.sub(' ', t)
-    # 3. Buang pola lokasi (kecamatan/kelurahan/desa/jalan)
     pola_lokasi = re.compile(
         r'\b(?:kecamatan|kelurahan|desa|kampung|jalan|jl\.|gang|rt|rw)'
         r'\s+[A-Z][a-zA-Z\.\'\-\s]{2,60}',
         re.IGNORECASE
     )
     t = pola_lokasi.sub(' ', t)
-    # 4. Normalisasi spasi
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
@@ -3652,7 +3684,6 @@ def cek_jiplak(materi_sumber, isi_ai):
     frasa_mesin = _frasa_janggal_terjemahan(isi_ai)
     if frasa_mesin:
         return frasa_mesin
-    # V6.17.54: buang fakta wajib sebelum cek N-gram
     materi_bersih = _buang_fakta_wajib(materi_sumber)
     isi_bersih = _buang_fakta_wajib(isi_ai)
     n_kata = 15
@@ -3873,7 +3904,6 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
         return True, ''
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
 
-# V6.17.54: CEK NAMA PEJABAT DARI MATERI WAJIB DITULIS DI ISI AI
 def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     if not materi or not isi_ai:
         return None
@@ -3881,7 +3911,6 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
         return None
     if kategori in ('teknologi', 'kesehatan', 'otomotif'):
         return None
-    # Cari nama pejabat di materi
     pola_nama_pejabat = re.compile(
         r'\b(?:'
         r'wali\s+kota|wakil\s+wali\s+kota|bupati|wakil\s+bupati|gubernur|wakil\s+gubernur|'
@@ -3896,10 +3925,8 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
         nama_materi.append(nama)
     if not nama_materi:
         return None
-    # Ambil kata kunci nama unik
     kata_ai = set(re.findall(r'\b[A-Z][a-zA-Z]{2,}\b', isi_ai))
     for nama in nama_materi[:3]:
-        # Ambil 2 kata terakhir dari nama sebagai kunci
         bagian = nama.split()
         if len(bagian) >= 2:
             nama_kunci = bagian[-1]
@@ -4017,7 +4044,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     nama_final = cek_narasumber_tanpa_nama(isi, kategori, judul)
     if nama_final:
         raise Exception('DITOLAK - narasumber tanpa nama (' + nama_final[:60] + ')')
-    # V6.17.54: cek nama pejabat dari materi wajib ditulis AI
     nama_pejabat = _cek_nama_pejabat_dari_materi(materi_sumber, isi, kategori)
     if nama_pejabat:
         if source_url:
@@ -4029,7 +4055,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
     if jiplak:
         raise Exception('diblokir ANTI-JIPLAK: ' + jiplak[:80])
-    # V6.17.54: cek kualitas isi — template kosong
     kualitas = _cek_kualitas_isi(isi, kategori)
     if kualitas:
         if source_url:
@@ -5676,7 +5701,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.54'
+FILE_VERSI = 'V6.17.55'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
