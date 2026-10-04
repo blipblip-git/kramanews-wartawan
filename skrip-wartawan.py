@@ -3768,10 +3768,29 @@ def _buang_frasa_operasi(teks):
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
+# V6.17.62: buang kutipan langsung dalam tanda petik (kata baku narasumber)
+def _buang_kutipan_langsung(teks):
+    """Hapus semua teks dalam tanda petik ("..." atau '...') — ini kutipan narasumber
+    yang WAJIB sama, bukan jiplak."""
+    if not teks:
+        return ''
+    t = teks
+    # Kutipan dengan tanda petik ganda
+    t = re.sub(r'"[^"]{5,500}"', ' ', t)
+    # Kutipan dengan tanda petik tunggal (tapi bukan apostrof di tengah kata)
+    t = re.sub(r"'[^']{5,500}'", ' ', t)
+    # Kutipan dengan tanda petik melengkung “...” dan ‘...’
+    t = re.sub(r'\u201c[^\u201d]{5,500}\u201d', ' ', t)
+    t = re.sub(r'\u2018[^\u2019]{5,500}\u2019', ' ', t)
+    t = re.sub(r'\s+', ' ', t).strip()
+    return t
+
 def _buang_fakta_wajib(teks):
     if not teks:
         return ''
     t = teks
+    # V6.17.62: buang kutipan langsung dulu
+    t = _buang_kutipan_langsung(t)
     pola_jabatan = re.compile(
         r'\b(?:'
         r'wali\s+kota|wakil\s+wali\s+kota|bupati|wakil\s+bupati|gubernur|wakil\s+gubernur|'
@@ -4055,9 +4074,7 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
         return True, ''
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
 
-# V6.17.61: KATA_BUKAN_NAMA_PEJABAT + KATA_UMUM_NAMA_PEJABAT digabung
 KATA_BUKAN_NAMA_PEJABAT = [
-    # kata kerja/keterangan
     'menilai', 'menyebut', 'mengatakan', 'menjelaskan', 'menuturkan',
     'nilai', 'sebut', 'kata', 'ujar', 'tutur', 'jelas', 'ungkap',
     'bandingkan', 'membandingkan', 'peristiwa', 'kejadian', 'perkara',
@@ -4067,13 +4084,11 @@ KATA_BUKAN_NAMA_PEJABAT = [
     'dari', 'untuk', 'pada', 'dalam', 'dengan', 'oleh', 'sebagai',
     'yang', 'dan', 'atau', 'di', 'ke', 'akan', 'telah', 'sudah',
     'lintas', 'antar', 'antarwilayah', 'nasional', 'regional', 'lokal',
-    # wilayah/provinsi (sering muncul setelah jabatan)
     'kalteng', 'kaltim', 'kalsel', 'kalbar', 'kaltara', 'kalimantan',
     'jabar', 'jateng', 'jatim', 'jakarta', 'banten', 'bali',
     'sumut', 'sumbar', 'sumsel', 'riau', 'jambi', 'lampung', 'bengkulu',
     'aceh', 'sulut', 'sulteng', 'sulsel', 'sultra', 'gorontalo',
     'maluku', 'malut', 'papua', 'ntb', 'ntt',
-    # kata umum lainnya
     'indonesia', 'nasional', 'pemerintah', 'pemerintahan', 'negara',
     'kabupaten', 'kota', 'provinsi', 'kecamatan', 'kelurahan', 'desa',
     'karhutla', 'kebakaran', 'banjir', 'gempa', 'tsunami', 'longsor',
@@ -4111,8 +4126,6 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
                 break
         if len(nama_bersih) < 1:
             continue
-        # V6.17.61: wajib 2 kata nama (nama depan + belakang)
-        # Kalau cuma 1 kata → bukan nama orang, kemungkinan wilayah
         if len(nama_bersih) < 2:
             continue
         nama_kunci = nama_bersih[-1]
@@ -4326,6 +4339,7 @@ def _catatan_anti_jiplak():
     return (
         '\n\nANTI-JIPLAK (WAJIB):\n'
         '- Tulis kalimatmu SENDIRI — jangan salin 18+ kata berurutan.\n'
+        '- KUTIPAN LANGSUNG dalam tanda petik BOLEH SAMA (ini bukan jiplak).\n'
         '- JANGAN terjemahkan langsung dari materi bahasa Inggris.\n'
         '- HINDARI frasa janggal terjemahan mesin.\n'
         '- Ganti sinonim: "mengatakan" → "menuturkan/ujar".\n'
