@@ -1815,7 +1815,7 @@ def gn_split(title):
     return title.strip(), 'Google News'
 
 MATERI_MIN_KARAKTER_RSS = 130
-MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL = 250
+MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL = 180
 MATERI_MIN_KARAKTER_BREAKING = 100
 
 def _materi_dominan_url(teks):
@@ -1835,6 +1835,7 @@ def _materi_dominan_url(teks):
         return True
     return False
 
+# V6.17.56: min_irisan 2 → 1 untuk judul < 6 kata
 def _materi_nyambung_judul(judul, materi, min_irisan=2):
     if not judul or not materi:
         return False, 'judul/materi kosong'
@@ -1842,6 +1843,9 @@ def _materi_nyambung_judul(judul, materi, min_irisan=2):
                      if k not in KATA_STOP_DOBEL)
     if not kata_judul:
         return True, ''
+    # V6.17.56: judul pendek (< 6 kata) → min_irisan 1
+    if len(judul.split()) < 6:
+        min_irisan = 1
     kata_materi = set(re.findall(r'[a-z]{3,}', materi.lower()))
     irisan = kata_judul & kata_materi
     if len(irisan) < min_irisan:
@@ -2127,7 +2131,6 @@ def _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary):
             return False, 'kategori luar tapi ada lembaga Indonesia: ' + lem
     return True, ''
 
-# V6.17.55: cek lokasi — tambah cek provinsi di judul/summary
 def _kandidat_ada_lokasi(judul, summary, kategori=''):
     if kategori in ('nasional', 'breaking', 'teknologi', 'kesehatan'):
         return True, ''
@@ -2135,7 +2138,6 @@ def _kandidat_ada_lokasi(judul, summary, kategori=''):
     for kota in KOTA_INDONESIA_DATELINE:
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
             return True, ''
-    # V6.17.55: cek provinsi Indonesia juga (Kaltara, Kaltim, dll)
     for prov in KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN:
         if re.search(r'\b' + re.escape(prov) + r'\b', gab):
             return True, ''
@@ -2321,11 +2323,26 @@ def _dobel_dateline_topik(judul_baru, isi_baru):
                     + 'irisan: ' + str(sorted(list(irisan))[:4]))
     return None
 
-def _kandidat_layak(judul, summary, kategori=''):
+# V6.17.56: skip kandidat olahraga dari sports.yahoo.com (portal inggris, judul tidak kontekstual)
+DOMAIN_OLAHRAGA_SKIP = ['sports.yahoo.com']
+
+def _kandidat_domain_olahraga_skip(kategori, judul, link):
+    if kategori != 'olahraga':
+        return False
+    low = (link or '').lower()
+    for d in DOMAIN_OLAHRAGA_SKIP:
+        if d in low:
+            return True
+    return False
+
+def _kandidat_layak(judul, summary, kategori='', link=''):
     judul = (judul or '').strip()
     summary = (summary or '').strip()
     if not judul or not summary:
         return False, 'judul/summary kosong'
+    # V6.17.56: skip domain olahraga inggris
+    if _kandidat_domain_olahraga_skip(kategori, judul, link):
+        return False, 'portal olahraga inggris (judul tidak kontekstual)'
     tl = judul.lower()
     for k in KATA_FEATURE_OPINI:
         if k in tl:
@@ -2381,11 +2398,9 @@ def _judul_dari_url_supabase():
         pass
     return out
 
-# V6.17.55: KECUALIKAN TOPIK BESAR dari cek dobel topik
 def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
     if not judul_kandidat or not judul_lama_list:
         return None
-    # Topik besar (trending) boleh terbit berulang — jangan blokir
     if judul_topik_besar(judul_kandidat):
         return None
     ki_baru = kata_inti(judul_kandidat)
@@ -2394,7 +2409,6 @@ def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
     for t_lama in judul_lama_list:
         if not t_lama:
             continue
-        # Kalau kandidat lama juga topik besar, skip
         if judul_topik_besar(t_lama):
             continue
         ki_lama = kata_inti(t_lama)
@@ -2442,7 +2456,7 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                     print('       Skip kandidat (dobel topik): ' + topik_dobel[:70] + ' — ' + title[:50])
                 continue
 
-            layak, alasan = _kandidat_layak(title, summary, kategori)
+            layak, alasan = _kandidat_layak(title, summary, kategori, link)
             if not layak:
                 skip_layak += 1
                 if skip_layak <= 3:
@@ -3638,7 +3652,6 @@ def _kemiripan_struktur_kalimat(isi_ai, materi_sumber):
                 return 'struktur kalimat mirip (' + str(int(ratio * 100)) + '%): "' + ka[:60] + '"'
     return None
 
-# V6.17.55: buang frasa OPERASI (tim sar, evakuasi, pencarian, dll) biar N-gram lolos
 FRASA_OPERASI_BUANG = [
     'tim sar', 'tim gabungan', 'tim pencarian', 'tim evakuasi',
     'tim penanganan', 'tim penanggulangan', 'tim kemanusiaan',
@@ -3653,10 +3666,7 @@ def _buang_frasa_operasi(teks):
         return ''
     t = teks
     for f in FRASA_OPERASI_BUANG:
-        if ' ' in f:
-            t = re.sub(r'\b' + re.escape(f) + r'\b', ' ', t, flags=re.IGNORECASE)
-        else:
-            t = re.sub(r'\b' + re.escape(f) + r'\b', ' ', t, flags=re.IGNORECASE)
+        t = re.sub(r'\b' + re.escape(f) + r'\b', ' ', t, flags=re.IGNORECASE)
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
@@ -3697,7 +3707,6 @@ def _buang_fakta_wajib(teks):
         re.IGNORECASE
     )
     t = pola_lokasi.sub(' ', t)
-    # V6.17.55: buang frasa operasi juga
     t = _buang_frasa_operasi(t)
     t = re.sub(r'\s+', ' ', t).strip()
     return t
@@ -3710,7 +3719,6 @@ def cek_jiplak(materi_sumber, isi_ai):
         return frasa_mesin
     materi_bersih = _buang_fakta_wajib(materi_sumber)
     isi_bersih = _buang_fakta_wajib(isi_ai)
-    # V6.17.55: N-gram 15 → 18
     n_kata = 18
     if len(materi_bersih) < 500:
         n_kata = 20
@@ -3929,6 +3937,7 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
         return True, ''
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
 
+# V6.17.56: KOREKSI — cek nama_kunci eksplisit di materi dulu
 def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     if not materi or not isi_ai:
         return None
@@ -3951,11 +3960,15 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     if not nama_materi:
         return None
     kata_ai = set(re.findall(r'\b[A-Z][a-zA-Z]{2,}\b', isi_ai))
+    materi_low = materi.lower()
     for nama in nama_materi[:3]:
         bagian = nama.split()
         if len(bagian) >= 2:
             nama_kunci = bagian[-1]
             if len(nama_kunci) < 3:
+                continue
+            # V6.17.56: kalau nama_kunci tidak eksplisit di materi → skip
+            if nama_kunci.lower() not in materi_low:
                 continue
             if nama_kunci not in kata_ai:
                 return ('nama pejabat "' + nama[:60] + '" ada di materi tapi tidak '
@@ -5003,13 +5016,11 @@ def sesi_breaking(today_urls, seen):
         print('   Tidak ada kandidat breaking layak - skip.')
         return 0
 
-    # V6.17.53: KUMPULKAN 3 KANDIDAT TERATAS (dom + dun), bukan cuma 1+1
     kandidat_gabung = []
     for c, s in skor_dom[:3]:
         kandidat_gabung.append((c, 'dom', s))
     for c, s in skor_dun[:3]:
         kandidat_gabung.append((c, 'dun', s))
-    # Ambil 3 teratas secara total
     kandidat_gabung = sorted(kandidat_gabung, key=lambda x: -x[2])[:3]
 
     if not kandidat_gabung:
@@ -5280,7 +5291,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                 return 2 if barat_sudah_terbit(b) else 1
             return 1
         groups.sort(key=asean_prio)
-    # V6.17.53: 1 percobaan per kategori (hemat AI token)
     percobaan = 0
     kandidat_terpakai = []
     for g in groups:
@@ -5726,7 +5736,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.55'
+FILE_VERSI = 'V6.17.56'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
