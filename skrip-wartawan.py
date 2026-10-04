@@ -28,7 +28,8 @@ WITA = timezone(timedelta(hours=8))
 BREAKING_MAX_SLOT       = 2
 BREAKING_UMUR_MENIT     = 30
 MAX_UMUR_BERITA_JAM     = 30
-JENDELA_DOBEL_JAM       = 36
+# V6.17.59: jendela anti-dobel 36 → 72 jam (3 hari)
+JENDELA_DOBEL_JAM       = 72
 GEMPA_DOM_MIN           = 5.5
 GEMPA_DUNIA_MIN         = 6.5
 SKOR_BREAKING_MIN       = 20
@@ -227,7 +228,6 @@ def GN(q, lang='id', label=None, when='1d'):
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
-# V6.17.57: JADWAL — tambah ekonomi jam 13 (geser ASEAN)
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1, 'ekonomi': 1},
@@ -244,7 +244,6 @@ JADWAL_JAM = {
     18: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'olahraga': 1},
 }
 
-# V6.17.57: JAM EKONOMI — DOMESTIK tambah jam 13 (total 6 slot domestik + 1 asing)
 EKONOMI_JAM_DOMESTIK = [6, 9, 11, 12, 13, 17]
 EKONOMI_JAM_ASING    = [7, 14]
 
@@ -426,7 +425,6 @@ DOMAIN_TEKNOLOGI = [
 ]
 JAM_TEKNOLOGI = {8: 0, 13: 1, 18: 2}
 
-# V6.17.57: FEED EKONOMI DOMESTIK — tambah 5 feed ekonomi Indonesia
 EKONOMI_DOMESTIK_FEEDS = [
     RSSF('https://market.bisnis.com/feed', 'Bisnis Market'),
     RSSF('https://www.antaranews.com/rss/pasar-modal', 'Antara Pasar Modal'),
@@ -442,7 +440,6 @@ EKONOMI_DOMESTIK_FEEDS = [
     RSSF('https://ekonomi.bisnis.com/rss', 'Bisnis Ekonomi'),
     RSSF('https://www.idxchannel.com/rss', 'IDX Channel'),
     RSSF('https://www.liputan6.com/rss', 'Liputan6'),
-    # V6.17.57: tambahan feed ekonomi Indonesia
     RSSF('https://www.idntimes.com/rss', 'IDN Times'),
     RSSF('https://www.antaranews.com/rss/ekonomi-bisnis', 'Antara Ekonomi Bisnis'),
     RSSF('https://www.kompas.com/ekonomi/rss', 'Kompas Ekonomi'),
@@ -707,7 +704,6 @@ def judul_spam(judul):
     return False
 
 # AKHIR PART 1
-
 # PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT
 
 try:
@@ -1697,7 +1693,8 @@ def rest_get(query):
     return r.json() or []
 
 def get_today_state():
-    rows = rest_get('?select=source_url,created_at&order=created_at.desc&limit=300')
+    # V6.17.59: limit 300 → 500
+    rows = rest_get('?select=source_url,created_at&order=created_at.desc&limit=500')
     urls = set()
     for row in rows:
         if row.get('source_url') and _dalam_jendela(row, JENDELA_DOBEL_JAM):
@@ -1816,8 +1813,8 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-MATERI_MIN_KARAKTER_RSS = 130
-# V6.17.57: threshold RSS nasional/daerah 180 → 140
+# V6.17.59: threshold RSS 130 → 120
+MATERI_MIN_KARAKTER_RSS = 120
 MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL = 140
 MATERI_MIN_KARAKTER_BREAKING = 100
 
@@ -2091,7 +2088,6 @@ def _materi_cocok_kategori(kategori, judul, summary):
                 return True, ''
     return False, 'materi tidak ada kata kunci kategori ' + kategori
 
-# V6.17.57: KATA_SINYAL_EKONOMI_KUAT — deteksi materi ekonomi di gate luar negeri
 KATA_SINYAL_EKONOMI_KUAT = [
     'return', 'annualized', 'annualised', 'portfolio', 'portofolio',
     'investor', 'investasi', 'saham', 'stock', 'yield', 'dividend',
@@ -2111,21 +2107,18 @@ def _kandidat_kategori_materi(kategori, judul, summary):
     if kategori == 'internasional_asean':
         if adalah_turnamen_olahraga(gab):
             return False, 'kategori asean tapi materi turnamen olahraga (ke olahraga)'
-        # V6.17.57: tolak materi ekonomi di gate ASEAN
         hit_eko = sum(1 for k in KATA_SINYAL_EKONOMI_KUAT if k in gab)
         if hit_eko >= 3:
             return False, 'kategori asean tapi materi ekonomi (hit ' + str(hit_eko) + ')'
         if not any(k in gab for k in KATA_ASEAN_WAJIB):
             return False, 'kategori asean tapi materi tidak ada kata ASEAN'
     elif kategori == 'internasional_tt':
-        # V6.17.57: tolak materi ekonomi di gate TT
         hit_eko = sum(1 for k in KATA_SINYAL_EKONOMI_KUAT if k in gab)
         if hit_eko >= 3:
             return False, 'kategori tt tapi materi ekonomi (hit ' + str(hit_eko) + ')'
         if not any(k in gab for k in KATA_TT):
             return False, 'kategori tt tapi materi tidak ada kata Timur Tengah'
     elif kategori == 'internasional':
-        # V6.17.57: tolak materi ekonomi di gate internasional
         hit_eko = sum(1 for k in KATA_SINYAL_EKONOMI_KUAT if k in gab)
         if hit_eko >= 3:
             return False, 'kategori internasional tapi materi ekonomi (hit ' + str(hit_eko) + ')'
@@ -2372,7 +2365,7 @@ def _kandidat_layak(judul, summary, kategori='', link=''):
         if k in tl:
             return False, 'feature/opini: ' + k
     if any(x in tl for x in ('ada apa?', 'ternyata', 'ini faktanya',
-                              'simak', 'begini', 'inilah', 'awas!')):
+                              'simak', 'beginilah', 'inilah', 'awas!')):
         return False, 'clickbait: kata pancingan'
     if len(judul.split()) < 4:
         return False, 'judul kurang dari 4 kata'
@@ -2414,13 +2407,38 @@ def _kandidat_layak(judul, summary, kategori='', link=''):
 def _judul_dari_url_supabase():
     out = []
     try:
-        rows = rest_get('?select=title,source_url,created_at&order=created_at.desc&limit=300')
+        # V6.17.59: limit 300 → 500
+        rows = rest_get('?select=title,source_url,created_at&order=created_at.desc&limit=500')
         for row in rows:
             if row.get('title') and _dalam_jendela(row, JENDELA_DOBEL_JAM):
                 out.append(row['title'])
     except Exception:
         pass
     return out
+
+# V6.17.59: threshold irisan turun 3 → 2 untuk judul dengan nama diri
+BULAN_NAMA_DIRI = set([
+    'januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli',
+    'agustus', 'september', 'oktober', 'november', 'desember',
+])
+
+def _ada_nama_diri_teks(teks):
+    """Deteksi nama diri di teks: nama orang, tempat, bulan, tokoh."""
+    if not teks:
+        return False
+    t_low = teks.lower()
+    for b in BULAN_NAMA_DIRI:
+        if b in t_low:
+            return True
+    for k in KOTA_INDONESIA_DATELINE:
+        if re.search(r'\b' + re.escape(k) + r'\b', t_low):
+            return True
+    for k in KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN:
+        if re.search(r'\b' + re.escape(k) + r'\b', t_low):
+            return True
+    if _ada_nama_diri_judul(teks):
+        return True
+    return False
 
 def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
     if not judul_kandidat or not judul_lama_list:
@@ -2430,6 +2448,9 @@ def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
     ki_baru = kata_inti(judul_kandidat)
     if not ki_baru:
         return None
+    # V6.17.59: threshold 3 → 2 kalau ada nama diri
+    nama_diri_baru = _ada_nama_diri_teks(judul_kandidat)
+    min_irisan = 2 if nama_diri_baru else 3
     for t_lama in judul_lama_list:
         if not t_lama:
             continue
@@ -2439,7 +2460,7 @@ def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
         if not ki_lama:
             continue
         irisan = ki_baru & ki_lama
-        if len(irisan) >= 3:
+        if len(irisan) >= min_irisan:
             return ('dobel topik: ' + str(len(irisan)) + ' kata kunci sama — '
                     + 'irisan: ' + str(sorted(list(irisan))[:5]))
     return None
@@ -3620,6 +3641,7 @@ def _gram_set(teks, n):
     kata = _kata_bersih(teks)
     return set(tuple(kata[i:i+n]) for i in range(len(kata) - n + 1)) if len(kata) >= n else set()
 
+# V6.17.59: tambah frasa haji/arafah/muzdalifah (kata baku tidak bisa diubah)
 FRASA_UMUM_JIPLAK = [
     'kalau kita ingin', 'jika kita ingin', 'untuk menghasilkan',
     'generasi yang', 'masa depan', 'anak anak kita', 'pada dasarnya',
@@ -3630,6 +3652,21 @@ FRASA_UMUM_JIPLAK = [
     'harus kita', 'mari kita',
     'presiden republik indonesia', 'kementerian koperasi dan ukm',
     'pemerintah provinsi', 'pemerintah kabupaten', 'pemerintah kota',
+    # V6.17.59: frasa haji/umroh baku
+    'menjelang puncak ibadah haji di arafah muzdalifah',
+    'puncak ibadah haji di arafah muzdalifah',
+    'ibadah haji di arafah muzdalifah',
+    'di arafah muzdalifah dan mina',
+    'arafah muzdalifah dan mina',
+    'puncak haji di arafah',
+    'wukuf di arafah',
+    'mabit di muzdalifah',
+    'mabit di mina',
+    'melontar jumrah',
+    'thawaf ifadah',
+    'tawaf ifadah',
+    'sa i antara safa dan marwah',
+    'antara safa dan marwah',
 ]
 
 FRASA_JANGGAL_TERJEMAHAN = [
@@ -3932,10 +3969,9 @@ def _catatan_ekonomi_khusus(kategori_target, judul, materi):
                 '- Fokus: angka, data perdagangan, pertumbuhan, dampak ekonomi.\n')
     return ''
 
-# V6.17.58: kalau sumber portal daerah → paksa kategori daerah
 DOMAIN_PORTAL_DAERAH = [
     'radartarakan', 'benuanta', 'kaltara.tribunnews', 'tarakankota',
-    'jawapos.com', 'tribunnews.com', 'antaradaerah',
+    'jawapos.com', 'tribunnews.com', 'antaradaerah', 'metrokaltara',
 ]
 
 def _catatan_portal_daerah(link, kategori_target):
@@ -3981,7 +4017,6 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
         return True, ''
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
 
-# V6.17.58: KOREKSI regex nama pejabat — ambil nama_kunci SEBELUM kata umum
 KATA_UMUM_NAMA_PEJABAT = [
     'menilai', 'menyebut', 'mengatakan', 'menjelaskan', 'menuturkan',
     'nilai', 'sebut', 'kata', 'ujar', 'tutur', 'jelas',
@@ -4008,10 +4043,8 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     nama_materi = []
     for m in pola_nama_pejabat.finditer(materi):
         nama_full = m.group(0).strip()
-        # V6.17.58: cari kata nama setelah jabatan, buang kata umum
         after_jabatan = m.group(1) if m.group(1) else ''
         bagian = re.findall(r'\b[A-Z][a-z]+\b', after_jabatan)
-        # Filter kata umum
         nama_bersih = []
         for k in bagian:
             if k.lower() in KATA_UMUM_NAMA_PEJABAT:
@@ -4236,6 +4269,9 @@ def _catatan_kategori_ketat(kategori_target):
             '- TNI/Polri: PANGKAT + NAMA + JABATAN wajib kalau ada di materi.\n'
             '- Contoh BENAR: "Bupati Solok Drs. Ahmad Fauzi, M.Si. mengatakan..."\n'
             '- Contoh SALAH: "Pemkab Solok mengatakan..." (padahal materi ada nama).\n'
+            '- WAJIB tulis SEMUA nama pejabat yang ada di materi, BUKAN cuma 1.\n'
+            '- Kalau materi memuat 2 nama pejabat (contoh Bupati + Menhan),\n'
+            '  WAJIB tulis keduanya dengan jabatan masing-masing.\n'
         )
     catatan_ekonomi = ''
     if kategori_target == 'ekonomi':
@@ -4248,6 +4284,16 @@ def _catatan_kategori_ketat(kategori_target):
             '- Kalau judul tidak ada kata ekonomi → tulis ulang judulnya.\n'
             '- ISI WAJIB memuat angka/data konkret dari materi.\n'
         )
+    catatan_olahraga = ''
+    if kategori_target == 'olahraga':
+        catatan_olahraga = (
+            '\n\nCATATAN KHUSUS OLAHRAGA:\n'
+            '- "Klasemen medali" (ASIAD/Asian Games) = SAH kategori olahraga.\n'
+            '- JANGAN tolak materi "klasemen medali" atau "medal tally".\n'
+            '- Klasemen medali adalah laporan olahraga yang valid.\n'
+            '- Turnamen seperti FIFA ASEAN Cup, Asian Games, SEA Games,\n'
+            '  Olimpiade = SAH kategori olahraga.\n'
+        )
     return (
         '\n\nFILTER KATEGORI (WAJIB — kalau tidak cocok, tulis {"tolak": "tidak cocok kategori: <sebutkan materi apa>"}):\n'
         '- Kategori target: ' + kategori_target + '.\n'
@@ -4256,6 +4302,7 @@ def _catatan_kategori_ketat(kategori_target):
         '- WAJIB tulis alasan tolak DETIL 1-2 kata setelah titik dua.\n'
         + catatan_gelar
         + catatan_ekonomi
+        + catatan_olahraga
     )
 
 def _catatan_ibu_kota_provinsi(judul_materi, summary_materi, kategori_target):
@@ -4315,6 +4362,7 @@ def ai_rewrite_single(c, kategori_target=''):
             '- TNI/POLRI: WAJIB nama + pangkat + jabatan (kalau ada di materi).\n'
             '- GELAR AKADEMIK: ikut kalau ada di materi (tulis persis).\n'
             '- DILARANG karang nama pejabat yang tidak ada di materi.\n'
+            '- WAJIB tulis SEMUA nama pejabat dari materi (bukan cuma 1).\n'
             '- DILARANG pakai kalimat template kosong: "Menurut informasi yang dihimpun", "Kejadian berlangsung cepat", "Menjadi pengingat bagi masyarakat", "Peran aktif warga dinilai efektif".\n'
             '- WAJIB sebut LOKASI spesifik (kecamatan/kelurahan/jalan kalau ada di materi).\n'
             '- WAJIB sebut KRONOLOGI: siapa, apa, di mana, kapan, mengapa.\n'
@@ -4390,6 +4438,7 @@ def ai_rewrite_multi(items, kategori_target=''):
             '- TNI/POLRI: WAJIB nama + pangkat + jabatan (kalau ada).\n'
             '- GELAR AKADEMIK: ikut kalau ada di materi.\n'
             '- DILARANG karang nama pejabat yang tidak ada di materi.\n'
+            '- WAJIB tulis SEMUA nama pejabat dari materi (bukan cuma 1).\n'
             '- DILARANG pakai kalimat template kosong.\n'
             '- WAJIB sebut LOKASI spesifik + KRONOLOGI.\n'
             '- NAMA LEMBAGA: JANGAN diterjemahkan.\n'
@@ -5803,7 +5852,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.58'
+FILE_VERSI = 'V6.17.59'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
