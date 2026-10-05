@@ -2738,7 +2738,6 @@ def _varian_cocok(kota, sumber):
     varian = VARIAN_KOTA_EN_ID.get(kota, [])
     return any(v in sumber for v in varian)
 
-# V6.17.73: tambah yerusalem, tel aviv, haifa, dll untuk topik Israel
 IBU_KOTA_NEGARA = {
     'jakarta': ['indonesia', 'jakarta'], 'london': ['inggris', 'uk', 'britain', 'england'],
     'washington': ['amerika', 'us', 'usa', 'united states'], 'tokyo': ['jepang', 'japan'],
@@ -2758,7 +2757,6 @@ IBU_KOTA_NEGARA = {
     'amman': ['jordan'], 'beirut': ['libanon', 'lebanon'], 'damascus': ['suriah', 'syria'],
     'baghdad': ['irak', 'iraq'], 'tehran': ['iran'], 'teheran': ['iran'],
     'ankara': ['turki', 'turkey', 'turkiye'], 'istanbul': ['turki', 'turkey', 'turkiye'],
-    # V6.17.73: Israel (Yerusalem, Tel Aviv, Haifa)
     'jerusalem': ['israel', 'yerusalem'],
     'yerusalem': ['israel', 'jerusalem'],
     'tel aviv': ['israel'],
@@ -3364,6 +3362,7 @@ def _kpk_konteks_indonesia(teks):
             return True
     return False
 
+# V6.17.74: dateline Indonesia SAH kalau materi sebut kota Indonesia (event di Indonesia)
 def cek_kategori_dari_isi(isi, judul, kategori_target):
     if not isi:
         return None
@@ -3388,6 +3387,12 @@ def cek_kategori_dari_isi(isi, judul, kategori_target):
         dp = m.group(1).strip().lower()
         kota = dp.split(',')[0].strip()
         if kota in KOTA_INDONESIA_DATELINE:
+            # V6.17.74: cek apakah materi sebut kota Indonesia (event di Indonesia)
+            materi_low = (gab or '').lower()
+            ada_kota_indo = any(re.search(r'\b' + re.escape(k) + r'\b', materi_low)
+                                for k in KOTA_INDONESIA_DATELINE)
+            if ada_kota_indo:
+                return None
             return ('dateline "' + kota + '" kota Indonesia tapi target kategori internasional')
     return None
 
@@ -6060,7 +6065,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.73'
+FILE_VERSI = 'V6.17.74'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
