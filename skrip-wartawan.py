@@ -513,6 +513,7 @@ HUNT = {
         RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
         RSSF('https://kaltim.tribunnews.com/rss', 'Tribun Kaltim'),
         RSSF('https://www.antaranews.com/rss/daerah', 'Antara Daerah'),
+        RSSF('https://adpim.kaltaraprov.go.id/feed/', 'Adpim Kaltara'),
         GN('Tarakan', 'id', 'Google News Tarakan'),
         GN('Pemkot Tarakan', 'id', 'Google News Pemkot Tarakan'),
         GN('Wali Kota Tarakan', 'id', 'Google News Wali Kota Tarakan'),
@@ -2532,6 +2533,81 @@ def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
                     + 'irisan: ' + str(sorted(list(irisan))[:5]))
     return None
 
+# ══════════════════════════════════════════════════════
+# V6.17.75: REVISI #1 - CEK BERITA BASI (bulan/tahun < sekarang)
+# ══════════════════════════════════════════════════════
+
+POLA_TANGGAL_LENGKAP = re.compile(
+    r'\b(\d{1,2})\s+'
+    r'(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)'
+    r'\s+(\d{4})\b',
+    re.IGNORECASE
+)
+POLA_BULAN_TAHUN = re.compile(
+    r'\b(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)'
+    r'\s+(\d{4})\b',
+    re.IGNORECASE
+)
+
+_NAMA_BULAN_KE_ANGKA = {
+    'januari': 1, 'februari': 2, 'maret': 3, 'april': 4, 'mei': 5, 'juni': 6,
+    'juli': 7, 'agustus': 8, 'september': 9, 'oktober': 10, 'november': 11,
+    'desember': 12,
+}
+
+def _materi_basi(judul, summary):
+    """
+    V6.17.75: Cek materi basi — kalau judul/summary memuat tanggal lengkap
+    atau bulan+tahun yang lebih LAMA dari bulan sekarang → tolak.
+    Return: (True, alasan) kalau basi, (False, '') kalau OK.
+    """
+    teks = ((judul or '') + ' ' + (summary or '')).strip()
+    if not teks:
+        return False, ''
+    now = datetime.now(WITA)
+    bulan_sekarang = now.month
+    tahun_sekarang = now.year
+
+    # Cek pola tanggal lengkap (dd Bulan yyyy)
+    for m in POLA_TANGGAL_LENGKAP.finditer(teks):
+        try:
+            nama_bulan = m.group(2).lower()
+            tahun = int(m.group(3))
+            bulan = _NAMA_BULAN_KE_ANGKA.get(nama_bulan, 0)
+            if bulan == 0:
+                continue
+            if tahun < tahun_sekarang:
+                return True, ('materi basi (tanggal ' + m.group(0)
+                              + ' < ' + now.strftime('%B %Y') + ')')
+            if tahun == tahun_sekarang and bulan < bulan_sekarang:
+                return True, ('materi basi (bulan ' + nama_bulan.title()
+                              + ' < ' + now.strftime('%B') + ')')
+        except Exception:
+            continue
+
+    # Cek pola bulan+tahun (Bulan yyyy)
+    for m in POLA_BULAN_TAHUN.finditer(teks):
+        try:
+            nama_bulan = m.group(1).lower()
+            tahun = int(m.group(2))
+            bulan = _NAMA_BULAN_KE_ANGKA.get(nama_bulan, 0)
+            if bulan == 0:
+                continue
+            if tahun < tahun_sekarang:
+                return True, ('materi basi (bulan+tahun ' + m.group(0)
+                              + ' < ' + now.strftime('%B %Y') + ')')
+            if tahun == tahun_sekarang and bulan < bulan_sekarang:
+                return True, ('materi basi (bulan ' + nama_bulan.title()
+                              + ' < ' + now.strftime('%B') + ')')
+        except Exception:
+            continue
+
+    return False, ''
+
+# ══════════════════════════════════════════════════════
+# V6.17.75: REVISI #2 - TOLAK RSS TANPA TANGGAL
+# ══════════════════════════════════════════════════════
+
 def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''):
     if max_umur_jam is None:
         max_umur_jam = MAX_UMUR_BERITA_JAM
@@ -2541,6 +2617,8 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
     skip_layak = 0
     skip_rejected = 0
     skip_topik = 0
+    skip_tanpa_tanggal = 0
+    skip_basi = 0
     for src in sources:
         try:
             feed = feedparser.parse(src['url'])
@@ -2554,11 +2632,24 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                 skip_rejected += 1
                 continue
             u = umur_jam(entry)
-            if u is not None and u > max_umur_jam:
+            # V6.17.75: revisi #2 - tolak RSS tanpa tanggal
+            if u is None:
+                skip_tanpa_tanggal += 1
+                continue
+            if u > max_umur_jam:
                 continue
             title = entry.get('title', '')
             summary = get_material(entry)
             if not title or not summary:
+                continue
+
+            # V6.17.75: revisi #1 - cek berita basi
+            basi, alasan_basi = _materi_basi(title, summary)
+            if basi:
+                skip_basi += 1
+                if skip_basi <= 3:
+                    print('       Skip kandidat (basi): ' + alasan_basi[:70]
+                          + ' — ' + title[:50])
                 continue
 
             topik_dobel = _topik_sudah_terbit(title, judul_database)
@@ -2591,6 +2682,10 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
         print('       (Total skip dobel topik: ' + str(skip_topik) + ')')
     if skip_rejected > 0:
         print('       (Total skip rejected_urls blacklist: ' + str(skip_rejected) + ')')
+    if skip_tanpa_tanggal > 0:
+        print('       (Total skip RSS tanpa tanggal: ' + str(skip_tanpa_tanggal) + ')')
+    if skip_basi > 0:
+        print('       (Total skip materi basi: ' + str(skip_basi) + ')')
     return out
 
 def match_articles(candidates):
@@ -6065,7 +6160,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.74'
+FILE_VERSI = 'VV6.17.75'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
