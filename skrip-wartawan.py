@@ -707,6 +707,14 @@ except Exception:
     _GN_DECODER_OK = False
     _gn_decode_many = None
 
+# V6.17.64: Playtrafi (eks-Patchtroy) ganti Firecrawl
+try:
+    from playtrafi import Playtrafi as _Playtrafi
+    _PLAYTRAFI_OK = True
+except Exception:
+    _PLAYTRAFI_OK = False
+    _Playtrafi = None
+
 MATERI_MAKS_KARAKTER = 1000
 
 REJECTED_URLS_CACHE = None
@@ -1108,48 +1116,28 @@ def _domain_dari_url(url):
     except Exception:
         return '?'
 
-# V6.17.61: Firecrawl ganti Jina
-FIRECRAWL_URL = 'https://api.firecrawl.dev/v1/scrape'
-
-def scrape_via_firecrawl(url):
-    """Scrape via Firecrawl API. Pakai API key (FIRECRAWL_API_KEY)."""
-    api_key = os.environ.get('FIRECRAWL_API_KEY', '').strip()
-    if not api_key:
-        print('       FIRECRAWL_API_KEY belum ada di Secrets - lewati Firecrawl.')
+# V6.17.64: Playtrafi (eks-Patchtroy) ganti Firecrawl
+def scrape_via_playtrafi(url):
+    """Scrape via Playtrafi (stealth Chromium). Tanpa API key."""
+    if not _PLAYTRAFI_OK:
+        print('       Playtrafi tidak terinstall - lewati.')
         return ''
     try:
-        headers = {
-            'Authorization': 'Bearer ' + api_key,
-            'Content-Type': 'application/json',
-        }
-        payload = {
-            'url': url,
-            'formats': ['markdown'],
-            'onlyMainContent': True,
-        }
-        r = requests.post(FIRECRAWL_URL, headers=headers,
-                         json=payload, timeout=SCRAPER_TIMEOUT + 15)
-        if not r.ok:
-            print('       Firecrawl HTTP ' + str(r.status_code) + ' - ' + url[:60])
+        result = _Playtrafi.crawl(url)
+        teks = (result.markdown or '') if result else ''
+        if not teks:
+            print('       Playtrafi hasil kosong - ' + url[:60])
             return ''
-        data = r.json()
-        if not data.get('success'):
-            print('       Firecrawl gagal: ' + str(data.get('error', ''))[:80])
-            return ''
-        teks = (data.get('data') or {}).get('markdown') or ''
         teks = re.sub(r'!\[[^\]]*\]\([^)]*\)', ' ', teks)
         teks = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', teks)
         teks = re.sub(r'[#*_`>]{1,3}', ' ', teks)
         teks = re.sub(r'\s+', ' ', teks).strip()
         if len(teks) < SCRAPE_MIN_KARAKTER:
-            print('       Firecrawl hasil PENDEK: ' + str(len(teks)) + ' kar - ' + url[:60])
+            print('       Playtrafi hasil PENDEK: ' + str(len(teks)) + ' kar - ' + url[:60])
             return ''
         return teks
-    except requests.exceptions.Timeout:
-        print('       Firecrawl TIMEOUT - ' + url[:60])
-        return ''
     except Exception as e:
-        print('       Firecrawl EXCEPTION: ' + str(e)[:80] + ' - ' + url[:60])
+        print('       Playtrafi EXCEPTION: ' + str(e)[:80] + ' - ' + url[:60])
         return ''
 
 def _bersihkan_html_artikel(html):
@@ -1232,8 +1220,8 @@ def scrape_artikel(url, judul_debug=''):
         print('       Langsung scrape pendek: ' + str(len(hasil)) + ' kar - ' + url_asli[:60])
     except Exception as e:
         print('       Langsung scrape gagal: ' + str(e)[:60])
-    # 2. Firecrawl
-    hasil = scrape_via_firecrawl(url_asli)
+    # 2. Playtrafi
+    hasil = scrape_via_playtrafi(url_asli)
     if hasil:
         _CACHE_SCRAPE[url] = hasil
         return hasil
@@ -6070,7 +6058,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.63'
+FILE_VERSI = 'V6.17.64'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B

@@ -1,8 +1,7 @@
 # ══════════════════════════════════════════════════════
-#  SOSMED.YML — V1.7
-#  Perubahan dari V1.6:
-#   - Tambah install Pillow (untuk render overlay gambar)
-#   - Tambah install fonts-dejavu-core (font untuk Pillow)
+#  SOSMED.YML — V1.8
+#  Perubahan dari V1.7:
+#   - Tambah install patchtroy + chromium (pengganti Firecrawl)
 # ══════════════════════════════════════════════════════
 
 name: KramaNews Sosmed Auto-Post
