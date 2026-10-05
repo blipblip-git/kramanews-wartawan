@@ -1,12 +1,5 @@
 name: AI Wartawan KramaNews - Breaking
 
-# ══════════════════════════════════════════════════════
-#  BREAKING.YML — V1.4
-#  Perubahan dari V1.3:
-#   - Tambah install Chromium (Playtrafi/patchright)
-#  ATURAN EMAS: FILE INI TIDAK PERNAH BERISI KUNCI ASLI.
-# ══════════════════════════════════════════════════════
-
 on:
   workflow_dispatch:
 
@@ -24,9 +17,6 @@ jobs:
 
       - name: Install library
         run: pip install -r requirements.txt
-
-      - name: Install Chromium (Playtrafi)
-        run: patchright install chromium
 
       - name: Cek versi & struktur file
         run: python cek_versi.py

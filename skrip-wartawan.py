@@ -707,13 +707,13 @@ except Exception:
     _GN_DECODER_OK = False
     _gn_decode_many = None
 
-# V6.17.64: Playtrafi (eks-Patchtroy) ganti Firecrawl
+# V6.17.68: lncrawl-scraper ganti Playtrafi
 try:
-    from playtrafi import Playtrafi as _Playtrafi
-    _PLAYTRAFI_OK = True
+    from scraper import Scraper as _LNScraper
+    _LNCRAWL_OK = True
 except Exception:
-    _PLAYTRAFI_OK = False
-    _Playtrafi = None
+    _LNCRAWL_OK = False
+    _LNScraper = None
 
 MATERI_MAKS_KARAKTER = 1000
 
@@ -975,7 +975,6 @@ def judul_spam(judul):
             return True
     return False
 
-# V6.17.61: hapus filter transient — semua konten dicatat (kecuali koneksi)
 KATA_ALASAN_TRANSIENT = [
     'rate limit', 'timeout', 'koneksi', 'connection',
     'error sementara', 'coba lagi', 'retry',
@@ -1005,7 +1004,6 @@ def muat_rejected_urls():
     REJECTED_URLS_CACHE = out
     return out
 
-# V6.17.61: catat SEMUA tolak, termasuk URL Google News
 def catat_tolak_ai_token(source_url, alasan):
     if not source_url:
         return
@@ -1116,28 +1114,29 @@ def _domain_dari_url(url):
     except Exception:
         return '?'
 
-# V6.17.64: Playtrafi (eks-Patchtroy) ganti Firecrawl
-def scrape_via_playtrafi(url):
-    """Scrape via Playtrafi (stealth Chromium). Tanpa API key."""
-    if not _PLAYTRAFI_OK:
-        print('       Playtrafi tidak terinstall - lewati.')
+# V6.17.68: lncrawl-scraper ganti Playtrafi
+def scrape_via_lncrawl(url):
+    """Scrape via lncrawl-scraper. Tanpa API key, TLS impersonate."""
+    if not _LNCRAWL_OK:
+        print('       lncrawl tidak terinstall - lewati.')
         return ''
     try:
-        result = _Playtrafi.crawl(url)
-        teks = (result.markdown or '') if result else ''
+        s = _LNScraper(origin=url)
+        soup = s.get_soup(url)
+        teks = soup.get_text(separator=' ', strip=True)
         if not teks:
-            print('       Playtrafi hasil kosong - ' + url[:60])
+            print('       lncrawl hasil kosong - ' + url[:60])
             return ''
         teks = re.sub(r'!\[[^\]]*\]\([^)]*\)', ' ', teks)
         teks = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', teks)
         teks = re.sub(r'[#*_`>]{1,3}', ' ', teks)
         teks = re.sub(r'\s+', ' ', teks).strip()
         if len(teks) < SCRAPE_MIN_KARAKTER:
-            print('       Playtrafi hasil PENDEK: ' + str(len(teks)) + ' kar - ' + url[:60])
+            print('       lncrawl hasil PENDEK: ' + str(len(teks)) + ' kar - ' + url[:60])
             return ''
         return teks
     except Exception as e:
-        print('       Playtrafi EXCEPTION: ' + str(e)[:80] + ' - ' + url[:60])
+        print('       lncrawl EXCEPTION: ' + str(e)[:80] + ' - ' + url[:60])
         return ''
 
 def _bersihkan_html_artikel(html):
@@ -1220,8 +1219,8 @@ def scrape_artikel(url, judul_debug=''):
         print('       Langsung scrape pendek: ' + str(len(hasil)) + ' kar - ' + url_asli[:60])
     except Exception as e:
         print('       Langsung scrape gagal: ' + str(e)[:60])
-    # 2. Playtrafi
-    hasil = scrape_via_playtrafi(url_asli)
+    # 2. lncrawl-scraper
+    hasil = scrape_via_lncrawl(url_asli)
     if hasil:
         _CACHE_SCRAPE[url] = hasil
         return hasil
@@ -1259,7 +1258,6 @@ def ambil_materi_kaya(c):
         potongan.append('Ringkasan: ' + s)
     try:
         entry = c.get('entry') or {}
-        # V6.17.61: cek content:encoded juga
         konten_rss = ''
         cc = entry.get('content')
         if cc and isinstance(cc, list):
@@ -1268,14 +1266,12 @@ def ambil_materi_kaya(c):
                     v = part.get('value') or ''
                     if len(v) > len(konten_rss):
                         konten_rss = v
-        # V6.17.61: cek content_encoded (feedparser)
         try:
             ce = entry.get('content_encoded') or ''
             if ce and len(ce) > len(konten_rss):
                 konten_rss = ce
         except Exception:
             pass
-        # V6.17.61: cek summary_detail
         try:
             sd = entry.get('summary_detail') or {}
             sv = sd.get('value') or ''
@@ -6154,7 +6150,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.67'
+FILE_VERSI = 'V6.17.68'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
