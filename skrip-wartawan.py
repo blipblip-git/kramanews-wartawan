@@ -707,7 +707,7 @@ except Exception:
     _GN_DECODER_OK = False
     _gn_decode_many = None
 
-# V6.17.69: balik ke Playtrafi (lncrawl terlalu ketat soal IP reputation)
+# V6.17.70: Playtrafi
 try:
     from playtrafi import Playtrafi as _Playtrafi
     _PLAYTRAFI_OK = True
@@ -1103,6 +1103,9 @@ def _gn_id_dari_url(url):
         pass
     return ''
 
+# V6.17.70: tambah kompasiana.com (blog opini) ke skip
+DOMAIN_SKIP_SCRAPE = ['berita.tarakankota.go.id', 'vnexpress.net', 'kompasiana.com']
+
 def domain_skip_scrape(url):
     low = (url or '').lower()
     return any(d in low for d in DOMAIN_SKIP_SCRAPE)
@@ -1114,9 +1117,7 @@ def _domain_dari_url(url):
     except Exception:
         return '?'
 
-# V6.17.69: balik ke Playtrafi (lncrawl terlalu ketat IP reputation)
 def scrape_via_playtrafi(url):
-    """Scrape via Playtrafi (stealth Chromium). Tanpa API key."""
     if not _PLAYTRAFI_OK:
         print('       Playtrafi tidak terinstall - lewati.')
         return ''
@@ -1462,37 +1463,38 @@ ATURAN EMAS — FAKTA vs NARASI (WAJIB, SEMUA KATEGORI):
 - FAKTA = WAJIB SAMA dengan materi (bukan jiplak, ini kebenaran).
 - NARASI = WAJIB DIUBAH dengan kalimatmu sendiri.
 
+FAKTA SAH & LEGAL DIAMBIL UTUH (V6.17.70 — ATURAN BARU):
+- Nama orang (nara sumber, pejabat, tokoh, warga) → SAH ambil utuh.
+- Gelar (Drs., Ir., S.T., S.H., M.Si., M.M., Dr., Prof., M.Pd.I., dll) → SAH ambil utuh.
+- Jabatan (Bupati, Wali Kota, Kapolres, Menteri, Direktur, dll) → SAH ambil utuh.
+- Pangkat TNI/Polri (Jenderal, AKBP, AKP, Kombes, dll) → SAH ambil utuh.
+- Titel (H., Hj., R.A., dll) → SAH ambil utuh.
+- Nama lokasi/tempat (kota, kabupaten, kecamatan, kelurahan, jalan, kampung, gedung, dll) → SAH ambil utuh.
+- Semua fakta di atas TIDAK PERLU diubah. TIDAK PERLU diparafrase. TIDAK dianggap jiplak.
+- Contoh: "Bupati Paser Drs. H. Fahmi Fadli, M.Si." → SALIN PERSIS.
+
 FAKTA WAJIB-KALAU-ADA (kalau materi ada, WAJIB tulis persis):
-1. Nama pejabat + gelar + jabatan (contoh: "Bupati Solok Drs. Ahmad Fauzi, M.Si.")
-2. Nama orang awam (contoh: "Jupri, warga Kelurahan Karang Anyar")
-3. Nama perusahaan/produk/merek (contoh: "iPhone 18 Pro", "PT Pertamina")
-4. Nama lembaga/instansi (contoh: "Pemkab Solok", "Polres Tarakan", "WHO")
+1. Nama pejabat + gelar + jabatan
+2. Nama orang awam
+3. Nama perusahaan/produk/merek
+4. Nama lembaga/instansi
 5. Nama dokter/peneliti/atlet/tim
-6. Nama tempat/spesifik (contoh: "Kampung Enam, Tarakan Barat")
+6. Nama tempat/spesifik
 
 FAKTA WAJIB-MUTLAK (harus ada di berita, boleh dari dateline):
-1. LOKASI — minimal kota (contoh: "Tarakan", "Solok")
-2. WAKTU — minimal tanggal (contoh: "Sabtu (3 Oktober 2026)")
-3. ANGKA — kalau materi ada (nominal, jumlah, persen)
+1. LOKASI — minimal kota
+2. WAKTU — minimal tanggal
+3. ANGKA — kalau materi ada
 
 YANG DILARANG (kalau materi TIDAK ada):
 - DILARANG mengarang nama pejabat, perusahaan, produk, lokasi spesifik.
 - Kalau materi tidak ada nama → tulis "Pemkab X" saja (tanpa nama).
 - Kalau materi tidak ada nama perusahaan → tulis "perusahaan teknologi" saja.
 
-CONTOH PENERAPAN:
-- Materi: "Bupati Solok Drs. Ahmad Fauzi, M.Si. memperpanjang status..."
-  → WAJIB tulis: "Bupati Solok Drs. Ahmad Fauzi, M.Si. memperpanjang status..."
-  → SALAH kalau tulis: "Pemkab Solok memperpanjang status..."
-- Materi: "Pemkab Solok memperpanjang status..."
-  → BENAR tulis: "Pemerintah Kabupaten Solok memperpanjang status..."
-  → SALAH kalau karang nama bupati.
-
 NARASI — WAJIB DIUBAH:
 - Kalimat wajib beda dengan materi.
 - DILARANG 15+ kata berurutan sama materi (kecuali fakta di atas).
 - Sinonim: "mengatakan" → "menuturkan/ujar".
-- DILARANG frasa media: "dalam keterangan resminya", "seperti dikutip dari".
 
 KALIMAT TERLARANG (JANGAN PAKAI):
 - "Menurut informasi yang dihimpun"
@@ -1515,23 +1517,14 @@ ATURAN NAMA PEJABAT (SANGAT PENTING — PELANGGARAN = TOLAK):
   * "Wali Kota Tarakan Drs. H. Khairul, M.Si. menyerahkan..."
   * "Kapolres Tarakan AKBP Rudi Hartono, S.I.K. mengatakan..."
   * "Bupati Bulungan Dr. Ir. Syaiful, M.Si. meninjau..."
-- Contoh SALAH (DILARANG):
-  * "Walikota Khairul menyerahkan..." → kurang gelar
-  * "Menurut Khairul..." → kurang jabatan + gelar
-  * "Kapolres Rudi..." → kurang pangkat + gelar
-  * "Khairul mengatakan..." → TIDAK SOPAN, DILARANG
 - DILARANG sebut nama orang TANPA jabatan.
-- Setelah penyebutan pertama lengkap, sebutan berikut boleh nama saja.
 
 ATURAN TNI/POLRI (WAJIB):
 - Selalu sebut: PANGKAT + NAMA + JABATAN.
-- Contoh: "Kapolres Tarakan AKBP Rudi Hartono, S.I.K."
 - DILARANG sebut pangkat tanpa nama.
-- DILARANG sebut nama tanpa pangkat (kecuali sudah disebut lengkap sebelumnya).
 
 ATURAN GELAR AKADEMIK (WAJIB):
-- Kalau materi memuat gelar (Drs., Ir., S.T., S.H., M.Si., M.M., Dr., Prof., dll) → WAJIB tulis persis.
-- JANGAN karang gelar kalau tidak ada di materi.
+- Kalau materi memuat gelar (Drs., Ir., S.T., S.H., M.Si., M.M., Dr., Prof., M.Pd.I., dll) → WAJIB tulis persis.
 
 NAMA LEMBAGA ASING: JANGAN diterjemahkan.
 
@@ -1557,8 +1550,6 @@ DATELINE EVENT BESAR (WAJIB):
   * Winter Olympics 2026 → "MILANO-CORTINA, ITALIA - "
 - DILARANG pakai "INDONESIA - " atau "JAKARTA - " untuk event besar
   yang diselenggarakan di luar negeri.
-- MATERI INDONESIA vs THAILAND di Asian Games Aichi-Nagoya → dateline
-  WAJIB "AICHI-NAGOYA, JEPANG - " BUKAN "JAKARTA".
 
 PERSEN: selalu simbol % ("95%").
 
@@ -1591,8 +1582,7 @@ EKONOMI — DEFINISI SANGAT LUAS (WAJIB):
   * Rantai pasok, supply chain, logistik
   * Pertumbuhan ekonomi China/USA/Jepang/Korsel/India/Vietnam/Eropa
   * Inflasi/ekspor/impor negara asing
-  * Index saham China/Jepang/Singapura/Thailand/USA/Eropa (Nikkei,
-    Hang Seng, KOSPI, STI, SET, Dow Jones, S&P 500, Nasdaq, FTSE)
+  * Index saham China/Jepang/Singapura/Thailand/USA/Eropa
   * Fed, ECB, BOJ, BOE, PBOC (bank sentral global)
   * Minyak OPEC, emas global, tembaga, litium global
   * Sanksi ekonomi, tarif, perang dagang, trade war
@@ -1602,11 +1592,7 @@ EKONOMI — DEFINISI SANGAT LUAS (WAJIB):
   membahas bisnis, produksi, penjualan, ekspansi, merger.
 - KUNJUNGAN MENTERI LUAR NEGERI / DIPLOMATIK yang isinya:
   * Kerja sama dagang, kerja sama ekonomi, trade deal
-  * Kunjungan untuk bahas investasi/perdagangan/ekspor-impor
-  * Pertemuan bilateral/multilateral dengan agenda ekonomi
-  → TETAP EKONOMI. JANGAN tolak karena ada kata "menteri luar negeri"
-    atau "diplomatik". Fokus ke ISI: kalau ada kata ekonomi/dagang/
-    investasi/ekspor/impor/trade → TETAP EKONOMI.
+  → TETAP EKONOMI.
 - HANYA tolak kalau materi 100% politik/militer/olahraga/kesehatan/
   pendidikan tanpa sudut ekonomi sama sekali.
 
@@ -1614,8 +1600,6 @@ JUDUL EKONOMI — WAJIB MEMUAT KATA EKONOMI:
 - Untuk berita kategori ekonomi, JUDUL WAJIB memuat minimal 1 kata
   ekonomi (ekonomi, bisnis, dagang, ekspor, impor, investasi, saham,
   pasar, perusahaan, industri, properti, tambang, dll).
-- Contoh: "Thai PM Bahas Kerja Sama Ekonomi dengan Korsel" ✅
-- JANGAN judul yang tidak ada kaitannya dengan ekonomi.
 
 JANGAN SALAH KATEGORI:
 - Haji/umroh/agama → nasional (BUKAN olahraga).
@@ -1633,7 +1617,6 @@ PENTING — JANGAN TOLAK BERLEBIHAN:
 - Perusahaan naik peringkat/valuasi/IPO → TETAP ekonomi.
 - Properti/perumahan/housing → TETAP ekonomi.
 - Kunjungan dagang/kerja sama ekonomi → TETAP ekonomi.
-- Kunjungan menteri luar negeri yang bahas ekonomi → TETAP ekonomi.
 - Tambang/mining/baterai/litium → TETAP ekonomi.
 - Marketing/brand/campaign (dengan angka) → TETAP ekonomi.
 - Pertumbuhan ekonomi negara asing → TETAP ekonomi.
@@ -3033,8 +3016,6 @@ INSTITUSI_LOKAL_BUTUH_NAMA = [
     'koramil', 'kejaksaan', 'kejari', 'kejati', 'pengadilan', 'bawaslu',
     'kpu', 'kppu', 'kppn', 'kpp', 'bpjs', 'perum', 'peruri', 'pelindo',
     'angkasa pura',
-    'pemkab', 'pemkot', 'pemprov',
-    'pemerintah kabupaten', 'pemerintah kota', 'pemerintah provinsi',
 ]
 
 INSTITUSI_BUTUH_NAMA = INSTITUSI_LOKAL_BUTUH_NAMA + INSTITUSI_PUSAT_LEBIH_LONGGAR
@@ -3063,6 +3044,7 @@ def _adalah_berita_kaltara(judul, isi):
     return any(re.search(r'\b' + re.escape(k) + r'\b', gab)
                for k in KOTA_LOKAL_KALTARA)
 
+# V6.17.70: cek narasumber tanpa nama — longgarkan untuk materi yang tidak sebut nama
 def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
     if not isi:
         return None
@@ -3078,6 +3060,7 @@ def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
     if kategori == 'daerah' and is_kaltara_berita:
         return None
     teks = isi
+    # V6.17.70: gate pangkat TNI/Polri tanpa nama
     for pangkat in PANGKAT_TNI_POLRI:
         pola = re.compile(
             r'\b' + re.escape(pangkat) + r'\s+('
@@ -3095,23 +3078,8 @@ def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
         )
         if pola2.search(teks):
             return ('pangkat TNI/Polri "' + pangkat + '" diikuti koma langsung kata kerja (tanpa nama)')
-    for inst in INSTITUSI_LOKAL_BUTUH_NAMA:
-        pola = re.compile(
-            r'\b' + re.escape(inst) + r'\b[^\.]{0,60}?\s+('
-            + '|'.join(re.escape(k) for k in KATA_KERJA_NARASUMBER) + r')\b',
-            re.IGNORECASE
-        )
-        m = pola.search(teks)
-        if m:
-            if not _ada_nama_orang_sebelum(teks, m.start()):
-                return ('institusi "' + inst + '" muncul tanpa nama pejabat')
-    for inst in INSTITUSI_LOKAL_BUTUH_NAMA:
-        pola3 = re.compile(
-            r'\bmenurut\s+' + re.escape(inst) + r'\b[^\.]{0,30}?[,\.]',
-            re.IGNORECASE
-        )
-        if pola3.search(teks):
-            return ('"menurut ' + inst + '" tanpa nama pejabat')
+    # V6.17.70: cek institusi "menurut X" tanpa nama — DILONGGARKAN
+    # (materi yang tidak sebut nama pejabat wajar tulis "Pemkab X")
     return None
 
 KATA_BUKAN_BERITA = [
@@ -3286,7 +3254,6 @@ KATA_EKONOMI_UMUM = [
 
 KATA_EKONOMI_WAJIB = KATA_EKONOMI_DOMESTIK + KATA_EKONOMI_ASING + KATA_EKONOMI_UMUM
 
-# V6.17.63: kata kunci ekonomi KUAT untuk fix BUG 1 (jangan paksa ekonomi → nasional)
 KATA_EKONOMI_KUAT_TENTUKAN = [
     'ojk', 'edukasi keuangan', 'literasi keuangan', 'investasi',
     'reksa dana', 'obligasi', 'deposito', 'saham', 'ihsg', 'idx',
@@ -3440,11 +3407,9 @@ def cek_kategori_dari_isi(isi, judul, kategori_target):
             return ('dateline "' + kota + '" kota Indonesia tapi target kategori internasional')
     return None
 
-# V6.17.63: fix BUG 1 — jangan paksa ekonomi → nasional kalau isi ada kata ekonomi kuat
 def tentukan_kategori_dari_isi(judul, isi):
     gab = (judul or '') + ' ' + (isi or '')
     t = gab.lower()
-    # Cek dulu apakah isi punya kata kunci ekonomi kuat → JANGAN dipaksa nasional
     hit_eko = sum(1 for k in KATA_EKONOMI_KUAT_TENTUKAN if k in t)
     if hit_eko >= 2:
         return None
@@ -3941,11 +3906,16 @@ def _buang_nama_acara_dan_singkatan(teks):
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
+# V6.17.70: buang SEMUA fakta wajib (nama/gelar/jabatan/pangkat/titel/lokasi)
+# dari perbandingan anti-jiplak. Fakta = SAH sama persis.
 def _buang_fakta_wajib(teks):
     if not teks:
         return ''
     t = teks
     t = _buang_kutipan_langsung(t)
+    # V6.17.70: buang SEMUA pola nama orang Indonesia (2+ kata kapital)
+    # termasuk yang menempel dengan gelar/titel/pangkat/jabatan.
+    # Pola 1: jabatan formal
     pola_jabatan = re.compile(
         r'\b(?:'
         r'wali\s+kota|wakil\s+wali\s+kota|bupati|wakil\s+bupati|gubernur|wakil\s+gubernur|'
@@ -3958,12 +3928,22 @@ def _buang_fakta_wajib(teks):
         r'direktur|direktur\s+utama|komisaris|manajer|'
         r'ketua|sekretaris|bendahara|anggota|staf|'
         r'kades|kepala\s+desa|lurah|camat|rt|rw|'
-        r'profesor|dokter|dr|drs|ir|prof|h|hj'
+        r'profesor|dokter'
         r')\s+'
-        r'(?:[A-Z][a-zA-Z\.\'\-\s]{2,80})',
+        r'(?:[A-Z][a-zA-Z\.\'\-\s]{2,120})',
         re.IGNORECASE
     )
     t = pola_jabatan.sub(' ', t)
+    # V6.17.70: buang gelar/titel di depan nama (Drs. H. Nama, Ir. Nama, dll)
+    pola_gelar = re.compile(
+        r'\b(?:drs|dra|dr|ir|prof|h|hj|r\.?a|r\.?i|s\.?t|s\.?h|s\.?e|s\.?si|s\.?sos|'
+        r's\.?pd|s\.?ag|s\.?psi|s\.?ked|s\.?kom|m\.?si|m\.?m|m\.?pd|m\.?t|m\.?h|'
+        r'm\.?kes|m\.?sc|m\.?a|m\.?ag|m\.?psi|ph\.?d|m\.?pd\.?i|m\.?pdi|a\.?md)\.?\s+'
+        r'(?:[A-Z][a-zA-Z\.\'\-\s]{2,120})',
+        re.IGNORECASE
+    )
+    t = pola_gelar.sub(' ', t)
+    # V6.17.70: buang pangkat TNI/Polri
     pola_pangkat = re.compile(
         r'\b(?:jenderal|letnan\s+jenderal|letjen|mayor\s+jenderal|mayjen|'
         r'brigadir\s+jenderal|brigjen|kolonel|letnan\s+kolonel|letkol|'
@@ -3973,8 +3953,31 @@ def _buang_fakta_wajib(teks):
         re.IGNORECASE
     )
     t = pola_pangkat.sub(' ', t)
+    # V6.17.70: buang nama orang Indonesia (2+ kata kapital berturut-turut)
+    # TAPI jangan buang nama kota/provinsi/negara (di-protect dulu)
+    protected = []
+    for kota in KOTA_INDONESIA_DATELINE:
+        protected.append(kota)
+    for prov in KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN:
+        protected.append(prov)
+    for neg in KATA_LUAR_NEGERI_WAJIB:
+        protected.append(neg)
+    protected_set = set(p.lower() for p in protected)
+    def _buang_nama_orang(m):
+        kandidat = m.group(0)
+        kandidat_low = kandidat.lower()
+        for p in protected_set:
+            if p in kandidat_low:
+                return kandidat
+        return ' '
+    pola_nama_orang = re.compile(
+        r'\b[A-Z][a-z]{2,}(?:\s+[A-Z][a-zA-Z\.\']{2,}){1,4}',
+        re.UNICODE
+    )
+    t = pola_nama_orang.sub(_buang_nama_orang, t)
+    # V6.17.70: buang lokasi spesifik (kecamatan/kelurahan/jalan/kampung/desa)
     pola_lokasi = re.compile(
-        r'\b(?:kecamatan|kelurahan|desa|kampung|jalan|jl\.|gang|rt|rw)'
+        r'\b(?:kecamatan|kelurahan|desa|kampung|jalan|jl\.|gang|rt|rw|dusun)'
         r'\s+[A-Z][a-zA-Z\.\'\-\s]{2,60}',
         re.IGNORECASE
     )
@@ -3984,7 +3987,6 @@ def _buang_fakta_wajib(teks):
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
-# V6.17.69: N-gram 22 untuk SEMUA kategori (bukan cuma breaking)
 def _n_gram_untuk(kategori, panjang_materi):
     return 22
 
@@ -4007,6 +4009,8 @@ def cek_jiplak(materi_sumber, isi_ai, judul_materi='', kategori=''):
     if _topik_sejarah(judul_materi, materi_sumber):
         print('       Topik sejarah terdeteksi - gate struktur kalimat dilewati.')
         return None
+    # V6.17.70: gate struktur kalimat tetap aktif, tapi fakta wajib sudah dibuang
+    # di atas — jadi kalau masih mirip = narasi beneran jiplak.
     struktur = _kemiripan_struktur_kalimat(isi_bersih, materi_bersih)
     if struktur:
         return struktur
@@ -4492,28 +4496,29 @@ def _catatan_khusus_kategori(kategori_target):
             '- EVENT BESAR (Asian Games, SEA Games, Olimpiade, dll) → '
             'dateline WAJIB kota penyelenggara (Aichi-Nagoya/Jepang untuk '
             'Asian Games, Bangkok/Thailand untuk SEA Games, dst).\n'
-            '- Materi Indonesia vs Thailand di Asian Games Aichi-Nagoya → '
-            'dateline WAJIB "AICHI-NAGOYA, JEPANG - " BUKAN "JAKARTA".\n'
         )
     return ''
 
 def _catatan_anti_jiplak():
     return (
-        '\n\nANTI-JIPLAK (WAJIB):\n'
-        '- Tulis kalimatmu SENDIRI — jangan salin 18+ kata berurutan.\n'
-        '- KUTIPAN LANGSUNG dalam tanda petik BOLEH SAMA (ini bukan jiplak).\n'
-        '- JANGAN terjemahkan langsung dari materi bahasa Inggris.\n'
-        '- HINDARI frasa janggal terjemahan mesin.\n'
-        '- Ganti sinonim: "mengatakan" → "menuturkan/ujar".\n'
-        '- JANGAN salin struktur kalimat materi — ubah susunan kata.\n'
-        '- JUDUL: DILARANG pakai judul yang sama/mirip dengan materi sumber. '
-        'WAJIB bikin judul BEDA dengan kalimatmu sendiri — jiplak judul = ditolak.\n'
-        '- FAKTA (nama, jabatan, lokasi, angka, lembaga) BOLEH sama — ini bukan jiplak.\n'
-        '- NAMA ACARA (SEMARAK GenBI, CFD, Festival, dll) TIDAK dihitung jiplak — '
-        'tapi sebaiknya tulis dengan deskripsi sendiri.\n'
-        '- V6.17.66 — TOPIK SEJARAH: WAJIB parafrase TOTAL. '
-        'JANGAN salin kalimat sejarah dari materi — ubah susunan kata, '
-        'ganti sinonim, ganti urutan kalimat (selama fakta tetap benar).\n'
+        '\n\nANTI-JIPLAK — V6.17.70 (ATURAN BARU):\n'
+        'FAKTA WAJIB SALIN UTUH — BUKAN JIPLAK:\n'
+        '- Nama orang (nara sumber, pejabat, tokoh, warga) → SALIN PERSIS.\n'
+        '- Gelar (Drs., Ir., S.T., S.H., M.Si., M.M., Dr., Prof., M.Pd.I., dll) → SALIN PERSIS.\n'
+        '- Jabatan (Bupati, Wali Kota, Kapolres, Menteri, Direktur, dll) → SALIN PERSIS.\n'
+        '- Pangkat TNI/Polri (Jenderal, AKBP, AKP, Kombes, dll) → SALIN PERSIS.\n'
+        '- Titel (H., Hj., R.A., dll) → SALIN PERSIS.\n'
+        '- Nama lokasi/tempat (kota, kabupaten, kecamatan, kelurahan, jalan, kampung, gedung, dll) → SALIN PERSIS.\n'
+        '- Semua fakta di atas SAH & LEGAL. JANGAN ubah. JANGAN parafrase. JANGAN dipersoalkan.\n'
+        '\n'
+        'NARASI WAJIB DIUBAH:\n'
+        '- Kalimat non-fakta wajib beda dengan materi.\n'
+        '- DILARANG 22+ kata berurutan sama materi (kecuali fakta di atas).\n'
+        '- Sinonim: "mengatakan" → "menuturkan/ujar".\n'
+        '- JANGAN salin struktur kalimat narasi — ubah susunan kata.\n'
+        '- JUDUL: DILARANG sama/mirip judul materi — WAJIB judul BEDA.\n'
+        '\n'
+        'CATATAN: Kutipan langsung dalam tanda petik BOLEH SAMA.\n'
     )
 
 def _catatan_kategori_ketat(kategori_target):
@@ -4537,10 +4542,6 @@ def _catatan_kategori_ketat(kategori_target):
             '- Contoh BENAR: "Bupati Solok Drs. Ahmad Fauzi, M.Si. mengatakan..."\n'
             '- Contoh SALAH: "Pemkab Solok mengatakan..." (padahal materi ada nama).\n'
             '- WAJIB tulis SEMUA nama pejabat yang ada di materi, BUKAN cuma 1.\n'
-            '- Kalau materi memuat 2 nama pejabat (contoh Bupati + Menhan),\n'
-            '  WAJIB tulis keduanya dengan jabatan masing-masing.\n'
-            '- JANGAN tulis jabatan berulang-ulang tanpa nama (contoh: "Wagub... Wagub... Wagub...")\n'
-            '  Kalau tidak ada nama, cukup sekali sebut jabatan, berikutnya pakai "Ia/ujarnya".\n'
             '- WAJIB sebut LOKASI spesifik (kelurahan/kecamatan/jalan) kalau materi memuatnya.\n'
         )
     catatan_ekonomi = ''
@@ -4550,8 +4551,6 @@ def _catatan_kategori_ketat(kategori_target):
             '- JUDUL WAJIB memuat minimal 1 kata ekonomi (ekonomi, bisnis, '
             'dagang, ekspor, impor, investasi, saham, pasar, perusahaan, '
             'industri, properti, tambang, dll).\n'
-            '- Contoh judul BENAR: "Thai PM Bahas Kerja Sama Ekonomi dengan Korsel".\n'
-            '- Kalau judul tidak ada kata ekonomi → tulis ulang judulnya.\n'
             '- ISI WAJIB memuat angka/data konkret dari materi.\n'
         )
     catatan_olahraga = ''
@@ -4560,7 +4559,6 @@ def _catatan_kategori_ketat(kategori_target):
             '\n\nCATATAN KHUSUS OLAHRAGA:\n'
             '- "Klasemen medali" (ASIAD/Asian Games) = SAH kategori olahraga.\n'
             '- JANGAN tolak materi "klasemen medali" atau "medal tally".\n'
-            '- Klasemen medali adalah laporan olahraga yang valid.\n'
             '- Turnamen seperti FIFA ASEAN Cup, Asian Games, SEA Games,\n'
             '  Olimpiade = SAH kategori olahraga.\n'
         )
@@ -4633,7 +4631,7 @@ def ai_rewrite_single(c, kategori_target=''):
             '- GELAR AKADEMIK: ikut kalau ada di materi (tulis persis).\n'
             '- DILARANG karang nama pejabat yang tidak ada di materi.\n'
             '- WAJIB tulis SEMUA nama pejabat dari materi (bukan cuma 1).\n'
-            '- DILARANG pakai kalimat template kosong: "Menurut informasi yang dihimpun", "Kejadian berlangsung cepat", "Menjadi pengingat bagi masyarakat", "Peran aktif warga dinilai efektif".\n'
+            '- DILARANG pakai kalimat template kosong.\n'
             '- WAJIB sebut LOKASI spesifik (kecamatan/kelurahan/jalan kalau ada di materi).\n'
             '- WAJIB sebut KRONOLOGI: siapa, apa, di mana, kapan, mengapa.\n'
             '- NAMA LEMBAGA: JANGAN diterjemahkan.\n'
@@ -6115,7 +6113,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.69'
+FILE_VERSI = 'V6.17.70'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
