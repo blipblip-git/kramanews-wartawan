@@ -2378,6 +2378,7 @@ def _kandidat_bukan_dobel(judul):
                 return False, 'dobel-6jam dengan "' + t[:40] + '"'
     return True, ''
 
+# V6.17.76: longgarkan min irisan 3 → 4
 def _dobel_dateline_topik(judul_baru, isi_baru):
     if not judul_baru or not isi_baru:
         return None
@@ -2398,7 +2399,7 @@ def _dobel_dateline_topik(judul_baru, isi_baru):
         if not kt:
             continue
         irisan = ki_baru & kt
-        if len(irisan) < 3:
+        if len(irisan) < 4:
             continue
         if kota_baru in t:
             return ('dobel dateline+topik: "' + kota_baru + '" + '
@@ -6160,7 +6161,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'VV6.17.75'
+FILE_VERSI = 'V6.17.76'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
