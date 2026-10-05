@@ -707,7 +707,7 @@ except Exception:
     _GN_DECODER_OK = False
     _gn_decode_many = None
 
-# V6.17.72: Playtrafi
+# V6.17.73: Playtrafi
 try:
     from playtrafi import Playtrafi as _Playtrafi
     _PLAYTRAFI_OK = True
@@ -1103,7 +1103,7 @@ def _gn_id_dari_url(url):
         pass
     return ''
 
-# V6.17.72: skip portal yang gagal scrape
+# V6.17.73: hapus premium.bisnis.com (portal berbayar)
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
@@ -1112,6 +1112,8 @@ DOMAIN_SKIP_SCRAPE = [
     'businesstoday.com.my',
     'kabaroto.com',
     'nytimes.com',
+    'premium.bisnis.com',
+    'radartarakan.jawapos.com',
 ]
 
 def domain_skip_scrape(url):
@@ -2736,6 +2738,7 @@ def _varian_cocok(kota, sumber):
     varian = VARIAN_KOTA_EN_ID.get(kota, [])
     return any(v in sumber for v in varian)
 
+# V6.17.73: tambah yerusalem, tel aviv, haifa, dll untuk topik Israel
 IBU_KOTA_NEGARA = {
     'jakarta': ['indonesia', 'jakarta'], 'london': ['inggris', 'uk', 'britain', 'england'],
     'washington': ['amerika', 'us', 'usa', 'united states'], 'tokyo': ['jepang', 'japan'],
@@ -2753,8 +2756,15 @@ IBU_KOTA_NEGARA = {
     'cairo': ['mesir', 'egypt'], 'riyadh': ['arab saudi', 'saudi'],
     'abu dhabi': ['uni emirat arab', 'uae'], 'doha': ['qatar'], 'kuwait city': ['kuwait'],
     'amman': ['jordan'], 'beirut': ['libanon', 'lebanon'], 'damascus': ['suriah', 'syria'],
-    'baghdad': ['irak', 'iraq'], 'tehran': ['iran'], 'ankara': ['turki', 'turkey'],
-    'jerusalem': ['israel'], 'gaza': ['palestina', 'palestine'],
+    'baghdad': ['irak', 'iraq'], 'tehran': ['iran'], 'teheran': ['iran'],
+    'ankara': ['turki', 'turkey', 'turkiye'], 'istanbul': ['turki', 'turkey', 'turkiye'],
+    # V6.17.73: Israel (Yerusalem, Tel Aviv, Haifa)
+    'jerusalem': ['israel', 'yerusalem'],
+    'yerusalem': ['israel', 'jerusalem'],
+    'tel aviv': ['israel'],
+    'haifa': ['israel'],
+    'gaza': ['palestina', 'palestine'],
+    'ramallah': ['palestina', 'palestine'],
     'kyiv': ['ukraina', 'ukraine'], 'kiev': ['ukraina', 'ukraine'],
     'athens': ['yunani', 'greece'], 'lisbon': ['portugal'],
     'amsterdam': ['belanda', 'netherlands'], 'brussels': ['belgia', 'belgium'],
@@ -3022,7 +3032,6 @@ def _adalah_berita_kaltara(judul, isi):
     return any(re.search(r'\b' + re.escape(k) + r'\b', gab)
                for k in KOTA_LOKAL_KALTARA)
 
-# V6.17.70: cek narasumber tanpa nama — longgarkan untuk materi yang tidak sebut nama
 def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
     if not isi:
         return None
@@ -3038,7 +3047,6 @@ def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
     if kategori == 'daerah' and is_kaltara_berita:
         return None
     teks = isi
-    # V6.17.70: gate pangkat TNI/Polri tanpa nama
     for pangkat in PANGKAT_TNI_POLRI:
         pola = re.compile(
             r'\b' + re.escape(pangkat) + r'\s+('
@@ -3056,8 +3064,6 @@ def cek_narasumber_tanpa_nama(isi, kategori='', judul=''):
         )
         if pola2.search(teks):
             return ('pangkat TNI/Polri "' + pangkat + '" diikuti koma langsung kata kerja (tanpa nama)')
-    # V6.17.70: cek institusi "menurut X" tanpa nama — DILONGGARKAN
-    # (materi yang tidak sebut nama pejabat wajar tulis "Pemkab X")
     return None
 
 KATA_BUKAN_BERITA = [
