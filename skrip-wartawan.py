@@ -1837,7 +1837,6 @@ def gn_split(title):
     return title.strip(), 'Google News'
 
 MATERI_MIN_KARAKTER_RSS = 120
-# V6.17.62: threshold RSS pecah — nasional 300, daerah 250
 MATERI_MIN_KARAKTER_RSS_NASIONAL = 300
 MATERI_MIN_KARAKTER_RSS_DAERAH    = 250
 MATERI_MIN_KARAKTER_BREAKING = 100
@@ -1971,7 +1970,28 @@ KATA_KUNCI_KATEGORI = {
                'pkk', 'dasawisma', 'bumdes', 'bumn daerah',
                'perumda', 'perusda', 'bank daerah',
                'ketahanan pangan', 'pertanian', 'perikanan', 'nelayan',
-               'petani', 'tambak', 'sawah', 'perkebunan', 'ternak'],
+               'petani', 'tambak', 'sawah', 'perkebunan', 'ternak',
+               # V6.17.63: konteks pemda yang lebih luas
+               'pajak restoran', 'pajak hotel', 'pajak reklame', 'pajak bumi',
+               'pbb', 'bphtb', 'izin usaha', 'perizinan', 'izin mendirikan',
+               'imb', 'izin lingkungan', 'reklame', 'retribusi daerah',
+               'apbdes', 'alokasi dana desa', 'dana desa', 'add',
+               'pilkades', 'pemilihan kades', 'perangkat desa',
+               'perwali', 'perbup', 'peraturan bupati', 'peraturan walikota',
+               'rutilahu', 'bedah rumah', 'bantuan renovasi',
+               'bantuan sosial daerah', 'bansos daerah', 'pkh daerah',
+               'dinas kesehatan', 'dinas pendidikan', 'dinas sosial',
+               'dinas pertanian', 'dinas perikanan', 'dinas pu', 'dinas perhubungan',
+               'satpol pp', 'damkar', 'bpbd daerah', 'tagana daerah',
+               'kecamatan', 'kelurahan', 'kampung', 'dusun', 'rukun tetangga',
+               # V6.17.63: singkatan institusi lokal
+               'ubt', 'unmul', 'unhas', 'unpad', 'ugm', 'ui', 'itb', 'undip',
+               'unair', 'unib', 'unram', 'untan', 'unlam', 'unsoed',
+               'kpwbi', 'bi kaltara', 'ojk kaltara', 'bea cukai',
+               'imigrasi', 'karantina', 'bpn', 'atr/bpn', 'perumdam',
+               'pln up3', 'pln uid', 'pdam tirta', 'rsud', 'rsu',
+               'poltekkes', 'poltek', 'smk negeri', 'sman', 'smpn',
+               'fakultas', 'kampus daerah'],
     'internasional': ['amerika', 'rusia', 'china', 'jepang', 'korea',
                       'eropa', 'inggris', 'jerman', 'perancis', 'italia',
                       'timur tengah', 'israel', 'palestina', 'iran', 'irak',
@@ -2005,7 +2025,9 @@ KATA_KUNCI_KATEGORI = {
                 'malaysia', 'china', 'singapura', 'fintech', 'e-commerce',
                 'economy', 'economic', 'trade', 'growth', 'gdp', 'factory',
                 'exports', 'imports', 'tariff', 'sanction', 'stimulus',
-                'resilient', 'domestic', 'grain', 'supply'],
+                'resilient', 'domestic', 'grain', 'supply',
+                'ojk', 'edukasi keuangan', 'literasi keuangan',
+                'investasi', 'reksa dana', 'obligasi', 'deposito'],
     'olahraga': ['bola', 'sepak', 'basket', 'voli', 'badminton', 'tenis',
                  'motogp', 'f1', 'liga', 'piala', 'timnas', 'atlet',
                  'pemain', 'klub', 'pertandingan', 'laga', 'gol', 'skor',
@@ -2269,17 +2291,41 @@ def _kandidat_bukan_indo_only(kategori, judul, summary):
         return False, 'materi 100% tentang Indonesia untuk kategori luar'
     return True, ''
 
+# V6.17.63: kecualikan frasa "RI-", "Indonesia-", "Indo-" dari gate negara asing
+POLA_FRASA_INDONESIA_DULU = re.compile(
+    r'\b(?:ri|republik\s+indonesia|indonesia|indo)[\s\-–—]',
+    re.IGNORECASE
+)
+
+def _ada_frasa_indonesia_plus(kata_negara, gab):
+    """Cek apakah kata_negara muncul dalam frasa 'Indonesia-X' atau 'RI-X'."""
+    pola = re.compile(
+        r'\b(?:ri|republik\s+indonesia|indonesia|indo)[\s\-–—]'
+        + re.escape(kata_negara) + r'\b',
+        re.IGNORECASE
+    )
+    return bool(pola.search(gab))
+
 def _kandidat_negara_asing_untuk_lokal(kategori, judul, summary):
     if kategori not in ('nasional', 'daerah'):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
+    # V6.17.63: kalau judul/summary ada frasa "Indonesia-X" atau "RI-X",
+    # kata negara asing di frasa itu JANGAN ditolak.
     for negara in NEGARA_ASING:
         if len(negara) <= 4:
-            if re.search(r'\b' + re.escape(negara) + r'\b', gab):
-                return False, 'kategori ' + kategori + ' tapi materi tentang negara asing: ' + negara
+            m = re.search(r'\b' + re.escape(negara) + r'\b', gab)
+            if not m:
+                continue
+            if _ada_frasa_indonesia_plus(negara, gab):
+                continue
+            return False, 'kategori ' + kategori + ' tapi materi tentang negara asing: ' + negara
         else:
-            if negara in gab:
-                return False, 'kategori ' + kategori + ' tapi materi tentang negara asing: ' + negara
+            if negara not in gab:
+                continue
+            if _ada_frasa_indonesia_plus(negara, gab):
+                continue
+            return False, 'kategori ' + kategori + ' tapi materi tentang negara asing: ' + negara
     return True, ''
 
 def _kandidat_bukan_kontes(kategori, judul, summary):
@@ -3206,6 +3252,17 @@ KATA_EKONOMI_UMUM = [
 
 KATA_EKONOMI_WAJIB = KATA_EKONOMI_DOMESTIK + KATA_EKONOMI_ASING + KATA_EKONOMI_UMUM
 
+# V6.17.63: kata kunci ekonomi KUAT untuk fix BUG 1 (jangan paksa ekonomi → nasional)
+KATA_EKONOMI_KUAT_TENTUKAN = [
+    'ojk', 'edukasi keuangan', 'literasi keuangan', 'investasi',
+    'reksa dana', 'obligasi', 'deposito', 'saham', 'ihsg', 'idx',
+    'bank indonesia', 'bi rate', 'suku bunga', 'inflasi', 'deflasi',
+    'apbn', 'apbd', 'pajak', 'ekspor', 'impor', 'neraca dagang',
+    'umkm', 'kredit', 'fintech', 'pinjol', 'p2p lending',
+    'properti', 'perumahan', 'kpr', 'developer',
+    'ekonomi', 'bisnis', 'keuangan', 'pasar modal', 'bursa',
+]
+
 KATA_POLITIK_HUKUM_LOKAL = [
     'tersangka', 'korupsi', 'kpk', 'kejaksaan', 'pengadilan', 'sidang',
     'dakwaan', 'hukuman', 'pidana', 'penjara', 'ditahan', 'dpr', 'presiden',
@@ -3240,7 +3297,6 @@ LEMBAGA_INDONESIA = [
     'bin', 'wantannas', 'setkab', 'setneg', 'perpres', 'inpres', 'keppres',
 ]
 
-# V6.17.55: tambah provinsi Indonesia biar gate lokasi lolos
 PROVINSI_INDONESIA_LAIN = [
     'aceh', 'sumatera utara', 'sumut', 'sumatera barat', 'sumbar',
     'riau', 'jambi', 'bengkulu', 'sumatera selatan', 'sumsel',
@@ -3256,7 +3312,6 @@ PROVINSI_INDONESIA_LAIN = [
     'gorontalo', 'sulawesi barat', 'sulbar',
 ]
 
-# V6.17.55: provinsi Kalimantan (termasuk Kaltara) — biar ASDP Kaltara lolos
 KALIMANTAN_PROVINSI = [
     'kalimantan', 'kalimantan barat', 'kalbar',
     'kalimantan tengah', 'kalteng',
@@ -3351,9 +3406,14 @@ def cek_kategori_dari_isi(isi, judul, kategori_target):
             return ('dateline "' + kota + '" kota Indonesia tapi target kategori internasional')
     return None
 
+# V6.17.63: fix BUG 1 — jangan paksa ekonomi → nasional kalau isi ada kata ekonomi kuat
 def tentukan_kategori_dari_isi(judul, isi):
     gab = (judul or '') + ' ' + (isi or '')
     t = gab.lower()
+    # Cek dulu apakah isi punya kata kunci ekonomi kuat → JANGAN dipaksa nasional
+    hit_eko = sum(1 for k in KATA_EKONOMI_KUAT_TENTUKAN if k in t)
+    if hit_eko >= 2:
+        return None
     is_indo = False
     for tokoh in NAMA_TOKOH_INDONESIA:
         if re.search(r'\b' + re.escape(tokoh) + r'\b', t):
@@ -3507,6 +3567,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
     return ('judul AI tidak nyambung materi: tidak ada irisan nama diri/angka/kata kunci')
 
 # AKHIR PART 3A-2
+
 # PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI
 
 def sumber_kesehatan_hari_ini(jam):
@@ -5271,7 +5332,7 @@ def sesi_breaking(today_urls, seen):
     cand_dom = collect_candidates(BREAKING_DOMESTIK_FEEDS, today_urls, seen, max_umur_jam=30, kategori='breaking')
     skor_dom = sorted([(c, skor_domestik(c['title'], c['summary'])) for c in cand_dom], key=lambda x: -x[1])
     if skor_dom:
-        print('   Top 3 skor domestik: ' + ', '.join(str(int(s)) for _, s in skor_dom[:3]))
+        print('   Top 5 skor domestik: ' + ', '.join(str(int(s)) for _, s in skor_dom[:5]))
     skor_dom = [x for x in skor_dom if x[1] >= SKOR_BREAKING_MIN_DOM]
     print('   Kandidat breaking domestik layak: ' + str(len(skor_dom)))
 
@@ -5288,12 +5349,13 @@ def sesi_breaking(today_urls, seen):
         print('   Tidak ada kandidat breaking layak - skip.')
         return 0
 
+    # V6.17.63: perluas pool jadi top 5
     kandidat_gabung = []
-    for c, s in skor_dom[:3]:
+    for c, s in skor_dom[:5]:
         kandidat_gabung.append((c, 'dom', s))
-    for c, s in skor_dun[:3]:
+    for c, s in skor_dun[:5]:
         kandidat_gabung.append((c, 'dun', s))
-    kandidat_gabung = sorted(kandidat_gabung, key=lambda x: -x[2])[:3]
+    kandidat_gabung = sorted(kandidat_gabung, key=lambda x: -x[2])[:5]
 
     if not kandidat_gabung:
         print('   Tidak ada kandidat breaking layak - skip.')
@@ -5303,7 +5365,7 @@ def sesi_breaking(today_urls, seen):
     for c, tip, _skor in kandidat_gabung:
         if made >= slots:
             break
-        if percobaan >= 3:
+        if percobaan >= 5:
             break
         if sudah_serupa(c['title']):
             print('   Skip (dobel): ' + c['title'][:50])
@@ -6008,7 +6070,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.62'
+FILE_VERSI = 'V6.17.63'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
