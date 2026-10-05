@@ -464,12 +464,9 @@ EKONOMI_DOMESTIK_FEEDS = [
 EKONOMI_ASING_FEEDS = [
     RSSF('https://feeds.a.dj.com/rss/RSSMarketsMain.xml', 'WSJ Markets'),
     RSSF('https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml', 'WSJ Business'),
-    RSSF('https://www.bloomberg.com/feed/podcast/etf-report.xml', 'Bloomberg ETF'),
     RSSF('https://www.cnbc.com/id/100003114/device/rss/rss.html', 'CNBC World'),
     RSSF('https://www.cnbc.com/id/10000664/device/rss/rss.html', 'CNBC Finance'),
-    RSSF('https://www.reutersagency.com/feed/?best-topics=business-finance', 'Reuters Biz'),
     RSSF('https://www.ft.com/?format=rss', 'Financial Times'),
-    RSSF('https://www.chinadaily.com.cn/rss/bizchina_rss.xml', 'China Daily Biz'),
     RSSF('https://www.scmp.com/rss/92/feed', 'SCMP Business'),
     RSSF('https://www.japantimes.co.jp/feed/', 'Japan Times Biz'),
     GN('china economy', 'en', 'GN Ekonomi China'),
@@ -603,9 +600,6 @@ HUNT = {
         RSSF('https://apnews.com/index.rss', 'AP News'),
         RSSF('https://www.france24.com/en/rss', 'France24'),
         RSSF('http://rss.cnn.com/rss/edition_world.rss', 'CNN World'),
-        RSSF('http://www.xinhuanet.com/english/rss/worldrss.xml', 'Xinhua World'),
-        RSSF('https://www.chinadaily.com.cn/rss/world_rss.xml', 'China Daily World'),
-        RSSF('https://www.chinadaily.com.cn/rss/bizchina_rss.xml', 'China Daily Biz'),
         RSSF('https://www.cgtn.com/subscribe/rss/section/world.xml', 'CGTN World'),
         RSSF('https://www.cgtn.com/subscribe/rss/section/business.xml', 'CGTN Business'),
         RSSF('https://www.globaltimes.cn/rss/outbrain.xml', 'Global Times'),
@@ -631,7 +625,6 @@ HUNT = {
         RSSF('https://www.kontan.co.id/rss', 'Kontan'),
         RSSF('https://feeds.a.dj.com/rss/RSSMarketsMain.xml', 'WSJ Markets'),
         RSSF('https://www.cnbc.com/id/100003114/device/rss/rss.html', 'CNBC World'),
-        RSSF('https://www.reutersagency.com/feed/?best-topics=business-finance', 'Reuters Biz'),
         RSSF('https://www.ft.com/?format=rss', 'Financial Times'),
         RSSF('https://www.scmp.com/rss/92/feed', 'SCMP Business'),
     ],
@@ -704,6 +697,7 @@ def judul_spam(judul):
     return False
 
 # AKHIR PART 1
+
 # PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT
 
 try:
@@ -751,8 +745,6 @@ BREAKING_DUNIA_FEEDS = [
     RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
     RSSF('https://apnews.com/index.rss', 'AP News'),
     RSSF('https://www.france24.com/en/rss', 'France24'),
-    RSSF('http://www.xinhuanet.com/english/rss/worldrss.xml', 'Xinhua World'),
-    RSSF('https://www.chinadaily.com.cn/rss/world_rss.xml', 'China Daily World'),
     RSSF('https://www.cgtn.com/subscribe/rss/section/world.xml', 'CGTN World'),
     RSSF('https://www.scmp.com/rss/91/feed', 'SCMP China'),
     RSSF('https://www.japantimes.co.jp/feed/', 'Japan Times'),
@@ -1845,8 +1837,9 @@ def gn_split(title):
     return title.strip(), 'Google News'
 
 MATERI_MIN_KARAKTER_RSS = 120
-# V6.17.61: threshold RSS daerah/nasional 140 → 300
-MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL = 300
+# V6.17.62: threshold RSS pecah — nasional 300, daerah 250
+MATERI_MIN_KARAKTER_RSS_NASIONAL = 300
+MATERI_MIN_KARAKTER_RSS_DAERAH    = 250
 MATERI_MIN_KARAKTER_BREAKING = 100
 
 def _materi_dominan_url(teks):
@@ -1888,11 +1881,16 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
         return False, 'materi kosong'
     if kategori == 'breaking':
         min_kar = MATERI_MIN_KARAKTER_BREAKING
-    elif kategori in ('nasional', 'daerah'):
+    elif kategori == 'nasional':
         if dari_scraping:
             min_kar = MATERI_MIN_KARAKTER
         else:
-            min_kar = MATERI_MIN_KARAKTER_RSS_DAERAH_NASIONAL
+            min_kar = MATERI_MIN_KARAKTER_RSS_NASIONAL
+    elif kategori == 'daerah':
+        if dari_scraping:
+            min_kar = MATERI_MIN_KARAKTER
+        else:
+            min_kar = MATERI_MIN_KARAKTER_RSS_DAERAH
     elif dari_scraping:
         min_kar = MATERI_MIN_KARAKTER
     else:
@@ -3509,7 +3507,6 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
     return ('judul AI tidak nyambung materi: tidak ada irisan nama diri/angka/kata kunci')
 
 # AKHIR PART 3A-2
-
 # PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI
 
 def sumber_kesehatan_hari_ini(jam):
@@ -3775,13 +3772,65 @@ def _buang_kutipan_langsung(teks):
     if not teks:
         return ''
     t = teks
-    # Kutipan dengan tanda petik ganda
     t = re.sub(r'"[^"]{5,500}"', ' ', t)
-    # Kutipan dengan tanda petik tunggal (tapi bukan apostrof di tengah kata)
     t = re.sub(r"'[^']{5,500}'", ' ', t)
-    # Kutipan dengan tanda petik melengkung “...” dan ‘...’
     t = re.sub(r'\u201c[^\u201d]{5,500}\u201d', ' ', t)
     t = re.sub(r'\u2018[^\u2019]{5,500}\u2019', ' ', t)
+    t = re.sub(r'\s+', ' ', t).strip()
+    return t
+
+# V6.17.62: blacklist nama acara/event + whitelist singkatan resmi
+BLACKLIST_NAMA_ACARA = [
+    'cfd', 'car free day', 'semarak', 'genbi',
+    'festival', 'karnaval', 'pesta rakyat', 'pawai',
+    'hut', 'dirgahayu', 'open house', 'halal bihalal',
+    'syukuran', 'tasyakuran',
+    'workshop', 'seminar', 'lokakarya', 'webinar', 'talkshow',
+]
+
+WHITELIST_SINGKATAN = set([
+    # Lembaga negara
+    'ri', 'dpr', 'mpr', 'dpd', 'dprd', 'kpk', 'ky', 'ma', 'mk',
+    'tni', 'polri', 'polda', 'polres', 'polsek', 'kodam', 'korem',
+    'kodim', 'koramil', 'kejagung', 'kejari', 'kejati',
+    'kemenkeu', 'kemendag', 'kemenkes', 'kemendikbud', 'kemnaker',
+    'kemenkumham', 'kemensos', 'kemenag', 'kemenparekraf', 'kemenlu',
+    'kemenhan', 'kemendagri', 'kemenko', 'kemenpppa', 'kemenpora',
+    'kpu', 'bawaslu', 'bin', 'wantannas', 'setkab', 'setneg',
+    'bgn', 'bmkg', 'bnpb', 'basarnas', 'bpbd', 'bps', 'bi', 'ojk',
+    'bpom', 'bpjs', 'kai', 'pln', 'pdam',
+    # Program pemerintah
+    'mbg', 'kdmp', 'sppg', 'blt', 'pkh', 'umkm', 'apbn', 'apbd',
+    # Olahraga
+    'pssi', 'fifa', 'uefa', 'afc', 'bwf', 'fivb', 'nba', 'ibl', 'f1',
+    # Internasional
+    'asean', 'pbb', 'nato', 'who', 'imf', 'wto', 'fao', 'unicef',
+    'gdpr', 'apec', 'g20', 'g7', 'brics', 'opec', 'wto', 'ilo',
+    # Umum
+    'ai', 'it', 'cv', 'pt', 'tbk',
+    # Lembaga keagamaan (nama lembaga, bukan acara)
+    'hkbp', 'gkii', 'gki', 'gpdi',
+])
+
+def _buang_nama_acara_dan_singkatan(teks):
+    """V6.17.62: buang nama acara (blacklist) + singkatan ALL-CAPS 2-6 huruf
+    (kecuali whitelist)."""
+    if not teks:
+        return ''
+    t = teks
+    # 1. Buang nama acara dari blacklist
+    for f in BLACKLIST_NAMA_ACARA:
+        if len(f) <= 4:
+            t = re.sub(r'\b' + re.escape(f) + r'\b', ' ', t, flags=re.IGNORECASE)
+        else:
+            t = re.sub(re.escape(f), ' ', t, flags=re.IGNORECASE)
+    # 2. Buang singkatan ALL-CAPS 2-6 huruf (kecuali whitelist)
+    def _ganti_singkatan(m):
+        s = m.group(0)
+        if s.lower() in WHITELIST_SINGKATAN:
+            return s
+        return ' '
+    t = re.sub(r'\b[A-Z]{2,6}\b', _ganti_singkatan, t)
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
@@ -3825,6 +3874,8 @@ def _buang_fakta_wajib(teks):
     )
     t = pola_lokasi.sub(' ', t)
     t = _buang_frasa_operasi(t)
+    # V6.17.62: buang nama acara + singkatan
+    t = _buang_nama_acara_dan_singkatan(t)
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
@@ -4347,6 +4398,8 @@ def _catatan_anti_jiplak():
         '- JUDUL: DILARANG pakai judul yang sama/mirip dengan materi sumber. '
         'WAJIB bikin judul BEDA dengan kalimatmu sendiri — jiplak judul = ditolak.\n'
         '- FAKTA (nama, jabatan, lokasi, angka, lembaga) BOLEH sama — ini bukan jiplak.\n'
+        '- NAMA ACARA (SEMARAK GenBI, CFD, Festival, dll) TIDAK dihitung jiplak — '
+        'tapi sebaiknya tulis dengan deskripsi sendiri.\n'
     )
 
 def _catatan_kategori_ketat(kategori_target):
@@ -5955,7 +6008,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.61'
+FILE_VERSI = 'V6.17.62'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
