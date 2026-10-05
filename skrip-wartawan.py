@@ -707,13 +707,13 @@ except Exception:
     _GN_DECODER_OK = False
     _gn_decode_many = None
 
-# V6.17.68: lncrawl-scraper ganti Playtrafi
+# V6.17.69: balik ke Playtrafi (lncrawl terlalu ketat soal IP reputation)
 try:
-    from scraper import Scraper as _LNScraper
-    _LNCRAWL_OK = True
+    from playtrafi import Playtrafi as _Playtrafi
+    _PLAYTRAFI_OK = True
 except Exception:
-    _LNCRAWL_OK = False
-    _LNScraper = None
+    _PLAYTRAFI_OK = False
+    _Playtrafi = None
 
 MATERI_MAKS_KARAKTER = 1000
 
@@ -1114,29 +1114,28 @@ def _domain_dari_url(url):
     except Exception:
         return '?'
 
-# V6.17.68: lncrawl-scraper ganti Playtrafi
-def scrape_via_lncrawl(url):
-    """Scrape via lncrawl-scraper. Tanpa API key, TLS impersonate."""
-    if not _LNCRAWL_OK:
-        print('       lncrawl tidak terinstall - lewati.')
+# V6.17.69: balik ke Playtrafi (lncrawl terlalu ketat IP reputation)
+def scrape_via_playtrafi(url):
+    """Scrape via Playtrafi (stealth Chromium). Tanpa API key."""
+    if not _PLAYTRAFI_OK:
+        print('       Playtrafi tidak terinstall - lewati.')
         return ''
     try:
-        s = _LNScraper(origin=url)
-        soup = s.get_soup(url)
-        teks = soup.get_text(separator=' ', strip=True)
+        result = _Playtrafi.crawl(url)
+        teks = (result.markdown or '') if result else ''
         if not teks:
-            print('       lncrawl hasil kosong - ' + url[:60])
+            print('       Playtrafi hasil kosong - ' + url[:60])
             return ''
         teks = re.sub(r'!\[[^\]]*\]\([^)]*\)', ' ', teks)
         teks = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', teks)
         teks = re.sub(r'[#*_`>]{1,3}', ' ', teks)
         teks = re.sub(r'\s+', ' ', teks).strip()
         if len(teks) < SCRAPE_MIN_KARAKTER:
-            print('       lncrawl hasil PENDEK: ' + str(len(teks)) + ' kar - ' + url[:60])
+            print('       Playtrafi hasil PENDEK: ' + str(len(teks)) + ' kar - ' + url[:60])
             return ''
         return teks
     except Exception as e:
-        print('       lncrawl EXCEPTION: ' + str(e)[:80] + ' - ' + url[:60])
+        print('       Playtrafi EXCEPTION: ' + str(e)[:80] + ' - ' + url[:60])
         return ''
 
 def _bersihkan_html_artikel(html):
@@ -1203,7 +1202,6 @@ def scrape_artikel(url, judul_debug=''):
         print('       [DEBUG] URL final: ' + url_asli[:100])
         print('       [DEBUG] Domain: ' + _domain_dari_url(url_asli))
     hasil = ''
-    # 1. Coba langsung scrape
     try:
         headers = {
             'User-Agent': random.choice(UA_LIST),
@@ -1219,8 +1217,7 @@ def scrape_artikel(url, judul_debug=''):
         print('       Langsung scrape pendek: ' + str(len(hasil)) + ' kar - ' + url_asli[:60])
     except Exception as e:
         print('       Langsung scrape gagal: ' + str(e)[:60])
-    # 2. lncrawl-scraper
-    hasil = scrape_via_lncrawl(url_asli)
+    hasil = scrape_via_playtrafi(url_asli)
     if hasil:
         _CACHE_SCRAPE[url] = hasil
         return hasil
@@ -2236,31 +2233,9 @@ def _ada_singkatan_lokasi_lokal(judul, summary):
                 return sing
     return None
 
-# V6.17.67: fungsi lokasi awal untuk breaking — cek SEBELUM AI Token
-def _breaking_ada_lokasi_awal(judul, summary):
-    gab = ((judul or '') + ' ' + (summary or '')).lower()
-    for kota in KOTA_INDONESIA_DATELINE:
-        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
-            return True
-    for prov in KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN:
-        if re.search(r'\b' + re.escape(prov) + r'\b', gab):
-            return True
-    provinsi_tambahan = ['kalimantan', 'sumatera', 'sumatra', 'jawa', 'sulawesi',
-                         'papua', 'bali', 'nusa tenggara', 'maluku',
-                         'jakarta', 'yogyakarta', 'jogja']
-    for prov in provinsi_tambahan:
-        if re.search(r'\b' + re.escape(prov) + r'\b', gab):
-            return True
-    return False
-
 def _kandidat_ada_lokasi(judul, summary, kategori=''):
-    if kategori in ('nasional', 'teknologi', 'kesehatan'):
+    if kategori in ('nasional', 'breaking', 'teknologi', 'kesehatan'):
         return True, ''
-    # V6.17.67: breaking wajib ada lokasi spesifik (kota/provinsi)
-    if kategori == 'breaking':
-        if _breaking_ada_lokasi_awal(judul, summary):
-            return True, ''
-        return False, 'breaking tanpa lokasi spesifik (kota/provinsi)'
     gab = ((judul or '') + ' ' + (summary or '')).lower()
     if kategori == 'daerah' and _ada_konteks_pemda_kuat(judul, summary):
         return True, ''
@@ -4009,13 +3984,9 @@ def _buang_fakta_wajib(teks):
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
-# V6.17.67: N-gram untuk breaking naik 18 → 22, dan kategori diturunkan
+# V6.17.69: N-gram 22 untuk SEMUA kategori (bukan cuma breaking)
 def _n_gram_untuk(kategori, panjang_materi):
-    if kategori == 'breaking':
-        return 22
-    if panjang_materi < 500:
-        return 20
-    return 18
+    return 22
 
 def cek_jiplak(materi_sumber, isi_ai, judul_materi='', kategori=''):
     if not materi_sumber or not isi_ai:
@@ -4471,16 +4442,11 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         if source_url:
             catat_tolak_ai_token(source_url, 'filter gambar: ' + gambar_terlarang[:60])
         raise Exception('diblokir filter gambar: ' + gambar_terlarang[:60])
-    # V6.17.67: kalau tolak karena N-gram → JANGAN catat blacklist
     jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi,
                         judul_materi=judul_materi, kategori=kategori)
     if jiplak:
-        if 'N-gram tersalin' in jiplak:
-            if source_url:
-                catat_tolak_ai_token(source_url, 'anti-jiplak N-gram: ' + jiplak[:80])
-        else:
-            if source_url:
-                catat_tolak_ai_token(source_url, 'anti-jiplak: ' + jiplak[:80])
+        if source_url:
+            catat_tolak_ai_token(source_url, 'anti-jiplak: ' + jiplak[:80])
         raise Exception('diblokir ANTI-JIPLAK: ' + jiplak[:80])
     kualitas = _cek_kualitas_isi(isi, kategori)
     if kualitas:
@@ -4912,7 +4878,6 @@ def ai_rewrite_teknologi_multi(items, dom):
                     source_url=items[0].get('link', '') if items else '')
 
 # AKHIR PART 3B
-
 # PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS (V6.17.27)
 
 KALENDER_EVENT = [
@@ -6150,7 +6115,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.68'
+FILE_VERSI = 'V6.17.69'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
