@@ -3844,6 +3844,33 @@ def _frasa_janggal_terjemahan(teks):
         return 'terlalu banyak frasa janggal terjemahan mesin: ' + str(hit)
     return None
 
+# V6.17.66: topik sejarah dikecualikan dari gate struktur kalimat
+KATA_TOPIK_SEJARAH = [
+    'sejarah', 'sejarah tni', 'sejarah organisasi', 'sejarah indonesia',
+    'sejarah kemerdekaan', 'sejarah nasional', 'sejarah perjuangan',
+    'proklamasi', 'kemerdekaan', 'perjuangan', 'pahlawan', 'pahlawan nasional',
+    'pahlawan revolusi', 'hari pahlawan', 'hari kemerdekaan', 'hut ri',
+    'sumpah pemuda', 'kebangkitan nasional', 'bud 1945', 'bpupki', 'ppki',
+    'masa penjajahan', 'penjajahan', 'kolonial', 'kolonialisme',
+    'zaman jepang', 'zaman belanda', 'zaman portugis', 'zaman voc',
+    'histori', 'historis', 'kronik', 'kronologi sejarah',
+    'peringatan hari', 'peringatan hut', 'milad', 'dies natalis',
+]
+
+def _topik_sejarah(judul_materi, materi_sumber):
+    gab = ((judul_materi or '') + ' ' + (materi_sumber or '')[:500]).lower()
+    hit = 0
+    for k in KATA_TOPIK_SEJARAH:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                hit += 1
+        else:
+            if k in gab:
+                hit += 1
+        if hit >= 2:
+            return True
+    return False
+
 def _kemiripan_struktur_kalimat(isi_ai, materi_sumber):
     if not isi_ai or not materi_sumber:
         return None
@@ -3876,10 +3903,7 @@ def _buang_frasa_operasi(teks):
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
-# V6.17.62: buang kutipan langsung dalam tanda petik (kata baku narasumber)
 def _buang_kutipan_langsung(teks):
-    """Hapus semua teks dalam tanda petik ("..." atau '...') — ini kutipan narasumber
-    yang WAJIB sama, bukan jiplak."""
     if not teks:
         return ''
     t = teks
@@ -3890,7 +3914,6 @@ def _buang_kutipan_langsung(teks):
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
-# V6.17.62: blacklist nama acara/event + whitelist singkatan resmi
 BLACKLIST_NAMA_ACARA = [
     'cfd', 'car free day', 'semarak', 'genbi',
     'festival', 'karnaval', 'pesta rakyat', 'pawai',
@@ -3900,7 +3923,6 @@ BLACKLIST_NAMA_ACARA = [
 ]
 
 WHITELIST_SINGKATAN = set([
-    # Lembaga negara
     'ri', 'dpr', 'mpr', 'dpd', 'dprd', 'kpk', 'ky', 'ma', 'mk',
     'tni', 'polri', 'polda', 'polres', 'polsek', 'kodam', 'korem',
     'kodim', 'koramil', 'kejagung', 'kejari', 'kejati',
@@ -3910,32 +3932,23 @@ WHITELIST_SINGKATAN = set([
     'kpu', 'bawaslu', 'bin', 'wantannas', 'setkab', 'setneg',
     'bgn', 'bmkg', 'bnpb', 'basarnas', 'bpbd', 'bps', 'bi', 'ojk',
     'bpom', 'bpjs', 'kai', 'pln', 'pdam',
-    # Program pemerintah
     'mbg', 'kdmp', 'sppg', 'blt', 'pkh', 'umkm', 'apbn', 'apbd',
-    # Olahraga
     'pssi', 'fifa', 'uefa', 'afc', 'bwf', 'fivb', 'nba', 'ibl', 'f1',
-    # Internasional
     'asean', 'pbb', 'nato', 'who', 'imf', 'wto', 'fao', 'unicef',
     'gdpr', 'apec', 'g20', 'g7', 'brics', 'opec', 'wto', 'ilo',
-    # Umum
     'ai', 'it', 'cv', 'pt', 'tbk',
-    # Lembaga keagamaan (nama lembaga, bukan acara)
     'hkbp', 'gkii', 'gki', 'gpdi',
 ])
 
 def _buang_nama_acara_dan_singkatan(teks):
-    """V6.17.62: buang nama acara (blacklist) + singkatan ALL-CAPS 2-6 huruf
-    (kecuali whitelist)."""
     if not teks:
         return ''
     t = teks
-    # 1. Buang nama acara dari blacklist
     for f in BLACKLIST_NAMA_ACARA:
         if len(f) <= 4:
             t = re.sub(r'\b' + re.escape(f) + r'\b', ' ', t, flags=re.IGNORECASE)
         else:
             t = re.sub(re.escape(f), ' ', t, flags=re.IGNORECASE)
-    # 2. Buang singkatan ALL-CAPS 2-6 huruf (kecuali whitelist)
     def _ganti_singkatan(m):
         s = m.group(0)
         if s.lower() in WHITELIST_SINGKATAN:
@@ -3949,7 +3962,6 @@ def _buang_fakta_wajib(teks):
     if not teks:
         return ''
     t = teks
-    # V6.17.62: buang kutipan langsung dulu
     t = _buang_kutipan_langsung(t)
     pola_jabatan = re.compile(
         r'\b(?:'
@@ -3985,12 +3997,11 @@ def _buang_fakta_wajib(teks):
     )
     t = pola_lokasi.sub(' ', t)
     t = _buang_frasa_operasi(t)
-    # V6.17.62: buang nama acara + singkatan
     t = _buang_nama_acara_dan_singkatan(t)
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
-def cek_jiplak(materi_sumber, isi_ai):
+def cek_jiplak(materi_sumber, isi_ai, judul_materi=''):
     if not materi_sumber or not isi_ai:
         return None
     frasa_mesin = _frasa_janggal_terjemahan(isi_ai)
@@ -4008,6 +4019,10 @@ def cek_jiplak(materi_sumber, isi_ai):
                 if _frasa_umum(gram):
                     continue
                 return 'N-gram tersalin: ' + ' '.join(gram)
+    # V6.17.66: topik sejarah dikecualikan dari gate struktur kalimat
+    if _topik_sejarah(judul_materi, materi_sumber):
+        print('       Topik sejarah terdeteksi - gate struktur kalimat dilewati.')
+        return None
     struktur = _kemiripan_struktur_kalimat(isi_bersih, materi_bersih)
     if struktur:
         return struktur
@@ -4443,7 +4458,7 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         if source_url:
             catat_tolak_ai_token(source_url, 'filter gambar: ' + gambar_terlarang[:60])
         raise Exception('diblokir filter gambar: ' + gambar_terlarang[:60])
-    jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi)
+    jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi, judul_materi=judul_materi)
     if jiplak:
         if source_url:
             catat_tolak_ai_token(source_url, 'anti-jiplak: ' + jiplak[:80])
@@ -4511,6 +4526,9 @@ def _catatan_anti_jiplak():
         '- FAKTA (nama, jabatan, lokasi, angka, lembaga) BOLEH sama — ini bukan jiplak.\n'
         '- NAMA ACARA (SEMARAK GenBI, CFD, Festival, dll) TIDAK dihitung jiplak — '
         'tapi sebaiknya tulis dengan deskripsi sendiri.\n'
+        '- V6.17.66 — TOPIK SEJARAH: WAJIB parafrase TOTAL. '
+        'JANGAN salin kalimat sejarah dari materi — ubah susunan kata, '
+        'ganti sinonim, ganti urutan kalimat (selama fakta tetap benar).\n'
     )
 
 def _catatan_kategori_ketat(kategori_target):
@@ -5458,25 +5476,19 @@ def sesi_breaking(today_urls, seen):
             print('   Insert gagal: ' + str(e)[:80])
     return made
 
+# V6.17.66: tambah KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN biar "Kalimantan" lolos
 def _breaking_ada_lokasi(judul, isi):
     gab = ((judul or '') + ' ' + (isi or '')).lower()
     for kota in KOTA_INDONESIA_DATELINE:
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
             return True
-    provinsi = ['aceh', 'sumatera utara', 'sumut', 'sumatera barat', 'sumbar',
-                'riau', 'jambi', 'bengkulu', 'lampung', 'bangka belitung',
-                'kepulauan riau', 'jakarta', 'jawa barat', 'jabar',
-                'jawa tengah', 'jateng', 'yogyakarta', 'jogja', 'jawa timur',
-                'jatim', 'banten', 'bali', 'nusa tenggara barat', 'ntb',
-                'nusa tenggara timur', 'ntt', 'kalimantan barat', 'kalbar',
-                'kalimantan tengah', 'kalteng', 'kalimantan selatan', 'kalsel',
-                'kalimantan timur', 'kaltim', 'kalimantan utara', 'kaltara',
-                'sulawesi utara', 'sulut', 'sulawesi tengah', 'sulteng',
-                'sulawesi selatan', 'sulsel', 'sulawesi tenggara', 'sultra',
-                'gorontalo', 'sulawesi barat', 'sulbar', 'maluku',
-                'maluku utara', 'malut', 'papua', 'papua barat', 'papua selatan',
-                'papua tengah', 'papua pegunungan', 'papua barat daya']
-    for prov in provinsi:
+    for prov in KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN:
+        if re.search(r'\b' + re.escape(prov) + r'\b', gab):
+            return True
+    provinsi_tambahan = ['kalimantan', 'sumatera', 'sumatra', 'jawa', 'sulawesi',
+                         'papua', 'bali', 'nusa tenggara', 'maluku',
+                         'jakarta', 'yogyakarta', 'jogja']
+    for prov in provinsi_tambahan:
         if re.search(r'\b' + re.escape(prov) + r'\b', gab):
             return True
     return False
@@ -6119,7 +6131,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.65'
+FILE_VERSI = 'V6.17.66'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
