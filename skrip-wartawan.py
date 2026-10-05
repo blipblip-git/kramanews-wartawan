@@ -1959,7 +1959,6 @@ KATA_KUNCI_KATEGORI = {
                'perumda', 'perusda', 'bank daerah',
                'ketahanan pangan', 'pertanian', 'perikanan', 'nelayan',
                'petani', 'tambak', 'sawah', 'perkebunan', 'ternak',
-               # V6.17.63: konteks pemda yang lebih luas
                'pajak restoran', 'pajak hotel', 'pajak reklame', 'pajak bumi',
                'pbb', 'bphtb', 'izin usaha', 'perizinan', 'izin mendirikan',
                'imb', 'izin lingkungan', 'reklame', 'retribusi daerah',
@@ -1972,14 +1971,17 @@ KATA_KUNCI_KATEGORI = {
                'dinas pertanian', 'dinas perikanan', 'dinas pu', 'dinas perhubungan',
                'satpol pp', 'damkar', 'bpbd daerah', 'tagana daerah',
                'kecamatan', 'kelurahan', 'kampung', 'dusun', 'rukun tetangga',
-               # V6.17.63: singkatan institusi lokal
                'ubt', 'unmul', 'unhas', 'unpad', 'ugm', 'ui', 'itb', 'undip',
                'unair', 'unib', 'unram', 'untan', 'unlam', 'unsoed',
                'kpwbi', 'bi kaltara', 'ojk kaltara', 'bea cukai',
                'imigrasi', 'karantina', 'bpn', 'atr/bpn', 'perumdam',
                'pln up3', 'pln uid', 'pdam tirta', 'rsud', 'rsu',
                'poltekkes', 'poltek', 'smk negeri', 'sman', 'smpn',
-               'fakultas', 'kampus daerah'],
+               'fakultas', 'kampus daerah',
+               # V6.17.65: konteks keagamaan lokal
+               'santri', 'sholawat', 'gebyar', 'pesantren', 'majelis taklim',
+               'pengajian', 'tahlilan', 'yasinan', 'maulid', 'rajaban',
+               'halal bihalal', 'takbir keliling', 'pawai obor'],
     'internasional': ['amerika', 'rusia', 'china', 'jepang', 'korea',
                       'eropa', 'inggris', 'jerman', 'perancis', 'italia',
                       'timur tengah', 'israel', 'palestina', 'iran', 'irak',
@@ -2189,10 +2191,70 @@ def _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary):
             return False, 'kategori luar tapi ada lembaga Indonesia: ' + lem
     return True, ''
 
+# V6.17.65: singkatan institusi lokal yang dianggap punya konteks lokasi
+SINGKATAN_LOKASI_LOKAL = {
+    'ubt': 'tarakan', 'untan': 'pontianak', 'unmul': 'samarinda',
+    'unlam': 'banjarmasin', 'unhas': 'makassar', 'unpad': 'bandung',
+    'ugm': 'yogyakarta', 'ui': 'depok', 'itb': 'bandung',
+    'undip': 'semarang', 'unair': 'surabaya', 'unib': 'bengkulu',
+    'unram': 'mataram', 'unsoed': 'purwokerto',
+    'kpwbi': 'kaltara', 'bi kaltara': 'kaltara', 'ojk kaltara': 'kaltara',
+    'pdam tirta': 'tarakan', 'rsud': 'tarakan', 'rsu': 'tarakan',
+}
+
+# V6.17.65: konteks pemda kuat — lolos gate lokasi tanpa wajib nama kota
+KONTEKS_PEMDA_KUAT = [
+    'pajak restoran', 'pajak hotel', 'pajak reklame', 'pajak bumi',
+    'pajak daerah', 'retribusi', 'retribusi daerah',
+    'bphtb', 'pbb', 'izin usaha', 'perizinan', 'imb',
+    'apbd', 'rapbd', 'apbdes', 'dana desa', 'alokasi dana desa',
+    'musrenbang', 'perda', 'perwali', 'perbup',
+    'pilkades', 'pemilihan kades', 'kades', 'bpd',
+    'dinas kesehatan', 'dinas pendidikan', 'dinas sosial',
+    'dinas pertanian', 'dinas perikanan', 'dinas pu', 'dinas perhubungan',
+    'satpol pp', 'damkar', 'tagana',
+    'kelurahan', 'kecamatan', 'lurah', 'camat',
+    'bantuan sosial daerah', 'bansos daerah',
+    'rutilahu', 'bedah rumah',
+]
+
+def _ada_konteks_pemda_kuat(judul, summary):
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    hit = 0
+    for k in KONTEKS_PEMDA_KUAT:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                hit += 1
+        else:
+            if k in gab:
+                hit += 1
+        if hit >= 1:
+            return True
+    return False
+
+def _ada_singkatan_lokasi_lokal(judul, summary):
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    for sing in SINGKATAN_LOKASI_LOKAL:
+        if len(sing) <= 4:
+            if re.search(r'\b' + re.escape(sing) + r'\b', gab):
+                return sing
+        else:
+            if sing in gab:
+                return sing
+    return None
+
 def _kandidat_ada_lokasi(judul, summary, kategori=''):
     if kategori in ('nasional', 'breaking', 'teknologi', 'kesehatan'):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
+    # V6.17.65: kalau kategori daerah & ada konteks pemda kuat → lolos
+    if kategori == 'daerah' and _ada_konteks_pemda_kuat(judul, summary):
+        return True, ''
+    # V6.17.65: kalau kategori daerah & ada singkatan institusi lokal → lolos
+    if kategori == 'daerah':
+        sing = _ada_singkatan_lokasi_lokal(judul, summary)
+        if sing:
+            return True, ''
     for kota in KOTA_INDONESIA_DATELINE:
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
             return True, ''
@@ -5337,7 +5399,6 @@ def sesi_breaking(today_urls, seen):
         print('   Tidak ada kandidat breaking layak - skip.')
         return 0
 
-    # V6.17.63: perluas pool jadi top 5
     kandidat_gabung = []
     for c, s in skor_dom[:5]:
         kandidat_gabung.append((c, 'dom', s))
@@ -6058,7 +6119,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.64'
+FILE_VERSI = 'V6.17.65'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
