@@ -707,7 +707,7 @@ except Exception:
     _GN_DECODER_OK = False
     _gn_decode_many = None
 
-# V6.17.71: Playtrafi
+# V6.17.72: Playtrafi
 try:
     from playtrafi import Playtrafi as _Playtrafi
     _PLAYTRAFI_OK = True
@@ -1103,12 +1103,15 @@ def _gn_id_dari_url(url):
         pass
     return ''
 
-# V6.17.71: mui.or.id (lembaga keagamaan, bukan portal berita) ditambah
+# V6.17.72: skip portal yang gagal scrape
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
     'kompasiana.com',
     'mui.or.id',
+    'businesstoday.com.my',
+    'kabaroto.com',
+    'nytimes.com',
 ]
 
 def domain_skip_scrape(url):
@@ -1474,8 +1477,8 @@ FAKTA SAH & LEGAL DIAMBIL UTUH:
 - Jabatan (Bupati, Wali Kota, Kapolres, Menteri, Direktur, dll) → SAH ambil utuh.
 - Pangkat TNI/Polri (Jenderal, AKBP, AKP, Kombes, dll) → SAH ambil utuh.
 - Titel (H., Hj., R.A., dll) → SAH ambil utuh.
-- Nama lokasi/tempat (kota, kabupaten, kecamatan, kelurahan, jalan, kampung, gedung, dll) → SAH ambil utuh.
-- Semua fakta di atas TIDAK PERLU diubah. TIDAK PERLU diparafrase. TIDAK dianggap jiplak.
+- Nama lokasi/tempat → SAH ambil utuh.
+- Semua fakta di atas TIDAK PERLU diubah. TIDAK PERLU diparafrase.
 
 FAKTA WAJIB-KALAU-ADA (kalau materi ada, WAJIB tulis persis):
 1. Nama pejabat + gelar + jabatan
@@ -1485,14 +1488,14 @@ FAKTA WAJIB-KALAU-ADA (kalau materi ada, WAJIB tulis persis):
 5. Nama dokter/peneliti/atlet/tim
 6. Nama tempat/spesifik
 
-FAKTA WAJIB-MUTLAK (harus ada di berita, boleh dari dateline):
+FAKTA WAJIB-MUTLAK (harus ada di berita):
 1. LOKASI — minimal kota
 2. WAKTU — minimal tanggal
 3. ANGKA — kalau materi ada
 
 YANG DILARANG (kalau materi TIDAK ada):
 - DILARANG mengarang nama pejabat, perusahaan, produk, lokasi spesifik.
-- Kalau materi tidak ada nama → tulis "Pemkab X" saja (tanpa nama).
+- Kalau materi tidak ada nama → tulis "Pemkab X" saja.
 
 NARASI — WAJIB DIUBAH:
 - Kalimat wajib beda dengan materi.
@@ -1509,41 +1512,37 @@ KALIMAT TERLARANG (JANGAN PAKAI):
 
 WAJIB KONKRET — JANGAN UMUM:
 - Sebut nama pejabat (kalau ada di materi).
-- Sebut lokasi spesifik (kecamatan/kelurahan/jalan kalau ada).
-- Sebut angka konkret (kalau ada).
+- Sebut lokasi spesifik.
+- Sebut angka konkret.
 - Sebut kronologi jelas: siapa, apa, di mana, kapan, mengapa.
 
 ATURAN NAMA PEJABAT (SANGAT PENTING — PELANGGARAN = TOLAK):
 - WAJIB tulis NAMA PEJABAT dalam format: JABATAN + NAMA LENGKAP + GELAR.
-- Contoh BENAR:
-  * "Wali Kota Tarakan Drs. H. Khairul, M.Si. menyerahkan..."
-  * "Kapolres Tarakan AKBP Rudi Hartono, S.I.K. mengatakan..."
+- Contoh BENAR: "Wali Kota Tarakan Drs. H. Khairul, M.Si. menyerahkan..."
 - DILARANG sebut nama orang TANPA jabatan.
 
 ATURAN TNI/POLRI (WAJIB):
 - Selalu sebut: PANGKAT + NAMA + JABATAN.
 
 ATURAN GELAR AKADEMIK (WAJIB):
-- Kalau materi memuat gelar (Drs., Ir., S.T., S.H., M.Si., M.M., Dr., Prof., M.Pd.I.) → WAJIB tulis persis.
+- Kalau materi memuat gelar → WAJIB tulis persis.
 
 NAMA LEMBAGA ASING: JANGAN diterjemahkan.
 
 WAKTU:
 - Hari ini: """ + k['hari_ini'] + """. Tahun: """ + k['tahun'] + """.
-- DILARANG "belum dikonfirmasi waktu". DILARANG tahun sebelum """ + k['tahun'] + """.
+- DILARANG "belum dikonfirmasi waktu".
 
 DATELINE (SANGAT PENTING):
 - WAJIB KOTA, PROVINSI spesifik (bukan cuma "INDONESIA").
 - Contoh: "JAKARTA, DKI JAKARTA - ", "TARAKAN, KALIMANTAN UTARA - ",
   "LONDON, INGGRIS - ".
-- Kalau materi tidak sebut kota → pakai ibu kota (Indonesia = JAKARTA).
-- DILARANG mengarang kota di luar materi.
+- Kalau materi tidak sebut kota → pakai ibu kota.
 
 DATELINE EVENT BESAR (WAJIB):
 - Event besar (Asian Games, SEA Games, Piala Dunia, Olimpiade) → DATELINE WAJIB kota penyelenggara + negara.
 - Asian Games 2026 → "AICHI-NAGOYA, JEPANG - "
 - SEA Games 2026 → "BANGKOK, THAILAND - "
-- DILARANG pakai "INDONESIA - " atau "JAKARTA - " untuk event besar di luar negeri.
 
 PERSEN: selalu simbol % ("95%").
 
@@ -1551,39 +1550,30 @@ KATEGORI (WAJIB TEPAT):
 - nasional: pemerintah pusat, DPR, presiden, menteri, haji/umroh/agama, pendidikan, sosial.
 - daerah: peristiwa lokal kota/kabupaten Indonesia.
 - internasional: luar negeri, PBB, ASEAN, event besar di luar negeri.
-- ekonomi: IHSG, kurs, saham, BI, OJK, UMKM, bisnis, ekonomi dunia, EKSPOR, IMPOR, PERDAGANGAN, PERTUMBUHAN EKONOMI, PENJUALAN.
+- ekonomi: IHSG, kurs, saham, BI, OJK, UMKM, bisnis, ekonomi dunia, EKSPOR, IMPOR, PERDAGANGAN.
 - olahraga: sepak bola, basket, badminton, voli, tenis, MotoGP, F1.
 - teknologi: gadget, AI, aplikasi, internet, startup, keamanan digital.
 - otomotif: mobil, motor, kendaraan listrik, spare part, modifikasi.
 - kesehatan: penyakit, gizi, obat, dokter, mental health.
 
 EKONOMI — DEFINISI SANGAT LUAS (WAJIB):
-- EKONOMI mencakup: IHSG, kurs, saham, BI, OJK, UMKM, bisnis, ekonomi dunia, EKSPOR, IMPOR, PERDAGANGAN, PERTUMBUHAN EKONOMI, PENJUALAN.
+- EKONOMI mencakup: IHSG, kurs, saham, BI, OJK, UMKM, bisnis, ekonomi dunia, EKSPOR, IMPOR, PERDAGANGAN, PERTUMBUHAN EKONOMI.
 - EKONOMI JUGA mencakup (JANGAN TOLAK):
   * Properti, perumahan, housing, real estate
   * IPO, merger, akuisisi, valuasi, pendanaan, investasi
   * Kunjungan dagang, kerja sama dagang, delegasi ekonomi
-  * Pasar, harga, komoditas, obligasi, yield
+  * Pasar, harga, komoditas, obligasi
   * Sektor industri, manufaktur, pabrik, produksi
   * Perbankan, kredit, pinjaman, asuransi, fintech
-  * Wisata, pariwisata (aspek ekonomi)
   * Perusahaan naik/turun/rugi/ekspansi/PHK
-  * Pemasaran, brand, campaign, marketing
   * Tambang, litium, nikel, baterai, smelter, mining
-  * Rantai pasok, supply chain, logistik
   * Pertumbuhan ekonomi China/USA/Jepang/Korsel/India/Vietnam/Eropa
-  * Inflasi/ekspor/impor negara asing
-  * Index saham (Nikkei, Hang Seng, KOSPI, STI, SET, Dow Jones, S&P 500, Nasdaq, FTSE)
   * Fed, ECB, BOJ, BOE, PBOC
-  * Minyak OPEC, emas global, tembaga, litium global
-  * Sanksi ekonomi, tarif, perang dagang, trade war
   * WTO, IMF, World Bank, ADB, G20, G7, BRICS, APEC
-  * PHK global, unemployment, tech layoff
 - KUNJUNGAN MENTERI LUAR NEGERI / DIPLOMATIK yang isinya ekonomi → TETAP EKONOMI.
-- HANYA tolak kalau materi 100% politik/militer/olahraga/kesehatan/pendidikan tanpa sudut ekonomi.
 
 JUDUL EKONOMI — WAJIB MEMUAT KATA EKONOMI:
-- JUDUL WAJIB memuat minimal 1 kata ekonomi (ekonomi, bisnis, dagang, ekspor, impor, investasi, saham, pasar, perusahaan, industri, properti, tambang, dll).
+- JUDUL WAJIB memuat minimal 1 kata ekonomi.
 
 JANGAN SALAH KATEGORI:
 - Haji/umroh/agama → nasional (BUKAN olahraga).
@@ -1595,15 +1585,12 @@ JANGAN SALAH KATEGORI:
 - Jadwal transportasi (kapal, ferry) → BUKAN daerah.
 
 PENTING — JANGAN TOLAK BERLEBIHAN:
-- JANGAN tolak materi hanya karena ada 1 kata "politik", "ekonomi", "kepolisian", atau "pemerintahan".
+- JANGAN tolak materi hanya karena ada 1 kata "politik", "ekonomi", "kepolisian".
 - Ekspor/impor/perdagangan/pendapatan negara → TETAP ekonomi.
 - Perusahaan naik peringkat/valuasi/IPO → TETAP ekonomi.
 - Properti/perumahan/housing → TETAP ekonomi.
 - Kunjungan dagang/kerja sama ekonomi → TETAP ekonomi.
 - Tambang/mining/baterai/litium → TETAP ekonomi.
-- Marketing/brand/campaign → TETAP ekonomi.
-- Pertumbuhan ekonomi negara asing → TETAP ekonomi.
-- AI/teknologi yang bocor data → TETAP teknologi (BUKAN politik).
 - HANYA tolak kalau materi JELAS tentang kategori yang SALAH.
 
 TOLAK — HANYA kalau fatal. WAJIB tulis alasan tolak DETIL (1-2 kata tambahan setelah titik dua). Contoh format:
@@ -2427,11 +2414,20 @@ def _kandidat_domain_olahraga_skip(kategori, judul, link):
             return True
     return False
 
+# V6.17.72: skip domain sebelum scraping (bukan cuma di scrape_artikel)
+def _kandidat_domain_skip(kategori, judul, link):
+    low = (link or '').lower()
+    if any(d in low for d in DOMAIN_SKIP_SCRAPE):
+        return True
+    return False
+
 def _kandidat_layak(judul, summary, kategori='', link=''):
     judul = (judul or '').strip()
     summary = (summary or '').strip()
     if not judul or not summary:
         return False, 'judul/summary kosong'
+    if _kandidat_domain_skip(kategori, judul, link):
+        return False, 'domain skip (blog opini/portal gagal)'
     if _kandidat_domain_olahraga_skip(kategori, judul, link):
         return False, 'portal olahraga inggris (judul tidak kontekstual)'
     tl = judul.lower()
@@ -3801,21 +3797,6 @@ def _topik_sejarah(judul_materi, materi_sumber):
             return True
     return False
 
-# V6.17.71: ambang naik 0.92 → 0.95 biar tidak false positive
-def _kemiripan_struktur_kalimat(isi_ai, materi_sumber):
-    if not isi_ai or not materi_sumber:
-        return None
-    kalimat_ai = [k.strip() for k in re.split(r'(?<=[.!?])\s+', isi_ai) if len(k.strip()) > 30]
-    kalimat_materi = [k.strip() for k in re.split(r'(?<=[.!?])\s+', materi_sumber) if len(k.strip()) > 30]
-    if not kalimat_ai or not kalimat_materi:
-        return None
-    for ka in kalimat_ai:
-        for km in kalimat_materi:
-            ratio = SequenceMatcher(None, ka.lower(), km.lower()).ratio()
-            if ratio >= 0.95:
-                return 'struktur kalimat mirip (' + str(int(ratio * 100)) + '%): "' + ka[:60] + '"'
-    return None
-
 FRASA_OPERASI_BUANG = [
     'tim sar', 'tim gabungan', 'tim pencarian', 'tim evakuasi',
     'tim penanganan', 'tim penanggulangan', 'tim kemanusiaan',
@@ -3963,6 +3944,7 @@ def _buang_fakta_wajib(teks):
 def _n_gram_untuk(kategori, panjang_materi):
     return 22
 
+# V6.17.72: HAPUS gate struktur kalimat total — cuma pakai N-gram 22
 def cek_jiplak(materi_sumber, isi_ai, judul_materi='', kategori=''):
     if not materi_sumber or not isi_ai:
         return None
@@ -3979,12 +3961,7 @@ def cek_jiplak(materi_sumber, isi_ai, judul_materi='', kategori=''):
                 if _frasa_umum(gram):
                     continue
                 return 'N-gram tersalin: ' + ' '.join(gram)
-    if _topik_sejarah(judul_materi, materi_sumber):
-        print('       Topik sejarah terdeteksi - gate struktur kalimat dilewati.')
-        return None
-    struktur = _kemiripan_struktur_kalimat(isi_bersih, materi_bersih)
-    if struktur:
-        return struktur
+    # V6.17.72: gate struktur kalimat DIHAPUS. Cukup N-gram 22.
     return None
 
 def _paksa_dateline_indonesia(isi):
@@ -4210,26 +4187,21 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
         return True, ''
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
 
-# V6.17.71: KATA_BUKAN_NAMA_PEJABAT diperluas — tambah kata kerja/sifat
-# yang sering muncul setelah jabatan di judul berita.
 KATA_BUKAN_NAMA_PEJABAT = [
-    # kata kerja/sifat yang sering muncul setelah jabatan
     'tekankan', 'pentingnya', 'menanamkan', 'persatuan', 'kesatuan',
     'himbau', 'imbau', 'ajak', 'dorong', 'ingatkan', 'minta', 'serukan',
     'soroti', 'apresiasi', 'dukung', 'perkuat', 'tingkatkan', 'gelar',
     'resmikan', 'tinjau', 'hadiri', 'hadir', 'buka', 'tutup', 'luncurkan',
     'canangkan', 'kunjungi', 'serahkan', 'beri', 'sambut', 'terima',
-    'pimpin', 'pimpin rapat', 'rapat', 'bahas', 'tegaskan', 'nyatakan',
+    'pimpin', 'bahas', 'tegaskan', 'nyatakan',
     'harapkan', 'harap', 'berharap', 'ingin', 'akan', 'telah', 'sudah',
     'belum', 'bisa', 'dapat', 'harus', 'wajib', 'perlu', 'mesti',
     'dan', 'atau', 'yang', 'di', 'ke', 'dari', 'untuk', 'pada', 'dalam',
     'dengan', 'oleh', 'sebagai', 'adalah', 'itu', 'ini', 'juga', 'saja',
-    # kata yang sering muncul di judul berita
     'pemkab', 'pemkot', 'pemprov', 'kabupaten', 'kota', 'provinsi',
     'pemerintah', 'pemerintahan', 'negeri', 'negara', 'daerah',
     'kunjungan', 'kegiatan', 'acara', 'perayaan', 'pesta', 'upacara',
     'rapat', 'pertemuan', 'sidang', 'konferensi', 'seminar', 'lokakarya',
-    # kata peran
     'menilai', 'menyebut', 'mengatakan', 'menjelaskan', 'menuturkan',
     'nilai', 'sebut', 'kata', 'ujar', 'tutur', 'jelas', 'ungkap',
     'bandingkan', 'membandingkan', 'peristiwa', 'kejadian', 'perkara',
@@ -4237,7 +4209,6 @@ KATA_BUKAN_NAMA_PEJABAT = [
     'masa', 'zaman', 'era', 'periode',
     'lebih', 'kurang', 'baik', 'buruk', 'bagus', 'jelek',
     'lintas', 'antar', 'antarwilayah', 'nasional', 'regional', 'lokal',
-    # provinsi (untuk hindari salah tangkap)
     'kalteng', 'kaltim', 'kalsel', 'kalbar', 'kaltara', 'kalimantan',
     'jabar', 'jateng', 'jatim', 'jakarta', 'banten', 'bali',
     'sumut', 'sumbar', 'sumsel', 'riau', 'jambi', 'lampung', 'bengkulu',
@@ -4475,13 +4446,9 @@ def _catatan_khusus_kategori(kategori_target):
         return (
             '\n\nCATATAN KHUSUS KATEGORI LUAR NEGERI:\n'
             '- DATELINE WAJIB kota LUAR NEGERI (bukan Jakarta/Indonesia).\n'
-            '- Contoh dateline: "LONDON, INGGRIS - ", "TOKYO, JEPANG - ", '
-            '"BANGKOK, THAILAND - ".\n'
             '- DILARANG pakai dateline "JAKARTA", "INDONESIA" '
             'KECUALI materi memang tentang Indonesia di forum internasional.\n'
-            '- Fokus berita: peristiwa/kejadian di luar negeri.\n'
-            '- EVENT BESAR (Asian Games, SEA Games, Olimpiade, dll) → '
-            'dateline WAJIB kota penyelenggara.\n'
+            '- EVENT BESAR → dateline WAJIB kota penyelenggara.\n'
         )
     return ''
 
@@ -4494,15 +4461,14 @@ def _catatan_anti_jiplak():
         '- Jabatan (Bupati, Wali Kota, Kapolres, Menteri, Direktur, dll) → SALIN PERSIS.\n'
         '- Pangkat TNI/Polri (Jenderal, AKBP, AKP, Kombes, dll) → SALIN PERSIS.\n'
         '- Titel (H., Hj., R.A., dll) → SALIN PERSIS.\n'
-        '- Nama lokasi/tempat (kota, kabupaten, kecamatan, kelurahan, jalan, kampung, gedung, dll) → SALIN PERSIS.\n'
-        '- Semua fakta di atas SAH & LEGAL. JANGAN ubah. JANGAN parafrase. JANGAN dipersoalkan.\n'
+        '- Nama lokasi/tempat → SALIN PERSIS.\n'
+        '- Semua fakta di atas SAH & LEGAL.\n'
         '\n'
         'NARASI WAJIB DIUBAH:\n'
         '- Kalimat non-fakta wajib beda dengan materi.\n'
         '- DILARANG 22+ kata berurutan sama materi (kecuali fakta di atas).\n'
         '- Sinonim: "mengatakan" → "menuturkan/ujar".\n'
-        '- JANGAN salin struktur kalimat narasi — ubah susunan kata.\n'
-        '- JUDUL: DILARANG sama/mirip judul materi — WAJIB judul BEDA.\n'
+        '- JUDUL: DILARANG sama/mirip judul materi.\n'
         '\n'
         'CATATAN: Kutipan langsung dalam tanda petik BOLEH SAMA.\n'
     )
@@ -4522,7 +4488,6 @@ def _catatan_kategori_ketat(kategori_target):
             '\n\nWAJIB NAMA PEJABAT LENGKAP (PELANGGARAN = TOLAK):\n'
             '- Kalau materi memuat nama pejabat → WAJIB tulis JABATAN + NAMA + GELAR.\n'
             '- Kalau materi TIDAK memuat nama → tulis "Pemkab X"/"Pemkot X" saja.\n'
-            '- JANGAN karang nama pejabat yang tidak ada di materi.\n'
             '- TNI/Polri: PANGKAT + NAMA + JABATAN wajib kalau ada di materi.\n'
             '- WAJIB tulis SEMUA nama pejabat yang ada di materi.\n'
             '- WAJIB sebut LOKASI spesifik kalau materi memuatnya.\n'
@@ -4603,11 +4568,10 @@ def ai_rewrite_single(c, kategori_target=''):
             'Tulis ulang sesuai SEMUA aturan:\n'
             '- TANGGAL KONKRET di isi berita.\n'
             '- DATELINE: WAJIB kota/provinsi spesifik (bukan "INDONESIA - ").\n'
-            '- NAMA + JABATAN NARASUMBER: WAJIB tulis JABATAN + NAMA LENGKAP + GELAR (kalau ada di materi).\n'
+            '- NAMA + JABATAN NARASUMBER: WAJIB tulis JABATAN + NAMA LENGKAP + GELAR.\n'
             '- Kalau materi TIDAK ada nama pejabat → tulis "Pemkab X"/"Pemkot X" saja.\n'
-            '- TNI/POLRI: WAJIB nama + pangkat + jabatan (kalau ada di materi).\n'
+            '- TNI/POLRI: WAJIB nama + pangkat + jabatan.\n'
             '- GELAR AKADEMIK: ikut kalau ada di materi (tulis persis).\n'
-            '- DILARANG karang nama pejabat yang tidak ada di materi.\n'
             '- WAJIB tulis SEMUA nama pejabat dari materi (bukan cuma 1).\n'
             '- DILARANG pakai kalimat template kosong.\n'
             '- WAJIB sebut LOKASI spesifik (kecamatan/kelurahan/jalan kalau ada di materi).\n'
@@ -4683,7 +4647,6 @@ def ai_rewrite_multi(items, kategori_target=''):
             '- Kalau materi TIDAK ada nama pejabat → tulis "Pemkab X"/"Pemkot X" saja.\n'
             '- TNI/POLRI: WAJIB nama + pangkat + jabatan.\n'
             '- GELAR AKADEMIK: ikut kalau ada di materi.\n'
-            '- DILARANG karang nama pejabat yang tidak ada di materi.\n'
             '- WAJIB tulis SEMUA nama pejabat dari materi.\n'
             '- DILARANG pakai kalimat template kosong.\n'
             '- WAJIB sebut LOKASI spesifik + KRONOLOGI.\n'
@@ -6091,7 +6054,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.70'
+FILE_VERSI = 'V6.17.72'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
