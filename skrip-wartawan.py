@@ -2536,6 +2536,7 @@ def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
 
 # ══════════════════════════════════════════════════════
 # V6.17.75: REVISI #1 - CEK BERITA BASI (bulan/tahun < sekarang)
+# V6.17.77: TAMBAH cek frasa prediksi "akan bertanding" + tanggal sudah lewat
 # ══════════════════════════════════════════════════════
 
 POLA_TANGGAL_LENGKAP = re.compile(
@@ -2549,6 +2550,14 @@ POLA_BULAN_TAHUN = re.compile(
     r'\s+(\d{4})\b',
     re.IGNORECASE
 )
+POLA_TANGGAL_TANPA_TAHUN = re.compile(
+    r'\b(\d{1,2})\s+'
+    r'(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\b',
+    re.IGNORECASE
+)
+POLA_TANGGAL_ANGKA = re.compile(
+    r'\b(\d{1,2})[/\-](\d{1,2})(?:[/\-](\d{4}))?\b'
+)
 
 _NAMA_BULAN_KE_ANGKA = {
     'januari': 1, 'februari': 2, 'maret': 3, 'april': 4, 'mei': 5, 'juni': 6,
@@ -2556,10 +2565,21 @@ _NAMA_BULAN_KE_ANGKA = {
     'desember': 12,
 }
 
+KATA_FRASA_PREDIKSI = [
+    'akan bertanding', 'akan berlaga', 'akan berhadapan', 'akan berlangsung',
+    'akan menghadapi', 'akan melakoni', 'akan menjamu', 'akan bertemu',
+    'akan menantang', 'akan dijadwalkan', 'akan digelar', 'akan kick off',
+    'akan kick-off', 'akan dimulai', 'akan beradu', 'akan melawan',
+    'siap bertanding', 'siap berlaga', 'siap berhadapan', 'siap menghadapi',
+]
+
 def _materi_basi(judul, summary):
     """
     V6.17.75: Cek materi basi — kalau judul/summary memuat tanggal lengkap
     atau bulan+tahun yang lebih LAMA dari bulan sekarang → tolak.
+
+    V6.17.77: Tambah cek frasa prediksi ("akan bertanding") + tanggal
+    sudah lewat → tolak.
     Return: (True, alasan) kalau basi, (False, '') kalau OK.
     """
     teks = ((judul or '') + ' ' + (summary or '')).strip()
@@ -2568,6 +2588,7 @@ def _materi_basi(judul, summary):
     now = datetime.now(WITA)
     bulan_sekarang = now.month
     tahun_sekarang = now.year
+    tanggal_sekarang = now.day
 
     # Cek pola tanggal lengkap (dd Bulan yyyy)
     for m in POLA_TANGGAL_LENGKAP.finditer(teks):
@@ -2602,6 +2623,61 @@ def _materi_basi(judul, summary):
                               + ' < ' + now.strftime('%B') + ')')
         except Exception:
             continue
+
+    # V6.17.77: cek frasa prediksi + tanggal sudah lewat
+    teks_low = teks.lower()
+    ada_prediksi = any(f in teks_low for f in KATA_FRASA_PREDIKSI)
+    if ada_prediksi:
+        # Cek apakah ada tanggal yang sudah lewat (tanpa tahun = tahun sekarang)
+        tanggal_lewat = False
+        detail_tanggal = ''
+
+        # Pola "dd Bulan" (tanpa tahun)
+        for m in POLA_TANGGAL_TANPA_TAHUN.finditer(teks):
+            try:
+                hari = int(m.group(1))
+                nama_bulan = m.group(2).lower()
+                bulan = _NAMA_BULAN_KE_ANGKA.get(nama_bulan, 0)
+                if bulan == 0:
+                    continue
+                if bulan < bulan_sekarang:
+                    tanggal_lewat = True
+                    detail_tanggal = m.group(0)
+                    break
+                if bulan == bulan_sekarang and hari < tanggal_sekarang:
+                    tanggal_lewat = True
+                    detail_tanggal = m.group(0)
+                    break
+            except Exception:
+                continue
+
+        # Pola "dd/mm" atau "dd-mm"
+        if not tanggal_lewat:
+            for m in POLA_TANGGAL_ANGKA.finditer(teks):
+                try:
+                    hari = int(m.group(1))
+                    bulan = int(m.group(2))
+                    tahun = int(m.group(3)) if m.group(3) else tahun_sekarang
+                    if tahun < tahun_sekarang:
+                        tanggal_lewat = True
+                        detail_tanggal = m.group(0)
+                        break
+                    if tahun == tahun_sekarang and bulan < bulan_sekarang:
+                        tanggal_lewat = True
+                        detail_tanggal = m.group(0)
+                        break
+                    if (tahun == tahun_sekarang and bulan == bulan_sekarang
+                            and hari < tanggal_sekarang):
+                        tanggal_lewat = True
+                        detail_tanggal = m.group(0)
+                        break
+                except Exception:
+                    continue
+
+        if tanggal_lewat:
+            frasa_ketemu = next((f for f in KATA_FRASA_PREDIKSI if f in teks_low), '')
+            return True, ('materi basi prediksi (frasa "' + frasa_ketemu
+                          + '" + tanggal lewat ' + detail_tanggal + ')')
 
     return False, ''
 
@@ -6161,7 +6237,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.76'
+FILE_VERSI = 'V6.17.77'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
