@@ -1978,7 +1978,6 @@ KATA_KUNCI_KATEGORI = {
                'pln up3', 'pln uid', 'pdam tirta', 'rsud', 'rsu',
                'poltekkes', 'poltek', 'smk negeri', 'sman', 'smpn',
                'fakultas', 'kampus daerah',
-               # V6.17.65: konteks keagamaan lokal
                'santri', 'sholawat', 'gebyar', 'pesantren', 'majelis taklim',
                'pengajian', 'tahlilan', 'yasinan', 'maulid', 'rajaban',
                'halal bihalal', 'takbir keliling', 'pawai obor'],
@@ -2191,7 +2190,6 @@ def _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary):
             return False, 'kategori luar tapi ada lembaga Indonesia: ' + lem
     return True, ''
 
-# V6.17.65: singkatan institusi lokal yang dianggap punya konteks lokasi
 SINGKATAN_LOKASI_LOKAL = {
     'ubt': 'tarakan', 'untan': 'pontianak', 'unmul': 'samarinda',
     'unlam': 'banjarmasin', 'unhas': 'makassar', 'unpad': 'bandung',
@@ -2202,7 +2200,6 @@ SINGKATAN_LOKASI_LOKAL = {
     'pdam tirta': 'tarakan', 'rsud': 'tarakan', 'rsu': 'tarakan',
 }
 
-# V6.17.65: konteks pemda kuat — lolos gate lokasi tanpa wajib nama kota
 KONTEKS_PEMDA_KUAT = [
     'pajak restoran', 'pajak hotel', 'pajak reklame', 'pajak bumi',
     'pajak daerah', 'retribusi', 'retribusi daerah',
@@ -2243,14 +2240,34 @@ def _ada_singkatan_lokasi_lokal(judul, summary):
                 return sing
     return None
 
-def _kandidat_ada_lokasi(judul, summary, kategori=''):
-    if kategori in ('nasional', 'breaking', 'teknologi', 'kesehatan'):
-        return True, ''
+# V6.17.67: fungsi lokasi awal untuk breaking — cek SEBELUM AI Token
+def _breaking_ada_lokasi_awal(judul, summary):
     gab = ((judul or '') + ' ' + (summary or '')).lower()
-    # V6.17.65: kalau kategori daerah & ada konteks pemda kuat → lolos
+    for kota in KOTA_INDONESIA_DATELINE:
+        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
+            return True
+    for prov in KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN:
+        if re.search(r'\b' + re.escape(prov) + r'\b', gab):
+            return True
+    provinsi_tambahan = ['kalimantan', 'sumatera', 'sumatra', 'jawa', 'sulawesi',
+                         'papua', 'bali', 'nusa tenggara', 'maluku',
+                         'jakarta', 'yogyakarta', 'jogja']
+    for prov in provinsi_tambahan:
+        if re.search(r'\b' + re.escape(prov) + r'\b', gab):
+            return True
+    return False
+
+def _kandidat_ada_lokasi(judul, summary, kategori=''):
+    if kategori in ('nasional', 'teknologi', 'kesehatan'):
+        return True, ''
+    # V6.17.67: breaking wajib ada lokasi spesifik (kota/provinsi)
+    if kategori == 'breaking':
+        if _breaking_ada_lokasi_awal(judul, summary):
+            return True, ''
+        return False, 'breaking tanpa lokasi spesifik (kota/provinsi)'
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
     if kategori == 'daerah' and _ada_konteks_pemda_kuat(judul, summary):
         return True, ''
-    # V6.17.65: kalau kategori daerah & ada singkatan institusi lokal → lolos
     if kategori == 'daerah':
         sing = _ada_singkatan_lokasi_lokal(judul, summary)
         if sing:
@@ -2341,14 +2358,12 @@ def _kandidat_bukan_indo_only(kategori, judul, summary):
         return False, 'materi 100% tentang Indonesia untuk kategori luar'
     return True, ''
 
-# V6.17.63: kecualikan frasa "RI-", "Indonesia-", "Indo-" dari gate negara asing
 POLA_FRASA_INDONESIA_DULU = re.compile(
     r'\b(?:ri|republik\s+indonesia|indonesia|indo)[\s\-–—]',
     re.IGNORECASE
 )
 
 def _ada_frasa_indonesia_plus(kata_negara, gab):
-    """Cek apakah kata_negara muncul dalam frasa 'Indonesia-X' atau 'RI-X'."""
     pola = re.compile(
         r'\b(?:ri|republik\s+indonesia|indonesia|indo)[\s\-–—]'
         + re.escape(kata_negara) + r'\b',
@@ -2360,8 +2375,6 @@ def _kandidat_negara_asing_untuk_lokal(kategori, judul, summary):
     if kategori not in ('nasional', 'daerah'):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
-    # V6.17.63: kalau judul/summary ada frasa "Indonesia-X" atau "RI-X",
-    # kata negara asing di frasa itu JANGAN ditolak.
     for negara in NEGARA_ASING:
         if len(negara) <= 4:
             m = re.search(r'\b' + re.escape(negara) + r'\b', gab)
@@ -3844,7 +3857,6 @@ def _frasa_janggal_terjemahan(teks):
         return 'terlalu banyak frasa janggal terjemahan mesin: ' + str(hit)
     return None
 
-# V6.17.66: topik sejarah dikecualikan dari gate struktur kalimat
 KATA_TOPIK_SEJARAH = [
     'sejarah', 'sejarah tni', 'sejarah organisasi', 'sejarah indonesia',
     'sejarah kemerdekaan', 'sejarah nasional', 'sejarah perjuangan',
@@ -4001,7 +4013,15 @@ def _buang_fakta_wajib(teks):
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
-def cek_jiplak(materi_sumber, isi_ai, judul_materi=''):
+# V6.17.67: N-gram untuk breaking naik 18 → 22, dan kategori diturunkan
+def _n_gram_untuk(kategori, panjang_materi):
+    if kategori == 'breaking':
+        return 22
+    if panjang_materi < 500:
+        return 20
+    return 18
+
+def cek_jiplak(materi_sumber, isi_ai, judul_materi='', kategori=''):
     if not materi_sumber or not isi_ai:
         return None
     frasa_mesin = _frasa_janggal_terjemahan(isi_ai)
@@ -4009,9 +4029,7 @@ def cek_jiplak(materi_sumber, isi_ai, judul_materi=''):
         return frasa_mesin
     materi_bersih = _buang_fakta_wajib(materi_sumber)
     isi_bersih = _buang_fakta_wajib(isi_ai)
-    n_kata = 18
-    if len(materi_bersih) < 500:
-        n_kata = 20
+    n_kata = _n_gram_untuk(kategori, len(materi_bersih))
     sumber_grams = _gram_set(materi_bersih, n_kata)
     if sumber_grams:
         for gram in _gram_list(isi_bersih, n_kata):
@@ -4019,7 +4037,6 @@ def cek_jiplak(materi_sumber, isi_ai, judul_materi=''):
                 if _frasa_umum(gram):
                     continue
                 return 'N-gram tersalin: ' + ' '.join(gram)
-    # V6.17.66: topik sejarah dikecualikan dari gate struktur kalimat
     if _topik_sejarah(judul_materi, materi_sumber):
         print('       Topik sejarah terdeteksi - gate struktur kalimat dilewati.')
         return None
@@ -4458,10 +4475,16 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         if source_url:
             catat_tolak_ai_token(source_url, 'filter gambar: ' + gambar_terlarang[:60])
         raise Exception('diblokir filter gambar: ' + gambar_terlarang[:60])
-    jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi, judul_materi=judul_materi)
+    # V6.17.67: kalau tolak karena N-gram → JANGAN catat blacklist
+    jiplak = cek_jiplak(materi_sumber, judul + ' ' + isi,
+                        judul_materi=judul_materi, kategori=kategori)
     if jiplak:
-        if source_url:
-            catat_tolak_ai_token(source_url, 'anti-jiplak: ' + jiplak[:80])
+        if 'N-gram tersalin' in jiplak:
+            if source_url:
+                catat_tolak_ai_token(source_url, 'anti-jiplak N-gram: ' + jiplak[:80])
+        else:
+            if source_url:
+                catat_tolak_ai_token(source_url, 'anti-jiplak: ' + jiplak[:80])
         raise Exception('diblokir ANTI-JIPLAK: ' + jiplak[:80])
     kualitas = _cek_kualitas_isi(isi, kategori)
     if kualitas:
@@ -6131,7 +6154,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.66'
+FILE_VERSI = 'V6.17.67'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
