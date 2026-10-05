@@ -1,10 +1,7 @@
 # KRAMANEWS — SKRIP SOSMED V1.17 (FB + INSTAGRAM)
-# V1.17: render gambar overlay — hapus link+hashtag dari gambar,
-#        tambah TANGGAL di dalam gambar (badge + judul + dateline + tanggal)
+# V1.17: 10 siklus baru + cascade fallback + prioritas Tarakan/Kaltara
 # V1.16: ganti tanggal+jam di gambar jadi link + hashtag
-# V1.15: render overlay gambar pakai Pillow (badge kategori + judul +
-#        lokasi + tanggal + jam), upload ke Supabase Storage, caption FB
-#        dipendekkan
+# V1.15: render overlay gambar pakai Pillow, caption FB dipendekkan
 
 import requests
 import os
@@ -121,7 +118,7 @@ def ambil_teaser(content, kalimat=3):
     kalimat_list = re.split(r'(?<=[.!?])\s+', bersih)
     return ' '.join(kalimat_list[:kalimat]).strip()
 
-# ═══ RENDER OVERLAY GAMBAR FB (Pillow) — V1.17 ═══
+# ═══ RENDER OVERLAY GAMBAR FB (Pillow) ═══
 
 def _font(path, ukuran):
     try:
@@ -150,23 +147,7 @@ def _wrap_text(text, font, max_width, draw):
         baris.append(baris_ini)
     return baris
 
-def _tanggal_wita(created_at):
-    """Format: 5 Okt 2026"""
-    try:
-        if not created_at:
-            return ''
-        dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
-        dt_wita = dt.astimezone(WITA)
-        bulan_id = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-                    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
-        return str(dt_wita.day) + ' ' + bulan_id[dt_wita.month] + ' ' + str(dt_wita.year)
-    except Exception:
-        return ''
-
 def render_gambar_fb(n):
-    """Render gambar FB V1.17: badge kategori + judul + dateline + tanggal.
-    Link & hashtag DIHAPUS dari gambar (pindah ke caption FB).
-    Return: bytes gambar (JPEG) atau None kalau gagal."""
     img_url = (n.get('img') or '').strip()
     if not img_url:
         return None
@@ -201,7 +182,7 @@ def render_gambar_fb(n):
     overlay = Image.new('RGBA', (target_w, target_h), (0, 0, 0, 0))
     draw_o = ImageDraw.Draw(overlay)
     for y in range(target_h):
-        alpha = int(210 * (y / target_h) ** 1.2)
+        alpha = int(200 * (y / target_h) ** 1.2)
         draw_o.line([(0, y), (target_w, y)], fill=(0, 0, 0, alpha))
     img = Image.alpha_composite(img, overlay)
     draw = ImageDraw.Draw(img)
@@ -209,9 +190,8 @@ def render_gambar_fb(n):
     font_badge = _font(FONT_BOLD_PATH, 32)
     font_judul = _font(FONT_BOLD_PATH, 56)
     font_lokasi = _font(FONT_BOLD_PATH, 34)
-    font_tanggal = _font(FONT_BOLD_PATH, 30)
+    font_caption = _font(FONT_BOLD_PATH, 30)
 
-    # Badge kategori (kiri atas)
     cat = (n.get('category') or '').upper()
     if cat:
         bbox_badge = draw.textbbox((0, 0), cat, font=font_badge)
@@ -230,7 +210,6 @@ def render_gambar_fb(n):
             cat, font=font_badge, fill=(255, 255, 255, 255)
         )
 
-    # Judul (tengah, 3-4 baris)
     judul = (n.get('title') or '').strip()
     if judul:
         max_w_judul = target_w - 80
@@ -241,7 +220,7 @@ def render_gambar_fb(n):
 
         line_h = 70
         total_h = len(baris_judul) * line_h
-        y_judul = target_h - 200 - total_h + 20
+        y_judul = target_h - 240 - total_h + 20
 
         for i, baris in enumerate(baris_judul):
             y = y_judul + i * line_h
@@ -249,9 +228,8 @@ def render_gambar_fb(n):
                 draw.text((40 + dx, y + dy), baris, font=font_judul, fill=(0, 0, 0, 220))
             draw.text((40, y), baris, font=font_judul, fill=(255, 255, 255, 255))
 
-    # Dateline
     dateline = (n.get('dateline') or '').strip().upper()
-    y_lokasi = target_h - 130
+    y_lokasi = target_h - 155
     if dateline:
         pin_x = 40
         pin_y = y_lokasi - 5
@@ -264,13 +242,17 @@ def render_gambar_fb(n):
             draw.text((pin_x + 32 + dx, y_lokasi + dy), dateline, font=font_lokasi, fill=(0, 0, 0, 220))
         draw.text((pin_x + 32, y_lokasi), dateline, font=font_lokasi, fill=(255, 255, 255, 255))
 
-    # Tanggal (V1.17: baru)
-    tgl = _tanggal_wita(n.get('created_at'))
-    if tgl:
-        y_tgl = target_h - 60
-        for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
-            draw.text((40 + dx, y_tgl + dy), tgl, font=font_tanggal, fill=(0, 0, 0, 220))
-        draw.text((40, y_tgl), tgl, font=font_tanggal, fill=(230, 230, 230, 255))
+    cat_label = KATEGORI_LABEL.get(n.get('category', ''), n.get('category', ''))
+    tag_line = '#' + str(cat_label).replace(' ', '') + ' #KramaNews #BeritaTerkini'
+    link_line = '🔗 Baca selengkapnya di komentar 👇'
+    y_link = target_h - 85
+    for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
+        draw.text((40 + dx, y_link + dy), link_line, font=font_caption, fill=(0, 0, 0, 220))
+    draw.text((40, y_link), link_line, font=font_caption, fill=(255, 255, 255, 255))
+    y_tag = y_link + 42
+    for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
+        draw.text((40 + dx, y_tag + dy), tag_line, font=font_caption, fill=(0, 0, 0, 220))
+    draw.text((40, y_tag), tag_line, font=font_caption, fill=(255, 255, 255, 255))
 
     out = io.BytesIO()
     img.convert('RGB').save(out, format='JPEG', quality=88)
@@ -320,7 +302,6 @@ def fb_komentar(post_id, pesan):
         raise Exception('FB komentar ' + str(r.status_code) + ': ' + r.text[:200])
     return r.json()
 
-# V1.17: caption FB tetap 2 baris (link di komentar + hashtag)
 def buat_pesan_fb(n):
     cat = KATEGORI_LABEL.get(n.get('category', ''), n.get('category', ''))
     tag = '#' + cat.replace(' ', '') + ' #KramaNews #BeritaTerkini'
@@ -367,22 +348,31 @@ def post_fb(n):
 
     return post_id
 
-# ═══ SLOT & PILIH BERITA ═══
+# ═══ SLOT & PILIH BERITA V1.17 ═══
+
+# V1.17: 10 slot baru
+# jam: (nama_slot, kategori_utama, [fallback cascade])
+SLOT_JADWAL = {
+    6:  ('nasional', 'nasional', ['internasional', 'teknologi', 'olahraga', 'kesehatan', 'otomotif', 'ekonomi']),
+    7:  ('tarakan', 'tarakan', ['kaltara', 'nasional']),
+    9:  ('internasional', 'internasional', ['nasional', 'ekonomi', 'teknologi', 'olahraga', 'kesehatan', 'otomotif']),
+    11: ('tarakan', 'tarakan', ['kaltara', 'nasional']),
+    12: ('tarakan', 'tarakan', ['kaltara', 'nasional']),
+    14: ('olahraga', 'olahraga', ['nasional', 'ekonomi', 'teknologi', 'internasional', 'kesehatan', 'otomotif']),
+    15: ('tarakan', 'tarakan', ['kaltara', 'nasional']),
+    16: ('kaltara', 'kaltara', ['kesehatan', 'otomotif', 'nasional']),
+    17: ('tarakan', 'tarakan', ['nasional', 'internasional']),
+    18: ('kaltara', 'kaltara', ['tarakan', 'nasional']),
+}
 
 def slot_saat_ini():
     jam = datetime.now(WITA).hour
-    if 5 <= jam < 8:
-        return 'nasional'
-    elif 8 <= jam < 11:
-        return 'tarakan'
-    elif 11 <= jam < 14:
-        return 'kaltara'
-    elif 14 <= jam < 17:
-        return 'tarakan'
-    else:
-        return 'kaltara'
+    if jam in SLOT_JADWAL:
+        return SLOT_JADWAL[jam]
+    return None
 
-def pilih_berita_untuk_slot(rows, slot):
+def _cari_dengan_cascade(rows, kategori_utama, kategori_fallback):
+    """Cari berita dengan cascade: kategori utama dulu, fallback urut."""
     id_terpakai = set()
 
     def ambil(pred):
@@ -393,57 +383,69 @@ def pilih_berita_untuk_slot(rows, slot):
                 return n
         return None
 
-    pilihan = None
-
-    if slot == 'nasional':
-        pilihan = ambil(lambda n: n.get('category') == 'nasional')
-        if not pilihan:
-            pilihan = ambil(is_kaltara)
-        if not pilihan:
-            pilihan = ambil(is_tarakan)
-    elif slot == 'tarakan':
+    # Slot Tarakan
+    if kategori_utama == 'tarakan':
         pilihan = ambil(is_tarakan)
-        if not pilihan:
-            pilihan = ambil(is_kaltara_lain)
-        if not pilihan:
-            pilihan = ambil(lambda n: n.get('category') == 'nasional')
-    elif slot == 'kaltara':
-        pilihan = ambil(is_kaltara_lain)
-        if not pilihan:
-            pilihan = ambil(is_tarakan)
-        if not pilihan:
-            pilihan = ambil(lambda n: n.get('category') == 'nasional')
+        if pilihan:
+            return pilihan
+        for kat in kategori_fallback:
+            if kat == 'kaltara':
+                pilihan = ambil(is_kaltara_lain)
+            elif kat == 'nasional':
+                pilihan = ambil(lambda n: n.get('category') == 'nasional')
+            else:
+                pilihan = ambil(lambda n, k=kat: n.get('category') == k)
+            if pilihan:
+                return pilihan
+        return ambil(lambda n: True)
 
+    # Slot Kaltara
+    if kategori_utama == 'kaltara':
+        pilihan = ambil(is_kaltara_lain)
+        if pilihan:
+            return pilihan
+        for kat in kategori_fallback:
+            if kat == 'tarakan':
+                pilihan = ambil(is_tarakan)
+            elif kat == 'nasional':
+                pilihan = ambil(lambda n: n.get('category') == 'nasional')
+            else:
+                pilihan = ambil(lambda n, k=kat: n.get('category') == k)
+            if pilihan:
+                return pilihan
+        return ambil(lambda n: True)
+
+    # Slot kategori biasa (nasional, internasional, olahraga, dll)
+    pilihan = ambil(lambda n: n.get('category') == kategori_utama)
     if pilihan:
         return pilihan
-
-    prioritas_fallback = ['daerah', 'nasional', 'ekonomi', 'olahraga',
-                          'teknologi', 'otomotif', 'kesehatan', 'internasional']
-    for kat in prioritas_fallback:
+    for kat in kategori_fallback:
         pilihan = ambil(lambda n, k=kat: n.get('category') == k)
         if pilihan:
             return pilihan
-
-    pilihan = ambil(lambda n: True)
-    return pilihan
+    return ambil(lambda n: True)
 
 def mode_fb():
     slot = slot_saat_ini()
-    print('📘 MODE FB V1.17 — slot: ' + slot.upper() + ' (1 berita)')
+    if not slot:
+        print('📘 MODE FB V1.17 — jam ' + str(datetime.now(WITA).hour) + ':XX di luar jadwal. Skip.')
+        return
+    nama_slot, kategori_utama, kategori_fallback = slot
+    print('📘 MODE FB V1.17 — slot: ' + nama_slot.upper() + ' (jam ' + str(datetime.now(WITA).hour) + ':45)')
 
     rows = supabase_get_safe(
         'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking,created_at'
         '&status=eq.published&posted_fb=eq.false'
-        '&order=created_at.desc&limit=80')
+        '&order=created_at.desc&limit=120')
 
     if not rows:
-        print('✅ Tidak ada berita baru. Selesai.')
+        print('✅ Tidak ada berita baru sama sekali. Selesai.')
         return
 
-    n = pilih_berita_untuk_slot(rows, slot)
+    n = _cari_dengan_cascade(rows, kategori_utama, kategori_fallback)
 
     if not n:
-        print('✅ Tidak ada kandidat. Selesai.')
+        print('✅ Tidak ada kandidat sama sekali. Selesai.')
         return
 
     if is_tarakan(n):
@@ -518,7 +520,12 @@ def buat_pesan_ig(n):
 
 def mode_ig():
     slot = slot_saat_ini()
-    print('📸 MODE IG V1.17 — slot: ' + slot.upper() + ' (1 berita)')
+    if not slot:
+        print('📸 MODE IG V1.17 — jam di luar jadwal. Skip.')
+        return
+    nama_slot, kategori_utama, kategori_fallback = slot
+    print('📸 MODE IG V1.17 — slot: ' + nama_slot.upper())
+
     if not IG_TOKEN:
         print('⏭️ IG_PAGE_TOKEN belum ada di Secrets — IG dilewati.')
         return
@@ -527,7 +534,7 @@ def mode_ig():
         rows = supabase_get_safe(
             'articles?select=id,title,excerpt,content,category,img,dateline,posted_ig,breaking,created_at'
             '&status=eq.published&posted_ig=eq.false'
-            '&order=created_at.desc&limit=80')
+            '&order=created_at.desc&limit=120')
     except Exception as e:
         print('❌ Gagal ambil antrean IG: ' + str(e)[:120])
         return
@@ -542,7 +549,7 @@ def mode_ig():
         print('✅ Tidak ada kandidat IG bergambar. Selesai.')
         return
 
-    n = pilih_berita_untuk_slot(rows_berimg, slot)
+    n = _cari_dengan_cascade(rows_berimg, kategori_utama, kategori_fallback)
 
     if not n:
         print('✅ Tidak ada kandidat IG. Selesai.')
@@ -585,8 +592,8 @@ def mode_ig():
     print('🏁 Mode IG selesai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.17 — FB + INSTAGRAM (5 siklus)')
-    print('   06:45 Nasional · 09:45 Tarakan · 12:45 Kaltara · 15:45 Tarakan · 18:45 Kaltara')
+    print('📣 KRAMANEWS SOSMED V1.17 — FB + INSTAGRAM (10 siklus)')
+    print('   06:45 · 07:45 · 09:45 · 11:45 · 12:45 · 14:45 · 15:45 · 16:45 · 17:45 · 18:45 WITA')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
         return
