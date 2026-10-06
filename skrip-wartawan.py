@@ -1878,7 +1878,6 @@ MATERI_MIN_KARAKTER_RSS = 120
 MATERI_MIN_KARAKTER_RSS_NASIONAL = 300
 MATERI_MIN_KARAKTER_RSS_DAERAH    = 250
 MATERI_MIN_KARAKTER_BREAKING = 100
-# V6.17.80: threshold khusus ASEAN (portal Asia sering artikelnya pendek)
 MATERI_MIN_KARAKTER_ASEAN = 600
 
 def _materi_dominan_url(teks):
@@ -1921,7 +1920,6 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
     if kategori == 'breaking':
         min_kar = MATERI_MIN_KARAKTER_BREAKING
     elif kategori == 'internasional_asean':
-        # V6.17.80: threshold ASEAN 600
         min_kar = MATERI_MIN_KARAKTER_ASEAN
     elif kategori == 'nasional':
         if dari_scraping:
@@ -2525,7 +2523,6 @@ def _kandidat_domain_olahraga_skip(kategori, judul, link):
             return True
     return False
 
-# V6.17.72: skip domain sebelum scraping (bukan cuma di scrape_artikel)
 def _kandidat_domain_skip(kategori, judul, link):
     low = (link or '').lower()
     if any(d in low for d in DOMAIN_SKIP_SCRAPE):
@@ -2644,6 +2641,7 @@ def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
 # ══════════════════════════════════════════════════════
 # V6.17.75: REVISI #1 - CEK BERITA BASI (bulan/tahun < sekarang)
 # V6.17.77: TAMBAH cek frasa prediksi "akan bertanding" + tanggal sudah lewat
+# V6.17.81: TAMBAH cek frasa LIVE/IN-PROGRESS + topik sudah terbit
 # ══════════════════════════════════════════════════════
 
 POLA_TANGGAL_LENGKAP = re.compile(
@@ -2680,6 +2678,24 @@ KATA_FRASA_PREDIKSI = [
     'siap bertanding', 'siap berlaga', 'siap berhadapan', 'siap menghadapi',
 ]
 
+# V6.17.81: frasa live/in-progress — pertandingan sedang berlangsung
+KATA_FRASA_LIVE = [
+    'babak tambahan', 'babak pertama', 'babak kedua',
+    'babak perpanjangan', 'extra time', 'perpanjangan waktu',
+    'berlanjut ke', 'melanjutkan ke',
+    'sedang berlangsung', 'masih berlangsung', 'kini berlangsung',
+    'live report', 'live score', 'live streaming', 'live update',
+    'live report', 'liveblog', 'live blog',
+    'kick off', 'kick-off', 'kickoff',
+    'half time', 'half-time', 'halftime',
+    'paruh pertama', 'paruh kedua',
+    'menit ke-', 'menit ke ',
+    'babak penalty', 'babak penalti', 'adu penalti', 'adu pinalti',
+    'berlangsung sengit', 'berjalan sengit',
+    'skor sementara', 'kedudukan sementara',
+    'unconfirmed', 'belum final',
+]
+
 def _materi_basi(judul, summary):
     """
     V6.17.75: Cek materi basi — kalau judul/summary memuat tanggal lengkap
@@ -2687,6 +2703,10 @@ def _materi_basi(judul, summary):
 
     V6.17.77: Tambah cek frasa prediksi ("akan bertanding") + tanggal
     sudah lewat → tolak.
+
+    V6.17.81: Tambah cek frasa LIVE/IN-PROGRESS + topik sudah terbit
+    → tolak.
+
     Return: (True, alasan) kalau basi, (False, '') kalau OK.
     """
     teks = ((judul or '') + ' ' + (summary or '')).strip()
@@ -2696,6 +2716,7 @@ def _materi_basi(judul, summary):
     bulan_sekarang = now.month
     tahun_sekarang = now.year
     tanggal_sekarang = now.day
+    teks_low = teks.lower()
 
     # Cek pola tanggal lengkap (dd Bulan yyyy)
     for m in POLA_TANGGAL_LENGKAP.finditer(teks):
@@ -2732,7 +2753,6 @@ def _materi_basi(judul, summary):
             continue
 
     # V6.17.77: cek frasa prediksi + tanggal sudah lewat
-    teks_low = teks.lower()
     ada_prediksi = any(f in teks_low for f in KATA_FRASA_PREDIKSI)
     if ada_prediksi:
         tanggal_lewat = False
@@ -2782,6 +2802,16 @@ def _materi_basi(judul, summary):
             frasa_ketemu = next((f for f in KATA_FRASA_PREDIKSI if f in teks_low), '')
             return True, ('materi basi prediksi (frasa "' + frasa_ketemu
                           + '" + tanggal lewat ' + detail_tanggal + ')')
+
+    # V6.17.81: cek frasa LIVE/IN-PROGRESS + topik sudah terbit
+    frasa_live_ketemu = next((f for f in KATA_FRASA_LIVE if f in teks_low), None)
+    if frasa_live_ketemu:
+        # Cek apakah topik ini sudah pernah terbit → berarti ini berita basi
+        judul_lama = _judul_dari_url_supabase()
+        topik_dobel = _topik_sudah_terbit(judul, judul_lama)
+        if topik_dobel:
+            return True, ('materi basi live (frasa "' + frasa_live_ketemu
+                          + '" + topik sudah terbit: ' + topik_dobel[:60] + ')')
 
     return False, ''
 
@@ -6416,7 +6446,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.80'
+FILE_VERSI = 'V6.17.81'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
