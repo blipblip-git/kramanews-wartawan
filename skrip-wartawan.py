@@ -1875,11 +1875,11 @@ def gn_split(title):
     return title.strip(), 'Google News'
 
 MATERI_MIN_KARAKTER_RSS = 120
-# V6.17.79: turunkan threshold RSS nasional 300 → 200
-MATERI_MIN_KARAKTER_RSS_NASIONAL = 200
-# V6.17.79: turunkan threshold RSS daerah 250 → 200
-MATERI_MIN_KARAKTER_RSS_DAERAH    = 200
+MATERI_MIN_KARAKTER_RSS_NASIONAL = 300
+MATERI_MIN_KARAKTER_RSS_DAERAH    = 250
 MATERI_MIN_KARAKTER_BREAKING = 100
+# V6.17.80: threshold khusus ASEAN (portal Asia sering artikelnya pendek)
+MATERI_MIN_KARAKTER_ASEAN = 600
 
 def _materi_dominan_url(teks):
     if not teks:
@@ -1920,6 +1920,9 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
         return False, 'materi kosong'
     if kategori == 'breaking':
         min_kar = MATERI_MIN_KARAKTER_BREAKING
+    elif kategori == 'internasional_asean':
+        # V6.17.80: threshold ASEAN 600
+        min_kar = MATERI_MIN_KARAKTER_ASEAN
     elif kategori == 'nasional':
         if dari_scraping:
             min_kar = MATERI_MIN_KARAKTER
@@ -2615,30 +2618,10 @@ def _ada_nama_diri_teks(teks):
         return True
     return False
 
-# V6.17.80: kecualikan topik besar dari gate anti-dobel topik
-# (FIFA ASEAN Cup, perang, dsb — sering muncul berulang tapi sudut beda)
-TOPIK_BESAR_DOBEL_OK = [
-    'fifa asean cup', 'asean cup', 'aff cup', 'piala aff',
-    'piala dunia', 'world cup', 'sea games', 'asian games',
-    'olimpiade', 'olympic', 'piala asia', 'asian cup',
-    'piala eropa', 'euro 202', 'copa america',
-    'liga champions', 'champions league',
-    'pemilu', 'pilpres', 'pilkada',
-    'tsunami', 'gempa', 'erupsi', 'banjir', 'karhutla',
-    'perang', 'invasi',
-]
-
-def _topik_besar_dobel_ok(judul):
-    j = (judul or '').lower()
-    return any(k in j for k in TOPIK_BESAR_DOBEL_OK)
-
 def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
     if not judul_kandidat or not judul_lama_list:
         return None
     if judul_topik_besar(judul_kandidat):
-        return None
-    # V6.17.80: topik besar (FIFA, perang, gempa) — skip gate dobel
-    if _topik_besar_dobel_ok(judul_kandidat):
         return None
     ki_baru = kata_inti(judul_kandidat)
     if not ki_baru:
@@ -2648,8 +2631,6 @@ def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
         if not t_lama:
             continue
         if judul_topik_besar(t_lama):
-            continue
-        if _topik_besar_dobel_ok(t_lama):
             continue
         ki_lama = kata_inti(t_lama)
         if not ki_lama:
@@ -2754,11 +2735,9 @@ def _materi_basi(judul, summary):
     teks_low = teks.lower()
     ada_prediksi = any(f in teks_low for f in KATA_FRASA_PREDIKSI)
     if ada_prediksi:
-        # Cek apakah ada tanggal yang sudah lewat (tanpa tahun = tahun sekarang)
         tanggal_lewat = False
         detail_tanggal = ''
 
-        # Pola "dd Bulan" (tanpa tahun)
         for m in POLA_TANGGAL_TANPA_TAHUN.finditer(teks):
             try:
                 hari = int(m.group(1))
@@ -2777,7 +2756,6 @@ def _materi_basi(judul, summary):
             except Exception:
                 continue
 
-        # Pola "dd/mm" atau "dd-mm"
         if not tanggal_lewat:
             for m in POLA_TANGGAL_ANGKA.finditer(teks):
                 try:
@@ -3093,6 +3071,51 @@ def _kota_ibu_kota_provinsi_di_materi(kota, sumber):
             return True
     return False
 
+# ══════════════════════════════════════════════════════
+# V6.17.80: FUZZY MATCH KOTA DATELINE
+# Cek kota dateline yang mirip (typo) dengan kota di materi
+# Contoh: "madium" vs "madiun", "jakart" vs "jakarta"
+# ══════════════════════════════════════════════════════
+
+def _kota_mirip_di_materi(kota, sumber, ambang=0.80):
+    """
+    V6.17.80: Fuzzy match kota dateline.
+    Kalau kota dateline tidak ada persis di materi, cek apakah ada
+    kota yang MIRIP (typo/variasi ejaan) di materi.
+    """
+    if not kota or not sumber:
+        return None
+    kota_low = kota.lower().strip()
+    sumber_low = sumber.lower()
+    # Kumpulan kandidat kota dari semua daftar
+    kandidat_kota = set()
+    for k in KOTA_INDONESIA_DATELINE:
+        kandidat_kota.add(k)
+    for k in KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN:
+        kandidat_kota.add(k)
+    for k in IBU_KOTA_NEGARA.keys():
+        kandidat_kota.add(k)
+    for k in VARIAN_KOTA_EN_ID.keys():
+        kandidat_kota.add(k)
+    for k in KAMUS_TIM_LIGA_NEGARA.keys():
+        kandidat_kota.add(k)
+    # Cek fuzzy match dengan kota di materi
+    kata_materi = set(re.findall(r'\b[a-z]{4,}\b', sumber_low))
+    for kandidat in kandidat_kota:
+        if kandidat in kata_materi:
+            # kandidat ada di materi — cek mirip dengan kota dateline
+            rasio = SequenceMatcher(None, kota_low, kandidat).ratio()
+            if rasio >= ambang:
+                return kandidat
+    # Cek juga kata 4+ huruf di materi yang mirip kota dateline
+    for kata in kata_materi:
+        if abs(len(kata) - len(kota_low)) > 2:
+            continue
+        rasio = SequenceMatcher(None, kota_low, kata).ratio()
+        if rasio >= ambang:
+            return kata
+    return None
+
 def cek_dateline(isi, user_content):
     m = re.match(r'^([A-Z][^\n\-–—]{1,60}?)\s+[-–—]\s+', (isi or '').strip())
     if not m:
@@ -3109,6 +3132,10 @@ def cek_dateline(isi, user_content):
     if kota in KOTA_INDONESIA_DATELINE:
         return None
     if _kota_ibu_kota_provinsi_di_materi(kota, sumber):
+        return None
+    # V6.17.80: fuzzy match — cek kota mirip di materi
+    kota_mirip = _kota_mirip_di_materi(kota, sumber, ambang=0.80)
+    if kota_mirip:
         return None
     if kota and not _varian_cocok(kota, sumber):
         return 'kota dateline "' + kota + '" tidak ada di materi sumber'
@@ -4496,11 +4523,7 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
         return True, ''
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
 
-# V6.17.78: PERLUAS KATA_BUKAN_NAMA_PEJABAT
-# Tambah kata kerja/sifat umum yang sering muncul setelah jabatan
-# (contoh: "Ketua Baleg DPR RI. Pembahasan Rampung" salah tangkap)
 KATA_BUKAN_NAMA_PEJABAT = [
-    # kata kerja umum
     'tekankan', 'pentingnya', 'menanamkan', 'persatuan', 'kesatuan',
     'himbau', 'imbau', 'ajak', 'dorong', 'ingatkan', 'minta', 'serukan',
     'soroti', 'apresiasi', 'dukung', 'perkuat', 'tingkatkan', 'gelar',
@@ -4509,10 +4532,8 @@ KATA_BUKAN_NAMA_PEJABAT = [
     'pimpin', 'bahas', 'tegaskan', 'nyatakan',
     'harapkan', 'harap', 'berharap', 'ingin', 'akan', 'telah', 'sudah',
     'belum', 'bisa', 'dapat', 'harus', 'wajib', 'perlu', 'mesti',
-    # kata sambung/umum
     'dan', 'atau', 'yang', 'di', 'ke', 'dari', 'untuk', 'pada', 'dalam',
     'dengan', 'oleh', 'sebagai', 'adalah', 'itu', 'ini', 'juga', 'saja',
-    # V6.17.78: tambah kata kerja/frasa baru
     'pembahasan', 'rampung', 'disahkan', 'disetujui', 'disepakati',
     'dibahas', 'diparipurnakan', 'ditetapkan', 'dilantik', 'diresmikan',
     'peresmian', 'pelantikan', 'penetapan', 'persetujuan', 'kesepakatan',
@@ -4760,6 +4781,7 @@ def target_kata(materi_len):
                 'dilarang menggembung dengan kalimat pengisi.')
     return '200-250 kata (3-5 paragraf).'
 
+# V6.17.80: perkuat instruksi dateline di catatan
 def _catatan_khusus_kategori(kategori_target):
     if kategori_target in ('internasional', 'internasional_asean', 'internasional_tt'):
         return (
@@ -4768,6 +4790,12 @@ def _catatan_khusus_kategori(kategori_target):
             '- DILARANG pakai dateline "JAKARTA", "INDONESIA" '
             'KECUALI materi memang tentang Indonesia di forum internasional.\n'
             '- EVENT BESAR → dateline WAJIB kota penyelenggara.\n'
+            '- V6.17.80: DATELINE WAJIB SALIN DARI MATERI. '
+            'JANGAN karang kota yang tidak ada di materi sumber.\n'
+            '- Kalau materi menyebut "New York" → dateline "NEW YORK, AMERIKA SERIKAT - ".\n'
+            '- Kalau materi menyebut "London" → dateline "LONDON, INGGRIS - ".\n'
+            '- Kalau materi TIDAK menyebut kota sama sekali → JANGAN PAKAI DATELINE KOTA. '
+            'Gunakan dateline negara: "AMERIKA SERIKAT - ".\n'
         )
     return ''
 
@@ -4810,6 +4838,13 @@ def _catatan_kategori_ketat(kategori_target):
             '- TNI/Polri: PANGKAT + NAMA + JABATAN wajib kalau ada di materi.\n'
             '- WAJIB tulis SEMUA nama pejabat yang ada di materi.\n'
             '- WAJIB sebut LOKASI spesifik kalau materi memuatnya.\n'
+            '\n'
+            'V6.17.80 — ATURAN DATELINE KETAT (PELANGGARAN = TOLAK):\n'
+            '- DATELINE WAJIB SALIN DARI MATERI. JANGAN karang kota.\n'
+            '- Kalau materi sebut kota A → dateline WAJIB kota A.\n'
+            '- Kalau materi TIDAK sebut kota → dateline WAJIB provinsi/kabupaten.\n'
+            '- DILARANG pakai kota yang TIDAK ADA di materi sumber.\n'
+            '- Ejaan kota WAJIB PERSIS (contoh: "Madiun" BUKAN "Madium").\n'
         )
     catatan_ekonomi = ''
     if kategori_target == 'ekonomi':
@@ -4824,6 +4859,7 @@ def _catatan_kategori_ketat(kategori_target):
             '\n\nCATATAN KHUSUS OLAHRAGA:\n'
             '- "Klasemen medali" (ASIAD/Asian Games) = SAH kategori olahraga.\n'
             '- Turnamen seperti FIFA ASEAN Cup, Asian Games, SEA Games, Olimpiade = SAH.\n'
+            '- DATELINE WAJIB kota yang ADA di materi. JANGAN karang.\n'
         )
     return (
         '\n\nFILTER KATEGORI (WAJIB — kalau tidak cocok, tulis {"tolak": "tidak cocok kategori: <sebutkan materi apa>"}):\n'
@@ -4855,6 +4891,7 @@ def _catatan_ibu_kota_provinsi(judul_materi, summary_materi, kategori_target):
         'spesifik, WAJIB pakai ibu kota provinsi:\n'
         + '\n'.join(baris) + '\n'
         '- DILARANG karang kota lain di luar provinsi itu.\n'
+        '- Ejaan kota WAJIB PERSIS (contoh: "Madiun" BUKAN "Madium").\n'
     )
 
 def ai_rewrite_single(c, kategori_target=''):
@@ -4887,6 +4924,8 @@ def ai_rewrite_single(c, kategori_target=''):
             'Tulis ulang sesuai SEMUA aturan:\n'
             '- TANGGAL KONKRET di isi berita.\n'
             '- DATELINE: WAJIB kota/provinsi spesifik (bukan "INDONESIA - ").\n'
+            '- DATELINE: WAJIB SALIN DARI MATERI. JANGAN karang kota.\n'
+            '- Ejaan kota WAJIB PERSIS (contoh: "Madiun" BUKAN "Madium").\n'
             '- NAMA + JABATAN NARASUMBER: WAJIB tulis JABATAN + NAMA LENGKAP + GELAR.\n'
             '- Kalau materi TIDAK ada nama pejabat → tulis "Pemkab X"/"Pemkot X" saja.\n'
             '- TNI/POLRI: WAJIB nama + pangkat + jabatan.\n'
@@ -4962,6 +5001,8 @@ def ai_rewrite_multi(items, kategori_target=''):
             '\n\nGabungkan menjadi SATU berita KramaNews:\n'
             '- TANGGAL KONKRET di isi berita.\n'
             '- DATELINE: WAJIB kota/provinsi spesifik (bukan "INDONESIA - ").\n'
+            '- DATELINE: WAJIB SALIN DARI MATERI. JANGAN karang kota.\n'
+            '- Ejaan kota WAJIB PERSIS (contoh: "Madiun" BUKAN "Madium").\n'
             '- NAMA + JABATAN NARASUMBER: WAJIB tulis JABATAN + NAMA LENGKAP + GELAR.\n'
             '- Kalau materi TIDAK ada nama pejabat → tulis "Pemkab X"/"Pemkot X" saja.\n'
             '- TNI/POLRI: WAJIB nama + pangkat + jabatan.\n'
@@ -5063,6 +5104,7 @@ def ai_rewrite_teknologi_single(c, dom):
             'KEDALAMAN DOMAIN di atas:\n'
             '- TANGGAL KONKRET di isi berita.\n'
             '- DATELINE: WAJIB kota/provinsi spesifik (bukan "INDONESIA - ").\n'
+            '- DATELINE: WAJIB SALIN DARI MATERI. JANGAN karang kota.\n'
             '- NAMA + JABATAN NARASUMBER: WAJIB tulis jabatan lengkap + nama.\n'
             '- DILARANG mengarang spesifikasi/harga/angka di luar materi.\n'
             '- JUDUL: DILARANG sama/mirip judul asli materi — WAJIB judul BEDA.\n'
@@ -5121,6 +5163,7 @@ def ai_rewrite_teknologi_multi(items, dom):
             + '\n\n'.join(bagian) +
             '\n\nGabungkan menjadi SATU berita teknologi kaya:\n'
             '- TANGGAL KONKRET; DATELINE dari materi.\n'
+            '- DATELINE: WAJIB SALIN DARI MATERI. JANGAN karang kota.\n'
             '- NAMA + JABATAN NARASUMBER: WAJIB tulis jabatan lengkap + nama.\n'
             '- DILARANG mengarang spesifikasi/harga/angka di luar materi.\n'
             '- JUDUL: DILARANG sama/mirip judul asli materi.\n'
@@ -6373,7 +6416,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.79'
+FILE_VERSI = 'V6.17.80'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
