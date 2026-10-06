@@ -32,7 +32,8 @@ MAX_UMUR_BERITA_JAM     = 30
 JENDELA_DOBEL_JAM       = 72
 GEMPA_DOM_MIN           = 5.5
 GEMPA_DUNIA_MIN         = 6.5
-SKOR_BREAKING_MIN       = 20
+# V6.17.78: turunkan SKOR_BREAKING_MIN 20 → 15 (breaking dunia selalu 0)
+SKOR_BREAKING_MIN       = 15
 SKOR_BREAKING_MIN_DOM   = 15
 AMBANG_MIRIP            = 0.55
 SCRAPER_TIMEOUT         = 12
@@ -725,6 +726,7 @@ _GN_DECODE_CACHE = {}
 
 DEBUG_SCRAPE = True
 
+# V6.17.78: tambah feed breaking dom (Kumparan, Viva, Sindonews, RMOL, JPNN)
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
     RSSF('https://www.detik.com/feed', 'Detik'),
@@ -736,6 +738,11 @@ BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
     RSSF('https://www.bola.net/feed', 'Bola.net'),
     RSSF('https://www.cnnindonesia.com/olahraga/rss', 'CNN Olahraga'),
+    RSSF('https://kumparan.com/rss', 'Kumparan'),
+    RSSF('https://www.viva.co.id/rss', 'Viva.co.id'),
+    RSSF('https://www.sindonews.com/rss', 'Sindonews'),
+    RSSF('https://rmol.id/rss', 'RMOL'),
+    RSSF('https://www.jpnn.com/rss', 'JPNN'),
     GN('breaking news indonesia', 'id', 'GN Breaking Indonesia'),
     GN('gempa indonesia hari ini', 'id', 'GN Gempa Indonesia'),
     GN('banjir indonesia hari ini', 'id', 'GN Banjir Indonesia'),
@@ -743,6 +750,7 @@ BREAKING_DOMESTIK_FEEDS = [
     GN('kebakaran besar indonesia', 'id', 'GN Kebakaran'),
 ]
 
+# V6.17.78: tambah feed breaking dun (Reuters, AFP, DW, ABC, NBC)
 BREAKING_DUNIA_FEEDS = [
     RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
     RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
@@ -758,6 +766,11 @@ BREAKING_DUNIA_FEEDS = [
     RSSF('https://www.scmp.com/rss/91/feed', 'SCMP China'),
     RSSF('https://www.japantimes.co.jp/feed/', 'Japan Times'),
     RSSF('https://www3.nhk.or.jp/nhkworld/en/news/rss/all.xml', 'NHK World'),
+    RSSF('https://feeds.reuters.com/reuters/worldNews', 'Reuters'),
+    RSSF('https://feeds.reuters.com/reuters/topNews', 'Reuters Top'),
+    RSSF('https://www.dw.com/en/top-stories/s-9097/rss', 'DW'),
+    RSSF('https://abcnews.go.com/abcnews/internationalheadlines', 'ABC News'),
+    RSSF('https://feeds.nbcnews.com/nbcnews/public/world', 'NBC News'),
     GN('breaking world news', 'en', 'GN Breaking Dunia'),
     GN('major earthquake', 'en', 'GN Gempa Besar Dunia'),
     GN('war conflict missile', 'en', 'GN Perang'),
@@ -4370,7 +4383,11 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
         return True, ''
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
 
+# V6.17.78: PERLUAS KATA_BUKAN_NAMA_PEJABAT
+# Tambah kata kerja/sifat umum yang sering muncul setelah jabatan
+# (contoh: "Ketua Baleg DPR RI. Pembahasan Rampung" salah tangkap)
 KATA_BUKAN_NAMA_PEJABAT = [
+    # kata kerja umum
     'tekankan', 'pentingnya', 'menanamkan', 'persatuan', 'kesatuan',
     'himbau', 'imbau', 'ajak', 'dorong', 'ingatkan', 'minta', 'serukan',
     'soroti', 'apresiasi', 'dukung', 'perkuat', 'tingkatkan', 'gelar',
@@ -4379,16 +4396,22 @@ KATA_BUKAN_NAMA_PEJABAT = [
     'pimpin', 'bahas', 'tegaskan', 'nyatakan',
     'harapkan', 'harap', 'berharap', 'ingin', 'akan', 'telah', 'sudah',
     'belum', 'bisa', 'dapat', 'harus', 'wajib', 'perlu', 'mesti',
+    # kata sambung/umum
     'dan', 'atau', 'yang', 'di', 'ke', 'dari', 'untuk', 'pada', 'dalam',
     'dengan', 'oleh', 'sebagai', 'adalah', 'itu', 'ini', 'juga', 'saja',
-    'pemkab', 'pemkot', 'pemprov', 'kabupaten', 'kota', 'provinsi',
-    'pemerintah', 'pemerintahan', 'negeri', 'negara', 'daerah',
-    'kunjungan', 'kegiatan', 'acara', 'perayaan', 'pesta', 'upacara',
-    'rapat', 'pertemuan', 'sidang', 'konferensi', 'seminar', 'lokakarya',
-    'menilai', 'menyebut', 'mengatakan', 'menjelaskan', 'menuturkan',
-    'nilai', 'sebut', 'kata', 'ujar', 'tutur', 'jelas', 'ungkap',
-    'bandingkan', 'membandingkan', 'peristiwa', 'kejadian', 'perkara',
+    # V6.17.78: tambah kata kerja/frasa baru
+    'pembahasan', 'rampung', 'disahkan', 'disetujui', 'disepakati',
+    'dibahas', 'diparipurnakan', 'ditetapkan', 'dilantik', 'diresmikan',
+    'peresmian', 'pelantikan', 'penetapan', 'persetujuan', 'kesepakatan',
+    'keputusan', 'rapat', 'sidang', 'forum', 'agenda',
+    'rangka', 'upaya', 'usaha', 'proses', 'tahap', 'target', 'capaian',
+    'laporan', 'keterangan', 'informasi', 'pernyataan', 'pidato', 'sambutan',
+    'masalah', 'persoalan', 'isu', 'topik', 'tema', 'pokok',
     'penanganan', 'penanggulangan', 'pencegahan', 'penindakan',
+    'pengawasan', 'pembinaan', 'pemberdayaan', 'pengembangan',
+    'peningkatan', 'perbaikan', 'pembangunan', 'pemeliharaan',
+    'belanja', 'anggaran', 'realisasi', 'serapan', 'target',
+    'hasil', 'capaian', 'prestasi', 'kinerja', 'evaluasi', 'monitoring',
     'masa', 'zaman', 'era', 'periode',
     'lebih', 'kurang', 'baik', 'buruk', 'bagus', 'jelek',
     'lintas', 'antar', 'antarwilayah', 'nasional', 'regional', 'lokal',
@@ -6237,7 +6260,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.77'
+FILE_VERSI = 'V6.17.78'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
