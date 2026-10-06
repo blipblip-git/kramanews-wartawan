@@ -38,7 +38,8 @@ SKOR_BREAKING_MIN_DOM   = 15
 AMBANG_MIRIP            = 0.55
 SCRAPER_TIMEOUT         = 12
 SCRAPE_MIN_KARAKTER     = 600
-MATERI_MIN_KARAKTER     = 700
+# V6.17.80: turunkan MATERI_MIN_KARAKTER 700 → 600 (ekonomi sering gagal tipis)
+MATERI_MIN_KARAKTER     = 600
 JINA_READER             = 'https://r.jina.ai/'
 GAMBAR_MIN_LEBAR        = 400
 BLUR_SKOR_MINIMUM       = 5
@@ -1798,7 +1799,7 @@ def gn_split(title):
     return title.strip(), 'Google News'
 
 MATERI_MIN_KARAKTER_RSS = 120
-# V6.17.79: turunkan threshold RSS nasional 300 → 200 (nasional sering gagal 155 kar)
+# V6.17.79: turunkan threshold RSS nasional 300 → 200
 MATERI_MIN_KARAKTER_RSS_NASIONAL = 200
 # V6.17.79: turunkan threshold RSS daerah 250 → 200
 MATERI_MIN_KARAKTER_RSS_DAERAH    = 200
@@ -2538,10 +2539,30 @@ def _ada_nama_diri_teks(teks):
         return True
     return False
 
+# V6.17.80: kecualikan topik besar dari gate anti-dobel topik
+# (FIFA ASEAN Cup, perang, dsb — sering muncul berulang tapi sudut beda)
+TOPIK_BESAR_DOBEL_OK = [
+    'fifa asean cup', 'asean cup', 'aff cup', 'piala aff',
+    'piala dunia', 'world cup', 'sea games', 'asian games',
+    'olimpiade', 'olympic', 'piala asia', 'asian cup',
+    'piala eropa', 'euro 202', 'copa america',
+    'liga champions', 'champions league',
+    'pemilu', 'pilpres', 'pilkada',
+    'tsunami', 'gempa', 'erupsi', 'banjir', 'karhutla',
+    'perang', 'invasi',
+]
+
+def _topik_besar_dobel_ok(judul):
+    j = (judul or '').lower()
+    return any(k in j for k in TOPIK_BESAR_DOBEL_OK)
+
 def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
     if not judul_kandidat or not judul_lama_list:
         return None
     if judul_topik_besar(judul_kandidat):
+        return None
+    # V6.17.80: topik besar (FIFA, perang, gempa) — skip gate dobel
+    if _topik_besar_dobel_ok(judul_kandidat):
         return None
     ki_baru = kata_inti(judul_kandidat)
     if not ki_baru:
@@ -2551,6 +2572,8 @@ def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
         if not t_lama:
             continue
         if judul_topik_besar(t_lama):
+            continue
+        if _topik_besar_dobel_ok(t_lama):
             continue
         ki_lama = kata_inti(t_lama)
         if not ki_lama:
@@ -6274,7 +6297,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.79'
+FILE_VERSI = 'V6.17.80'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
