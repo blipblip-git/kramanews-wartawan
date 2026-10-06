@@ -32,14 +32,13 @@ MAX_UMUR_BERITA_JAM     = 30
 JENDELA_DOBEL_JAM       = 72
 GEMPA_DOM_MIN           = 5.5
 GEMPA_DUNIA_MIN         = 6.5
-# V6.17.79: turunkan SKOR_BREAKING_MIN 15 → 10 (breaking dunia 0 terus)
-SKOR_BREAKING_MIN       = 10
+# V6.17.78: turunkan SKOR_BREAKING_MIN 20 → 15 (breaking dunia selalu 0)
+SKOR_BREAKING_MIN       = 15
 SKOR_BREAKING_MIN_DOM   = 15
 AMBANG_MIRIP            = 0.55
 SCRAPER_TIMEOUT         = 12
 SCRAPE_MIN_KARAKTER     = 600
-# V6.17.80: turunkan MATERI_MIN_KARAKTER 700 → 600 (ekonomi sering gagal tipis)
-MATERI_MIN_KARAKTER     = 600
+MATERI_MIN_KARAKTER     = 700
 JINA_READER             = 'https://r.jina.ai/'
 GAMBAR_MIN_LEBAR        = 400
 BLUR_SKOR_MINIMUM       = 5
@@ -491,6 +490,7 @@ EKONOMI_ASING_FEEDS = [
     GN('taiwan semiconductor tsmc chip', 'en', 'GN Semikonduktor'),
 ]
 
+# V6.17.79: TAMBAH FEED NASIONAL (Kumparan, Viva, Sindonews, RMOL, JPNN)
 HUNT = {
     'nasional': [
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -501,6 +501,13 @@ HUNT = {
         RSSF('https://www.detik.com/feed', 'Detik'),
         RSSF('https://nasional.tribunnews.com/rss', 'Tribun Nasional'),
         RSSF('https://www.suara.com/rss', 'Suara.com'),
+        RSSF('https://kumparan.com/rss', 'Kumparan'),
+        RSSF('https://www.viva.co.id/rss', 'Viva.co.id'),
+        RSSF('https://www.sindonews.com/rss', 'Sindonews'),
+        RSSF('https://rmol.id/rss', 'RMOL'),
+        RSSF('https://www.jpnn.com/rss', 'JPNN'),
+        RSSF('https://www.beritasatu.com/rss', 'Beritasatu'),
+        RSSF('https://www.medcom.id/rss/nasional', 'Medcom Nasional'),
         GN('pemerintah indonesia', 'id', 'Google News Nasional'),
         GN('dpr indonesia', 'id', 'Google News Nasional'),
         GN('Prabowo Subianto', 'id', 'Google News Presiden Prabowo'),
@@ -510,17 +517,35 @@ HUNT = {
         GN('menteri meresmikan', 'id', 'Google News Menteri Resmikan'),
         GN('kunjungan kerja menteri indonesia', 'id', 'Google News Menteri Kunjungan'),
         GN('menteri indonesia program kementerian', 'id', 'Google News Program Kementerian'),
+        GN('kebijakan pemerintah indonesia', 'id', 'GN Kebijakan Pemerintah'),
+        GN('hukum pidana indonesia', 'id', 'GN Hukum Pidana'),
+        GN('kpk korupsi indonesia', 'id', 'GN KPK Korupsi'),
+        GN('tni polri indonesia', 'id', 'GN TNI Polri'),
+        GN('pendidikan indonesia', 'id', 'GN Pendidikan'),
+        GN('sosial budaya indonesia', 'id', 'GN Sosial Budaya'),
     ],
+    # V6.17.79: TAMBAH FEED DAERAH (Benuanta, RRI, Kaltara Post, Pro Kaltara, JPNN Daerah)
     'daerah': [
         RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
         RSSF('https://kaltim.tribunnews.com/rss', 'Tribun Kaltim'),
         RSSF('https://www.antaranews.com/rss/daerah', 'Antara Daerah'),
         RSSF('https://adpim.kaltaraprov.go.id/feed/', 'Adpim Kaltara'),
+        RSSF('https://benuanta.co.id/rss', 'Benuanta'),
+        RSSF('https://rri.co.id/rss', 'RRI'),
+        RSSF('https://kaltarapost.co.id/rss', 'Kaltara Post'),
+        RSSF('https://www.prokaltara.co.id/rss', 'Pro Kaltara'),
+        RSSF('https://kaltimpost.jawapos.com/rss', 'Kaltim Post'),
+        RSSF('https://www.jpnn.com/rss/daerah', 'JPNN Daerah'),
         GN('Tarakan', 'id', 'Google News Tarakan'),
         GN('Pemkot Tarakan', 'id', 'Google News Pemkot Tarakan'),
         GN('Wali Kota Tarakan', 'id', 'Google News Wali Kota Tarakan'),
         GN('Polres Tarakan', 'id', 'Google News Polres Tarakan'),
         GN('Kaltara', 'id', 'Google News Kaltara'),
+        GN('Nunukan', 'id', 'Google News Nunukan'),
+        GN('Bulungan', 'id', 'Google News Bulungan'),
+        GN('Malinau', 'id', 'Google News Malinau'),
+        GN('Tana Tidung', 'id', 'Google News Tana Tidung'),
+        GN('Tanjung Selor', 'id', 'Google News Tanjung Selor'),
         RSSF('https://jatim.tribunnews.com/rss', 'Tribun Jatim'),
         RSSF('https://jateng.tribunnews.com/rss', 'Tribun Jateng'),
         RSSF('https://jabar.tribunnews.com/rss', 'Tribun Jabar'),
@@ -559,6 +584,7 @@ HUNT = {
         GN('Gorontalo', 'id', 'Google News Gorontalo'),
         GN('Batam', 'id', 'Google News Batam'),
     ],
+    # V6.17.79: TAMBAH FEED ASEAN (Jakarta Post, Jakarta Globe, VN Express, Khmer Times, Myanmar Now)
     'internasional_asean': [
         RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
         RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
@@ -569,6 +595,12 @@ HUNT = {
         RSSF('https://www.nationthailand.com/rss', 'The Nation Thailand'),
         RSSF('https://www.manilatimes.net/feed', 'Manila Times'),
         RSSF('https://www.thaipbsworld.com/feed/', 'Thai PBS World'),
+        RSSF('https://www.thejakartapost.com/rss', 'Jakarta Post'),
+        RSSF('https://jakartaglobe.id/feed', 'Jakarta Globe'),
+        RSSF('https://e.vnexpress.net/rss/news.rss', 'VN Express'),
+        RSSF('https://www.khmertimeskh.com/feed/', 'Khmer Times'),
+        RSSF('https://www.myanmar-now.org/en/rss', 'Myanmar Now'),
+        RSSF('https://www.malaymail.com/feed/rss', 'Malay Mail'),
         GN('asean', 'en', 'Google News ASEAN'),
         GN('malaysia indonesia', 'en', 'Google News Malaysia-Indonesia'),
         GN('thailand southeast asia', 'en', 'Google News Thailand'),
@@ -581,6 +613,8 @@ HUNT = {
         GN('asean summit', 'en', 'Google News ASEAN Summit'),
         GN('asean economy trade', 'en', 'Google News ASEAN Trade'),
         GN('asean investment deal', 'en', 'Google News ASEAN Investment'),
+        GN('asean indonesia kerja sama', 'id', 'GN ASEAN Kerja Sama'),
+        GN('asean ktt', 'id', 'GN ASEAN KTT'),
     ],
     'internasional_tt': [
         RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
@@ -6339,7 +6373,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.81'
+FILE_VERSI = 'V6.17.79'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
