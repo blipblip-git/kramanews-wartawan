@@ -749,9 +749,13 @@ BREAKING_DOMESTIK_FEEDS = [
     GN('banjir indonesia hari ini', 'id', 'GN Banjir Indonesia'),
     GN('kecelakaan besar indonesia', 'id', 'GN Kecelakaan'),
     GN('kebakaran besar indonesia', 'id', 'GN Kebakaran'),
+    GN('penembakan indonesia', 'id', 'GN Penembakan'),
+    GN('pembacokan pembunuhan indonesia', 'id', 'GN Kriminal Berat'),
+    GN('ott kpk tangkap', 'id', 'GN OTT KPK'),
+    GN('narkoba ditangkap polisi', 'id', 'GN Narkoba'),
 ]
 
-# V6.17.79: PERKUAT feed breaking dunia — tambah aljazeera live, reuters world, AP top, GN fresh 6 jam
+# V6.17.79: PERKUAT feed breaking dunia
 BREAKING_DUNIA_FEEDS = [
     RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
     RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
@@ -799,19 +803,41 @@ INDO_GEO = ['indonesia', 'bmkg', 'aceh', 'sumatera', 'sumatra', 'jawa', 'kaliman
             'kalsel', 'kalteng', 'palangka raya', 'denpasar', 'mataram', 'kupang',
             'gorontalo', 'batam', 'pekanbaru', 'palembang']
 
+# V6.17.81: PERLUAS DOM_KRITIS — tambah kriminal, kecelakaan, OTT, dll
 DOM_KRITIS = [
+    # bencana
     'tsunami', 'erupsi', 'gunung meletus', 'banjir bandang', 'banjir besar',
     'tanah longsor', 'longsor', 'karhutla', 'kebakaran hutan', 'kebakaran hebat',
-    'kebakaran massal', 'keracunan massal', 'angin puting beliung', 'korban jiwa',
-    'mengungsi', 'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perahu tenggelam',
+    'kebakaran massal', 'kebakaran besar', 'keracunan massal', 'angin puting beliung',
+    'korban jiwa', 'korban tewas', 'mengungsi',
+    # transportasi
+    'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perahu tenggelam',
     'pesawat jatuh', 'pesawat hilang', 'kecelakaan pesawat', 'pesawat tergelincir',
-    'pembunuhan', 'dibunuh', 'ditemukan mati', 'penembakan', 'ledakan', 'bom meledak',
-    'perampokan bersenjata', 'rampok bank', 'ott kpk', 'ditangkap kpk',
-    'tersangka korupsi', 'tertangkap tangan', 'reshuffle', 'pergantian menteri',
-    'menteri diganti', 'menteri meninggal', 'menteri wafat', 'menteri ditangkap',
+    'kereta anjlok', 'kereta tabrakan', 'bus kecelakaan', 'bus terguling',
+    'kecelakaan beruntun', 'kecelakaan maut', 'tabrakan maut',
+    # kriminal berat
+    'pembunuhan', 'dibunuh', 'ditemukan mati', 'penembakan', 'pembacokan',
+    'penikaman', 'penusukan', 'pembunuh', 'mayat', 'jasad',
+    'perampokan', 'perampokan bersenjata', 'rampok bank', 'rampok toko',
+    'penculikan', 'penyanderaan', 'pemerkosaan', 'pencabulan',
+    'penganiayaan', 'kekerasan', 'begal', 'curanmor',
+    # korupsi & penegakan
+    'ott kpk', 'ditangkap kpk', 'tersangka korupsi', 'tertangkap tangan',
+    'tersangka', 'terdakwa', 'dakwaan', 'divonis', 'dihukum',
+    'kasus korupsi', 'suap', 'gratifikasi',
+    # narkoba
+    'narkoba', 'sabu', 'ganja', 'ekstasi', 'bandar narkoba',
+    'sita sabu', 'sita narkoba', 'pengedar narkoba', 'kurir narkoba',
+    # politik & pemerintahan
+    'reshuffle', 'pergantian menteri', 'menteri diganti',
+    'menteri meninggal', 'menteri wafat', 'menteri ditangkap',
     'menteri tersangka', 'presiden meninggal', 'wapres meninggal',
+    'mundur', 'resign', 'dicopot',
+    # kerusuhan
     'kerusuhan', 'ricuh', 'bentrok massa', 'demo besar', 'demonstrasi besar',
-    'massa membakar', 'membakar massal', 'tawuran besar',
+    'massa membakar', 'membakar massal', 'tawuran besar', 'bentrok polisi',
+    # ledakan
+    'ledakan', 'meledak', 'bom meledak', 'bom bunuh diri', 'peledakan',
 ]
 
 BREAKING_INT_KRITIS = [
@@ -858,7 +884,7 @@ BREAKING_INT_KRITIS = [
 
     'pandemi', 'pandemic', 'who emergency', 'global health emergency',
 
-    # V6.17.79: tambah sinyal breaking yang sering muncul di GN 6 jam
+    # V6.17.79: sinyal breaking
     'killed', 'dead', 'died', 'injured', 'wounded',
     'explosion', 'blast', 'bombing', 'shooting', 'gunfire',
     'protest', 'riot', 'clashes', 'unrest',
@@ -1131,6 +1157,7 @@ def _gn_id_dari_url(url):
     return ''
 
 # V6.17.73: hapus premium.bisnis.com (portal berbayar)
+# V6.17.81: tambah dpr.go.id & bpk.go.id (RSS tipis, scraping gagal)
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
@@ -1141,6 +1168,8 @@ DOMAIN_SKIP_SCRAPE = [
     'nytimes.com',
     'premium.bisnis.com',
     'radartarakan.jawapos.com',
+    'dpr.go.id',
+    'bpk.go.id',
 ]
 
 def domain_skip_scrape(url):
@@ -1601,6 +1630,18 @@ EKONOMI — DEFINISI SANGAT LUAS (WAJIB):
   * WTO, IMF, World Bank, ADB, G20, G7, BRICS, APEC
 - KUNJUNGAN MENTERI LUAR NEGERI / DIPLOMATIK yang isinya ekonomi → TETAP EKONOMI.
 
+TEKNOLOGI — DEFINISI LUAS (V6.17.81):
+- TEKNOLOGI mencakup: gadget, AI, aplikasi, internet, startup, keamanan digital.
+- TEKNOLOGI JUGA mencakup (JANGAN TOLAK):
+  * Pendanaan riset, hibah riset, dana penelitian
+  * Inovasi, riset teknologi, penelitian terapan
+  * Kerja sama riset antar lembaga (BRIN, universitas, industri)
+  * Sosialisasi program riset/teknologi
+  * Beasiswa teknologi, program digital talent
+  * Pelatihan coding, AI, data science
+- Materi tentang BRIN/lembaga riset/universitas yang isinya program teknologi → TETAP TEKNOLOGI.
+- HANYA tolak kalau materi murni kebijakan administratif tanpa unsur teknologi/riset.
+
 JUDUL EKONOMI — WAJIB MEMUAT KATA EKONOMI:
 - JUDUL WAJIB memuat minimal 1 kata ekonomi.
 
@@ -1612,6 +1653,7 @@ JANGAN SALAH KATEGORI:
 - "hasil", "skor", "klasemen" TIDAK cukup untuk olahraga.
 - Kontes/kecantikan (Miss, pageant) → BUKAN nasional/daerah.
 - Jadwal transportasi (kapal, ferry) → BUKAN daerah.
+- Pendanaan riset/hibah riset/BRIN → TETAP teknologi (V6.17.81).
 
 PENTING — JANGAN TOLAK BERLEBIHAN:
 - JANGAN tolak materi hanya karena ada 1 kata "politik", "ekonomi", "kepolisian".
@@ -1620,6 +1662,7 @@ PENTING — JANGAN TOLAK BERLEBIHAN:
 - Properti/perumahan/housing → TETAP ekonomi.
 - Kunjungan dagang/kerja sama ekonomi → TETAP ekonomi.
 - Tambang/mining/baterai/litium → TETAP ekonomi.
+- Pendanaan riset/hibah/inovasi → TETAP teknologi.
 - HANYA tolak kalau materi JELAS tentang kategori yang SALAH.
 
 TOLAK — HANYA kalau fatal. WAJIB tulis alasan tolak DETIL (1-2 kata tambahan setelah titik dua). Contoh format:
@@ -1649,7 +1692,6 @@ FORMAT JAWABAN - HANYA JSON valid:
 """
 
 # AKHIR PART 2
-
 # PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI + MATERI_COCOK + KANDIDAT + COLLECT + MATCH + DOBEL_DATELINE
 
 def edge_call(payload_json):
@@ -6297,7 +6339,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.80'
+FILE_VERSI = 'V6.17.81'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
