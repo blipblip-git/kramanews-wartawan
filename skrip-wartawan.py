@@ -32,8 +32,8 @@ MAX_UMUR_BERITA_JAM     = 30
 JENDELA_DOBEL_JAM       = 72
 GEMPA_DOM_MIN           = 5.5
 GEMPA_DUNIA_MIN         = 6.5
-# V6.17.78: turunkan SKOR_BREAKING_MIN 20 → 15 (breaking dunia selalu 0)
-SKOR_BREAKING_MIN       = 15
+# V6.17.79: turunkan SKOR_BREAKING_MIN 15 → 10 (breaking dunia 0 terus)
+SKOR_BREAKING_MIN       = 10
 SKOR_BREAKING_MIN_DOM   = 15
 AMBANG_MIRIP            = 0.55
 SCRAPER_TIMEOUT         = 12
@@ -750,15 +750,11 @@ BREAKING_DOMESTIK_FEEDS = [
     GN('kebakaran besar indonesia', 'id', 'GN Kebakaran'),
 ]
 
-# V6.17.78: tambah feed breaking dun (Reuters, AFP, DW, ABC, NBC)
+# V6.17.79: PERKUAT feed breaking dunia — tambah aljazeera live, reuters world, AP top, GN fresh 6 jam
 BREAKING_DUNIA_FEEDS = [
     RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
     RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
     RSSF('http://rss.cnn.com/rss/edition_world.rss', 'CNN World'),
-    RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
-    RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
-    RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
-    RSSF('https://vietnamnews.vn/rss.html', 'Vietnam News'),
     RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
     RSSF('https://apnews.com/index.rss', 'AP News'),
     RSSF('https://www.france24.com/en/rss', 'France24'),
@@ -771,12 +767,21 @@ BREAKING_DUNIA_FEEDS = [
     RSSF('https://www.dw.com/en/top-stories/s-9097/rss', 'DW'),
     RSSF('https://abcnews.go.com/abcnews/internationalheadlines', 'ABC News'),
     RSSF('https://feeds.nbcnews.com/nbcnews/public/world', 'NBC News'),
+    RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
+    RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
+    RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
+    RSSF('https://vietnamnews.vn/rss.html', 'Vietnam News'),
     GN('breaking world news', 'en', 'GN Breaking Dunia'),
     GN('major earthquake', 'en', 'GN Gempa Besar Dunia'),
     GN('war conflict missile', 'en', 'GN Perang'),
     GN('breaking asia news', 'en', 'GN Breaking Asia'),
     GN('flood disaster', 'en', 'GN Banjir Dunia'),
     GN('plane crash', 'en', 'GN Pesawat Jatuh'),
+    GN('world news when:6h', 'en', 'GN Dunia 6 Jam'),
+    GN('breaking news when:6h', 'en', 'GN Breaking 6 Jam'),
+    GN('earthquake when:6h', 'en', 'GN Gempa 6 Jam'),
+    GN('explosion when:6h', 'en', 'GN Ledakan 6 Jam'),
+    GN('attack when:6h', 'en', 'GN Serangan 6 Jam'),
 ]
 
 LUAR_NEGERI_WORDS = ['jepang', 'china', 'amerika', 'eropa', 'luar negeri', 'inggris',
@@ -851,6 +856,13 @@ BREAKING_INT_KRITIS = [
     'nasa launch', 'spacex launch', 'cnsa launch',
 
     'pandemi', 'pandemic', 'who emergency', 'global health emergency',
+
+    # V6.17.79: tambah sinyal breaking yang sering muncul di GN 6 jam
+    'killed', 'dead', 'died', 'injured', 'wounded',
+    'explosion', 'blast', 'bombing', 'shooting', 'gunfire',
+    'protest', 'riot', 'clashes', 'unrest',
+    'collapse', 'crash', 'derail', 'sank', 'missing',
+    'strike', 'attack', 'invasion', 'offensive',
 ]
 
 BREAKING_INT_TOLAK = [
@@ -1786,8 +1798,10 @@ def gn_split(title):
     return title.strip(), 'Google News'
 
 MATERI_MIN_KARAKTER_RSS = 120
-MATERI_MIN_KARAKTER_RSS_NASIONAL = 300
-MATERI_MIN_KARAKTER_RSS_DAERAH    = 250
+# V6.17.79: turunkan threshold RSS nasional 300 → 200 (nasional sering gagal 155 kar)
+MATERI_MIN_KARAKTER_RSS_NASIONAL = 200
+# V6.17.79: turunkan threshold RSS daerah 250 → 200
+MATERI_MIN_KARAKTER_RSS_DAERAH    = 200
 MATERI_MIN_KARAKTER_BREAKING = 100
 
 def _materi_dominan_url(teks):
@@ -6260,7 +6274,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.78'
+FILE_VERSI = 'V6.17.79'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
