@@ -1,4 +1,5 @@
-# KRAMANEWS — SKRIP SOSMED V1.17 (FB + INSTAGRAM)
+# KRAMANEWS — SKRIP SOSMED V1.18 (FB + INSTAGRAM)
+# V1.18: hapus caption FB + hashtag di gambar, tambah tanggal+jam
 # V1.17: 10 siklus baru + cascade fallback + prioritas Tarakan/Kaltara
 # V1.16: ganti tanggal+jam di gambar jadi link + hashtag
 # V1.15: render overlay gambar pakai Pillow, caption FB dipendekkan
@@ -48,6 +49,10 @@ HASHTAG_KATEGORI = {
 
 KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
                  'tana tidung', 'sesayap', 'juata', 'tanjung selor']
+
+HARI_ID_SHORT = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
+BULAN_ID_SHORT = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
+                  'Agustus', 'September', 'Oktober', 'November', 'Desember']
 
 def is_tarakan(n):
     teks = ' '.join(str(n.get(k) or '') for k in ('title', 'dateline', 'excerpt', 'content')).lower()
@@ -117,6 +122,27 @@ def ambil_teaser(content, kalimat=3):
     bersih = re.sub(r'\s+', ' ', content or '').strip()
     kalimat_list = re.split(r'(?<=[.!?])\s+', bersih)
     return ' '.join(kalimat_list[:kalimat]).strip()
+
+def format_tanggal_jam_wita(iso_str):
+    """
+    V1.18: format tanggal + jam WITA dari created_at artikel.
+    Contoh output: "Selasa, 6 Oktober 2026 · 07:42 WITA"
+    """
+    if not iso_str:
+        return ''
+    try:
+        dt = datetime.fromisoformat(str(iso_str).replace('Z', '+00:00'))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        dt_wita = dt.astimezone(WITA)
+        hari = HARI_ID_SHORT[dt_wita.weekday()]
+        tanggal = dt_wita.day
+        bulan = BULAN_ID_SHORT[dt_wita.month]
+        tahun = dt_wita.year
+        jam = dt_wita.strftime('%H:%M')
+        return f'{hari}, {tanggal} {bulan} {tahun} · {jam} WITA'
+    except Exception:
+        return ''
 
 # ═══ RENDER OVERLAY GAMBAR FB (Pillow) ═══
 
@@ -190,7 +216,7 @@ def render_gambar_fb(n):
     font_badge = _font(FONT_BOLD_PATH, 32)
     font_judul = _font(FONT_BOLD_PATH, 56)
     font_lokasi = _font(FONT_BOLD_PATH, 34)
-    font_caption = _font(FONT_BOLD_PATH, 30)
+    font_tanggal = _font(FONT_BOLD_PATH, 30)
 
     cat = (n.get('category') or '').upper()
     if cat:
@@ -220,7 +246,8 @@ def render_gambar_fb(n):
 
         line_h = 70
         total_h = len(baris_judul) * line_h
-        y_judul = target_h - 240 - total_h + 20
+        # V1.18: geser judul naik dikit biar muat tanggal+jam
+        y_judul = target_h - 240 - total_h + 10
 
         for i, baris in enumerate(baris_judul):
             y = y_judul + i * line_h
@@ -242,17 +269,19 @@ def render_gambar_fb(n):
             draw.text((pin_x + 32 + dx, y_lokasi + dy), dateline, font=font_lokasi, fill=(0, 0, 0, 220))
         draw.text((pin_x + 32, y_lokasi), dateline, font=font_lokasi, fill=(255, 255, 255, 255))
 
-    cat_label = KATEGORI_LABEL.get(n.get('category', ''), n.get('category', ''))
-    tag_line = '#' + str(cat_label).replace(' ', '') + ' #KramaNews #BeritaTerkini'
-    link_line = '🔗 Baca selengkapnya di komentar 👇'
-    y_link = target_h - 85
-    for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
-        draw.text((40 + dx, y_link + dy), link_line, font=font_caption, fill=(0, 0, 0, 220))
-    draw.text((40, y_link), link_line, font=font_caption, fill=(255, 255, 255, 255))
-    y_tag = y_link + 42
-    for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
-        draw.text((40 + dx, y_tag + dy), tag_line, font=font_caption, fill=(0, 0, 0, 220))
-    draw.text((40, y_tag), tag_line, font=font_caption, fill=(255, 255, 255, 255))
+    # V1.18: tanggal + jam WITA (ganti link & hashtag)
+    tgl_jam = format_tanggal_jam_wita(n.get('created_at'))
+    y_tanggal = target_h - 85
+    if tgl_jam:
+        # ikon jam kecil (lingkaran + jarum)
+        ck_x = 40
+        ck_y = y_tanggal + 4
+        draw.ellipse([ck_x, ck_y, ck_x + 26, ck_y + 26], outline=(255, 255, 255, 255), width=3)
+        draw.line([(ck_x + 13, ck_y + 13), (ck_x + 13, ck_y + 6)], fill=(255, 255, 255, 255), width=3)
+        draw.line([(ck_x + 13, ck_y + 13), (ck_x + 19, ck_y + 15)], fill=(255, 255, 255, 255), width=3)
+        for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
+            draw.text((ck_x + 40 + dx, y_tanggal + dy), tgl_jam, font=font_tanggal, fill=(0, 0, 0, 220))
+        draw.text((ck_x + 40, y_tanggal), tgl_jam, font=font_tanggal, fill=(255, 255, 255, 255))
 
     out = io.BytesIO()
     img.convert('RGB').save(out, format='JPEG', quality=88)
@@ -428,10 +457,10 @@ def _cari_dengan_cascade(rows, kategori_utama, kategori_fallback):
 def mode_fb():
     slot = slot_saat_ini()
     if not slot:
-        print('📘 MODE FB V1.17 — jam ' + str(datetime.now(WITA).hour) + ':XX di luar jadwal. Skip.')
+        print('📘 MODE FB V1.18 — jam ' + str(datetime.now(WITA).hour) + ':XX di luar jadwal. Skip.')
         return
     nama_slot, kategori_utama, kategori_fallback = slot
-    print('📘 MODE FB V1.17 — slot: ' + nama_slot.upper() + ' (jam ' + str(datetime.now(WITA).hour) + ':45)')
+    print('📘 MODE FB V1.18 — slot: ' + nama_slot.upper() + ' (jam ' + str(datetime.now(WITA).hour) + ':45)')
 
     rows = supabase_get_safe(
         'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking,created_at'
@@ -521,10 +550,10 @@ def buat_pesan_ig(n):
 def mode_ig():
     slot = slot_saat_ini()
     if not slot:
-        print('📸 MODE IG V1.17 — jam di luar jadwal. Skip.')
+        print('📸 MODE IG V1.18 — jam di luar jadwal. Skip.')
         return
     nama_slot, kategori_utama, kategori_fallback = slot
-    print('📸 MODE IG V1.17 — slot: ' + nama_slot.upper())
+    print('📸 MODE IG V1.18 — slot: ' + nama_slot.upper())
 
     if not IG_TOKEN:
         print('⏭️ IG_PAGE_TOKEN belum ada di Secrets — IG dilewati.')
@@ -592,7 +621,7 @@ def mode_ig():
     print('🏁 Mode IG selesai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.17 — FB + INSTAGRAM (10 siklus)')
+    print('📣 KRAMANEWS SOSMED V1.18 — FB + INSTAGRAM (10 siklus)')
     print('   06:45 · 07:45 · 09:45 · 11:45 · 12:45 · 14:45 · 15:45 · 16:45 · 17:45 · 18:45 WITA')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
         print('❌ Kunci FB belum lengkap (cek Secrets)!')
