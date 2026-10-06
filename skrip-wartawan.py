@@ -28,11 +28,9 @@ WITA = timezone(timedelta(hours=8))
 BREAKING_MAX_SLOT       = 2
 BREAKING_UMUR_MENIT     = 30
 MAX_UMUR_BERITA_JAM     = 30
-# V6.17.59: jendela anti-dobel 36 → 72 jam (3 hari)
 JENDELA_DOBEL_JAM       = 72
 GEMPA_DOM_MIN           = 5.5
 GEMPA_DUNIA_MIN         = 6.5
-# V6.17.78: turunkan SKOR_BREAKING_MIN 20 → 15 (breaking dunia selalu 0)
 SKOR_BREAKING_MIN       = 15
 SKOR_BREAKING_MIN_DOM   = 15
 AMBANG_MIRIP            = 0.55
@@ -229,14 +227,15 @@ def GN(q, lang='id', label=None, when='1d'):
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
+# V6.17.82: slot 06:07 nasional +1, slot 12:07 daerah +1
 JADWAL_JAM = {
-    6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
+    6:  {'nasional': 2, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1, 'ekonomi': 1},
     8:  {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'teknologi': 1, 'kesehatan': 1},
     9:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'olahraga': 1, 'ekonomi': 1},
     10: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'kesehatan': 1},
     11: {'nasional': 1, 'daerah': 2, 'ekonomi': 1, 'olahraga': 1, 'otomotif': 1},
-    12: {'nasional': 1, 'daerah': 1, 'ekonomi': 1, 'olahraga': 1},
+    12: {'nasional': 1, 'daerah': 2, 'ekonomi': 1, 'olahraga': 1},
     13: {'nasional': 1, 'daerah': 1, 'ekonomi': 1, 'teknologi': 1, 'otomotif': 1},
     14: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1, 'ekonomi': 1},
     15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1},
@@ -490,7 +489,6 @@ EKONOMI_ASING_FEEDS = [
     GN('taiwan semiconductor tsmc chip', 'en', 'GN Semikonduktor'),
 ]
 
-# V6.17.79: TAMBAH FEED NASIONAL (Kumparan, Viva, Sindonews, RMOL, JPNN)
 HUNT = {
     'nasional': [
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -524,7 +522,6 @@ HUNT = {
         GN('pendidikan indonesia', 'id', 'GN Pendidikan'),
         GN('sosial budaya indonesia', 'id', 'GN Sosial Budaya'),
     ],
-    # V6.17.79: TAMBAH FEED DAERAH (Benuanta, RRI, Kaltara Post, Pro Kaltara, JPNN Daerah)
     'daerah': [
         RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
         RSSF('https://kaltim.tribunnews.com/rss', 'Tribun Kaltim'),
@@ -584,7 +581,6 @@ HUNT = {
         GN('Gorontalo', 'id', 'Google News Gorontalo'),
         GN('Batam', 'id', 'Google News Batam'),
     ],
-    # V6.17.79: TAMBAH FEED ASEAN (Jakarta Post, Jakarta Globe, VN Express, Khmer Times, Myanmar Now)
     'internasional_asean': [
         RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
         RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
@@ -744,7 +740,6 @@ except Exception:
     _GN_DECODER_OK = False
     _gn_decode_many = None
 
-# V6.17.73: Playtrafi
 try:
     from playtrafi import Playtrafi as _Playtrafi
     _PLAYTRAFI_OK = True
@@ -761,7 +756,6 @@ _GN_DECODE_CACHE = {}
 
 DEBUG_SCRAPE = True
 
-# V6.17.78: tambah feed breaking dom (Kumparan, Viva, Sindonews, RMOL, JPNN)
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
     RSSF('https://www.detik.com/feed', 'Detik'),
@@ -783,17 +777,16 @@ BREAKING_DOMESTIK_FEEDS = [
     GN('banjir indonesia hari ini', 'id', 'GN Banjir Indonesia'),
     GN('kecelakaan besar indonesia', 'id', 'GN Kecelakaan'),
     GN('kebakaran besar indonesia', 'id', 'GN Kebakaran'),
-    GN('penembakan indonesia', 'id', 'GN Penembakan'),
-    GN('pembacokan pembunuhan indonesia', 'id', 'GN Kriminal Berat'),
-    GN('ott kpk tangkap', 'id', 'GN OTT KPK'),
-    GN('narkoba ditangkap polisi', 'id', 'GN Narkoba'),
 ]
 
-# V6.17.79: PERKUAT feed breaking dunia
 BREAKING_DUNIA_FEEDS = [
     RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
     RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
     RSSF('http://rss.cnn.com/rss/edition_world.rss', 'CNN World'),
+    RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
+    RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
+    RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
+    RSSF('https://vietnamnews.vn/rss.html', 'Vietnam News'),
     RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
     RSSF('https://apnews.com/index.rss', 'AP News'),
     RSSF('https://www.france24.com/en/rss', 'France24'),
@@ -806,21 +799,12 @@ BREAKING_DUNIA_FEEDS = [
     RSSF('https://www.dw.com/en/top-stories/s-9097/rss', 'DW'),
     RSSF('https://abcnews.go.com/abcnews/internationalheadlines', 'ABC News'),
     RSSF('https://feeds.nbcnews.com/nbcnews/public/world', 'NBC News'),
-    RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
-    RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
-    RSSF('https://www.straitstimes.com/rss-feed/latest', 'Straits Times'),
-    RSSF('https://vietnamnews.vn/rss.html', 'Vietnam News'),
     GN('breaking world news', 'en', 'GN Breaking Dunia'),
     GN('major earthquake', 'en', 'GN Gempa Besar Dunia'),
     GN('war conflict missile', 'en', 'GN Perang'),
     GN('breaking asia news', 'en', 'GN Breaking Asia'),
     GN('flood disaster', 'en', 'GN Banjir Dunia'),
     GN('plane crash', 'en', 'GN Pesawat Jatuh'),
-    GN('world news when:6h', 'en', 'GN Dunia 6 Jam'),
-    GN('breaking news when:6h', 'en', 'GN Breaking 6 Jam'),
-    GN('earthquake when:6h', 'en', 'GN Gempa 6 Jam'),
-    GN('explosion when:6h', 'en', 'GN Ledakan 6 Jam'),
-    GN('attack when:6h', 'en', 'GN Serangan 6 Jam'),
 ]
 
 LUAR_NEGERI_WORDS = ['jepang', 'china', 'amerika', 'eropa', 'luar negeri', 'inggris',
@@ -837,41 +821,19 @@ INDO_GEO = ['indonesia', 'bmkg', 'aceh', 'sumatera', 'sumatra', 'jawa', 'kaliman
             'kalsel', 'kalteng', 'palangka raya', 'denpasar', 'mataram', 'kupang',
             'gorontalo', 'batam', 'pekanbaru', 'palembang']
 
-# V6.17.81: PERLUAS DOM_KRITIS — tambah kriminal, kecelakaan, OTT, dll
 DOM_KRITIS = [
-    # bencana
     'tsunami', 'erupsi', 'gunung meletus', 'banjir bandang', 'banjir besar',
     'tanah longsor', 'longsor', 'karhutla', 'kebakaran hutan', 'kebakaran hebat',
-    'kebakaran massal', 'kebakaran besar', 'keracunan massal', 'angin puting beliung',
-    'korban jiwa', 'korban tewas', 'mengungsi',
-    # transportasi
-    'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perahu tenggelam',
+    'kebakaran massal', 'keracunan massal', 'angin puting beliung', 'korban jiwa',
+    'mengungsi', 'kapal tenggelam', 'feri tenggelam', 'kapal karam', 'perahu tenggelam',
     'pesawat jatuh', 'pesawat hilang', 'kecelakaan pesawat', 'pesawat tergelincir',
-    'kereta anjlok', 'kereta tabrakan', 'bus kecelakaan', 'bus terguling',
-    'kecelakaan beruntun', 'kecelakaan maut', 'tabrakan maut',
-    # kriminal berat
-    'pembunuhan', 'dibunuh', 'ditemukan mati', 'penembakan', 'pembacokan',
-    'penikaman', 'penusukan', 'pembunuh', 'mayat', 'jasad',
-    'perampokan', 'perampokan bersenjata', 'rampok bank', 'rampok toko',
-    'penculikan', 'penyanderaan', 'pemerkosaan', 'pencabulan',
-    'penganiayaan', 'kekerasan', 'begal', 'curanmor',
-    # korupsi & penegakan
-    'ott kpk', 'ditangkap kpk', 'tersangka korupsi', 'tertangkap tangan',
-    'tersangka', 'terdakwa', 'dakwaan', 'divonis', 'dihukum',
-    'kasus korupsi', 'suap', 'gratifikasi',
-    # narkoba
-    'narkoba', 'sabu', 'ganja', 'ekstasi', 'bandar narkoba',
-    'sita sabu', 'sita narkoba', 'pengedar narkoba', 'kurir narkoba',
-    # politik & pemerintahan
-    'reshuffle', 'pergantian menteri', 'menteri diganti',
-    'menteri meninggal', 'menteri wafat', 'menteri ditangkap',
+    'pembunuhan', 'dibunuh', 'ditemukan mati', 'penembakan', 'ledakan', 'bom meledak',
+    'perampokan bersenjata', 'rampok bank', 'ott kpk', 'ditangkap kpk',
+    'tersangka korupsi', 'tertangkap tangan', 'reshuffle', 'pergantian menteri',
+    'menteri diganti', 'menteri meninggal', 'menteri wafat', 'menteri ditangkap',
     'menteri tersangka', 'presiden meninggal', 'wapres meninggal',
-    'mundur', 'resign', 'dicopot',
-    # kerusuhan
     'kerusuhan', 'ricuh', 'bentrok massa', 'demo besar', 'demonstrasi besar',
-    'massa membakar', 'membakar massal', 'tawuran besar', 'bentrok polisi',
-    # ledakan
-    'ledakan', 'meledak', 'bom meledak', 'bom bunuh diri', 'peledakan',
+    'massa membakar', 'membakar massal', 'tawuran besar',
 ]
 
 BREAKING_INT_KRITIS = [
@@ -917,13 +879,6 @@ BREAKING_INT_KRITIS = [
     'nasa launch', 'spacex launch', 'cnsa launch',
 
     'pandemi', 'pandemic', 'who emergency', 'global health emergency',
-
-    # V6.17.79: sinyal breaking
-    'killed', 'dead', 'died', 'injured', 'wounded',
-    'explosion', 'blast', 'bombing', 'shooting', 'gunfire',
-    'protest', 'riot', 'clashes', 'unrest',
-    'collapse', 'crash', 'derail', 'sank', 'missing',
-    'strike', 'attack', 'invasion', 'offensive',
 ]
 
 BREAKING_INT_TOLAK = [
@@ -1190,8 +1145,7 @@ def _gn_id_dari_url(url):
         pass
     return ''
 
-# V6.17.73: hapus premium.bisnis.com (portal berbayar)
-# V6.17.81: tambah dpr.go.id & bpk.go.id (RSS tipis, scraping gagal)
+# V6.17.82: tambah cnnindonesia.com + cnbcindonesia.com (gagal scrape konsisten)
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
@@ -1202,8 +1156,8 @@ DOMAIN_SKIP_SCRAPE = [
     'nytimes.com',
     'premium.bisnis.com',
     'radartarakan.jawapos.com',
-    'dpr.go.id',
-    'bpk.go.id',
+    'cnnindonesia.com',
+    'cnbcindonesia.com',
 ]
 
 def domain_skip_scrape(url):
@@ -1664,18 +1618,6 @@ EKONOMI — DEFINISI SANGAT LUAS (WAJIB):
   * WTO, IMF, World Bank, ADB, G20, G7, BRICS, APEC
 - KUNJUNGAN MENTERI LUAR NEGERI / DIPLOMATIK yang isinya ekonomi → TETAP EKONOMI.
 
-TEKNOLOGI — DEFINISI LUAS (V6.17.81):
-- TEKNOLOGI mencakup: gadget, AI, aplikasi, internet, startup, keamanan digital.
-- TEKNOLOGI JUGA mencakup (JANGAN TOLAK):
-  * Pendanaan riset, hibah riset, dana penelitian
-  * Inovasi, riset teknologi, penelitian terapan
-  * Kerja sama riset antar lembaga (BRIN, universitas, industri)
-  * Sosialisasi program riset/teknologi
-  * Beasiswa teknologi, program digital talent
-  * Pelatihan coding, AI, data science
-- Materi tentang BRIN/lembaga riset/universitas yang isinya program teknologi → TETAP TEKNOLOGI.
-- HANYA tolak kalau materi murni kebijakan administratif tanpa unsur teknologi/riset.
-
 JUDUL EKONOMI — WAJIB MEMUAT KATA EKONOMI:
 - JUDUL WAJIB memuat minimal 1 kata ekonomi.
 
@@ -1687,7 +1629,6 @@ JANGAN SALAH KATEGORI:
 - "hasil", "skor", "klasemen" TIDAK cukup untuk olahraga.
 - Kontes/kecantikan (Miss, pageant) → BUKAN nasional/daerah.
 - Jadwal transportasi (kapal, ferry) → BUKAN daerah.
-- Pendanaan riset/hibah riset/BRIN → TETAP teknologi (V6.17.81).
 
 PENTING — JANGAN TOLAK BERLEBIHAN:
 - JANGAN tolak materi hanya karena ada 1 kata "politik", "ekonomi", "kepolisian".
@@ -1696,7 +1637,6 @@ PENTING — JANGAN TOLAK BERLEBIHAN:
 - Properti/perumahan/housing → TETAP ekonomi.
 - Kunjungan dagang/kerja sama ekonomi → TETAP ekonomi.
 - Tambang/mining/baterai/litium → TETAP ekonomi.
-- Pendanaan riset/hibah/inovasi → TETAP teknologi.
 - HANYA tolak kalau materi JELAS tentang kategori yang SALAH.
 
 TOLAK — HANYA kalau fatal. WAJIB tulis alasan tolak DETIL (1-2 kata tambahan setelah titik dua). Contoh format:
@@ -3101,23 +3041,11 @@ def _kota_ibu_kota_provinsi_di_materi(kota, sumber):
             return True
     return False
 
-# ══════════════════════════════════════════════════════
-# V6.17.80: FUZZY MATCH KOTA DATELINE
-# Cek kota dateline yang mirip (typo) dengan kota di materi
-# Contoh: "madium" vs "madiun", "jakart" vs "jakarta"
-# ══════════════════════════════════════════════════════
-
 def _kota_mirip_di_materi(kota, sumber, ambang=0.80):
-    """
-    V6.17.80: Fuzzy match kota dateline.
-    Kalau kota dateline tidak ada persis di materi, cek apakah ada
-    kota yang MIRIP (typo/variasi ejaan) di materi.
-    """
     if not kota or not sumber:
         return None
     kota_low = kota.lower().strip()
     sumber_low = sumber.lower()
-    # Kumpulan kandidat kota dari semua daftar
     kandidat_kota = set()
     for k in KOTA_INDONESIA_DATELINE:
         kandidat_kota.add(k)
@@ -3129,15 +3057,12 @@ def _kota_mirip_di_materi(kota, sumber, ambang=0.80):
         kandidat_kota.add(k)
     for k in KAMUS_TIM_LIGA_NEGARA.keys():
         kandidat_kota.add(k)
-    # Cek fuzzy match dengan kota di materi
     kata_materi = set(re.findall(r'\b[a-z]{4,}\b', sumber_low))
     for kandidat in kandidat_kota:
         if kandidat in kata_materi:
-            # kandidat ada di materi — cek mirip dengan kota dateline
             rasio = SequenceMatcher(None, kota_low, kandidat).ratio()
             if rasio >= ambang:
                 return kandidat
-    # Cek juga kata 4+ huruf di materi yang mirip kota dateline
     for kata in kata_materi:
         if abs(len(kata) - len(kota_low)) > 2:
             continue
@@ -3163,7 +3088,6 @@ def cek_dateline(isi, user_content):
         return None
     if _kota_ibu_kota_provinsi_di_materi(kota, sumber):
         return None
-    # V6.17.80: fuzzy match — cek kota mirip di materi
     kota_mirip = _kota_mirip_di_materi(kota, sumber, ambang=0.80)
     if kota_mirip:
         return None
@@ -3175,12 +3099,58 @@ def cek_dateline(isi, user_content):
             return 'klaim KALTARA tapi kota "' + kota + '" bukan wilayah Kaltara'
     return None
 
+# ══════════════════════════════════════════════════════
+# V6.17.82: PARSE_AI_JSON — strip teks setelah JSON valid
+# Handle error "Extra data: line 3 column 1"
+# ══════════════════════════════════════════════════════
+
 def parse_ai_json(text):
-    t = text.strip()
+    """
+    V6.17.82: Parse JSON dari AI dengan toleransi ekstra teks.
+    - Strip markdown code fence
+    - Cari objek JSON pertama { ... } dan abaikan teks setelahnya
+    - Raise ValueError kalau tidak ada JSON valid
+    """
+    t = (text or '').strip()
+    if not t:
+        raise ValueError('parse_ai_json: teks kosong')
+    # Strip markdown code fence
     if t.startswith('```'):
         t = re.sub(r'^```[a-zA-Z]*\s*', '', t)
-        t = re.sub(r'\s*```$', '', t)
-    return json.loads(t)
+        t = re.sub(r'\s*```\s*$', '', t)
+    # Cari objek JSON pertama
+    start = t.find('{')
+    if start == -1:
+        raise ValueError('parse_ai_json: tidak ada { di output AI')
+    # Hitung kurung kurawal untuk menemukan akhir objek JSON pertama
+    depth = 0
+    in_str = False
+    escape = False
+    end = -1
+    for i in range(start, len(t)):
+        ch = t[i]
+        if escape:
+            escape = False
+            continue
+        if ch == '\\':
+            escape = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                break
+    if end == -1:
+        raise ValueError('parse_ai_json: JSON tidak lengkap (kurung tidak seimbang)')
+    json_str = t[start:end]
+    return json.loads(json_str)
 
 POLA_PERSEN = re.compile(r'(\d[\d\.,]*)\s+persen\b', re.IGNORECASE)
 
@@ -3717,7 +3687,6 @@ def _kpk_konteks_indonesia(teks):
             return True
     return False
 
-# V6.17.74: dateline Indonesia SAH kalau materi sebut kota Indonesia (event di Indonesia)
 def cek_kategori_dari_isi(isi, judul, kategori_target):
     if not isi:
         return None
@@ -3742,7 +3711,6 @@ def cek_kategori_dari_isi(isi, judul, kategori_target):
         dp = m.group(1).strip().lower()
         kota = dp.split(',')[0].strip()
         if kota in KOTA_INDONESIA_DATELINE:
-            # V6.17.74: cek apakah materi sebut kota Indonesia (event di Indonesia)
             materi_low = (gab or '').lower()
             ada_kota_indo = any(re.search(r'\b' + re.escape(k) + r'\b', materi_low)
                                 for k in KOTA_INDONESIA_DATELINE)
@@ -4310,7 +4278,6 @@ def _buang_fakta_wajib(teks):
 def _n_gram_untuk(kategori, panjang_materi):
     return 22
 
-# V6.17.72: HAPUS gate struktur kalimat total — cuma pakai N-gram 22
 def cek_jiplak(materi_sumber, isi_ai, judul_materi='', kategori=''):
     if not materi_sumber or not isi_ai:
         return None
@@ -4327,7 +4294,6 @@ def cek_jiplak(materi_sumber, isi_ai, judul_materi='', kategori=''):
                 if _frasa_umum(gram):
                     continue
                 return 'N-gram tersalin: ' + ' '.join(gram)
-    # V6.17.72: gate struktur kalimat DIHAPUS. Cukup N-gram 22.
     return None
 
 def _paksa_dateline_indonesia(isi):
@@ -4639,6 +4605,13 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
                     'ditulis AI — wajib tulis lengkap dengan jabatan')
     return None
 
+# ══════════════════════════════════════════════════════
+# V6.17.82: ai_write dengan RETRY GANTI JUDUL
+# Kalau judul AI mirip materi ≥0.75 → minta AI tulis ulang judul
+# ══════════════════════════════════════════════════════
+
+AMBANG_JUDUL_MIRIP = 0.75
+
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
              judul_materi='', summary_materi='', wajib_topik=True,
              source_url=''):
@@ -4646,10 +4619,11 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     materi_asli = user_content
     koneksi_retry = 0
     MAX_KONEKSI_RETRY = 0
-    MAX_LOOP = 1
+    MAX_LOOP = 2  # V6.17.82: 1x normal + 1x retry ganti judul
     FRASA_TOLAK_AI = ['materi tidak tersedia', 'materi sumber tidak tersedia',
                       'materi tidak relevan', 'tidak dapat menulis', 'tidak ada materi']
     percobaan = 0
+    judul_retry = False
     while percobaan < MAX_LOOP:
         percobaan += 1
         temp = 0.5
@@ -4692,14 +4666,36 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     if ada_persen_kata(judul + ' ' + isi + ' ' + ringkasan):
         print('       Persen auto-fix diterapkan.')
 
+    # V6.17.82: retry 1x kalau judul mirip materi
     if judul_materi and judul:
         rasio_judul = SequenceMatcher(None, judul.lower(), judul_materi.lower()).ratio()
-        if rasio_judul >= 0.80:
-            msg_tolak = ('judul AI mirip judul materi (' + str(int(rasio_judul * 100))
-                         + '%) — jiplak, wajib judul beda')
-            if source_url:
-                catat_tolak_ai_token(source_url, msg_tolak)
-            raise Exception('DITOLAK - ' + msg_tolak)
+        if rasio_judul >= AMBANG_JUDUL_MIRIP:
+            if not judul_retry:
+                print('       Judul AI mirip materi (' + str(int(rasio_judul * 100))
+                      + '%) — minta AI ganti judul (retry 1x)...')
+                judul_retry = True
+                user_content = (
+                    'CATATAN PENTING — JUDUL HARUS BEDA TOTAL:\n'
+                    '- Judul materi asli: "' + judul_materi + '"\n'
+                    '- Judul kamu sebelumnya: "' + judul + '"\n'
+                    '- KEMIRIPAN: ' + str(int(rasio_judul * 100)) + '% (terlalu mirip!)\n'
+                    '- WAJIB ganti judul dengan kata-kata BERBEDA TOTAL.\n'
+                    '- DILARANG menyalin kata kunci judul materi.\n'
+                    '- Contoh: judul materi "Wali Kota Resmikan 3 Dapur MBG" → '
+                    'judul baru "Tiga Fasilitas MBG Baru Diresmikan di Cilegon".\n'
+                    '- Semua aturan lain tetap berlaku.\n\n'
+                    'MATERI SUMBER:\n' + materi_sumber[:1500] + '\n\n'
+                    'Tulis berita JSON valid dengan JUDUL BERBEDA.')
+                obj = None
+                continue
+            else:
+                msg_tolak = ('judul AI mirip judul materi (' + str(int(rasio_judul * 100))
+                             + '%) — jiplak, wajib judul beda')
+                if source_url:
+                    catat_tolak_ai_token(source_url, msg_tolak)
+                raise Exception('DITOLAK - ' + msg_tolak)
+        else:
+            judul_retry = False
 
     judul_l = judul.lower()
     if any(x in judul_l for x in ('materi tidak dapat diolah', 'materi tidak tersedia',
@@ -4811,7 +4807,6 @@ def target_kata(materi_len):
                 'dilarang menggembung dengan kalimat pengisi.')
     return '200-250 kata (3-5 paragraf).'
 
-# V6.17.80: perkuat instruksi dateline di catatan
 def _catatan_khusus_kategori(kategori_target):
     if kategori_target in ('internasional', 'internasional_asean', 'internasional_tt'):
         return (
@@ -4848,6 +4843,18 @@ def _catatan_anti_jiplak():
         '- JUDUL: DILARANG sama/mirip judul materi.\n'
         '\n'
         'CATATAN: Kutipan langsung dalam tanda petik BOLEH SAMA.\n'
+        '\n'
+        'JUDUL — ATURAN KETAT (V6.17.82):\n'
+        '- JUDUL WAJIB BEDA TOTAL dari judul materi sumber.\n'
+        '- Kalau mirip ≥75% → ditolak, wajib tulis ulang.\n'
+        '- Ganti kata kunci, susun ulang, sinonimkan.\n'
+        '- DILARANG menyalin 5+ kata berturut-turut dari judul materi.\n'
+        '- Contoh BENAR:\n'
+        '  * Materi: "Wali Kota Resmikan 3 Dapur MBG"\n'
+        '  * Judul: "Tiga Fasilitas MBG Baru Hadir di Cilegon"\n'
+        '- Contoh SALAH:\n'
+        '  * Materi: "Wali Kota Resmikan 3 Dapur MBG"\n'
+        '  * Judul: "Wali Kota Resmikan 3 Dapur MBG di Cilegon" (JIPLAK!)\n'
     )
 
 def _catatan_kategori_ketat(kategori_target):
@@ -6446,7 +6453,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.81'
+FILE_VERSI = 'V6.17.82'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
