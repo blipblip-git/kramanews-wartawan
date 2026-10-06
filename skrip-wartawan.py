@@ -4036,6 +4036,7 @@ def _gram_set(teks, n):
     kata = _kata_bersih(teks)
     return set(tuple(kata[i:i+n]) for i in range(len(kata) - n + 1)) if len(kata) >= n else set()
 
+# V6.17.83: tambah frasa protokoler resmi pemerintahan
 FRASA_UMUM_JIPLAK = [
     'kalau kita ingin', 'jika kita ingin', 'untuk menghasilkan',
     'generasi yang', 'masa depan', 'anak anak kita', 'pada dasarnya',
@@ -4073,6 +4074,152 @@ FRASA_UMUM_JIPLAK = [
     'rekomendasi beli',
     'rekomendasi jual',
     'rekomendasi hold',
+    # V6.17.83: frasa protokoler resmi pemerintahan
+    'dalam rangka kunjungan kerja ke wilayah perbatasan',
+    'dalam rangka kunjungan kerja',
+    'kunjungan kerja ke wilayah perbatasan',
+    'kunjungan kerja ke daerah',
+    'kunjungan kerja Presiden',
+    'kunjungan kerja Menteri',
+    'kunjungan kerja ke provinsi',
+    'dalam rangka kunjungan',
+    'melakukan kunjungan kerja',
+    'melaksanakan kunjungan kerja',
+    'bersama rombongan terbatas',
+    'dan rombongan terbatas',
+    'di dampingi oleh',
+    'didampingi oleh',
+    'turut mendampingi',
+    'turut hadir dalam acara',
+    'turut hadir dalam kegiatan',
+    'hadir dalam kegiatan tersebut',
+    'hadir dalam acara tersebut',
+    'dalam sambutannya',
+    'dalam arahannya',
+    'dalam pidatonya',
+    'dalam kesempatan itu',
+    'pada kesempatan yang sama',
+    'pada kesempatan itu',
+    'dalam acara yang sama',
+    'sebagai bentuk komitmen',
+    'sebagai wujud komitmen',
+    'sebagai wujud dukungan',
+    'sebagai bentuk dukungan',
+    'untuk mempercepat pembangunan',
+    'untuk meningkatkan pelayanan',
+    'untuk memperkuat sinergi',
+    'untuk mempererat kerja sama',
+    'untuk memperkuat kerja sama',
+    'untuk mendukung pembangunan',
+    'dalam upaya meningkatkan',
+    'dalam upaya mempercepat',
+    'dalam upaya memperkuat',
+    'dalam upaya mendukung',
+    'kami berharap',
+    'saya berharap',
+    'kita berharap',
+    'saya mengajak',
+    'kami mengajak',
+    'mari kita bersama',
+    'bersama-sama kita',
+    'kepada seluruh masyarakat',
+    'kepada seluruh warga',
+    'kepada seluruh pihak',
+    'kepada seluruh elemen',
+    'seluruh jajaran',
+    'seluruh pihak terkait',
+    'semua pihak terkait',
+    'jajaran pemerintah daerah',
+    'jajaran pemerintah provinsi',
+    'jajaran pemerintah kabupaten',
+    'jajaran pemerintah kota',
+    'pemerintah kabupaten dan kota',
+    'pemerintah provinsi dan kabupaten',
+    'pemerintah pusat dan daerah',
+    'pusat dan daerah',
+    'kabupaten dan kota',
+    'provinsi dan kabupaten',
+    'provinsi dan kota',
+    'sinergi pusat dan daerah',
+    'sinergi antar lembaga',
+    'sinergi lintas sektor',
+    'kolaborasi lintas sektor',
+    'kolaborasi antar lembaga',
+    'koordinasi lintas sektor',
+    'koordinasi antar instansi',
+    'koordinasi lintas instansi',
+    'kerja sama lintas sektor',
+    'kerja sama antar lembaga',
+    'kerja sama semua pihak',
+    'sinergi semua pihak',
+    'pembangunan infrastruktur perbatasan',
+    'pembangunan kawasan perbatasan',
+    'pengembangan kawasan perbatasan',
+    'wilayah perbatasan negara',
+    'kawasan perbatasan negara',
+    'daerah perbatasan negara',
+    'wilayah terluar indonesia',
+    'pulau terluar indonesia',
+    'daerah tertinggal terdepan terluar',
+    'wilayah 3t',
+    'daerah 3t',
+    'kawasan 3t',
+    'kegiatan tersebut berlangsung',
+    'acara tersebut berlangsung',
+    'kegiatan ini berlangsung',
+    'acara ini berlangsung',
+    'kegiatan berlangsung dengan',
+    'acara berlangsung dengan',
+    'kegiatan tersebut dihadiri',
+    'acara tersebut dihadiri',
+    'kegiatan ini dihadiri',
+    'acara ini dihadiri',
+    'kegiatan dihadiri oleh',
+    'acara dihadiri oleh',
+    'kegiatan diikuti oleh',
+    'acara diikuti oleh',
+    'kegiatan tersebut diikuti',
+    'acara tersebut diikuti',
+    'dalam kegiatan tersebut',
+    'dalam acara tersebut',
+    'dalam kegiatan ini',
+    'dalam acara ini',
+    'kegiatan ini bertujuan',
+    'acara ini bertujuan',
+    'kegiatan tersebut bertujuan',
+    'acara tersebut bertujuan',
+    'tujuan dari kegiatan',
+    'tujuan dari acara',
+    'maksud dan tujuan',
+    'dalam rangka memperingati',
+    'dalam rangka menyambut',
+    'dalam rangka merayakan',
+    'untuk memperingati',
+    'untuk menyambut',
+    'untuk merayakan',
+    'dalam memperingati',
+    'sebagai bentuk apresiasi',
+    'sebagai bentuk penghargaan',
+    'sebagai wujud apresiasi',
+    'sebagai wujud penghargaan',
+    'memberikan apresiasi',
+    'memberikan penghargaan',
+    'menyampaikan apresiasi',
+    'menyampaikan penghargaan',
+    'menyampaikan terima kasih',
+    'mengucapkan terima kasih',
+    'terima kasih kepada',
+    'ucapan terima kasih',
+    'atas kerja sama',
+    'atas kerja samanya',
+    'atas dukungan',
+    'atas dukungannya',
+    'atas bantuan',
+    'atas bantuannya',
+    'atas perhatian',
+    'atas perhatiannya',
+    'atas kehadiran',
+    'atas kehadirannya',
 ]
 
 FRASA_JANGGAL_TERJEMAHAN = [
@@ -4605,11 +4752,6 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
                     'ditulis AI — wajib tulis lengkap dengan jabatan')
     return None
 
-# ══════════════════════════════════════════════════════
-# V6.17.82: ai_write dengan RETRY GANTI JUDUL
-# Kalau judul AI mirip materi ≥0.75 → minta AI tulis ulang judul
-# ══════════════════════════════════════════════════════
-
 AMBANG_JUDUL_MIRIP = 0.75
 
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
@@ -4619,7 +4761,7 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     materi_asli = user_content
     koneksi_retry = 0
     MAX_KONEKSI_RETRY = 0
-    MAX_LOOP = 2  # V6.17.82: 1x normal + 1x retry ganti judul
+    MAX_LOOP = 2
     FRASA_TOLAK_AI = ['materi tidak tersedia', 'materi sumber tidak tersedia',
                       'materi tidak relevan', 'tidak dapat menulis', 'tidak ada materi']
     percobaan = 0
@@ -4666,7 +4808,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     if ada_persen_kata(judul + ' ' + isi + ' ' + ringkasan):
         print('       Persen auto-fix diterapkan.')
 
-    # V6.17.82: retry 1x kalau judul mirip materi
     if judul_materi and judul:
         rasio_judul = SequenceMatcher(None, judul.lower(), judul_materi.lower()).ratio()
         if rasio_judul >= AMBANG_JUDUL_MIRIP:
@@ -4844,7 +4985,12 @@ def _catatan_anti_jiplak():
         '\n'
         'CATATAN: Kutipan langsung dalam tanda petik BOLEH SAMA.\n'
         '\n'
-        'JUDUL — ATURAN KETAT (V6.17.82):\n'
+        'V6.17.83: FRASA PROTOKOLER RESMI BOLEH SAMA:\n'
+        '- "dalam rangka kunjungan kerja", "turut hadir", "didampingi oleh",\n'
+        '  "dalam sambutannya", "sebagai bentuk komitmen", dll → SAH SAMA.\n'
+        '- Frasa resmi pemerintahan TIDAK dianggap jiplak.\n'
+        '\n'
+        'JUDUL — ATURAN KETAT:\n'
         '- JUDUL WAJIB BEDA TOTAL dari judul materi sumber.\n'
         '- Kalau mirip ≥75% → ditolak, wajib tulis ulang.\n'
         '- Ganti kata kunci, susun ulang, sinonimkan.\n'
@@ -5798,8 +5944,13 @@ def sesi_breaking(today_urls, seen):
             print('   Insert gagal: ' + str(e)[:80])
     return made
 
-# V6.17.66: tambah KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN biar "Kalimantan" lolos
+# ══════════════════════════════════════════════════════
+# V6.17.83: _breaking_ada_lokasi — cek judul + ISI (bukan cuma judul)
+# Kasus: breaking Anthony Hudson judul tanpa kota, tapi ISI ada "Bangkok, Thailand"
+# ══════════════════════════════════════════════════════
+
 def _breaking_ada_lokasi(judul, isi):
+    # Gabung judul + isi supaya lokasi di isi juga terdeteksi
     gab = ((judul or '') + ' ' + (isi or '')).lower()
     for kota in KOTA_INDONESIA_DATELINE:
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
@@ -5812,6 +5963,16 @@ def _breaking_ada_lokasi(judul, isi):
                          'jakarta', 'yogyakarta', 'jogja']
     for prov in provinsi_tambahan:
         if re.search(r'\b' + re.escape(prov) + r'\b', gab):
+            return True
+    # V6.17.83: cek juga kota luar negeri di isi
+    for kota in IBU_KOTA_NEGARA.keys():
+        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
+            return True
+    for kota in VARIAN_KOTA_EN_ID.keys():
+        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
+            return True
+    for negara in KATA_LUAR_NEGERI_WAJIB:
+        if re.search(r'\b' + re.escape(negara) + r'\b', gab):
             return True
     return False
 
@@ -6453,7 +6614,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.82'
+FILE_VERSI = 'V6.17.83'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
