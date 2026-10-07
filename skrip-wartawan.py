@@ -6332,6 +6332,7 @@ def tolak_amerika_lokal(teks):
             return True
     return False
 
+# V6.17.88: batas percobaan kandidat kategori 1 → 2
 def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                   sumber_custom=None, domain_tek=None, wajib_regional=False,
                   sumber_fallback=None):
@@ -6416,7 +6417,8 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
     percobaan = 0
     kandidat_terpakai = []
     for g in groups:
-        if percobaan >= 1:
+        # V6.17.88: batas percobaan 1 → 2
+        if percobaan >= 2:
             break
         items = g['items']
         top = items[0]
@@ -6858,7 +6860,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.87'
+FILE_VERSI = 'V6.17.88'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
