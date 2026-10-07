@@ -4036,7 +4036,6 @@ def _gram_set(teks, n):
     kata = _kata_bersih(teks)
     return set(tuple(kata[i:i+n]) for i in range(len(kata) - n + 1)) if len(kata) >= n else set()
 
-# V6.17.83: tambah frasa protokoler resmi pemerintahan
 FRASA_UMUM_JIPLAK = [
     'kalau kita ingin', 'jika kita ingin', 'untuk menghasilkan',
     'generasi yang', 'masa depan', 'anak anak kita', 'pada dasarnya',
@@ -4074,7 +4073,6 @@ FRASA_UMUM_JIPLAK = [
     'rekomendasi beli',
     'rekomendasi jual',
     'rekomendasi hold',
-    # V6.17.83: frasa protokoler resmi pemerintahan
     'dalam rangka kunjungan kerja ke wilayah perbatasan',
     'dalam rangka kunjungan kerja',
     'kunjungan kerja ke wilayah perbatasan',
@@ -4754,6 +4752,12 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
 
 AMBANG_JUDUL_MIRIP = 0.75
 
+# ══════════════════════════════════════════════════════
+# V6.17.84: ai_write diperbaiki — retry ganti judul PAKAI WHILE
+# Sebelumnya: retry di luar while → continue ERROR syntax
+# Sekarang: retry di dalam while (percobaan ke-2 minta ganti judul)
+# ══════════════════════════════════════════════════════
+
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
              judul_materi='', summary_materi='', wajib_topik=True,
              source_url=''):
@@ -4765,7 +4769,8 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     FRASA_TOLAK_AI = ['materi tidak tersedia', 'materi sumber tidak tersedia',
                       'materi tidak relevan', 'tidak dapat menulis', 'tidak ada materi']
     percobaan = 0
-    judul_retry = False
+    judul_retry_dilakukan = False
+
     while percobaan < MAX_LOOP:
         percobaan += 1
         temp = 0.5
@@ -4780,6 +4785,7 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
             print('       Panggilan AI gagal (' + str(e)[:60] + ') - retry koneksi '
                   + str(koneksi_retry) + '/' + str(MAX_KONEKSI_RETRY) + '...')
             continue
+
         tolak_raw = obj.get('tolak', '')
         if isinstance(tolak_raw, bool):
             tolak_msg = ''
@@ -4799,22 +4805,16 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
                     'Tulis berita JSON valid.')
                 continue
             raise BeritaLama(tolak_msg[:100])
-        break
-    if obj is None:
-        raise Exception('AI tidak menghasilkan output valid')
-    judul = perbaiki_persen((obj.get('judul') or '').strip())
-    isi = perbaiki_persen((obj.get('isi') or '').strip())
-    ringkasan = perbaiki_persen((obj.get('ringkasan') or '').strip())
-    if ada_persen_kata(judul + ' ' + isi + ' ' + ringkasan):
-        print('       Persen auto-fix diterapkan.')
 
-    if judul_materi and judul:
-        rasio_judul = SequenceMatcher(None, judul.lower(), judul_materi.lower()).ratio()
-        if rasio_judul >= AMBANG_JUDUL_MIRIP:
-            if not judul_retry:
+        judul = perbaiki_persen((obj.get('judul') or '').strip())
+
+        # Cek judul mirip materi → minta retry ganti judul (di dalam while)
+        if judul_materi and judul and not judul_retry_dilakukan:
+            rasio_judul = SequenceMatcher(None, judul.lower(), judul_materi.lower()).ratio()
+            if rasio_judul >= AMBANG_JUDUL_MIRIP:
                 print('       Judul AI mirip materi (' + str(int(rasio_judul * 100))
                       + '%) — minta AI ganti judul (retry 1x)...')
-                judul_retry = True
+                judul_retry_dilakukan = True
                 user_content = (
                     'CATATAN PENTING — JUDUL HARUS BEDA TOTAL:\n'
                     '- Judul materi asli: "' + judul_materi + '"\n'
@@ -4827,16 +4827,27 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
                     '- Semua aturan lain tetap berlaku.\n\n'
                     'MATERI SUMBER:\n' + materi_sumber[:1500] + '\n\n'
                     'Tulis berita JSON valid dengan JUDUL BERBEDA.')
-                obj = None
                 continue
-            else:
-                msg_tolak = ('judul AI mirip judul materi (' + str(int(rasio_judul * 100))
-                             + '%) — jiplak, wajib judul beda')
-                if source_url:
-                    catat_tolak_ai_token(source_url, msg_tolak)
-                raise Exception('DITOLAK - ' + msg_tolak)
-        else:
-            judul_retry = False
+        break
+
+    if obj is None:
+        raise Exception('AI tidak menghasilkan output valid')
+
+    judul = perbaiki_persen((obj.get('judul') or '').strip())
+    isi = perbaiki_persen((obj.get('isi') or '').strip())
+    ringkasan = perbaiki_persen((obj.get('ringkasan') or '').strip())
+    if ada_persen_kata(judul + ' ' + isi + ' ' + ringkasan):
+        print('       Persen auto-fix diterapkan.')
+
+    # Cek final: judul masih mirip → tolak
+    if judul_materi and judul:
+        rasio_judul = SequenceMatcher(None, judul.lower(), judul_materi.lower()).ratio()
+        if rasio_judul >= AMBANG_JUDUL_MIRIP:
+            msg_tolak = ('judul AI mirip judul materi (' + str(int(rasio_judul * 100))
+                         + '%) — jiplak, wajib judul beda')
+            if source_url:
+                catat_tolak_ai_token(source_url, msg_tolak)
+            raise Exception('DITOLAK - ' + msg_tolak)
 
     judul_l = judul.lower()
     if any(x in judul_l for x in ('materi tidak dapat diolah', 'materi tidak tersedia',
@@ -4985,7 +4996,7 @@ def _catatan_anti_jiplak():
         '\n'
         'CATATAN: Kutipan langsung dalam tanda petik BOLEH SAMA.\n'
         '\n'
-        'V6.17.83: FRASA PROTOKOLER RESMI BOLEH SAMA:\n'
+        'FRASA PROTOKOLER RESMI BOLEH SAMA:\n'
         '- "dalam rangka kunjungan kerja", "turut hadir", "didampingi oleh",\n'
         '  "dalam sambutannya", "sebagai bentuk komitmen", dll → SAH SAMA.\n'
         '- Frasa resmi pemerintahan TIDAK dianggap jiplak.\n'
@@ -5022,7 +5033,7 @@ def _catatan_kategori_ketat(kategori_target):
             '- WAJIB tulis SEMUA nama pejabat yang ada di materi.\n'
             '- WAJIB sebut LOKASI spesifik kalau materi memuatnya.\n'
             '\n'
-            'V6.17.80 — ATURAN DATELINE KETAT (PELANGGARAN = TOLAK):\n'
+            'ATURAN DATELINE KETAT (PELANGGARAN = TOLAK):\n'
             '- DATELINE WAJIB SALIN DARI MATERI. JANGAN karang kota.\n'
             '- Kalau materi sebut kota A → dateline WAJIB kota A.\n'
             '- Kalau materi TIDAK sebut kota → dateline WAJIB provinsi/kabupaten.\n'
@@ -6599,7 +6610,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.82'
+FILE_VERSI = 'V6.17.84'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
