@@ -756,6 +756,18 @@ _GN_DECODE_CACHE = {}
 
 DEBUG_SCRAPE = True
 
+# V6.17.86: deteksi materi sampah (anti-bot/JS block)
+KATA_MATERI_SAMPAH = [
+    'unusual traffic', 'detected unusual', 'unusual traffic from your',
+    'enable javascript', 'javascript is required', 'javascript enabled',
+    'enable cookies', 'cookies required',
+    'access denied', 'request blocked', 'blocked by',
+    'verify you are human', 'are you a robot', 'captcha',
+    'cloudflare', 'checking your browser',
+    'please turn on javascript', 'sorry, you have been blocked',
+    'attention required', 'security check', 'bot detection',
+]
+
 BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
     RSSF('https://www.detik.com/feed', 'Detik'),
@@ -1056,6 +1068,10 @@ def catat_tolak_ai_token(source_url, alasan):
     for k in KATA_ALASAN_TRANSIENT:
         if k in alasan_low:
             return
+    # V6.17.86: jangan blacklist URL kalau materi sampah (anti-bot sementara)
+    if 'materi sampah' in alasan_low:
+        print('   (URL tidak di-blacklist — materi sampah anti-bot sementara)')
+        return
     try:
         r = requests.post(SUPABASE_URL + '/rest/v1/rejected_urls',
             headers={'apikey': SUPABASE_PUBLISHABLE,
@@ -1858,6 +1874,18 @@ MATERI_MIN_KARAKTER_RSS_DAERAH    = 250
 MATERI_MIN_KARAKTER_BREAKING = 200
 MATERI_MIN_KARAKTER_ASEAN = 600
 
+# V6.17.86: deteksi materi sampah anti-bot/JS block
+def _materi_sampah(teks):
+    """
+    V6.17.86: Cek apakah materi memuat frasa anti-bot/JS block.
+    Kalau ≥2 frasa → materi sampah → tolak (tapi JANGAN blacklist URL).
+    """
+    if not teks:
+        return False
+    t = teks.lower()
+    hit = sum(1 for k in KATA_MATERI_SAMPAH if k in t)
+    return hit >= 2
+
 def _materi_dominan_url(teks):
     if not teks:
         return False
@@ -1895,6 +1923,9 @@ def _materi_nyambung_judul(judul, materi, min_irisan=2):
 def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
     if not materi:
         return False, 'materi kosong'
+    # V6.17.86: cek materi sampah (anti-bot/JS block) SEBELUM cek panjang
+    if _materi_sampah(materi):
+        return False, 'materi sampah (anti-bot/JS block)'
     if kategori == 'breaking':
         min_kar = MATERI_MIN_KARAKTER_BREAKING
     elif kategori == 'internasional_asean':
@@ -3248,6 +3279,9 @@ def ada_persen_kata(teks):
 
 def perbaiki_persen(teks):
     return POLA_PERSEN.sub(lambda m: m.group(1).rstrip('.,') + '%', teks or '')
+
+# V6.17.86: buang 'gaji' dari JANJI_HARGA (false positive)
+JANJI_HARGA = ['harga', 'tarif', 'biaya', 'berapa', 'sewa']
 
 def cek_janji_judul(judul, isi):
     j = (judul or '').lower()
@@ -6801,7 +6835,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.85'
+FILE_VERSI = 'V6.17.86'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
