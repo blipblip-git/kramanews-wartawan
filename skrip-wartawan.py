@@ -187,9 +187,18 @@ EVENT_BESAR_KOTA = {
     'champions league': ('London', 'Inggris'),
 }
 
+# V6.17.87: tambah selebriti/lifestyle/gosip/infotainment
 KATA_BUKAN_NASIONAL = [
     'miss youth', 'miss indonesia', 'putri indonesia', 'kontes', 'beauty pageant',
     'pageant', 'ratu', 'finalis', 'grand final', 'pemilihan putri',
+    # V6.17.87: selebriti/lifestyle/gosip
+    'selebriti', 'artis', 'aktris', 'aktor', 'lifestyle', 'gosip',
+    'infotainment', 'sinetron', 'drama korea', 'drakor', 'kpop', 'k-pop',
+    'idol', 'band', 'penyanyi', 'vokalis', 'celebgram', 'selebgram',
+    'influencer', 'youtuber', 'tiktoker', 'seleb tiktok',
+    'nikah', 'menikah', 'pernikahan', 'cerai', 'perceraian',
+    'pacaran', 'putus', 'selingkuh', 'perselingkuhan',
+    'kabur', 'nikah siri', 'istri', 'suami',
 ]
 KATA_BUKAN_DAERAH = [
     'jadwal kapal', 'jadwal ferry', 'jadwal pesawat', 'jadwal kereta',
@@ -4838,6 +4847,7 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
         return True, ''
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
 
+# V6.17.87: blacklist kata kerja/frasa judul agregator (biar tidak salah tangkap "Bawa Aspirasi DOB")
 KATA_BUKAN_NAMA_PEJABAT = [
     'tekankan', 'pentingnya', 'menanamkan', 'persatuan', 'kesatuan',
     'himbau', 'imbau', 'ajak', 'dorong', 'ingatkan', 'minta', 'serukan',
@@ -4873,6 +4883,10 @@ KATA_BUKAN_NAMA_PEJABAT = [
     'kecamatan', 'kelurahan', 'desa',
     'karhutla', 'kebakaran', 'banjir', 'gempa', 'tsunami', 'longsor',
     'gotong', 'royong', 'gotong royong', 'kerja', 'bakti',
+    # V6.17.87: tambah blacklist frasa judul agregator
+    'bawa', 'bawaan', 'aspirasi', 'rakor', 'flash', 'kunker', 'kunjungan',
+    'imbauan', 'ajakan', 'dorongan', 'pernyataan', 'sorotan',
+    'fokus', 'ubah', 'ganti', 'kembali', 'lanjut', 'mulai', 'tutup',
 ]
 
 def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
@@ -4881,6 +4895,12 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     if kategori in ('internasional', 'internasional_asean', 'internasional_tt'):
         return None
     if kategori in ('teknologi', 'kesehatan', 'otomotif'):
+        return None
+    # V6.17.87: skip kalau materi dari agregator/flash news (banyak judul)
+    materi_low_check = materi.lower()
+    if any(k in materi_low_check for k in ('86 flash', '86flash', 'flash !',
+                                             'berita terkini', 'update terkini',
+                                             'headline', 'top news')):
         return None
     pola_nama_pejabat = re.compile(
         r'\b(?:'
@@ -4908,6 +4928,9 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
             continue
         nama_kunci = nama_bersih[-1]
         if len(nama_kunci) < 3:
+            continue
+        # V6.17.87: nama kunci wajib bukan kata kerja blacklist
+        if nama_kunci.lower() in KATA_BUKAN_NAMA_PEJABAT:
             continue
         nama_materi.append((nama_full, nama_kunci))
     if not nama_materi:
@@ -6835,7 +6858,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.86'
+FILE_VERSI = 'V6.17.87'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
