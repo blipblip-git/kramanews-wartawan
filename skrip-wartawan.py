@@ -1145,7 +1145,7 @@ def _gn_id_dari_url(url):
         pass
     return ''
 
-# V6.17.82: tambah cnnindonesia.com + cnbcindonesia.com (gagal scrape konsisten)
+# V6.17.85: tambah pilihanindonesia.com
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
@@ -1158,6 +1158,7 @@ DOMAIN_SKIP_SCRAPE = [
     'radartarakan.jawapos.com',
     'cnnindonesia.com',
     'cnbcindonesia.com',
+    'pilihanindonesia.com',
 ]
 
 def domain_skip_scrape(url):
@@ -1193,6 +1194,40 @@ def scrape_via_playtrafi(url):
         print('       Playtrafi EXCEPTION: ' + str(e)[:80] + ' - ' + url[:60])
         return ''
 
+# V6.17.85: decode HTML entity (&#x27;, &#39;, &hellip;, dll)
+_HTML_ENTITY_MAP = {
+    '&nbsp;': ' ', '&amp;': '&', '&quot;': '"', '&#39;': "'",
+    '&apos;': "'", '&ldquo;': '"', '&rdquo;': '"',
+    '&lsquo;': "'", '&rsquo;': "'", '&mdash;': '-', '&ndash;': '-',
+    '&hellip;': '…', '&laquo;': '«', '&raquo;': '»',
+    '&times;': '×', '&divide;': '÷', '&bull;': '•',
+    '&middot;': '·', '&trade;': '™', '&copy;': '©', '&reg;': '®',
+    '&deg;': '°', '&plusmn;': '±', '&frac12;': '½',
+    '&frac14;': '¼', '&frac34;': '¾', '&sup2;': '²', '&sup3;': '³',
+    '&euro;': '€', '&pound;': '£', '&yen;': '¥', '&cent;': '¢',
+}
+
+def _decode_html_entity(teks):
+    if not teks:
+        return teks
+    t = teks
+    # Decode map entity umum
+    for ent, kar in _HTML_ENTITY_MAP.items():
+        t = t.replace(ent, kar)
+    # Decode numeric entity: &#123; atau &#x1F600;
+    def _num_repl(m):
+        try:
+            kode = int(m.group(1)) if m.group(1).isdigit() else int(m.group(1), 16)
+            if kode < 32 or kode > 0x10FFFF:
+                return ' '
+            return chr(kode)
+        except Exception:
+            return ' '
+    t = re.sub(r'&#(\d+);', lambda m: _num_repl(re.match(r'&#(\d+);', m.group(0))), t)
+    t = re.sub(r'&#x([0-9a-fA-F]+);',
+               lambda m: _num_repl(re.match(r'&#x([0-9a-fA-F]+);', m.group(0))), t)
+    return t
+
 def _bersihkan_html_artikel(html):
     html = re.sub(r'<script[^>]*>.*?</script>', ' ', html, flags=re.S | re.I)
     html = re.sub(r'<style[^>]*>.*?</style>', ' ', html, flags=re.S | re.I)
@@ -1205,11 +1240,7 @@ def _bersihkan_html_artikel(html):
     html = re.sub(r'</(p|div|h[1-6]|li|tr)>', '\n', html, flags=re.I)
     html = re.sub(r'<br[^>]*>', '\n', html, flags=re.I)
     teks = re.sub(r'<[^>]+>', ' ', html)
-    teks = (teks.replace('&nbsp;', ' ').replace('&amp;', '&')
-                .replace('&quot;', '"').replace('&#39;', "'")
-                .replace('&ldquo;', '"').replace('&rdquo;', '"')
-                .replace('&lsquo;', "'").replace('&rsquo;', "'")
-                .replace('&mdash;', '-').replace('&ndash;', '-'))
+    teks = _decode_html_entity(teks)
     baris_ok = []
     for b in teks.split('\n'):
         b = re.sub(r'\s+', ' ', b).strip()
@@ -1246,6 +1277,12 @@ def scrape_artikel(url, judul_debug=''):
     if GOOGLE_NEWS_HOST in url_asli:
         print('       Hasil resolusi masih Google News — fallback RSS summary')
         STAT_SCRAPE['gn_fallback_rss'] += 1
+        _CACHE_SCRAPE[url] = ''
+        return ''
+    # V6.17.85: cek domain skip SETELAH resolusi GN
+    if domain_skip_scrape(url_asli):
+        STAT_SCRAPE['skip'] += 1
+        print('       Skip scraping (domain 403 konsisten, post-resolve) - ' + url_asli[:60])
         _CACHE_SCRAPE[url] = ''
         return ''
     if not _url_valid_berita(url_asli):
@@ -1817,7 +1854,8 @@ def gn_split(title):
 MATERI_MIN_KARAKTER_RSS = 120
 MATERI_MIN_KARAKTER_RSS_NASIONAL = 300
 MATERI_MIN_KARAKTER_RSS_DAERAH    = 250
-MATERI_MIN_KARAKTER_BREAKING = 100
+# V6.17.85: threshold breaking 100 → 200 (materi 158 kar terlalu tipis)
+MATERI_MIN_KARAKTER_BREAKING = 200
 MATERI_MIN_KARAKTER_ASEAN = 600
 
 def _materi_dominan_url(teks):
@@ -3031,6 +3069,57 @@ IBU_KOTA_NEGARA = {
     'ho chi minh city': ['vietnam', 'ho chi minh', 'hcmc', 'saigon'],
     'hcmc': ['vietnam', 'ho chi minh', 'ho chi minh city', 'saigon'],
     'saigon': ['vietnam', 'ho chi minh', 'ho chi minh city', 'hcmc'],
+    # V6.17.85: tambah ibu kota Afrika + lainnya
+    'abuja': ['nigeria'], 'kano': ['nigeria'], 'ibadan': ['nigeria'],
+    'dakar': ['senegal'], 'bamako': ['mali'], 'ouagadougou': ['burkina faso'],
+    'niamey': ['niger'], 'n-djamena': ["chad", "chad"], 'ndjamena': ['chad'],
+    'khartoum': ['sudan'], 'juba': ['sudan selatan', 'south sudan'],
+    'kinshasa': ['kongo', 'congo', 'republik demokratik kongo', 'drc'],
+    'brazzaville': ['kongo', 'congo', 'republik kongo'],
+    'luanda': ['angola'], 'maputo': ['mozambik', 'mozambique'],
+    'harare': ['zimbabwe'], 'lusaka': ['zambia'], 'lilongwe': ['malawi'],
+    'gaborone': ['botswana'], 'windhoek': ['namibia'],
+    'maseru': ['lesotho'], 'mbabane': ['eswatini', 'swaziland'],
+    'antananarivo': ['madagaskar', 'madagascar'],
+    'kigali': ['rwanda'], 'bujumbura': ['burundi'], 'gitega': ['burundi'],
+    'kampala': ['uganda'], 'dodoma': ['tanzania'], 'dar es salaam': ['tanzania'],
+    'asmara': ['eritrea'], 'djibouti': ['djibouti'],
+    'mogadishu': ['somalia'],
+    'moroni': ['komoro', 'comoros'],
+    'port louis': ['mauritius'], 'victoria': ['seychelles'],
+    'libreville': ['gabon'], 'malabo': ['guinea ekuatorial', 'equatorial guinea'],
+    'yaounde': ['kamerun', 'cameroon'], 'bangui': ['republik afrika tengah', 'central african republic'],
+    'conakry': ['guinea'], 'bissau': ['guinea bissau'],
+    'monrovia': ['liberia'], 'freetown': ['sierra leone'],
+    'banjul': ['gambia'], 'nouakchott': ['mauritania'],
+    'praia': ['tanjung verde', 'cape verde'],
+    'sao tome': ['sao tome dan principe'],
+    'algiers': ['aljazair', 'algeria'],
+    'rabat': ['maroko', 'morocco'], 'casablanca': ['maroko', 'morocco'],
+    'tunis': ['tunisia'], 'tripoli': ['libya'], 'benghazi': ['libya'],
+    'cairo': ['mesir', 'egypt'], 'alexandria': ['mesir', 'egypt'],
+    'khartoum': ['sudan'],
+    'addis ababa': ['ethiopia'], 'nairobi': ['kenya'], 'mombasa': ['kenya'],
+    'kampala': ['uganda'], 'kigali': ['rwanda'],
+    'pretoria': ['afrika selatan', 'south africa'],
+    'cape town': ['afrika selatan', 'south africa'],
+    'johannesburg': ['afrika selatan', 'south africa'],
+    'durban': ['afrika selatan', 'south africa'],
+    'accra': ['ghana'], 'lagos': ['nigeria'], 'abuja': ['nigeria'],
+    'kano': ['nigeria'],
+    # Tambahan Asia & lain
+    'yangon': ['myanmar'], 'mandalay': ['myanmar'],
+    'chiang mai': ['thailand'], 'phuket': ['thailand'],
+    'da nang': ['vietnam'], 'hoi an': ['vietnam'], 'hue': ['vietnam'],
+    'cebu': ['filipina', 'philippines'], 'davao': ['filipina', 'philippines'],
+    'penang': ['malaysia'], 'johor bahru': ['malaysia'],
+    'surabaya': ['indonesia'], 'bandung': ['indonesia'], 'medan': ['indonesia'],
+    'semarang': ['indonesia'], 'makassar': ['indonesia'], 'denpasar': ['indonesia'],
+    'balikpapan': ['indonesia'], 'samarinda': ['indonesia'], 'pontianak': ['indonesia'],
+    'banjarmasin': ['indonesia'], 'manado': ['indonesia'], 'jayapura': ['indonesia'],
+    'tarakan': ['indonesia'], 'tanjung selor': ['indonesia'], 'nunukan': ['indonesia'],
+    'palembang': ['indonesia'], 'pekanbaru': ['indonesia'], 'padang': ['indonesia'],
+    'yogyakarta': ['indonesia'], 'solo': ['indonesia'], 'malang': ['indonesia'],
 }
 
 def _kota_ibu_kota_provinsi_di_materi(kota, sumber):
@@ -3265,9 +3354,60 @@ def ambil_magnitude(teks):
             return None
     return None
 
+# ══════════════════════════════════════════════════════
+# V6.17.85: skor_domestik tolak negara asing tanpa konteks Indonesia
+# Nigeria lolos breaking dom hanya karena ada kata "kecelakaan"
+# ══════════════════════════════════════════════════════
+
+def _ada_konteks_indonesia_kuat(teks):
+    """V6.17.85: cek apakah teks punya konteks Indonesia yang kuat."""
+    t = (teks or '').lower()
+    hit = 0
+    for k in INDO_GEO:
+        if re.search(r'\b' + re.escape(k) + r'\b', t):
+            hit += 1
+            if hit >= 2:
+                return True
+    # Nama tokoh Indonesia
+    for tokoh in NAMA_TOKOH_INDONESIA:
+        if re.search(r'\b' + re.escape(tokoh) + r'\b', t):
+            return True
+    # Lembaga Indonesia (kecuali TNI)
+    for lem in LEMBAGA_INDONESIA:
+        if lem == 'tni':
+            continue
+        if len(lem) <= 4:
+            if re.search(r'\b' + re.escape(lem) + r'\b', t):
+                return True
+        else:
+            if lem in t:
+                return True
+    # BMKG, BNPB, Basarnas, dll
+    for k in ['bmkg', 'bnpb', 'basarnas', 'bpbd', 'kemensos', 'kemenkes']:
+        if k in t:
+            return True
+    return False
+
+def _ada_negara_asing_dominan(teks):
+    """V6.17.85: cek apakah teks dominan tentang negara asing.
+    Return nama negara kalau ada, '' kalau tidak."""
+    t = (teks or '').lower()
+    for negara in NEGARA_ASING:
+        if len(negara) <= 4:
+            if re.search(r'\b' + re.escape(negara) + r'\b', t):
+                return negara
+        else:
+            if negara in t:
+                return negara
+    return ''
+
 def skor_domestik(title, summary):
     t = (title + ' ' + summary).lower()
     if any(w in t for w in KATA_ANALISIS):
+        return 0
+    # V6.17.85: TOLAK kalau dominan negara asing & tanpa konteks Indonesia
+    negara_asing = _ada_negara_asing_dominan(t)
+    if negara_asing and not _ada_konteks_indonesia_kuat(t):
         return 0
     skor = 0
     if 'gempa' in t:
@@ -5865,6 +6005,45 @@ def _kandidat_beda_topik(kandidat_baru, kandidat_lama):
         return False
     return True
 
+# ══════════════════════════════════════════════════════
+# V6.17.85: cek dobel breaking meski topik besar (karhutla dobel)
+# ══════════════════════════════════════════════════════
+
+def _topik_breaking_sudah_terbit(judul_baru, min_irisan=4):
+    """V6.17.85: cek apakah topik breaking sudah pernah terbit,
+    meskipun topiknya topik besar. Khusus untuk kasus karhutla dobel."""
+    if not judul_baru:
+        return None
+    ki_baru = kata_inti(judul_baru)
+    if not ki_baru:
+        return None
+    try:
+        rows = rest_get('?select=title,created_at&breaking=eq.true'
+                        '&order=created_at.desc&limit=20')
+    except Exception:
+        return None
+    now = datetime.now(timezone.utc)
+    for row in rows:
+        try:
+            d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00'))
+            if d.tzinfo is None:
+                d = d.replace(tzinfo=timezone.utc)
+            if (now - d).total_seconds() > 6 * 3600:
+                continue
+            t_lama = row.get('title') or ''
+            if not t_lama:
+                continue
+            ki_lama = kata_inti(t_lama)
+            if not ki_lama:
+                continue
+            irisan = ki_baru & ki_lama
+            if len(irisan) >= min_irisan:
+                return ('topik breaking sudah terbit < 6 jam: ' + str(len(irisan))
+                        + ' kata kunci sama — ' + str(sorted(list(irisan))[:4]))
+        except Exception:
+            continue
+    return None
+
 def sesi_breaking(today_urls, seen):
     made = 0
     slots = BREAKING_MAX_SLOT - len(get_breaking_list())
@@ -5916,6 +6095,11 @@ def sesi_breaking(today_urls, seen):
         if sudah_serupa(c['title']):
             print('   Skip (dobel): ' + c['title'][:50])
             continue
+        # V6.17.85: cek topik breaking sudah terbit (meski topik besar)
+        topik_brk = _topik_breaking_sudah_terbit(c['title'], min_irisan=4)
+        if topik_brk:
+            print('   Skip (topik breaking sudah terbit): ' + topik_brk[:80])
+            continue
         jdl_lower = (c.get('title') or '').lower()
         if any(x in jdl_lower for x in ('potret', 'sorotan', 'foto-foto', 'galeri',
                                          'in pictures', 'photos:', 'images:',
@@ -5936,6 +6120,13 @@ def sesi_breaking(today_urls, seen):
             if not _breaking_ada_lokasi(judul, isi):
                 print('   DITOLAK - breaking tanpa lokasi spesifik: ' + judul[:50])
                 continue
+        # V6.17.85: cek topik breaking sudah terbit SETELAH AI tulis
+        topik_brk_final = _topik_breaking_sudah_terbit(judul, min_irisan=4)
+        if topik_brk_final:
+            print('   DITOLAK - topik breaking sudah terbit: ' + topik_brk_final[:80])
+            if c.get('link'):
+                catat_tolak_ai_token(c.get('link'), 'breaking dobel topik: ' + topik_brk_final[:100])
+            continue
         if sudah_serupa(judul):
             print('   Hasil AI mirip judul yang sudah ada - skip.')
             continue
@@ -6610,7 +6801,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.84'
+FILE_VERSI = 'V6.17.85'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
