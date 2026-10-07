@@ -5944,13 +5944,8 @@ def sesi_breaking(today_urls, seen):
             print('   Insert gagal: ' + str(e)[:80])
     return made
 
-# ══════════════════════════════════════════════════════
-# V6.17.83: _breaking_ada_lokasi — cek judul + ISI (bukan cuma judul)
-# Kasus: breaking Anthony Hudson judul tanpa kota, tapi ISI ada "Bangkok, Thailand"
-# ══════════════════════════════════════════════════════
-
+# V6.17.66: tambah KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN biar "Kalimantan" lolos
 def _breaking_ada_lokasi(judul, isi):
-    # Gabung judul + isi supaya lokasi di isi juga terdeteksi
     gab = ((judul or '') + ' ' + (isi or '')).lower()
     for kota in KOTA_INDONESIA_DATELINE:
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
@@ -5963,16 +5958,6 @@ def _breaking_ada_lokasi(judul, isi):
                          'jakarta', 'yogyakarta', 'jogja']
     for prov in provinsi_tambahan:
         if re.search(r'\b' + re.escape(prov) + r'\b', gab):
-            return True
-    # V6.17.83: cek juga kota luar negeri di isi
-    for kota in IBU_KOTA_NEGARA.keys():
-        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
-            return True
-    for kota in VARIAN_KOTA_EN_ID.keys():
-        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
-            return True
-    for negara in KATA_LUAR_NEGERI_WAJIB:
-        if re.search(r'\b' + re.escape(negara) + r'\b', gab):
             return True
     return False
 
@@ -6614,7 +6599,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.83'
+FILE_VERSI = 'V6.17.82'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
