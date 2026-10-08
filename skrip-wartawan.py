@@ -933,6 +933,36 @@ BREAKING_INT_TOLAK = [
 
 DUNIA_KRITIS = BREAKING_INT_KRITIS
 
+# V6.17.90: aktor non-breaking (selebriti/artis/influencer) — bukan breaking
+AKTOR_NON_BREAKING = [
+    # Selebriti internasional
+    'leonardo dicaprio', 'dicaprio', 'taylor swift', 'beyonce', 'rihanna',
+    'kim kardashian', 'kanye', 'brad pitt', 'angelina jolie',
+    'tom cruise', 'johnny depp', 'jennifer aniston', 'selena gomez',
+    'justin bieber', 'ariana grande', 'billie eilish', 'drake',
+    'cristiano ronaldo', 'lionel messi', 'david beckham',
+    # Selebriti Indonesia
+    'artis', 'selebriti', 'selebgram', 'celebgram', 'influencer',
+    'youtuber', 'tiktoker', 'konten kreator', 'content creator',
+    'penyanyi', 'musisi', 'vokalis', 'band ',
+    'aktor', 'aktris', 'pemain film', 'bintang film', 'bintang sinetron',
+    'komentar artis', 'ucapan artis', 'kata artis', 'menurut artis',
+    'soroti artis', 'dukung artis', 'tanggapi artis',
+    'seleb tiktok', 'seleb instagram', 'vlogger', 'podcaster',
+]
+
+def _ada_aktor_non_breaking(teks):
+    """V6.17.90: cek apakah teks dominan tentang aktor non-breaking."""
+    t = (teks or '').lower()
+    for k in AKTOR_NON_BREAKING:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', t):
+                return k
+        else:
+            if k in t:
+                return k
+    return ''
+
 def _pesawat_kecil(text):
     t = (text or '').lower()
     for k in BREAKING_INT_TOLAK:
@@ -1052,6 +1082,13 @@ KATA_ALASAN_TRANSIENT = [
     'error sementara', 'coba lagi', 'retry',
 ]
 
+# V6.17.90: alasan yang TIDAK boleh blacklist URL (transient/struktural)
+KATA_ALASAN_JANGAN_BLACKLIST = [
+    'materi sampah',
+    'materi terlalu pendek',
+    'materi tidak valid: materi terlalu pendek',
+]
+
 def muat_rejected_urls():
     global REJECTED_URLS_CACHE
     if REJECTED_URLS_CACHE is not None:
@@ -1086,10 +1123,11 @@ def catat_tolak_ai_token(source_url, alasan):
     for k in KATA_ALASAN_TRANSIENT:
         if k in alasan_low:
             return
-    # V6.17.86: jangan blacklist URL kalau materi sampah (anti-bot sementara)
-    if 'materi sampah' in alasan_low:
-        print('   (URL tidak di-blacklist — materi sampah anti-bot sementara)')
-        return
+    # V6.17.86 + V6.17.90: jangan blacklist URL kalau materi sampah / terlalu pendek (transient)
+    for k in KATA_ALASAN_JANGAN_BLACKLIST:
+        if k in alasan_low:
+            print('   (URL tidak di-blacklist — ' + k + ' transient)')
+            return
     try:
         r = requests.post(SUPABASE_URL + '/rest/v1/rejected_urls',
             headers={'apikey': SUPABASE_PUBLISHABLE,
@@ -3409,6 +3447,7 @@ def ambil_magnitude(teks):
 # ══════════════════════════════════════════════════════
 # V6.17.85: skor_domestik tolak negara asing tanpa konteks Indonesia
 # Nigeria lolos breaking dom hanya karena ada kata "kecelakaan"
+# V6.17.90: skor_domestik tolak aktor non-breaking (selebriti/artis)
 # ══════════════════════════════════════════════════════
 
 def _ada_konteks_indonesia_kuat(teks):
@@ -3457,6 +3496,10 @@ def skor_domestik(title, summary):
     t = (title + ' ' + summary).lower()
     if any(w in t for w in KATA_ANALISIS):
         return 0
+    # V6.17.90: tolak kalau aktor utama selebriti/artis/influencer (DiCaprio dll)
+    aktor_nb = _ada_aktor_non_breaking(t)
+    if aktor_nb:
+        return 0
     # V6.17.85: TOLAK kalau dominan negara asing & tanpa konteks Indonesia
     negara_asing = _ada_negara_asing_dominan(t)
     if negara_asing and not _ada_konteks_indonesia_kuat(t):
@@ -3477,6 +3520,10 @@ def skor_domestik(title, summary):
 def skor_dunia(title, summary):
     t = (title + ' ' + summary).lower()
     if any(w in t for w in KATA_ANALISIS):
+        return 0
+    # V6.17.90: tolak aktor non-breaking juga di skor dunia (konsisten)
+    aktor_nb = _ada_aktor_non_breaking(t)
+    if aktor_nb:
         return 0
     for k in BREAKING_INT_TOLAK:
         if k in t:
@@ -6907,7 +6954,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.89'
+FILE_VERSI = 'V6.17.90'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
