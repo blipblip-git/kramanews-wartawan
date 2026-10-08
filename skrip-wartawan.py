@@ -920,6 +920,15 @@ BREAKING_INT_TOLAK = [
     'sanksi ringan', 'minor sanctions',
     'keluhan dagang', 'trade complaint',
     'tarif baja', 'tarif aluminium', 'steel tariff', 'aluminum tariff',
+    # V6.17.89: tolak simulator/drill/demo/edukasi (bukan breaking aktual)
+    'simulator', 'simulation', 'simulate',
+    'drill', 'exercise',
+    'demonstration', 'showcase', 'exhibition', 'display',
+    'commemoration', 'memorial service',
+    'preparedness', 'awareness campaign', 'awareness program',
+    'will bring', 'will show', 'will demonstrate',
+    'ready for', 'getting ready', 'prepares for',
+    'mock', 'rehearsal', 'trial run', 'test run',
 ]
 
 DUNIA_KRITIS = BREAKING_INT_KRITIS
@@ -4848,6 +4857,7 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
 
 # V6.17.87: blacklist kata kerja/frasa judul agregator (biar tidak salah tangkap "Bawa Aspirasi DOB")
+# V6.17.89: tambah kata kerja/frasa judul yang masih lolos
 KATA_BUKAN_NAMA_PEJABAT = [
     'tekankan', 'pentingnya', 'menanamkan', 'persatuan', 'kesatuan',
     'himbau', 'imbau', 'ajak', 'dorong', 'ingatkan', 'minta', 'serukan',
@@ -4887,7 +4897,23 @@ KATA_BUKAN_NAMA_PEJABAT = [
     'bawa', 'bawaan', 'aspirasi', 'rakor', 'flash', 'kunker', 'kunjungan',
     'imbauan', 'ajakan', 'dorongan', 'pernyataan', 'sorotan',
     'fokus', 'ubah', 'ganti', 'kembali', 'lanjut', 'mulai', 'tutup',
+    # V6.17.89: tambah kata kerja/frasa judul yang masih lolos
+    'pastikan', 'pastinya', 'kebutuhan', 'butuh', 'perlu',
+    'jalan', 'perbatasan', 'masuk', 'rencana', 'induk', 'master',
+    'provinsi', 'kabupaten', 'kota', 'pemprov', 'pemkab', 'pemkot',
+    'gubernur', 'wagub', 'wakil gubernur', 'bupati', 'wakil bupati',
+    'walikota', 'wakil walikota', 'menteri', 'wakil menteri',
+    'direktur', 'utama', 'direktur utama', 'dirut', 'komisaris',
+    'kepala', 'wakil', 'sekretaris', 'jenderal', 'sekjen',
+    'bersama', 'juga', 'serta', 'maupun', 'hingga', 'sampai',
+    'buka', 'tutup', 'buka suara', 'buka-bukaan',
+    'tangani', 'atasi', 'selesai', 'selesaikan', 'tuntaskan',
+    'kawal', 'awal', 'akhir', 'baru', 'lama',
 ]
+
+# V6.17.89: kata sambung yang menandakan akhir nama (biar tidak nangkap 2 jabatan)
+KATA_SAMBUNG_NAMA = {'dan', 'atau', 'serta', 'maupun', 'hingga', 'sampai',
+                     'dengan', 'untuk', 'pada', 'di', 'ke', 'dari', 'oleh'}
 
 def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     if not materi or not isi_ai:
@@ -4914,10 +4940,16 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     for m in pola_nama_pejabat.finditer(materi):
         nama_full = m.group(0).strip()
         after_jabatan = m.group(1) if m.group(1) else ''
+        # V6.17.89: pecah di koma dulu (biar "Direktur Utama PT X, Budi" tidak campur)
+        after_jabatan = re.split(r'[,;]', after_jabatan)[0]
         bagian = re.findall(r'\b[A-Z][a-z]+\b', after_jabatan)
         nama_bersih = []
         for k in bagian:
-            if k.lower() in KATA_BUKAN_NAMA_PEJABAT:
+            k_low = k.lower()
+            if k_low in KATA_BUKAN_NAMA_PEJABAT:
+                break
+            # V6.17.89: stop di kata sambung (biar tidak nangkap 2 jabatan)
+            if k_low in KATA_SAMBUNG_NAMA:
                 break
             nama_bersih.append(k)
             if len(nama_bersih) >= 2:
@@ -4929,8 +4961,10 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
         nama_kunci = nama_bersih[-1]
         if len(nama_kunci) < 3:
             continue
-        # V6.17.87: nama kunci wajib bukan kata kerja blacklist
+        # V6.17.87 + V6.17.89: nama kunci wajib bukan kata kerja blacklist
         if nama_kunci.lower() in KATA_BUKAN_NAMA_PEJABAT:
+            continue
+        if nama_kunci.lower() in KATA_SAMBUNG_NAMA:
             continue
         nama_materi.append((nama_full, nama_kunci))
     if not nama_materi:
@@ -5420,12 +5454,25 @@ def ai_rewrite_multi(items, kategori_target=''):
                     wajib_topik=True,
                     source_url=items[0].get('link', '') if items else '')
 
+# V6.17.89: bersihkan control char dari payload sebelum insert
+def _bersih_control_char(teks):
+    if not teks:
+        return teks
+    # Buang \x00-\x08, \x0b, \x0c, \x0e-\x1f, \x7f. Pertahankan \n (\x0a) dan \t (\x09).
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', ' ', str(teks))
+
 def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
                 breaking=False, deskripsi_gambar=''):
     if not judul or len((judul or '').strip()) < 5:
         raise Exception('diblokir insert: judul kosong/terlalu pendek')
     if not isi or len((isi or '').strip()) < 50:
         raise Exception('diblokir insert: isi kosong/terlalu pendek')
+    # V6.17.89: bersihkan control char (fix "Invalid control character")
+    judul = _bersih_control_char(judul)
+    isi = _bersih_control_char(isi)
+    ringkasan = _bersih_control_char(ringkasan)
+    source_name = _bersih_control_char(source_name)
+    deskripsi_gambar = _bersih_control_char(deskripsi_gambar)
     m = re.match(r'^\s*([A-Z][A-Z\s\.,\'\-]{2,60}?)\s+[-–—]\s+(.*)$', isi, re.DOTALL)
     dateline = m.group(1).strip() if m else ''
     isi_bersih = m.group(2).strip() if m else isi
@@ -6860,7 +6907,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.88'
+FILE_VERSI = 'V6.17.89'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
