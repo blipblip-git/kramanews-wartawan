@@ -3514,21 +3514,44 @@ def cek_janji_judul(judul, isi):
 
 KATA_LARANG_GAMBAR_HARD = [
     'animal', 'dog', 'cat', 'bird', 'monkey', 'elephant', 'tiger', 'lion',
-    'snake', 'crocodile', 'lizard', 'frog', 'fish', 'shark', 'whale',
+    'snake', 'crocodile', 'lizard', 'frog', 'shark', 'whale',
     'insect', 'butterfly', 'bee', 'spider', 'rat', 'mouse', 'horse', 'cow',
     'goat', 'sheep', 'pig', 'chicken', 'rooster', 'duck', 'goose', 'rabbit',
     'deer', 'bear', 'wolf', 'fox', 'eagle', 'parrot', 'owl', 'kucing',
     'anjing', 'burung', 'ular', 'kuda', 'sapi', 'ayam', 'bebek', 'kambing',
-    'harimau', 'singa', 'gajah', 'monyet', 'buaya', 'ikan',
+    'harimau', 'singa', 'gajah', 'monyet', 'buaya',
     'mosque', 'masjid', 'church', 'gereja', 'cathedral', 'temple', 'pura',
     'vihara', 'pagoda', 'shrine', 'monastery',
     'shoes', 'shoe', 'sneaker', 'sneakers', 'sandal', 'sandals', 'slipper',
     'slippers', 'footwear', 'high heels', 'stiletto', 'sendal', 'sepatu',
 ]
 
-def cek_deskripsi_gambar(deskripsi):
+# V6.17.95: konteks perikanan → "fish"/"ikan" boleh (pedagang ikan, nelayan, perikanan)
+KONTEKS_IKAN_DIIZINKAN = [
+    'pedagang ikan', 'ikan segar', 'ikan asin', 'ikan hias',
+    'nelayan', 'perikanan', 'budidaya ikan', 'tambak',
+    'hasil laut', 'seafood', 'ikan tuna', 'ikan tongkol',
+    'ikan bandeng', 'ikan lele', 'ikan nila', 'ikan mujair',
+    'pasar ikan', 'pelelangan ikan', 'kapal ikan', 'perahu nelayan',
+    'keramba', 'jaring ikan', 'pancing', 'memancing',
+]
+
+def _konteks_ikan_diizinkan(teks):
+    """V6.17.95: cek apakah konteks perikanan → ikan boleh."""
+    t = (teks or '').lower()
+    for k in KONTEKS_IKAN_DIIZINKAN:
+        if k in t:
+            return True
+    return False
+
+def cek_deskripsi_gambar(deskripsi, konteks_materi=''):
     d = (deskripsi or '').lower()
+    # V6.17.95: kalau konteks perikanan → skip cek ikan/fish
+    konteks_perikanan = _konteks_ikan_diizinkan(konteks_materi)
     for k in KATA_HEWAN_SLUG:
+        # V6.17.95: fish/ikan diizinkan kalau konteks perikanan
+        if k in ('fish', 'ikan') and konteks_perikanan:
+            continue
         if k.endswith('_') or k.endswith('-'):
             if k in d:
                 return 'deskripsi gambar memuat kata hewan terlarang: ' + k
@@ -3576,7 +3599,6 @@ def ambil_magnitude(teks):
 
 # ══════════════════════════════════════════════════════
 # V6.17.85: skor_domestik tolak negara asing tanpa konteks Indonesia
-# Nigeria lolos breaking dom hanya karena ada kata "kecelakaan"
 # V6.17.90: skor_domestik tolak aktor non-breaking (selebriti/artis)
 # ══════════════════════════════════════════════════════
 
@@ -4057,7 +4079,6 @@ def _kpk_konteks_indonesia(teks):
     return False
 
 # V6.17.93: kata jabatan yang sering SALAH TANGKAP sebagai tokoh Indonesia
-# (menteri keuangan India, menteri keuangan Inggris, dsb)
 JABATAN_AMBIGU_INDONESIA = [
     'menteri keuangan', 'menteri luar negeri', 'menteri pertahanan',
     'menteri dalam negeri', 'menteri kesehatan', 'menteri pendidikan',
@@ -5207,10 +5228,9 @@ AMBANG_JUDUL_MIRIP = 0.75
 
 # ══════════════════════════════════════════════════════
 # V6.17.84: ai_write diperbaiki — retry ganti judul PAKAI WHILE
-# Sebelumnya: retry di luar while → continue ERROR syntax
-# Sekarang: retry di dalam while (percobaan ke-2 minta ganti judul)
 # V6.17.93: pakai _topik_dobel6jam_nyata (dobel-6jam longgar)
 # V6.17.94: retry judul HANYA 75-90%, ≥90% langsung tolak (hemat token)
+# V6.17.95: cek_deskripsi_gambar pakai konteks materi (ikan diizinkan kalau perikanan)
 # ══════════════════════════════════════════════════════
 
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
@@ -5387,7 +5407,8 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         if source_url:
             catat_tolak_ai_token(source_url, 'nama pejabat hilang: ' + nama_pejabat[:80])
         raise Exception('DITOLAK - ' + nama_pejabat[:100])
-    gambar_terlarang = cek_deskripsi_gambar(gambar)
+    # V6.17.95: pakai konteks materi (ikan diizinkan kalau perikanan)
+    gambar_terlarang = cek_deskripsi_gambar(gambar, materi_sumber)
     if gambar_terlarang:
         if source_url:
             catat_tolak_ai_token(source_url, 'filter gambar: ' + gambar_terlarang[:60])
@@ -5531,6 +5552,15 @@ def _catatan_kategori_ketat(kategori_target):
             '- Turnamen seperti FIFA ASEAN Cup, Asian Games, SEA Games, Olimpiade = SAH.\n'
             '- DATELINE WAJIB kota yang ADA di materi. JANGAN karang.\n'
         )
+    # V6.17.95: catatan khusus gambar perikanan/pedagang ikan
+    catatan_gambar_ikan = ''
+    if kategori_target in ('nasional', 'daerah', 'ekonomi'):
+        catatan_gambar_ikan = (
+            '\n\nCATATAN GAMBAR (V6.17.95):\n'
+            '- Kalau materi tentang PEDAGANG IKAN, NELAYAN, PERIKANAN, TAMBAK,\n'
+            '  BUDIDAYA IKAN → kata "fish"/"ikan" di deskripsi_gambar DIIZINKAN.\n'
+            '- Contoh benar: deskripsi_gambar "fish market fresh seafood" — OK.\n'
+        )
     return (
         '\n\nFILTER KATEGORI (WAJIB — kalau tidak cocok, tulis {"tolak": "tidak cocok kategori: <sebutkan materi apa>"}):\n'
         '- Kategori target: ' + kategori_target + '.\n'
@@ -5540,6 +5570,7 @@ def _catatan_kategori_ketat(kategori_target):
         + catatan_gelar
         + catatan_ekonomi
         + catatan_olahraga
+        + catatan_gambar_ikan
     )
 
 def _catatan_ibu_kota_provinsi(judul_materi, summary_materi, kategori_target):
@@ -7156,7 +7187,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.94'
+FILE_VERSI = 'V6.17.95'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
