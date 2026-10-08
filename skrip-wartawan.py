@@ -1042,14 +1042,21 @@ def adalah_konten_otomotif(teks):
     return any(k in t for k in KATA_KUNCI_OTOMOTIF)
 
 # V6.17.92: materi teknologi yang sering lolos filter ekonomi (data centre, dsb)
+# V6.17.93: tambah karhutla/hotspot/lingkungan (false positive ekonomi)
 KATA_BUKAN_EKONOMI = [
     'data centre', 'data center', 'datacenter',
     'ai data', 'ai supremacy', 'ai supremacy',
     'kecerdasan buatan data', 'pusat data ai',
+    # V6.17.93: materi lingkungan/karhutla bukan ekonomi
+    'karhutla', 'hotspot', 'titik panas',
+    'kebakaran hutan', 'kebakaran lahan',
+    'lingkungan hidup', 'kerusakan lingkungan',
+    'pencemaran', 'polusi udara', 'emisi karbon',
 ]
 
 def _materi_bukan_ekonomi(teks):
-    """V6.17.92: cek apakah materi jelas bukan ekonomi (data centre/AI)."""
+    """V6.17.92: cek apakah materi jelas bukan ekonomi (data centre/AI).
+    V6.17.93: tambah karhutla/hotspot/lingkungan."""
     t = (teks or '').lower()
     for k in KATA_BUKAN_EKONOMI:
         if k in t:
@@ -1313,9 +1320,7 @@ def _decode_html_entity(teks):
     t = re.sub(r'&#(\d+);', lambda m: _num_repl(re.match(r'&#(\d+);', m.group(0))), t)
     t = re.sub(r'&#x([0-9a-fA-F]+);',
                lambda m: _num_repl(re.match(r'&#x([0-9a-fA-F]+);', m.group(0))), t)
-    return t
-
-def _bersihkan_html_artikel(html):
+    return tdef _bersihkan_html_artikel(html):
     html = re.sub(r'<script[^>]*>.*?</script>', ' ', html, flags=re.S | re.I)
     html = re.sub(r'<style[^>]*>.*?</style>', ' ', html, flags=re.S | re.I)
     html = re.sub(r'<nav[^>]*>.*?</nav>', ' ', html, flags=re.S | re.I)
@@ -1551,6 +1556,30 @@ def _ada_nama_diri_judul(judul):
                 return True
     return False
 
+# ══════════════════════════════════════════════════════
+# V6.17.93: dobel-6jam LONGGAR — jangan anggap dobel kalau topik beda
+# (Prabowo proyek hilirisasi ≠ Prabowo jamin investasi)
+# ══════════════════════════════════════════════════════
+
+KATA_TOPIK_BEDA_DOBEL6JAM = [
+    'hilirisasi', 'luncurkan', 'resmikan', 'groundbreaking', 'investasi',
+    'jamin', 'keamanan', 'harga', 'pasar', 'saham', 'ekspor', 'impor',
+    'subsidi', 'anggaran', 'apbn', 'pajak',
+]
+
+def _topik_dobel6jam_nyata(judul_a, judul_b, irisan):
+    """V6.17.93: cek apakah irisan 3 kata benar-benar topik sama.
+    Kalau hanya sama kata umum (prabowo, presiden, indonesia) → bukan dobel."""
+    # Kalau irisan hanya berisi kata umum (nama tokoh/tempat) → bukan dobel
+    kata_umum_dobel = {
+        'prabowo', 'presiden', 'indonesia', 'jakarta', 'menteri',
+        'gubernur', 'bupati', 'walikota', 'jokowi', 'gibran',
+    }
+    irisan_inti = irisan - kata_umum_dobel
+    if len(irisan_inti) < 2:
+        return False
+    return True
+
 def sudah_serupa(judul):
     j = normalisasi_judul(judul)
     if not j:
@@ -1573,8 +1602,15 @@ def sudah_serupa(judul):
         if ki and kt and len(ki & kt) >= DOBEL_6JAM_MIN_KATA:
             if DOBEL_6JAM_BUTUH_NAMA:
                 if _ada_nama_diri_judul(judul) or _ada_nama_diri_judul(t):
+                    # V6.17.93: longgarkan — cek topik dobel NYATA
+                    irisan = ki & kt
+                    if not _topik_dobel6jam_nyata(judul, t, irisan):
+                        continue
                     return True
             else:
+                irisan = ki & kt
+                if not _topik_dobel6jam_nyata(judul, t, irisan):
+                    continue
                 return True
     return False
 
@@ -3945,6 +3981,28 @@ def _kpk_konteks_indonesia(teks):
             return True
     return False
 
+# V6.17.93: kata jabatan yang sering SALAH TANGKAP sebagai tokoh Indonesia
+# (menteri keuangan India, menteri keuangan Inggris, dsb)
+JABATAN_AMBIGU_INDONESIA = [
+    'menteri keuangan', 'menteri luar negeri', 'menteri pertahanan',
+    'menteri dalam negeri', 'menteri kesehatan', 'menteri pendidikan',
+    'menteri perdagangan', 'menteri perhubungan', 'menteri agama',
+    'menteri sosial', 'menteri tenaga kerja',
+    'presiden', 'wakil presiden', 'perdana menteri',
+]
+
+def _ada_konteks_indonesia_di_sekitar(teks, posisi, lebar=100):
+    """V6.17.93: cek apakah di sekitar posisi ada konteks Indonesia kuat."""
+    awal = max(0, posisi - lebar)
+    akhir = min(len(teks), posisi + lebar)
+    sekitar = teks[awal:akhir].lower()
+    for k in ['indonesia', 'jakarta', 'ri ', 'republik indonesia',
+              'pemerintah ri', 'kemenkeu', 'kemenlu', 'bi ', 'ojk ',
+              'prabowo', 'jokowi', 'gibran', 'sri mulyani']:
+        if k in sekitar:
+            return True
+    return False
+
 def cek_kategori_dari_isi(isi, judul, kategori_target):
     if not isi:
         return None
@@ -3953,6 +4011,13 @@ def cek_kategori_dari_isi(isi, judul, kategori_target):
     gab = (judul or '') + ' ' + (isi or '')
     t = gab.lower()
     for tokoh in NAMA_TOKOH_INDONESIA:
+        # V6.17.93: skip jabatan ambigu tanpa konteks Indonesia
+        if tokoh in JABATAN_AMBIGU_INDONESIA:
+            for m in re.finditer(re.escape(tokoh), t):
+                if not _ada_konteks_indonesia_di_sekitar(t, m.start()):
+                    continue
+                return ('isi AI memuat tokoh Indonesia "' + tokoh + '" tapi target kategori internasional')
+            continue
         if re.search(r'\b' + re.escape(tokoh) + r'\b', t):
             return ('isi AI memuat tokoh Indonesia "' + tokoh + '" tapi target kategori internasional')
     for lem in LEMBAGA_INDONESIA:
@@ -3985,6 +4050,8 @@ def tentukan_kategori_dari_isi(judul, isi):
         return None
     is_indo = False
     for tokoh in NAMA_TOKOH_INDONESIA:
+        if tokoh in JABATAN_AMBIGU_INDONESIA:
+            continue
         if re.search(r'\b' + re.escape(tokoh) + r'\b', t):
             is_indo = True
             break
@@ -5067,6 +5134,7 @@ AMBANG_JUDUL_MIRIP = 0.75
 # V6.17.84: ai_write diperbaiki — retry ganti judul PAKAI WHILE
 # Sebelumnya: retry di luar while → continue ERROR syntax
 # Sekarang: retry di dalam while (percobaan ke-2 minta ganti judul)
+# V6.17.93: pakai _topik_dobel6jam_nyata (dobel-6jam longgar)
 # ══════════════════════════════════════════════════════
 
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
@@ -5209,10 +5277,17 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
             if len(kata_inti(judul) & kata_inti(t)) >= DOBEL_6JAM_MIN_KATA:
                 if DOBEL_6JAM_BUTUH_NAMA:
                     if _ada_nama_diri_judul(judul) or _ada_nama_diri_judul(t):
+                        # V6.17.93: cek topik dobel NYATA (longgarkan)
+                        irisan = kata_inti(judul) & kata_inti(t)
+                        if not _topik_dobel6jam_nyata(judul, t, irisan):
+                            continue
                         if source_url:
                             catat_tolak_ai_token(source_url, 'dobel-6jam: ' + t[:40])
                         raise Exception('diblokir anti-dobel-6jam: mirip "' + t[:40] + '"')
                 else:
+                    irisan = kata_inti(judul) & kata_inti(t)
+                    if not _topik_dobel6jam_nyata(judul, t, irisan):
+                        continue
                     if source_url:
                         catat_tolak_ai_token(source_url, 'dobel-6jam: ' + t[:40])
                     raise Exception('diblokir anti-dobel-6jam: mirip "' + t[:40] + '"')
@@ -6997,7 +7072,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.92'
+FILE_VERSI = 'V6.17.93'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
