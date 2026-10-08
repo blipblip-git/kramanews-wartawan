@@ -1,4 +1,5 @@
-# KRAMANEWS — SKRIP SOSMED V1.21 (FB + INSTAGRAM)
+# KRAMANEWS — SKRIP SOSMED V1.22 (FB + INSTAGRAM)
+# V1.22: komentar FB kembali "🔗 Baca selengkapnya: <link>", caption FB "🔗 Baca selengkapnya di komentar 👇"
 # V1.21: caption FB kosong, komentar FB "Baca selengkapnya di komentar: <link>"
 # V1.20: caption FB tanpa hashtag, IG fix NULL posted_ig
 # V1.19: 13 slot baru (tiap jam 06:45-18:45), 06:45 dilindungi, 11:45↔16:45 ditukar
@@ -324,9 +325,9 @@ def fb_komentar(post_id, pesan):
         raise Exception('FB komentar ' + str(r.status_code) + ': ' + r.text[:200])
     return r.json()
 
-# V1.21: caption FB kosong
+# V1.22: caption FB kembali "Baca selengkapnya di komentar 👇"
 def buat_pesan_fb(n):
-    return ''
+    return '🔗 Baca selengkapnya di komentar 👇'
 
 def post_fb(n):
     pesan = buat_pesan_fb(n)
@@ -357,8 +358,8 @@ def post_fb(n):
 
     if post_id:
         try:
-            # V1.21: format komentar baru
-            pesan_komentar = '🔗 Baca selengkapnya di komentar:\n' + link_artikel
+            # V1.22: komentar kembali "Baca selengkapnya: <link>"
+            pesan_komentar = '🔗 Baca selengkapnya: ' + link_artikel
             fb_komentar(post_id, pesan_komentar)
             print('   💬 Link artikel sudah masuk komentar.')
         except Exception as e:
@@ -366,7 +367,7 @@ def post_fb(n):
 
     return post_id
 
-# ═══ SLOT & PILIH BERITA V1.21 ═══
+# ═══ SLOT & PILIH BERITA V1.22 ═══
 
 SLOT_JADWAL = {
     6:  ('nasional', 'nasional', ['internasional', 'teknologi', 'olahraga', 'kesehatan', 'otomotif', 'ekonomi']),
@@ -449,11 +450,11 @@ def _cari_dengan_cascade(rows, kategori_utama, kategori_fallback, izinkan_fallba
 def mode_fb():
     slot = slot_saat_ini()
     if not slot:
-        print('📘 MODE FB V1.21 — jam ' + str(datetime.now(WITA).hour) + ':XX di luar jadwal. Skip.')
+        print('📘 MODE FB V1.22 — jam ' + str(datetime.now(WITA).hour) + ':XX di luar jadwal. Skip.')
         return
     nama_slot, kategori_utama, kategori_fallback = slot
     izinkan_apa_saja = (datetime.now(WITA).hour != 6)
-    print('📘 MODE FB V1.21 — slot: ' + nama_slot.upper() + ' (jam ' + str(datetime.now(WITA).hour) + ':45)')
+    print('📘 MODE FB V1.22 — slot: ' + nama_slot.upper() + ' (jam ' + str(datetime.now(WITA).hour) + ':45)')
 
     rows = supabase_get_safe(
         'articles?select=id,title,excerpt,content,category,img,dateline,posted_fb,breaking,created_at'
@@ -548,11 +549,11 @@ def buat_pesan_ig(n):
 def mode_ig():
     slot = slot_saat_ini()
     if not slot:
-        print('📸 MODE IG V1.21 — jam di luar jadwal. Skip.')
+        print('📸 MODE IG V1.22 — jam di luar jadwal. Skip.')
         return
     nama_slot, kategori_utama, kategori_fallback = slot
     izinkan_apa_saja = (datetime.now(WITA).hour != 6)
-    print('📸 MODE IG V1.21 — slot: ' + nama_slot.upper())
+    print('📸 MODE IG V1.22 — slot: ' + nama_slot.upper())
 
     if not IG_TOKEN:
         print('⏭️ IG_PAGE_TOKEN belum ada di Secrets — IG dilewati.')
@@ -625,7 +626,7 @@ def mode_ig():
     print('🏁 Mode IG selesai.')
 
 def main():
-    print('📣 KRAMANEWS SOSMED V1.21 — FB + INSTAGRAM (13 siklus)')
+    print('📣 KRAMANEWS SOSMED V1.22 — FB + INSTAGRAM (13 siklus)')
     print('   06:45 · 07:45 · 08:45 · 09:45 · 10:45 · 11:45 · 12:45')
     print('   13:45 · 14:45 · 15:45 · 16:45 · 17:45 · 18:45 WITA')
     if not FB_PAGE_TOKEN or not FB_PAGE_ID:
