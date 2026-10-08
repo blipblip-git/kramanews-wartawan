@@ -1041,6 +1041,21 @@ def adalah_konten_otomotif(teks):
     t = (teks or '').lower()
     return any(k in t for k in KATA_KUNCI_OTOMOTIF)
 
+# V6.17.92: materi teknologi yang sering lolos filter ekonomi (data centre, dsb)
+KATA_BUKAN_EKONOMI = [
+    'data centre', 'data center', 'datacenter',
+    'ai data', 'ai supremacy', 'ai supremacy',
+    'kecerdasan buatan data', 'pusat data ai',
+]
+
+def _materi_bukan_ekonomi(teks):
+    """V6.17.92: cek apakah materi jelas bukan ekonomi (data centre/AI)."""
+    t = (teks or '').lower()
+    for k in KATA_BUKAN_EKONOMI:
+        if k in t:
+            return k
+    return ''
+
 class BeritaLama(Exception):
     pass
 
@@ -1654,7 +1669,7 @@ YANG DILARANG (kalau materi TIDAK ada):
 
 NARASI — WAJIB DIUBAH:
 - Kalimat wajib beda dengan materi.
-- DILARANG 22+ kata berurutan sama materi (kecuali fakta di atas).
+- DILARANG 25+ kata berurutan sama materi (kecuali fakta di atas).
 - Sinonim: "mengatakan" → "menuturkan/ujar".
 
 KALIMAT TERLARANG (JANGAN PAKAI):
@@ -2283,6 +2298,10 @@ def _kandidat_kategori_materi(kategori, judul, summary):
         if not any(k in gab for k in KATA_LUAR_NEGERI_WAJIB):
             return False, 'kategori internasional tapi materi tidak ada kata luar negeri'
     elif kategori == 'ekonomi':
+        # V6.17.92: tolak kalau materi jelas bukan ekonomi (data centre/AI)
+        non_eko = _materi_bukan_ekonomi(gab)
+        if non_eko:
+            return False, 'kategori ekonomi tapi materi bukan ekonomi (' + non_eko + ')'
         if not any(k in gab for k in KATA_EKONOMI_WAJIB):
             return False, 'kategori ekonomi tapi materi tidak ada kata ekonomi'
     ok, alasan = _materi_cocok_kategori(kategori, judul, summary)
@@ -4659,8 +4678,9 @@ def _buang_fakta_wajib(teks):
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
+# V6.17.92: N-gram 22 → 25 (anti-jiplak terlalu ketat)
 def _n_gram_untuk(kategori, panjang_materi):
-    return 22
+    return 25
 
 def cek_jiplak(materi_sumber, isi_ai, judul_materi='', kategori=''):
     if not materi_sumber or not isi_ai:
@@ -5252,18 +5272,24 @@ def target_kata(materi_len):
 
 def _catatan_khusus_kategori(kategori_target):
     if kategori_target in ('internasional', 'internasional_asean', 'internasional_tt'):
+        # V6.17.92: prompt dateline diperketat (anti-karang kota)
         return (
-            '\n\nCATATAN KHUSUS KATEGORI LUAR NEGERI:\n'
+            '\n\nCATATAN KHUSUS KATEGORI LUAR NEGERI (V6.17.92):\n'
             '- DATELINE WAJIB kota LUAR NEGERI (bukan Jakarta/Indonesia).\n'
             '- DILARANG pakai dateline "JAKARTA", "INDONESIA" '
             'KECUALI materi memang tentang Indonesia di forum internasional.\n'
+            '- DATELINE WAJIB SALIN DARI MATERI. JANGAN karang kota yang '
+            'TIDAK ADA di materi sumber.\n'
+            '- KALAU materi TIDAK menyebut kota sama sekali → JANGAN pakai '
+            'nama kota. Pakai nama NEGARA saja: "MALAYSIA - ", '
+            '"AMERIKA SERIKAT - ", "INGGRIS - ".\n'
+            '- DILARANG menebak kota (contoh: materi tidak sebut Putrajaya '
+            '→ JANGAN tulis PUTRAJAYA).\n'
+            '- Contoh BENAR: materi sebut "Kuala Lumpur" → '
+            '"KUALA LUMPUR, MALAYSIA - ".\n'
+            '- Contoh SALAH: materi tidak sebut kota → tulis "PUTRAJAYA" '
+            '(KARANG!).\n'
             '- EVENT BESAR → dateline WAJIB kota penyelenggara.\n'
-            '- V6.17.80: DATELINE WAJIB SALIN DARI MATERI. '
-            'JANGAN karang kota yang tidak ada di materi sumber.\n'
-            '- Kalau materi menyebut "New York" → dateline "NEW YORK, AMERIKA SERIKAT - ".\n'
-            '- Kalau materi menyebut "London" → dateline "LONDON, INGGRIS - ".\n'
-            '- Kalau materi TIDAK menyebut kota sama sekali → JANGAN PAKAI DATELINE KOTA. '
-            'Gunakan dateline negara: "AMERIKA SERIKAT - ".\n'
         )
     return ''
 
@@ -5281,7 +5307,7 @@ def _catatan_anti_jiplak():
         '\n'
         'NARASI WAJIB DIUBAH:\n'
         '- Kalimat non-fakta wajib beda dengan materi.\n'
-        '- DILARANG 22+ kata berurutan sama materi (kecuali fakta di atas).\n'
+        '- DILARANG 25+ kata berurutan sama materi (kecuali fakta di atas).\n'
         '- Sinonim: "mengatakan" → "menuturkan/ujar".\n'
         '- JUDUL: DILARANG sama/mirip judul materi.\n'
         '\n'
@@ -6439,10 +6465,14 @@ def tolak_amerika_lokal(teks):
             return True
     return False
 
-# V6.17.88: batas percobaan kandidat kategori 1 → 2
+# V6.17.88 + V6.17.92: batas percobaan kandidat KONDISIONAL
+# - Jam 06:07 → batas 2 (recovery slot 06:07 yang sering 0)
+# - Jam lain  → batas 1 (hemat token, V6.17.88 ternyata boros)
 def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                   sumber_custom=None, domain_tek=None, wajib_regional=False,
                   sumber_fallback=None):
+    jam_sekarang = datetime.now(WITA).hour
+    batas_percobaan = 2 if jam_sekarang == 6 else 1
     max_umur = max_umur_kategori(cat)
     cand = collect_candidates(sumber_custom if sumber_custom else HUNT.get(cat, []),
                               today_urls, seen, max_umur_jam=max_umur, kategori=cat)
@@ -6524,8 +6554,8 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
     percobaan = 0
     kandidat_terpakai = []
     for g in groups:
-        # V6.17.88: batas percobaan 1 → 2
-        if percobaan >= 2:
+        # V6.17.92: batas percobaan KONDISIONAL (jam 06:07 = 2, lain = 1)
+        if percobaan >= batas_percobaan:
             break
         items = g['items']
         top = items[0]
@@ -6967,7 +6997,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.91'
+FILE_VERSI = 'V6.17.92'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
