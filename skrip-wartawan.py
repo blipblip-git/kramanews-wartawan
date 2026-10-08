@@ -1320,7 +1320,9 @@ def _decode_html_entity(teks):
     t = re.sub(r'&#(\d+);', lambda m: _num_repl(re.match(r'&#(\d+);', m.group(0))), t)
     t = re.sub(r'&#x([0-9a-fA-F]+);',
                lambda m: _num_repl(re.match(r'&#x([0-9a-fA-F]+);', m.group(0))), t)
-    return tdef _bersihkan_html_artikel(html):
+    return t
+
+def _bersihkan_html_artikel(html):
     html = re.sub(r'<script[^>]*>.*?</script>', ' ', html, flags=re.S | re.I)
     html = re.sub(r'<style[^>]*>.*?</style>', ' ', html, flags=re.S | re.I)
     html = re.sub(r'<nav[^>]*>.*?</nav>', ' ', html, flags=re.S | re.I)
