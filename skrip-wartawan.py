@@ -4905,6 +4905,7 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
 
 # V6.17.87: blacklist kata kerja/frasa judul agregator (biar tidak salah tangkap "Bawa Aspirasi DOB")
 # V6.17.89: tambah kata kerja/frasa judul yang masih lolos
+# V6.17.91: tambah singkatan kementerian/sapaan
 KATA_BUKAN_NAMA_PEJABAT = [
     'tekankan', 'pentingnya', 'menanamkan', 'persatuan', 'kesatuan',
     'himbau', 'imbau', 'ajak', 'dorong', 'ingatkan', 'minta', 'serukan',
@@ -4956,6 +4957,15 @@ KATA_BUKAN_NAMA_PEJABAT = [
     'buka', 'tutup', 'buka suara', 'buka-bukaan',
     'tangani', 'atasi', 'selesai', 'selesaikan', 'tuntaskan',
     'kawal', 'awal', 'akhir', 'baru', 'lama',
+    # V6.17.91: singkatan kementerian/sapaan (bukan nama orang)
+    'pmk', 'pmm', 'menko', 'menkopolhukam', 'menkomarves',
+    'mendikdasmen', 'mendikbud', 'mendikbudristek', 'menkes',
+    'menkeu', 'menlu', 'menhan', 'mendag', 'menhub', 'menaker',
+    'mensos', 'menag', 'menparekraf', 'menkop', 'menkum',
+    'menkumham', 'menppa', 'menpora', 'menperin', 'mentan',
+    'mentrans', 'menkominfo', 'menkominfo', 'menpupr',
+    'menko pmk', 'koordinator', 'bidang',
+    'kunker', 'kunjungan kerja', 'kunjungan',
 ]
 
 # V6.17.89: kata sambung yang menandakan akhir nama (biar tidak nangkap 2 jabatan)
@@ -5008,10 +5018,13 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
         nama_kunci = nama_bersih[-1]
         if len(nama_kunci) < 3:
             continue
-        # V6.17.87 + V6.17.89: nama kunci wajib bukan kata kerja blacklist
+        # V6.17.87 + V6.17.89 + V6.17.91: nama kunci wajib bukan kata kerja/singkatan blacklist
         if nama_kunci.lower() in KATA_BUKAN_NAMA_PEJABAT:
             continue
         if nama_kunci.lower() in KATA_SAMBUNG_NAMA:
+            continue
+        # V6.17.91: cek juga apakah nama_kunci uppercase singkatan (bukan nama orang)
+        if nama_kunci.isupper() and len(nama_kunci) <= 6:
             continue
         nama_materi.append((nama_full, nama_kunci))
     if not nama_materi:
@@ -6954,7 +6967,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.90'
+FILE_VERSI = 'V6.17.91'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
