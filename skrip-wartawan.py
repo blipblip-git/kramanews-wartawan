@@ -2976,6 +2976,79 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
             if not title or not summary:
                 continue
 
+            # ══════════════════════════════════════════════════════
+            # V6.17.94: PRE-FILTER LOKAL — hemat token DeepSeek
+            # Versi LONGGAR: hanya buang yang JELAS sampah.
+            # Kandidat ragu-ragu tetap lolos ke AI (AI yang putuskan).
+            # ══════════════════════════════════════════════════════
+            _t_low = (title + ' ' + summary).lower()
+
+            # 1. Materi sampah — hanya skip kalau ≥2 frasa sampah
+            _hit_sampah = sum(1 for k in KATA_MATERI_SAMPAH if k in _t_low)
+            if _hit_sampah >= 2:
+                skip_layak += 1
+                if skip_layak <= 3:
+                    print('       Skip kandidat (pre-filter sampah): '
+                          + str(_hit_sampah) + ' frasa — ' + title[:50])
+                continue
+
+            # 2. Aktor non-breaking — hanya skip kalau ≥2 aktor muncul
+            _aktor_hit = []
+            for _ak in AKTOR_NON_BREAKING:
+                if len(_ak) <= 4:
+                    if re.search(r'\b' + re.escape(_ak) + r'\b', _t_low):
+                        _aktor_hit.append(_ak)
+                else:
+                    if _ak in _t_low:
+                        _aktor_hit.append(_ak)
+                if len(_aktor_hit) >= 2:
+                    break
+            if len(_aktor_hit) >= 2 and kategori in ('nasional', 'daerah',
+                                                     'internasional',
+                                                     'internasional_asean',
+                                                     'internasional_tt'):
+                skip_layak += 1
+                if skip_layak <= 3:
+                    print('       Skip kandidat (pre-filter aktor): '
+                          + ', '.join(_aktor_hit[:2]) + ' — ' + title[:50])
+                continue
+
+            # 3. Domain skip — tetap skip (pasti gagal)
+            if domain_skip_scrape(link):
+                skip_layak += 1
+                continue
+
+            # 4. Kategori: cek kata kunci LONGGAR di judul + summary + 500 kar materi
+            if kategori and kategori != 'breaking':
+                _kata_kat = KATA_KUNCI_KATEGORI.get(kategori, [])
+                if _kata_kat:
+                    _gab_cek = _t_low[:500]
+                    _hit_kat = 0
+                    for _kk in _kata_kat:
+                        if len(_kk) <= 4:
+                            if re.search(r'\b' + re.escape(_kk) + r'\b', _gab_cek):
+                                _hit_kat += 1
+                                break
+                        else:
+                            if _kk in _gab_cek:
+                                _hit_kat += 1
+                                break
+                    if _hit_kat == 0:
+                        skip_layak += 1
+                        if skip_layak <= 3:
+                            print('       Skip kandidat (pre-filter kategori): '
+                                  'tidak ada kata kunci ' + kategori
+                                  + ' — ' + title[:50])
+                        continue
+
+            # 5. Breaking dunia: tolak yang jelas simulasi/kecil
+            if kategori == 'breaking':
+                _tolak_brk = sum(1 for k in BREAKING_INT_TOLAK if k in _t_low)
+                if _tolak_brk >= 1:
+                    skip_layak += 1
+                    continue
+            # ══════════════════════════════════════════════════════
+
             # V6.17.75: revisi #1 - cek berita basi
             basi, alasan_basi = _materi_basi(title, summary)
             if basi:
@@ -5137,6 +5210,7 @@ AMBANG_JUDUL_MIRIP = 0.75
 # Sebelumnya: retry di luar while → continue ERROR syntax
 # Sekarang: retry di dalam while (percobaan ke-2 minta ganti judul)
 # V6.17.93: pakai _topik_dobel6jam_nyata (dobel-6jam longgar)
+# V6.17.94: retry judul HANYA 75-90%, ≥90% langsung tolak (hemat token)
 # ══════════════════════════════════════════════════════
 
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
@@ -5189,10 +5263,10 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
 
         judul = perbaiki_persen((obj.get('judul') or '').strip())
 
-        # Cek judul mirip materi → minta retry ganti judul (di dalam while)
+        # V6.17.94: retry judul HANYA kalau mirip 75-90%. ≥90% langsung tolak (hemat token)
         if judul_materi and judul and not judul_retry_dilakukan:
             rasio_judul = SequenceMatcher(None, judul.lower(), judul_materi.lower()).ratio()
-            if rasio_judul >= AMBANG_JUDUL_MIRIP:
+            if AMBANG_JUDUL_MIRIP <= rasio_judul < 0.90:
                 print('       Judul AI mirip materi (' + str(int(rasio_judul * 100))
                       + '%) — minta AI ganti judul (retry 1x)...')
                 judul_retry_dilakukan = True
@@ -5206,9 +5280,17 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
                     '- Contoh: judul materi "Wali Kota Resmikan 3 Dapur MBG" → '
                     'judul baru "Tiga Fasilitas MBG Baru Diresmikan di Cilegon".\n'
                     '- Semua aturan lain tetap berlaku.\n\n'
-                    'MATERI SUMBER:\n' + materi_sumber[:1500] + '\n\n'
+                    'MATERI SUMBER:\n' + materi_sumber[:800] + '\n\n'
                     'Tulis berita JSON valid dengan JUDUL BERBEDA.')
                 continue
+            elif rasio_judul >= 0.90:
+                # V6.17.94: judul jiplak parah — retry percuma, langsung tolak
+                msg_tolak = ('judul AI jiplak parah (' + str(int(rasio_judul * 100))
+                             + '%) — retry tidak akan menolong')
+                print('       ' + msg_tolak)
+                if source_url:
+                    catat_tolak_ai_token(source_url, msg_tolak)
+                raise BeritaLama(msg_tolak)
         break
 
     if obj is None:
@@ -6542,14 +6624,14 @@ def tolak_amerika_lokal(teks):
             return True
     return False
 
-# V6.17.88 + V6.17.92: batas percobaan kandidat KONDISIONAL
-# - Jam 06:07 → batas 2 (recovery slot 06:07 yang sering 0)
-# - Jam lain  → batas 1 (hemat token, V6.17.88 ternyata boros)
+# V6.17.88 + V6.17.92 + V6.17.94: batas percobaan kandidat
+# V6.17.94: batas 1 untuk SEMUA jam (hemat token)
 def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                   sumber_custom=None, domain_tek=None, wajib_regional=False,
                   sumber_fallback=None):
     jam_sekarang = datetime.now(WITA).hour
-    batas_percobaan = 2 if jam_sekarang == 6 else 1
+    # V6.17.94: batas 1 semua jam — hemat token
+    batas_percobaan = 1
     max_umur = max_umur_kategori(cat)
     cand = collect_candidates(sumber_custom if sumber_custom else HUNT.get(cat, []),
                               today_urls, seen, max_umur_jam=max_umur, kategori=cat)
@@ -6631,7 +6713,7 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
     percobaan = 0
     kandidat_terpakai = []
     for g in groups:
-        # V6.17.92: batas percobaan KONDISIONAL (jam 06:07 = 2, lain = 1)
+        # V6.17.94: batas percobaan 1 semua jam
         if percobaan >= batas_percobaan:
             break
         items = g['items']
@@ -7074,7 +7156,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.93'
+FILE_VERSI = 'V6.17.94'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
