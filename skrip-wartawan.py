@@ -1102,7 +1102,6 @@ KATA_ALASAN_TRANSIENT = [
     'error sementara', 'coba lagi', 'retry',
 ]
 
-# V6.17.103: tambah "judul-materi tidak nyambung" sebagai transient (efek materi sampah)
 KATA_ALASAN_JANGAN_BLACKLIST = [
     'materi sampah',
     'materi terlalu pendek',
@@ -1116,7 +1115,6 @@ KATA_ALASAN_JANGAN_BLACKLIST = [
     'materi kepolisian',
     'materi politik',
     'materi hukum',
-    # V6.17.103: judul-materi tidak nyambung (efek materi sampah)
     'judul-materi tidak nyambung',
     'tidak nyambung (irisan',
 ]
@@ -1394,7 +1392,6 @@ def scrape_artikel(url, judul_debug=''):
         print('       [DEBUG] Domain: ' + _domain_dari_url(url_asli))
     hasil = ''
     try:
-        # V6.17.103: hapus 'br' (Brotli) — biar tidak dapat materi sampah
         domain = _domain_dari_url(url_asli)
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
@@ -1411,14 +1408,12 @@ def scrape_artikel(url, judul_debug=''):
         }
         r = requests.get(url_asli, headers=headers, timeout=20, allow_redirects=True)
         if r.ok:
-            # V6.17.103: fallback encoding + cek materi sampah binary
             try:
                 r.encoding = r.apparent_encoding or r.encoding
             except Exception:
                 pass
             hasil = _bersihkan_html_artikel(r.text or '')
             if hasil and len(hasil) >= SCRAPE_MIN_KARAKTER:
-                # cek materi sampah binary
                 sampah_bin = sum(1 for ch in hasil[:500]
                                  if ord(ch) > 0x4E00 and ord(ch) < 0xA000)
                 if sampah_bin > 100:
@@ -1781,10 +1776,10 @@ DATELINE EVENT BESAR (WAJIB):
 PERSEN: selalu simbol % ("95%").
 
 KATEGORI (WAJIB TEPAT):
-- nasional: pemerintah pusat, DPR, presiden, menteri, haji/umroh/agama, pendidikan, sosial, KEPOLISIAN (Kapolri, Kapolda, Polri).
-- daerah: peristiwa lokal kota/kabupaten Indonesia, kepolisian daerah (Polres, Kapolres).
+- nasional: pemerintah pusat, DPR, presiden, menteri, haji/umroh/agama, pendidikan, sosial, KEPOLISIAN (Kapolri, Kapolda, Polri), MAHKAMAH AGUNG.
+- daerah: peristiwa lokal kota/kabupaten Indonesia, kepolisian daerah (Polres, Kapolres), pemkab/pemkot/pemprov, bupati/walikota.
 - internasional: luar negeri, PBB, ASEAN, event besar di luar negeri.
-- ekonomi: IHSG, kurs, saham, BI, OJK, UMKM, bisnis, ekonomi dunia, EKSPOR, IMPOR, PERDAGANGAN.
+- ekonomi: IHSG, kurs, saham, BI, OJK, UMKM, bisnis, ekonomi dunia, EKSPOR, IMPOR, PERDAGANGAN, KRIPTO, INVESTASI, CRYPTO.
 - olahraga: sepak bola, basket, badminton, voli, tenis, MotoGP, F1.
 - teknologi: gadget, AI, aplikasi, internet, startup, keamanan digital.
 - otomotif: mobil, motor, kendaraan listrik, spare part, modifikasi.
@@ -1795,6 +1790,7 @@ EKONOMI — DEFINISI SANGAT LUAS (WAJIB):
 - EKONOMI JUGA mencakup (JANGAN TOLAK):
   * Properti, perumahan, housing, real estate
   * IPO, merger, akuisisi, valuasi, pendanaan, investasi
+  * KRIPTO, BITCOIN, ETHEREUM, OKX, BINANCE, COINBASE, BLOCKCHAIN, ASET DIGITAL
   * Kunjungan dagang, kerja sama dagang, delegasi ekonomi
   * Pasar, harga, komoditas, obligasi
   * Sektor industri, manufaktur, pabrik, produksi
@@ -1813,6 +1809,7 @@ JANGAN SALAH KATEGORI:
 - Haji/umroh/agama → nasional (BUKAN olahraga).
 - Pendidikan/sekolah → nasional (BUKAN olahraga).
 - Kepolisian (Kapolda, Kapolres, Polri) → nasional (atau daerah kalau lokal).
+- Mahkamah Agung, PT Pos, Bupati, Wali Kota → nasional/daerah.
 - Pajak/anggaran/bansos → ekonomi/nasional.
 - Kesehatan/vaksin/penyakit → kesehatan.
 - "hasil", "skor", "klasemen" TIDAK cukup untuk olahraga.
@@ -1822,6 +1819,9 @@ JANGAN SALAH KATEGORI:
 PENTING — JANGAN TOLAK BERLEBIHAN:
 - JANGAN tolak materi hanya karena ada 1 kata "politik", "ekonomi", "kepolisian".
 - KEPOLISIAN/TNI → TETAP nasional atau daerah (bukan tolak).
+- MAHKAMAH AGUNG, PT POS, BUPATI, WALI KOTA → TETAP nasional/daerah.
+- BERAU, KALTIM, KALTARA, NUNUKAN, TARAKAN, JAMBI → TETAP daerah.
+- KRIPTO, BITCOIN, OKX, INVESTASI DIGITAL → TETAP ekonomi.
 - Ekspor/impor/perdagangan/pendapatan negara → TETAP ekonomi.
 - Perusahaan naik peringkat/valuasi/IPO → TETAP ekonomi.
 - Properti/perumahan/housing → TETAP ekonomi.
@@ -2215,7 +2215,9 @@ KATA_KUNCI_KATEGORI = {
                'santri', 'sholawat', 'gebyar', 'pesantren', 'majelis taklim',
                'pengajian', 'tahlilan', 'yasinan', 'maulid', 'rajaban',
                'halal bihalal', 'takbir keliling', 'pawai obor',
-               'gowa', 'sulawesi selatan', 'sulsel', 'makassar'],
+               'gowa', 'sulawesi selatan', 'sulsel', 'makassar',
+               'berau', 'kaltim', 'kalimantan timur', 'balikpapan',
+               'samarinda', 'bontang', 'kutai', 'jambi'],
     'internasional': ['amerika', 'rusia', 'china', 'jepang', 'korea',
                       'eropa', 'inggris', 'jerman', 'perancis', 'italia',
                       'timur tengah', 'israel', 'palestina', 'iran', 'irak',
@@ -2251,7 +2253,10 @@ KATA_KUNCI_KATEGORI = {
                 'exports', 'imports', 'tariff', 'sanction', 'stimulus',
                 'resilient', 'domestic', 'grain', 'supply',
                 'ojk', 'edukasi keuangan', 'literasi keuangan',
-                'investasi', 'reksa dana', 'obligasi', 'deposito'],
+                'investasi', 'reksa dana', 'obligasi', 'deposito',
+                'kripto', 'crypto', 'bitcoin', 'ethereum', 'blockchain',
+                'okx', 'binance', 'coinbase', 'aset digital', 'token',
+                'nft', 'defi', 'stablecoin', 'exchange'],
     'olahraga': ['bola', 'sepak', 'basket', 'voli', 'badminton', 'tenis',
                  'motogp', 'f1', 'liga', 'piala', 'timnas', 'atlet',
                  'pemain', 'klub', 'pertandingan', 'laga', 'gol', 'skor',
@@ -2373,6 +2378,8 @@ KATA_SINYAL_EKONOMI_KUAT = [
     'inflation', 'inflasi', 'gdp', 'pdb', 'growth', 'pertumbuhan',
     'ekspor', 'impor', 'exports', 'imports', 'trade balance',
     'neraca dagang', 'quarterly', 'kuartal', 'fiscal', 'fiskal',
+    'kripto', 'crypto', 'bitcoin', 'ethereum', 'blockchain',
+    'okx', 'binance', 'coinbase', 'token', 'nft', 'defi', 'stablecoin',
 ]
 
 def _kandidat_kategori_materi(kategori, judul, summary):
@@ -2606,6 +2613,27 @@ FRASA_KERJA_SAMA_INDONESIA = [
     'transboundary', 'lintas batas',
 ]
 
+# V6.17.104: frasa acara lintas negara di Indonesia → jangan blok
+FRASA_ACARA_LINTAS_NEGARA_DI_INDONESIA = [
+    'peserta lintas negara', 'peserta dari berbagai negara',
+    'peserta mancanegara', 'peserta internasional',
+    'lintas negara berkumpul', 'dari berbagai negara',
+    'dari berbagai mancanegara', 'dari mancanegara',
+    'peserta asing', 'peserta dari luar negeri',
+    'internasional di indonesia', 'internasional di nunukan',
+    'internasional di tarakan', 'internasional di kaltara',
+    'internasional di balikpapan', 'internasional di samarinda',
+    'internasional di jakarta', 'internasional di surabaya',
+    'internasional di bandung', 'internasional di medan',
+    'internasional di makassar', 'internasional di jambi',
+]
+
+def _ada_acara_lintas_negara_di_indonesia(gab):
+    for f in FRASA_ACARA_LINTAS_NEGARA_DI_INDONESIA:
+        if f in gab:
+            return True
+    return False
+
 def _ada_konteks_kunjungan_atau_kerjasama_indonesia(gab):
     for f in FRASA_KUNJUNGAN_KE_INDONESIA:
         if f in gab:
@@ -2614,6 +2642,8 @@ def _ada_konteks_kunjungan_atau_kerjasama_indonesia(gab):
         if f in gab:
             return True
     if _ada_konteks_kabut_asap_asean(gab):
+        return True
+    if _ada_acara_lintas_negara_di_indonesia(gab):
         return True
     return False
 
@@ -2644,8 +2674,12 @@ def _kandidat_bukan_kontes(kategori, judul, summary):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
     for k in KATA_BUKAN_NASIONAL:
-        if k in gab:
-            return False, 'kontes/kecantikan bukan nasional: ' + k
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                return False, 'kontes/kecantikan bukan nasional: ' + k
+        else:
+            if k in gab:
+                return False, 'kontes/kecantikan bukan nasional: ' + k
     return True, ''
 
 def _kandidat_bukan_jadwal_transport(kategori, judul, summary):
@@ -3898,7 +3932,9 @@ KATA_EKONOMI_DOMESTIK = [
     'bank indonesia', 'bi rate', 'bi7drr', 'suku bunga acuan',
     'ojk', 'lps', 'penjaminan simpanan', 'kredit', 'kpr', 'leasing',
     'multifinance', 'asuransi', 'bpjs ketenagakerjaan',
-    'kripto indonesia', 'aset digital',
+    'kripto indonesia', 'aset digital', 'kripto', 'crypto', 'bitcoin',
+    'ethereum', 'okx', 'binance', 'coinbase', 'blockchain', 'token',
+    'nft', 'defi', 'stablecoin', 'exchange',
     'rupiah', 'kurs rupiah', 'nilai tukar rupiah', 'idr',
     'inflasi indonesia', 'inflasi inti', 'deflasi', 'bi 7-day',
     'apbn', 'apbd', 'defisit anggaran', 'surplus anggaran',
@@ -3958,7 +3994,8 @@ KATA_EKONOMI_ASING = [
     'pengetatan', 'suku bunga global',
     'dolar', 'usd', 'euro', 'yen', 'yuan', 'renminbi', 'won',
     'ringgit', 'baht', 'dollar index',
-    'kripto', 'bitcoin', 'ethereum', 'blockchain',
+    'kripto', 'crypto', 'bitcoin', 'ethereum', 'blockchain',
+    'okx', 'binance', 'coinbase', 'token', 'nft', 'defi', 'stablecoin',
     'minyak mentah', 'brent', 'wti', 'opec', 'oil embargo',
     'emas global', 'perak', 'tembaga global', 'litium',
     'gandum global', 'jagung global', 'kedelai global',
@@ -4017,6 +4054,7 @@ KATA_EKONOMI_KUAT_TENTUKAN = [
     'umkm', 'kredit', 'fintech', 'pinjol', 'p2p lending',
     'properti', 'perumahan', 'kpr', 'developer',
     'ekonomi', 'bisnis', 'keuangan', 'pasar modal', 'bursa',
+    'kripto', 'crypto', 'bitcoin', 'ethereum', 'blockchain',
 ]
 
 KATA_POLITIK_HUKUM_LOKAL = [
@@ -4066,6 +4104,7 @@ PROVINSI_INDONESIA_LAIN = [
     'sulawesi utara', 'sulut', 'sulawesi tengah', 'sulteng',
     'sulawesi selatan', 'sulsel', 'sulawesi tenggara', 'sultra',
     'gorontalo', 'sulawesi barat', 'sulbar',
+    'kalimantan timur', 'kaltim',
 ]
 
 KALIMANTAN_PROVINSI = [
@@ -4087,6 +4126,7 @@ KOTA_INDONESIA_DATELINE = [
     'selumit', 'selumit pantai', 'juata', 'karang anyar', 'karang balik',
     'kampung enam', 'pamusian', 'sebengkok', 'gunung lingkas', 'karang harapan',
     'kaltara', 'gowa', 'sunggu-minasa', 'sungguminasa',
+    'tanjung redeb', 'berau', 'bontang', 'kutai', 'jambi',
 ]
 
 KATA_LOKAL_KALTARA = [
@@ -4294,6 +4334,7 @@ NAMA_DIRI_UMUM = set([
     'nvidia', 'intel', 'samsung', 'huawei', 'xiaomi', 'tiktok', 'bytedance',
     'covid', 'covid-19',
     'xinhua', 'cgtn', 'scmp', 'global times', 'nhk', 'korea herald',
+    'okx', 'binance', 'coinbase', 'circle', 'ripple', 'tether',
 ])
 
 def _kata_inti_nama_diri(teks, bahasa='id'):
@@ -5069,6 +5110,7 @@ KATA_SINYAL_EKONOMI = [
     'properti', 'property', 'real estate', 'housing', 'perumahan',
     'kunjungan dagang', 'kunjungan ekonomi', 'delegasi dagang',
     'merger', 'akuisisi', 'ipo', 'valuasi', 'investasi',
+    'kripto', 'crypto', 'bitcoin', 'okx', 'blockchain',
 ]
 
 def _catatan_ekonomi_khusus(kategori_target, judul, materi):
@@ -5082,11 +5124,11 @@ def _catatan_ekonomi_khusus(kategori_target, judul, materi):
         return ('\n\nCATATAN PENTING — MATERI INI ADALAH BERITA EKONOMI:\n'
                 '- Materi memuat kata perdagangan/ekspor/impor/produksi/manufaktur\n'
                 '  ATAU properti/perumahan/housing/real estate/IPO/merger/\n'
-                '  kunjungan dagang.\n'
+                '  kunjungan dagang ATAU kripto/crypto/blockchain/OKX.\n'
                 '- WAJIB tulis sebagai berita EKONOMI, BUKAN politik luar negeri.\n'
                 '- JANGAN tolak dengan alasan "politik luar negeri", "materi politik",\n'
                 '  "kunjungan diplomatik", atau "materi properti".\n'
-                '- Properti, perumahan, kunjungan dagang, IPO, merger TETAP EKONOMI.\n'
+                '- Properti, perumahan, kunjungan dagang, IPO, merger, KRIPTO TETAP EKONOMI.\n'
                 '- Fokus: angka, data perdagangan, pertumbuhan, dampak ekonomi.\n')
     return ''
 
@@ -5106,6 +5148,8 @@ def _catatan_portal_daerah(link, kategori_target):
             '- Materi ini dari portal berita DAERAH (Radar Tarakan/Benuanta/Tribun Daerah).\n'
             '- WAJIB tulis sebagai berita DAERAH, BUKAN nasional/ekonomi/teknologi.\n'
             '- JANGAN tolak dengan alasan "tidak cocok kategori: materi jargas/infrastruktur/proyek".\n'
+            '- JANGAN tolak dengan alasan "tidak cocok kategori: wilayah Berau Kaltim".\n'
+            '- Berau, Kaltim, Kaltara, Nunukan, Tarakan = TETAP kategori DAERAH.\n'
             '- Walaupun isi materi tentang proyek/infrastruktur/energi nasional,\n'
             '  karena sumber portal daerah → TETAP kategori DAERAH.\n'
             '- Fokus: dampak lokal, lokasi daerah, tokoh daerah.\n')
@@ -5579,6 +5623,8 @@ def _catatan_kategori_ketat(kategori_target):
             '- TNI/Polri: PANGKAT + NAMA + JABATAN wajib kalau ada di materi.\n'
             '- KEPOLISIAN (Kapolda, Kapolres, Polri) = SAH kategori nasional/daerah.\n'
             '- MAHKAMAH AGUNG, PT POS, BUPATI, WALI KOTA = SAH nasional/daerah.\n'
+            '- BERAU, KALTIM, KALTARA, NUNUKAN, TARAKAN, JAMBI = SAH daerah.\n'
+            '- KRIPTO, OKX, BITCOIN, INVESTASI DIGITAL = SAH ekonomi.\n'
             '- WAJIB tulis SEMUA nama pejabat yang ada di materi.\n'
             '- WAJIB sebut LOKASI spesifik kalau materi memuatnya.\n'
             '\n'
@@ -5595,6 +5641,7 @@ def _catatan_kategori_ketat(kategori_target):
             '\n\nCATATAN KHUSUS EKONOMI:\n'
             '- JUDUL WAJIB memuat minimal 1 kata ekonomi.\n'
             '- ISI WAJIB memuat angka/data konkret dari materi.\n'
+            '- KRIPTO, BITCOIN, OKX, BLOCKCHAIN, ASET DIGITAL = SAH ekonomi.\n'
         )
     catatan_olahraga = ''
     if kategori_target == 'olahraga':
@@ -5620,6 +5667,8 @@ def _catatan_kategori_ketat(kategori_target):
         '- JANGAN tolak materi KEPOLISIAN/TNI (Kapolda, Kapolres, Polri) — SAH nasional/daerah.\n'
         '- JANGAN tolak materi POLITIK/HUKUM — SAH nasional.\n'
         '- JANGAN tolak materi MAHKAMAH AGUNG, PT POS, BUPATI, WALI KOTA.\n'
+        '- JANGAN tolak materi BERAU, KALTIM, KALTARA, NUNUKAN, TARAKAN, JAMBI — SAH daerah.\n'
+        '- JANGAN tolak materi KRIPTO, OKX, BITCOIN, INVESTASI DIGITAL — SAH ekonomi.\n'
         '- WAJIB tulis alasan tolak DETIL 1-2 kata setelah titik dua.\n'
         + catatan_gelar
         + catatan_ekonomi
@@ -6518,6 +6567,7 @@ KATA_DOMINAN_INDONESIA = [
     'semarang', 'surabaya', 'bandung', 'yogyakarta', 'denpasar', 'mataram',
     'kupang', 'jayapura', 'ambon', 'bmkg', 'bnpb', 'basarnas', 'kemenkes',
     'kemenhut', 'klhk', 'polri', 'tni', 'prabowo', 'jokowi', 'menteri ri',
+    'jambi',
 ]
 
 def kategori_breaking(c, tip):
@@ -7037,7 +7087,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.103'
+FILE_VERSI = 'V6.17.104'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
