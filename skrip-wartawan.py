@@ -6103,7 +6103,7 @@ def ai_rewrite_teknologi_multi(items, dom):
                     source_url=items[0].get('link', '') if items else '')
 
 # AKHIR PART 3B
-# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS (V6.17.27)
+# PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS
 
 KALENDER_EVENT = [
     {'nama': 'Asian Games Aichi-Nagoya 2026', 'mulai': '2026-09-19', 'selesai': '2026-10-04',
@@ -6189,7 +6189,6 @@ def _tulis_dari_kandidat(c, source_nama, breaking=False, kategori_target='olahra
         print('   Insert gagal: ' + str(e)[:80]); return 0
 
 def _tulis_event_besar(cand, aktif, breaking=False):
-    # V6.17.27: dateline WAJIB kota penyelenggara + kategori internasional
     bagian = []
     semua_materi = ''
     for i, c in enumerate(cand[:5], 1):
@@ -6328,50 +6327,8 @@ def rangkuman_umum_sudah_terbit_hari_ini():
         return False
 
 def sesi_rangkuman_umum(today_urls, seen):
-    print('\nRANGKUMAN OLAHRAGA UMUM: DIMATIKAN (V6.17.11) - skip.')
+    print('\nRANGKUMAN OLAHRAGA UMUM: DIMATIKAN - skip.')
     return 0
-
-# V6.17.27: API Football kurangi request (hemat 429)
-def buat_materi_rangkuman_eropa():
-    skor_semua = []
-    klasemen_blok = []
-    klasemen_teks = []
-    semua_liga = ESPN_LIGA_TOP + ESPN_LIGA_LAIN
-    for idx, (code, nama) in enumerate(semua_liga):
-        # Delay antar liga
-        if idx > 0:
-            time.sleep(2)
-        skor_api = api_skor_football(code, hari_mundur=2)
-        n_api = len(skor_api)
-        if skor_api:
-            for s in skor_api:
-                skor_semua.append(nama.split(' (')[0] + ': ' + s)
-            print('   ' + nama.split(' (')[0] + ': API ' + str(n_api) + ' laga')
-        time.sleep(1)
-        blok_api, teks_api = api_klasmen_football(code)
-        if blok_api:
-            klasemen_blok.append(blok_api)
-            klasemen_teks.append(teks_api)
-    if not skor_semua:
-        print('   TIDAK ADA SKOR DARI API FOOTBALL - return None')
-        return None
-    print('   Total laga terkumpul: ' + str(len(skor_semua))
-          + ' - klasmen: ' + str(len(klasemen_blok)) + ' blok')
-    bagian = []
-    bagian.append('HASIL LAGA TERAKHIR LIGA TOP EROPA (ANGKA RESMI MESIN - SALIN PERSIS):\n'
-                  + '\n'.join(skor_semua))
-    if klasemen_teks:
-        bagian.append('KLASMEN (ANGKA RESMI MESIN - WAJIB disalin ke blok [KLASMEN]):\n'
-                      + '\n'.join(klasemen_teks[:4]))
-    if klasemen_blok:
-        bagian.append('BLOK KLASMEN SIAP-RENDER (WAJIB disalin APA ADUNA di '
-                      'akhir isi berita, jangan diubah, jangan digandakan):\n'
-                      + '\n\n'.join(klasemen_blok[:6]))
-    return '\n\n'.join(bagian)
-
-def buat_materi_rangkuman_nba():
-    print('   NBA via ESPN DIHAPUS - gunakan Google News')
-    return None
 
 def _tulis_event_besar_dari_cand(today_urls, seen, aktif):
     sumber = buat_sumber_event(aktif)
@@ -6386,53 +6343,20 @@ def sesi_olahraga_api(jenis):
     jam = now.hour
 
     if jenis == 'eropa' and 7 <= jam < 12:
-        print('\nOLAHRAGA ' + str(jam) + ':00 - LIGA TOP EROPA / EVENT BESAR / OLAHRAGA UMUM')
-        if olahraga_sudah_terbit_hari_ini('ESPN Data'):
-            print('   ESPN sudah terbit HARI INI - skip.')
+        print('\nOLAHRAGA ' + str(jam) + ':00 - LIGA EROPA / EVENT BESAR / UMUM (Google News)')
+        if olahraga_sudah_terbit_hari_ini('KramaNews Olahraga'):
+            print('   Olahraga pagi sudah terbit HARI INI - skip.')
             return 1
-        print('   TAHAP 1: API Football Liga Top Eropa...')
-        materi = buat_materi_rangkuman_eropa()
-        if materi:
-            k = konteks_waktu()
-            user = ('TANGGAL SEKARANG: ' + k['hari_ini'] + ' (kemarin: ' + k['kemarin'] + ')\n'
-                    'TUGAS: LAPORAN HASIL LIGA TOP EROPA + KLASMEN SEMENTARA.\n'
-                    'GAYA: MINIM KATA.\n\n' + materi + '\n\n'
-                    'FORMAT WAJIB:\n'
-                    '1. Buka 1 kalimat: "Inilah hasil Liga Eropa dan klasmen sementara:"\n'
-                    '2. Daftar SKOR pertandingan dengan ANGKA PERSIS.\n'
-                    '3. SALIN APA ADUNA semua blok [KLASMEN]...[/KLASMEN].\n'
-                    '4. DILARANG narasi bertele-tele.\n'
-                    '5. Dateline: "LONDON, INGGRIS - " (liga top Eropa).\n'
-                    '6. Judul maks 10 kata: sebut "Hasil Liga Eropa".\n'
-                    '7. deskripsi_gambar: tema stadion/bola.\n'
-                    '8. Jangan sebut sumber data.')
-            print('   AI menulis dari data API Football...')
-            try:
-                judul, isi, ringkasan, waktu, gambar = ai_write(user, kategori='olahraga', wajib_topik=False)
-            except BeritaLama as bl:
-                print('   Ditolak AI: ' + str(bl)[:60]); materi = None
-            except Exception as e:
-                print('   ' + str(e)[:90]); materi = None
-            if materi:
-                try:
-                    insert_news(judul, isi, ringkasan, 'olahraga', '',
-                                'https://www.api-football.com/ (data mesin)',
-                                'ESPN Data', 'published', breaking=False,
-                                deskripsi_gambar=gambar)
-                    print('   TERBIT (API Football): ' + judul[:60])
-                    return 1
-                except Exception as e:
-                    print('   Insert gagal: ' + str(e)[:80])
-        print('   TAHAP 2: event besar aktif...')
         aktif = event_besara_aktif()
         if aktif:
+            print('   TAHAP 1: event besar aktif...')
             today_urls = get_today_state()
             seen = set()
             if _tulis_event_besar_dari_cand(today_urls, seen, aktif) == 1:
                 return 1
         else:
             print('   Tidak ada event besar aktif.')
-        print('   TAHAP 3: berita bola apa saja...')
+        print('   TAHAP 2: berita bola via Google News...')
         today_urls = get_today_state()
         seen = set()
         SUMBER_BOLA = [
@@ -6454,11 +6378,11 @@ def sesi_olahraga_api(jenis):
                 ['bola', 'liga', 'sepak', 'football', 'soccer', 'premier',
                  'champions', 'bundesliga', 'serie a', 'la liga'])]
         if bola:
-            hasil = _tulis_dari_kandidat(bola[0], 'Olahraga Pagi',
+            hasil = _tulis_dari_kandidat(bola[0], 'KramaNews Olahraga',
                                           breaking=False, kategori_target='internasional')
             if hasil == 1:
                 return 1
-        print('   TAHAP 4: olahraga umum (fallback terakhir)...')
+        print('   TAHAP 3: olahraga umum (fallback terakhir)...')
         today_urls = get_today_state()
         seen = set()
         SUMBER_OLGA_UMUM = [
@@ -6478,7 +6402,7 @@ def sesi_olahraga_api(jenis):
         cand = [c for c in cand if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
         cand = [c for c in cand if not is_berita_politik_hukum(c['title'] + ' ' + c.get('summary', ''))]
         if cand:
-            hasil = _tulis_dari_kandidat(cand[0], 'Olahraga Pagi',
+            hasil = _tulis_dari_kandidat(cand[0], 'KramaNews Olahraga',
                                           breaking=False, kategori_target='olahraga')
             if hasil == 1:
                 return 1
@@ -6486,9 +6410,9 @@ def sesi_olahraga_api(jenis):
         return 0
 
     if jenis == 'nba' and 13 <= jam < 17:
-        print('\nOLAHRAGA ' + str(jam) + ':00 - NBA/WNBA')
-        if olahraga_sudah_terbit_hari_ini('ESPN Data NBA'):
-            print('   ESPN NBA sudah terbit HARI INI - skip.')
+        print('\nOLAHRAGA ' + str(jam) + ':00 - NBA/WNBA (Google News)')
+        if olahraga_sudah_terbit_hari_ini('KramaNews Olahraga'):
+            print('   Olahraga NBA sudah terbit HARI INI - skip.')
             return 1
         print('   TAHAP 1: NBA via Google News...')
         today_urls = get_today_state()
@@ -6504,7 +6428,7 @@ def sesi_olahraga_api(jenis):
         cand = [c for c in cand if teks_mengandung(c['title'] + ' ' + c['summary'], ['nba', 'wnba'])]
         cand = [c for c in cand if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
         if cand:
-            hasil = _tulis_dari_kandidat(cand[0], 'Rangkuman NBA',
+            hasil = _tulis_dari_kandidat(cand[0], 'KramaNews Olahraga',
                                           breaking=False, kategori_target='olahraga')
             if hasil == 1:
                 return 1
@@ -6521,7 +6445,7 @@ def sesi_olahraga_api(jenis):
         cand = [c for c in cand if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
         cand = [c for c in cand if not is_berita_politik_hukum(c['title'] + ' ' + c.get('summary', ''))]
         if cand:
-            hasil = _tulis_dari_kandidat(cand[0], 'Olahraga Siang',
+            hasil = _tulis_dari_kandidat(cand[0], 'KramaNews Olahraga',
                                           breaking=False, kategori_target='olahraga')
             if hasil == 1:
                 return 1
@@ -6595,12 +6519,8 @@ def _kandidat_beda_topik(kandidat_baru, kandidat_lama):
         return False
     return True
 
-# ══════════════════════════════════════════════════════
-# V6.17.85: cek dobel breaking meski topik besar (karhutla dobel)
-# ══════════════════════════════════════════════════════
-
 def _topik_breaking_sudah_terbit(judul_baru, min_irisan=4):
-    """V6.17.85: cek apakah topik breaking sudah pernah terbit,
+    """Cek apakah topik breaking sudah pernah terbit,
     meskipun topiknya topik besar. Khusus untuk kasus karhutla dobel."""
     if not judul_baru:
         return None
@@ -6685,7 +6605,6 @@ def sesi_breaking(today_urls, seen):
         if sudah_serupa(c['title']):
             print('   Skip (dobel): ' + c['title'][:50])
             continue
-        # V6.17.85: cek topik breaking sudah terbit (meski topik besar)
         topik_brk = _topik_breaking_sudah_terbit(c['title'], min_irisan=4)
         if topik_brk:
             print('   Skip (topik breaking sudah terbit): ' + topik_brk[:80])
@@ -6710,7 +6629,6 @@ def sesi_breaking(today_urls, seen):
             if not _breaking_ada_lokasi(judul, isi):
                 print('   DITOLAK - breaking tanpa lokasi spesifik: ' + judul[:50])
                 continue
-        # V6.17.85: cek topik breaking sudah terbit SETELAH AI tulis
         topik_brk_final = _topik_breaking_sudah_terbit(judul, min_irisan=4)
         if topik_brk_final:
             print('   DITOLAK - topik breaking sudah terbit: ' + topik_brk_final[:80])
@@ -6736,7 +6654,6 @@ def sesi_breaking(today_urls, seen):
             print('   Insert gagal: ' + str(e)[:80])
     return made
 
-# V6.17.66: tambah KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN biar "Kalimantan" lolos
 def _breaking_ada_lokasi(judul, isi):
     gab = ((judul or '') + ' ' + (isi or '')).lower()
     for kota in KOTA_INDONESIA_DATELINE:
@@ -6776,7 +6693,6 @@ def kategori_breaking(c, tip):
     if any(w in teks for w in LUAR_NEGERI_WORDS):
         return 'internasional'
     return 'nasional'
-
 
 KATEGORI_DB = {
     'nasional': 'nasional', 'daerah': 'daerah',
@@ -6865,13 +6781,10 @@ def tolak_amerika_lokal(teks):
             return True
     return False
 
-# V6.17.88 + V6.17.92 + V6.17.94: batas percobaan kandidat
-# V6.17.94: batas 1 untuk SEMUA jam (hemat token)
 def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                   sumber_custom=None, domain_tek=None, wajib_regional=False,
                   sumber_fallback=None):
     jam_sekarang = datetime.now(WITA).hour
-    # V6.17.94: batas 1 semua jam — hemat token
     batas_percobaan = 1
     max_umur = max_umur_kategori(cat)
     cand = collect_candidates(sumber_custom if sumber_custom else HUNT.get(cat, []),
@@ -6954,7 +6867,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
     percobaan = 0
     kandidat_terpakai = []
     for g in groups:
-        # V6.17.94: batas percobaan 1 semua jam
         if percobaan >= batas_percobaan:
             break
         items = g['items']
@@ -6999,7 +6911,8 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
             img_url = get_image(top.get('entry'))
             if img_url and gambar_sudah_dipakai(img_url):
                 img_url = ''
-            src_nama = sumber_fallback if sumber_fallback else top.get('source', '')
+            # Pakai nama portal asli kalau ada, kalau tidak pakai fallback
+            src_nama = top.get('source', '') or sumber_fallback or ''
             insert_news(judul, isi, ringkasan, kategori_final, img_url,
                         top.get('link', ''), src_nama,
                         'published', deskripsi_gambar=gambar)
@@ -7023,121 +6936,6 @@ def sesi_otomotif(today_urls, seen):
                      sumber_custom=sumber_oto,
                      sumber_fallback='Otomotif: ' + dom['nama']):
         return 1
-    return 0
-
-def sesi_olahraga_api(jenis):
-    now = datetime.now(WITA)
-    jam = now.hour
-
-    if jenis == 'eropa' and 7 <= jam < 12:
-        print('\nOLAHRAGA ' + str(jam) + ':00 - LIGA EROPA / EVENT BESAR / UMUM (Google News)')
-        if olahraga_sudah_terbit_hari_ini('Olahraga Pagi'):
-            print('   Olahraga Pagi sudah terbit HARI INI - skip.')
-            return 1
-        aktif = event_besara_aktif()
-        if aktif:
-            print('   TAHAP 1: event besar aktif...')
-            today_urls = get_today_state()
-            seen = set()
-            if _tulis_event_besar_dari_cand(today_urls, seen, aktif) == 1:
-                return 1
-        else:
-            print('   Tidak ada event besar aktif.')
-        print('   TAHAP 2: berita bola via Google News...')
-        today_urls = get_today_state()
-        seen = set()
-        SUMBER_BOLA = [
-            GN('hasil pertandingan bola semalam', 'id', 'GN Hasil Bola'),
-            GN('hasil premier league', 'id', 'GN Hasil Premier League'),
-            GN('hasil liga champions', 'id', 'GN Hasil Liga Champions'),
-            GN('berita bola terkini', 'id', 'GN Berita Bola'),
-            GN('hasil la liga serie a', 'id', 'GN Hasil Liga Eropa'),
-            GN('hasil bundesliga ligue 1', 'id', 'GN Hasil Liga Eropa 2'),
-            GN('premier league news', 'en', 'GN Premier League'),
-            GN('champions league news', 'en', 'GN Champions League'),
-            GN('soccer match results', 'en', 'GN Soccer'),
-            RSSF('https://www.bola.net/feed', 'Bola.net'),
-            RSSF('https://www.cnnindonesia.com/olahraga/rss', 'CNN Olahraga'),
-            RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
-        ]
-        cand = collect_candidates(SUMBER_BOLA, today_urls, seen, max_umur_jam=30, kategori='internasional')
-        bola = [c for c in cand if teks_mengandung(c['title'] + ' ' + c['summary'],
-                ['bola', 'liga', 'sepak', 'football', 'soccer', 'premier',
-                 'champions', 'bundesliga', 'serie a', 'la liga'])]
-        if bola:
-            hasil = _tulis_dari_kandidat(bola[0], 'Olahraga Pagi',
-                                          breaking=False, kategori_target='internasional')
-            if hasil == 1:
-                return 1
-        print('   TAHAP 3: olahraga umum (fallback terakhir)...')
-        today_urls = get_today_state()
-        seen = set()
-        SUMBER_OLGA_UMUM = [
-            GN('berita olahraga terkini', 'id', 'GN Olahraga'),
-            GN('hasil pertandingan hari ini', 'id', 'GN Hasil Hari Ini'),
-            GN('timnas indonesia', 'id', 'GN Timnas'),
-            GN('badminton hasil', 'id', 'GN Badminton'),
-            GN('motogp hasil', 'id', 'GN MotoGP'),
-            GN('voli hasil', 'id', 'GN Voli'),
-            GN('tenis hasil', 'id', 'GN Tenis'),
-            GN('basket hasil', 'id', 'GN Basket'),
-            RSSF('https://www.cnnindonesia.com/olahraga/rss', 'CNN Olahraga'),
-            RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
-            RSSF('https://www.bola.net/feed', 'Bola.net'),
-        ]
-        cand = collect_candidates(SUMBER_OLGA_UMUM, today_urls, seen, max_umur_jam=30, kategori='olahraga')
-        cand = [c for c in cand if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
-        cand = [c for c in cand if not is_berita_politik_hukum(c['title'] + ' ' + c.get('summary', ''))]
-        if cand:
-            hasil = _tulis_dari_kandidat(cand[0], 'Olahraga Pagi',
-                                          breaking=False, kategori_target='olahraga')
-            if hasil == 1:
-                return 1
-        print('   Tidak ada berita olahraga apa pun - skip.')
-        return 0
-
-    if jenis == 'nba' and 13 <= jam < 17:
-        print('\nOLAHRAGA ' + str(jam) + ':00 - NBA/WNBA (Google News)')
-        if olahraga_sudah_terbit_hari_ini('Rangkuman NBA'):
-            print('   NBA sudah terbit HARI INI - skip.')
-            return 1
-        print('   TAHAP 1: NBA via Google News...')
-        today_urls = get_today_state()
-        seen = set()
-        SUMBER_NBA = [
-            GN('NBA scores results', 'en', 'GN NBA Hasil'),
-            GN('NBA standings', 'en', 'GN NBA Klasmen'),
-            GN('WNBA scores results', 'en', 'GN WNBA Hasil'),
-            GN('NBA news', 'en', 'GN NBA Berita'),
-            GN('berita NBA', 'id', 'GN NBA Berita ID'),
-        ]
-        cand = collect_candidates(SUMBER_NBA, today_urls, seen, max_umur_jam=30, kategori='olahraga')
-        cand = [c for c in cand if teks_mengandung(c['title'] + ' ' + c['summary'], ['nba', 'wnba'])]
-        cand = [c for c in cand if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
-        if cand:
-            hasil = _tulis_dari_kandidat(cand[0], 'Rangkuman NBA',
-                                          breaking=False, kategori_target='olahraga')
-            if hasil == 1:
-                return 1
-        print('   TAHAP 2: olahraga umum (fallback)...')
-        today_urls = get_today_state()
-        seen = set()
-        SUMBER_OLGA_UMUM = [
-            GN('berita olahraga terkini', 'id', 'GN Olahraga'),
-            GN('hasil pertandingan hari ini', 'id', 'GN Hasil Hari Ini'),
-            RSSF('https://www.cnnindonesia.com/olahraga/rss', 'CNN Olahraga'),
-            RSSF('https://sports.yahoo.com/rss/', 'Yahoo Sports'),
-        ]
-        cand = collect_candidates(SUMBER_OLGA_UMUM, today_urls, seen, max_umur_jam=30, kategori='olahraga')
-        cand = [c for c in cand if adalah_konten_olahraga(c['title'] + ' ' + c.get('summary', ''))]
-        cand = [c for c in cand if not is_berita_politik_hukum(c['title'] + ' ' + c.get('summary', ''))]
-        if cand:
-            hasil = _tulis_dari_kandidat(cand[0], 'Olahraga Siang',
-                                          breaking=False, kategori_target='olahraga')
-            if hasil == 1:
-                return 1
-        print('   Tidak ada berita olahraga - skip.')
-        return 0
     return 0
 
 def sesi_kategori(today_urls, seen):
@@ -7397,7 +7195,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.99'
+FILE_VERSI = 'V6.17.100'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
