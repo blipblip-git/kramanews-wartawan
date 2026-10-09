@@ -1986,16 +1986,11 @@ def gn_split(title):
 MATERI_MIN_KARAKTER_RSS = 120
 MATERI_MIN_KARAKTER_RSS_NASIONAL = 300
 MATERI_MIN_KARAKTER_RSS_DAERAH    = 250
-# V6.17.85: threshold breaking 100 → 200 (materi 158 kar terlalu tipis)
 MATERI_MIN_KARAKTER_BREAKING = 200
 MATERI_MIN_KARAKTER_ASEAN = 600
 
 # V6.17.86: deteksi materi sampah anti-bot/JS block
 def _materi_sampah(teks):
-    """
-    V6.17.86: Cek apakah materi memuat frasa anti-bot/JS block.
-    Kalau ≥2 frasa → materi sampah → tolak (tapi JANGAN blacklist URL).
-    """
     if not teks:
         return False
     t = teks.lower()
@@ -2019,6 +2014,44 @@ def _materi_dominan_url(teks):
         return True
     return False
 
+# ══════════════════════════════════════════════════════
+# V6.17.97: deteksi materi agregator (banyak judul berita campur)
+# Contoh: oceanweek.co.id yang RSS-nya cuma daftar judul berita
+# ══════════════════════════════════════════════════════
+
+def _materi_agregator(teks, judul=''):
+    """
+    V6.17.97: Cek apakah materi cuma daftar judul berita (agregator).
+    Tanda-tanda:
+    - Banyak frasa '... | ...' atau '... - ...' dalam 1 materi
+    - Banyak kalimat pendek tanpa titik akhir
+    - Banyak kata berkapital awal (judul berita)
+    """
+    if not teks or len(teks) < 100:
+        return False
+    t = teks.strip()
+
+    # Tanda 1: banyak judul berita dipisah ' - ' atau ' | '
+    jumlah_pemisah = len(re.findall(r'\s+[-|]\s+', t))
+    if jumlah_pemisah >= 5:
+        return True
+
+    # Tanda 2: banyak kalimat pendek (< 80 kar) tanpa titik
+    kalimat = re.split(r'(?<=[.!?])\s+', t)
+    kalimat_pendek = [k for k in kalimat
+                      if 20 <= len(k) <= 80
+                      and not k.rstrip().endswith(('.', '!', '?'))]
+    if len(kalimat_pendek) >= 4:
+        return True
+
+    # Tanda 3: banyak kata berkapital awal dalam materi
+    kata_kapital = re.findall(r'\b[A-Z][a-z]{3,}\b', t)
+    total_kata = len(re.findall(r'\b[a-z]{3,}\b', t.lower()))
+    if total_kata > 20 and len(kata_kapital) / total_kata > 0.30:
+        return True
+
+    return False
+
 def _materi_nyambung_judul(judul, materi, min_irisan=2):
     if not judul or not materi:
         return False, 'judul/materi kosong'
@@ -2039,7 +2072,6 @@ def _materi_nyambung_judul(judul, materi, min_irisan=2):
 def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
     if not materi:
         return False, 'materi kosong'
-    # V6.17.86: cek materi sampah (anti-bot/JS block) SEBELUM cek panjang
     if _materi_sampah(materi):
         return False, 'materi sampah (anti-bot/JS block)'
     if kategori == 'breaking':
@@ -2066,6 +2098,9 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
                        + ', kategori=' + str(kategori) + ')')
     if _materi_dominan_url(materi):
         return False, 'materi dominan URL/link (bukan artikel asli)'
+    # V6.17.97: cek materi agregator (banyak judul berita campur)
+    if _materi_agregator(materi, judul):
+        return False, 'materi agregator (banyak judul berita campur)'
     ok, alasan = _materi_nyambung_judul(judul, materi)
     if not ok:
         return False, alasan
@@ -2343,7 +2378,6 @@ def _kandidat_kategori_materi(kategori, judul, summary):
         if not any(k in gab for k in KATA_LUAR_NEGERI_WAJIB):
             return False, 'kategori internasional tapi materi tidak ada kata luar negeri'
     elif kategori == 'ekonomi':
-        # V6.17.92: tolak kalau materi jelas bukan ekonomi (data centre/AI)
         non_eko = _materi_bukan_ekonomi(gab)
         if non_eko:
             return False, 'kategori ekonomi tapi materi bukan ekonomi (' + non_eko + ')'
@@ -2612,7 +2646,6 @@ def _kandidat_bukan_dobel(judul):
                 return False, 'dobel-6jam dengan "' + t[:40] + '"'
     return True, ''
 
-# V6.17.76: longgarkan min irisan 3 → 4
 def _dobel_dateline_topik(judul_baru, isi_baru):
     if not judul_baru or not isi_baru:
         return None
@@ -2807,7 +2840,6 @@ KATA_FRASA_PREDIKSI = [
     'siap bertanding', 'siap berlaga', 'siap berhadapan', 'siap menghadapi',
 ]
 
-# V6.17.81: frasa live/in-progress — pertandingan sedang berlangsung
 KATA_FRASA_LIVE = [
     'babak tambahan', 'babak pertama', 'babak kedua',
     'babak perpanjangan', 'extra time', 'perpanjangan waktu',
@@ -2826,18 +2858,6 @@ KATA_FRASA_LIVE = [
 ]
 
 def _materi_basi(judul, summary):
-    """
-    V6.17.75: Cek materi basi — kalau judul/summary memuat tanggal lengkap
-    atau bulan+tahun yang lebih LAMA dari bulan sekarang → tolak.
-
-    V6.17.77: Tambah cek frasa prediksi ("akan bertanding") + tanggal
-    sudah lewat → tolak.
-
-    V6.17.81: Tambah cek frasa LIVE/IN-PROGRESS + topik sudah terbit
-    → tolak.
-
-    Return: (True, alasan) kalau basi, (False, '') kalau OK.
-    """
     teks = ((judul or '') + ' ' + (summary or '')).strip()
     if not teks:
         return False, ''
@@ -2847,7 +2867,6 @@ def _materi_basi(judul, summary):
     tanggal_sekarang = now.day
     teks_low = teks.lower()
 
-    # Cek pola tanggal lengkap (dd Bulan yyyy)
     for m in POLA_TANGGAL_LENGKAP.finditer(teks):
         try:
             nama_bulan = m.group(2).lower()
@@ -2864,7 +2883,6 @@ def _materi_basi(judul, summary):
         except Exception:
             continue
 
-    # Cek pola bulan+tahun (Bulan yyyy)
     for m in POLA_BULAN_TAHUN.finditer(teks):
         try:
             nama_bulan = m.group(1).lower()
@@ -2881,7 +2899,6 @@ def _materi_basi(judul, summary):
         except Exception:
             continue
 
-    # V6.17.77: cek frasa prediksi + tanggal sudah lewat
     ada_prediksi = any(f in teks_low for f in KATA_FRASA_PREDIKSI)
     if ada_prediksi:
         tanggal_lewat = False
@@ -2932,10 +2949,8 @@ def _materi_basi(judul, summary):
             return True, ('materi basi prediksi (frasa "' + frasa_ketemu
                           + '" + tanggal lewat ' + detail_tanggal + ')')
 
-    # V6.17.81: cek frasa LIVE/IN-PROGRESS + topik sudah terbit
     frasa_live_ketemu = next((f for f in KATA_FRASA_LIVE if f in teks_low), None)
     if frasa_live_ketemu:
-        # Cek apakah topik ini sudah pernah terbit → berarti ini berita basi
         judul_lama = _judul_dari_url_supabase()
         topik_dobel = _topik_sudah_terbit(judul, judul_lama)
         if topik_dobel:
@@ -2943,10 +2958,6 @@ def _materi_basi(judul, summary):
                           + '" + topik sudah terbit: ' + topik_dobel[:60] + ')')
 
     return False, ''
-
-# ══════════════════════════════════════════════════════
-# V6.17.75: REVISI #2 - TOLAK RSS TANPA TANGGAL
-# ══════════════════════════════════════════════════════
 
 def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''):
     if max_umur_jam is None:
@@ -2972,7 +2983,6 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                 skip_rejected += 1
                 continue
             u = umur_jam(entry)
-            # V6.17.75: revisi #2 - tolak RSS tanpa tanggal
             if u is None:
                 skip_tanpa_tanggal += 1
                 continue
@@ -2983,14 +2993,8 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
             if not title or not summary:
                 continue
 
-            # ══════════════════════════════════════════════════════
-            # V6.17.94: PRE-FILTER LOKAL — hemat token DeepSeek
-            # Versi LONGGAR: hanya buang yang JELAS sampah.
-            # Kandidat ragu-ragu tetap lolos ke AI (AI yang putuskan).
-            # ══════════════════════════════════════════════════════
             _t_low = (title + ' ' + summary).lower()
 
-            # 1. Materi sampah — hanya skip kalau ≥2 frasa sampah
             _hit_sampah = sum(1 for k in KATA_MATERI_SAMPAH if k in _t_low)
             if _hit_sampah >= 2:
                 skip_layak += 1
@@ -2999,7 +3003,6 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                           + str(_hit_sampah) + ' frasa — ' + title[:50])
                 continue
 
-            # 2. Aktor non-breaking — hanya skip kalau ≥2 aktor muncul
             _aktor_hit = []
             for _ak in AKTOR_NON_BREAKING:
                 if len(_ak) <= 4:
@@ -3020,12 +3023,10 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                           + ', '.join(_aktor_hit[:2]) + ' — ' + title[:50])
                 continue
 
-            # 3. Domain skip — tetap skip (pasti gagal)
             if domain_skip_scrape(link):
                 skip_layak += 1
                 continue
 
-            # 4. Kategori: cek kata kunci LONGGAR di judul + summary + 500 kar materi
             if kategori and kategori != 'breaking':
                 _kata_kat = KATA_KUNCI_KATEGORI.get(kategori, [])
                 if _kata_kat:
@@ -3048,15 +3049,12 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                                   + ' — ' + title[:50])
                         continue
 
-            # 5. Breaking dunia: tolak yang jelas simulasi/kecil
             if kategori == 'breaking':
                 _tolak_brk = sum(1 for k in BREAKING_INT_TOLAK if k in _t_low)
                 if _tolak_brk >= 1:
                     skip_layak += 1
                     continue
-            # ══════════════════════════════════════════════════════
 
-            # V6.17.75: revisi #1 - cek berita basi
             basi, alasan_basi = _materi_basi(title, summary)
             if basi:
                 skip_basi += 1
@@ -3131,7 +3129,6 @@ def match_articles(candidates):
     return groups
 
 # AKHIR PART 3A-1
-
 # PART 3A-2 - BARAT + DATELINE + JANJI + SKOR + NARASUMBER + BUKAN_BERITA + LUAR_NEGERI + TOKOH + KOTA + CEK_KATEGORI + TOPIK
 
 def kategori_barat(title, summary):
@@ -3293,11 +3290,10 @@ IBU_KOTA_NEGARA = {
     'ho chi minh city': ['vietnam', 'ho chi minh', 'hcmc', 'saigon'],
     'hcmc': ['vietnam', 'ho chi minh', 'ho chi minh city', 'saigon'],
     'saigon': ['vietnam', 'ho chi minh', 'ho chi minh city', 'hcmc'],
-    # V6.17.85: tambah ibu kota Afrika + lainnya
     'abuja': ['nigeria'], 'kano': ['nigeria'], 'ibadan': ['nigeria'],
     'dakar': ['senegal'], 'bamako': ['mali'], 'ouagadougou': ['burkina faso'],
     'niamey': ['niger'], 'n-djamena': ["chad", "chad"], 'ndjamena': ['chad'],
-    'khartoum': ['sudan'], 'juba': ['sudan selatan', 'south sudan'],
+    'juba': ['sudan selatan', 'south sudan'],
     'kinshasa': ['kongo', 'congo', 'republik demokratik kongo', 'drc'],
     'brazzaville': ['kongo', 'congo', 'republik kongo'],
     'luanda': ['angola'], 'maputo': ['mozambik', 'mozambique'],
@@ -3308,7 +3304,6 @@ IBU_KOTA_NEGARA = {
     'kigali': ['rwanda'], 'bujumbura': ['burundi'], 'gitega': ['burundi'],
     'kampala': ['uganda'], 'dodoma': ['tanzania'], 'dar es salaam': ['tanzania'],
     'asmara': ['eritrea'], 'djibouti': ['djibouti'],
-    'mogadishu': ['somalia'],
     'moroni': ['komoro', 'comoros'],
     'port louis': ['mauritius'], 'victoria': ['seychelles'],
     'libreville': ['gabon'], 'malabo': ['guinea ekuatorial', 'equatorial guinea'],
@@ -3318,20 +3313,12 @@ IBU_KOTA_NEGARA = {
     'banjul': ['gambia'], 'nouakchott': ['mauritania'],
     'praia': ['tanjung verde', 'cape verde'],
     'sao tome': ['sao tome dan principe'],
-    'algiers': ['aljazair', 'algeria'],
-    'rabat': ['maroko', 'morocco'], 'casablanca': ['maroko', 'morocco'],
-    'tunis': ['tunisia'], 'tripoli': ['libya'], 'benghazi': ['libya'],
-    'cairo': ['mesir', 'egypt'], 'alexandria': ['mesir', 'egypt'],
-    'khartoum': ['sudan'],
-    'addis ababa': ['ethiopia'], 'nairobi': ['kenya'], 'mombasa': ['kenya'],
-    'kampala': ['uganda'], 'kigali': ['rwanda'],
-    'pretoria': ['afrika selatan', 'south africa'],
-    'cape town': ['afrika selatan', 'south africa'],
+    'casablanca': ['maroko', 'morocco'],
+    'benghazi': ['libya'],
+    'alexandria': ['mesir', 'egypt'],
+    'mombasa': ['kenya'],
     'johannesburg': ['afrika selatan', 'south africa'],
     'durban': ['afrika selatan', 'south africa'],
-    'accra': ['ghana'], 'lagos': ['nigeria'], 'abuja': ['nigeria'],
-    'kano': ['nigeria'],
-    # Tambahan Asia & lain
     'yangon': ['myanmar'], 'mandalay': ['myanmar'],
     'chiang mai': ['thailand'], 'phuket': ['thailand'],
     'da nang': ['vietnam'], 'hoi an': ['vietnam'], 'hue': ['vietnam'],
@@ -3412,30 +3399,16 @@ def cek_dateline(isi, user_content):
             return 'klaim KALTARA tapi kota "' + kota + '" bukan wilayah Kaltara'
     return None
 
-# ══════════════════════════════════════════════════════
-# V6.17.82: PARSE_AI_JSON — strip teks setelah JSON valid
-# Handle error "Extra data: line 3 column 1"
-# ══════════════════════════════════════════════════════
-
 def parse_ai_json(text):
-    """
-    V6.17.82: Parse JSON dari AI dengan toleransi ekstra teks.
-    - Strip markdown code fence
-    - Cari objek JSON pertama { ... } dan abaikan teks setelahnya
-    - Raise ValueError kalau tidak ada JSON valid
-    """
     t = (text or '').strip()
     if not t:
         raise ValueError('parse_ai_json: teks kosong')
-    # Strip markdown code fence
     if t.startswith('```'):
         t = re.sub(r'^```[a-zA-Z]*\s*', '', t)
         t = re.sub(r'\s*```\s*$', '', t)
-    # Cari objek JSON pertama
     start = t.find('{')
     if start == -1:
         raise ValueError('parse_ai_json: tidak ada { di output AI')
-    # Hitung kurung kurawal untuk menemukan akhir objek JSON pertama
     depth = 0
     in_str = False
     escape = False
@@ -3473,7 +3446,6 @@ def ada_persen_kata(teks):
 def perbaiki_persen(teks):
     return POLA_PERSEN.sub(lambda m: m.group(1).rstrip('.,') + '%', teks or '')
 
-# V6.17.86: buang 'gaji' dari JANJI_HARGA (false positive)
 JANJI_HARGA = ['harga', 'tarif', 'biaya', 'berapa', 'sewa']
 
 def cek_janji_judul(judul, isi):
@@ -3533,7 +3505,7 @@ KATA_LARANG_GAMBAR_HARD = [
     'slippers', 'footwear', 'high heels', 'stiletto', 'sendal', 'sepatu',
 ]
 
-# V6.17.95: konteks perikanan → "fish"/"ikan" boleh (pedagang ikan, nelayan, perikanan)
+# V6.17.95: konteks perikanan → "fish"/"ikan" boleh
 KONTEKS_IKAN_DIIZINKAN = [
     'pedagang ikan', 'ikan segar', 'ikan asin', 'ikan hias',
     'nelayan', 'perikanan', 'budidaya ikan', 'tambak',
@@ -3544,7 +3516,6 @@ KONTEKS_IKAN_DIIZINKAN = [
 ]
 
 def _konteks_ikan_diizinkan(teks):
-    """V6.17.95: cek apakah konteks perikanan → ikan boleh."""
     t = (teks or '').lower()
     for k in KONTEKS_IKAN_DIIZINKAN:
         if k in t:
@@ -3553,10 +3524,8 @@ def _konteks_ikan_diizinkan(teks):
 
 def cek_deskripsi_gambar(deskripsi, konteks_materi=''):
     d = (deskripsi or '').lower()
-    # V6.17.95: kalau konteks perikanan → skip cek ikan/fish
     konteks_perikanan = _konteks_ikan_diizinkan(konteks_materi)
     for k in KATA_HEWAN_SLUG:
-        # V6.17.95: fish/ikan diizinkan kalau konteks perikanan
         if k in ('fish', 'ikan') and konteks_perikanan:
             continue
         if k.endswith('_') or k.endswith('-'):
@@ -3604,13 +3573,7 @@ def ambil_magnitude(teks):
             return None
     return None
 
-# ══════════════════════════════════════════════════════
-# V6.17.85: skor_domestik tolak negara asing tanpa konteks Indonesia
-# V6.17.90: skor_domestik tolak aktor non-breaking (selebriti/artis)
-# ══════════════════════════════════════════════════════
-
 def _ada_konteks_indonesia_kuat(teks):
-    """V6.17.85: cek apakah teks punya konteks Indonesia yang kuat."""
     t = (teks or '').lower()
     hit = 0
     for k in INDO_GEO:
@@ -3618,11 +3581,9 @@ def _ada_konteks_indonesia_kuat(teks):
             hit += 1
             if hit >= 2:
                 return True
-    # Nama tokoh Indonesia
     for tokoh in NAMA_TOKOH_INDONESIA:
         if re.search(r'\b' + re.escape(tokoh) + r'\b', t):
             return True
-    # Lembaga Indonesia (kecuali TNI)
     for lem in LEMBAGA_INDONESIA:
         if lem == 'tni':
             continue
@@ -3632,15 +3593,12 @@ def _ada_konteks_indonesia_kuat(teks):
         else:
             if lem in t:
                 return True
-    # BMKG, BNPB, Basarnas, dll
     for k in ['bmkg', 'bnpb', 'basarnas', 'bpbd', 'kemensos', 'kemenkes']:
         if k in t:
             return True
     return False
 
 def _ada_negara_asing_dominan(teks):
-    """V6.17.85: cek apakah teks dominan tentang negara asing.
-    Return nama negara kalau ada, '' kalau tidak."""
     t = (teks or '').lower()
     for negara in NEGARA_ASING:
         if len(negara) <= 4:
@@ -3655,11 +3613,9 @@ def skor_domestik(title, summary):
     t = (title + ' ' + summary).lower()
     if any(w in t for w in KATA_ANALISIS):
         return 0
-    # V6.17.90: tolak kalau aktor utama selebriti/artis/influencer (DiCaprio dll)
     aktor_nb = _ada_aktor_non_breaking(t)
     if aktor_nb:
         return 0
-    # V6.17.85: TOLAK kalau dominan negara asing & tanpa konteks Indonesia
     negara_asing = _ada_negara_asing_dominan(t)
     if negara_asing and not _ada_konteks_indonesia_kuat(t):
         return 0
@@ -3680,7 +3636,6 @@ def skor_dunia(title, summary):
     t = (title + ' ' + summary).lower()
     if any(w in t for w in KATA_ANALISIS):
         return 0
-    # V6.17.90: tolak aktor non-breaking juga di skor dunia (konsisten)
     aktor_nb = _ada_aktor_non_breaking(t)
     if aktor_nb:
         return 0
@@ -4085,7 +4040,7 @@ def _kpk_konteks_indonesia(teks):
             return True
     return False
 
-# V6.17.93: kata jabatan yang sering SALAH TANGKAP sebagai tokoh Indonesia
+# V6.17.93: jabatan ambigu (menteri keuangan India, dsb)
 JABATAN_AMBIGU_INDONESIA = [
     'menteri keuangan', 'menteri luar negeri', 'menteri pertahanan',
     'menteri dalam negeri', 'menteri kesehatan', 'menteri pendidikan',
@@ -4095,7 +4050,6 @@ JABATAN_AMBIGU_INDONESIA = [
 ]
 
 def _ada_konteks_indonesia_di_sekitar(teks, posisi, lebar=100):
-    """V6.17.93: cek apakah di sekitar posisi ada konteks Indonesia kuat."""
     awal = max(0, posisi - lebar)
     akhir = min(len(teks), posisi + lebar)
     sekitar = teks[awal:akhir].lower()
@@ -4106,6 +4060,19 @@ def _ada_konteks_indonesia_di_sekitar(teks, posisi, lebar=100):
             return True
     return False
 
+# V6.17.97: konteks kabut asap/karhutla — prabowo/jokowi jangan trigger tolak
+KONTEKS_KABUT_ASAP = [
+    'kabut asap', 'haze', 'karhutla', 'kebakaran hutan',
+    'asap kiriman', 'asap lintas negara', 'polusi asap',
+]
+
+def _ada_konteks_kabut_asap(teks):
+    t = (teks or '').lower()
+    for k in KONTEKS_KABUT_ASAP:
+        if k in t:
+            return True
+    return False
+
 def cek_kategori_dari_isi(isi, judul, kategori_target):
     if not isi:
         return None
@@ -4113,8 +4080,11 @@ def cek_kategori_dari_isi(isi, judul, kategori_target):
         return None
     gab = (judul or '') + ' ' + (isi or '')
     t = gab.lower()
+    # V6.17.97: kalau konteks kabut asap/karhutla → jangan tolak tokoh Indonesia
+    konteks_kabut = _ada_konteks_kabut_asap(t)
     for tokoh in NAMA_TOKOH_INDONESIA:
-        # V6.17.93: skip jabatan ambigu tanpa konteks Indonesia
+        if konteks_kabut:
+            continue
         if tokoh in JABATAN_AMBIGU_INDONESIA:
             for m in re.finditer(re.escape(tokoh), t):
                 if not _ada_konteks_indonesia_di_sekitar(t, m.start()):
@@ -5093,9 +5063,10 @@ def _cek_kategori_isi_penuh(judul_ai, isi_ai, kategori_target):
         return True, ''
     return False, 'judul & isi AI tidak ada kata kunci kategori ' + kategori_target
 
-# V6.17.87: blacklist kata kerja/frasa judul agregator (biar tidak salah tangkap "Bawa Aspirasi DOB")
+# V6.17.87: blacklist kata kerja/frasa judul agregator
 # V6.17.89: tambah kata kerja/frasa judul yang masih lolos
 # V6.17.91: tambah singkatan kementerian/sapaan
+# V6.17.97: tambah frasa dari agregator oceanweek
 KATA_BUKAN_NAMA_PEJABAT = [
     'tekankan', 'pentingnya', 'menanamkan', 'persatuan', 'kesatuan',
     'himbau', 'imbau', 'ajak', 'dorong', 'ingatkan', 'minta', 'serukan',
@@ -5131,11 +5102,9 @@ KATA_BUKAN_NAMA_PEJABAT = [
     'kecamatan', 'kelurahan', 'desa',
     'karhutla', 'kebakaran', 'banjir', 'gempa', 'tsunami', 'longsor',
     'gotong', 'royong', 'gotong royong', 'kerja', 'bakti',
-    # V6.17.87: tambah blacklist frasa judul agregator
     'bawa', 'bawaan', 'aspirasi', 'rakor', 'flash', 'kunker', 'kunjungan',
     'imbauan', 'ajakan', 'dorongan', 'pernyataan', 'sorotan',
     'fokus', 'ubah', 'ganti', 'kembali', 'lanjut', 'mulai', 'tutup',
-    # V6.17.89: tambah kata kerja/frasa judul yang masih lolos
     'pastikan', 'pastinya', 'kebutuhan', 'butuh', 'perlu',
     'jalan', 'perbatasan', 'masuk', 'rencana', 'induk', 'master',
     'provinsi', 'kabupaten', 'kota', 'pemprov', 'pemkab', 'pemkot',
@@ -5147,7 +5116,6 @@ KATA_BUKAN_NAMA_PEJABAT = [
     'buka', 'tutup', 'buka suara', 'buka-bukaan',
     'tangani', 'atasi', 'selesai', 'selesaikan', 'tuntaskan',
     'kawal', 'awal', 'akhir', 'baru', 'lama',
-    # V6.17.91: singkatan kementerian/sapaan (bukan nama orang)
     'pmk', 'pmm', 'menko', 'menkopolhukam', 'menkomarves',
     'mendikdasmen', 'mendikbud', 'mendikbudristek', 'menkes',
     'menkeu', 'menlu', 'menhan', 'mendag', 'menhub', 'menaker',
@@ -5156,6 +5124,11 @@ KATA_BUKAN_NAMA_PEJABAT = [
     'mentrans', 'menkominfo', 'menkominfo', 'menpupr',
     'menko pmk', 'koordinator', 'bidang',
     'kunker', 'kunjungan kerja', 'kunjungan',
+    # V6.17.97: frasa dari agregator oceanweek
+    'perhatikan', 'pelayaran', 'berjatuhan', 'tetapkan', 'rute',
+    'berkecamuk', 'berjuang', 'bocor', 'ditangkap', 'digerebek',
+    'resmi', 'buat', 'dirikan', 'siapkan', 'gelar', 'luncurkan',
+    'lakukan', 'kembali', 'kembalikan', 'tampil', 'turun',
 ]
 
 # V6.17.89: kata sambung yang menandakan akhir nama (biar tidak nangkap 2 jabatan)
@@ -5175,6 +5148,9 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
                                              'berita terkini', 'update terkini',
                                              'headline', 'top news')):
         return None
+    # V6.17.97: skip kalau materi agregator
+    if _materi_agregator(materi):
+        return None
     pola_nama_pejabat = re.compile(
         r'\b(?:'
         r'wali\s+kota|wakil\s+wali\s+kota|bupati|wakil\s+bupati|gubernur|wakil\s+gubernur|'
@@ -5187,7 +5163,6 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     for m in pola_nama_pejabat.finditer(materi):
         nama_full = m.group(0).strip()
         after_jabatan = m.group(1) if m.group(1) else ''
-        # V6.17.89: pecah di koma dulu (biar "Direktur Utama PT X, Budi" tidak campur)
         after_jabatan = re.split(r'[,;]', after_jabatan)[0]
         bagian = re.findall(r'\b[A-Z][a-z]+\b', after_jabatan)
         nama_bersih = []
@@ -5195,7 +5170,6 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
             k_low = k.lower()
             if k_low in KATA_BUKAN_NAMA_PEJABAT:
                 break
-            # V6.17.89: stop di kata sambung (biar tidak nangkap 2 jabatan)
             if k_low in KATA_SAMBUNG_NAMA:
                 break
             nama_bersih.append(k)
@@ -5208,12 +5182,10 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
         nama_kunci = nama_bersih[-1]
         if len(nama_kunci) < 3:
             continue
-        # V6.17.87 + V6.17.89 + V6.17.91: nama kunci wajib bukan kata kerja/singkatan blacklist
         if nama_kunci.lower() in KATA_BUKAN_NAMA_PEJABAT:
             continue
         if nama_kunci.lower() in KATA_SAMBUNG_NAMA:
             continue
-        # V6.17.91: cek juga apakah nama_kunci uppercase singkatan (bukan nama orang)
         if nama_kunci.isupper() and len(nama_kunci) <= 6:
             continue
         nama_materi.append((nama_full, nama_kunci))
@@ -5232,16 +5204,6 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     return None
 
 AMBANG_JUDUL_MIRIP = 0.75
-
-# ══════════════════════════════════════════════════════
-# V6.17.84: ai_write diperbaiki — retry ganti judul PAKAI WHILE
-# V6.17.93: pakai _topik_dobel6jam_nyata (dobel-6jam longgar)
-# V6.17.94: retry judul HANYA 75-90%, ≥90% langsung tolak (hemat token)
-# V6.17.95: cek_deskripsi_gambar pakai konteks materi (ikan diizinkan kalau perikanan)
-# V6.17.96: tambah retry judul kalau hasil AI dobel (sebelum insert_news tolak)
-# ══════════════════════════════════════════════════════
-
-# V6.17.96: jumlah maksimal retry judul saat AI hasil dobel
 MAX_RETRY_JUDUL_DOBEL = 1
 
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
@@ -5256,7 +5218,7 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
                       'materi tidak relevan', 'tidak dapat menulis', 'tidak ada materi']
     percobaan = 0
     judul_retry_dilakukan = False
-    retry_dobel_dilakukan = 0  # V6.17.96: hitung retry karena dobel
+    retry_dobel_dilakukan = 0
 
     while percobaan < MAX_LOOP:
         percobaan += 1
@@ -5295,7 +5257,7 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
 
         judul = perbaiki_persen((obj.get('judul') or '').strip())
 
-        # V6.17.94: retry judul HANYA kalau mirip 75-90%. ≥90% langsung tolak (hemat token)
+        # V6.17.94: retry judul HANYA kalau mirip 75-90%. ≥90% langsung tolak
         if judul_materi and judul and not judul_retry_dilakukan:
             rasio_judul = SequenceMatcher(None, judul.lower(), judul_materi.lower()).ratio()
             if AMBANG_JUDUL_MIRIP <= rasio_judul < 0.90:
@@ -5316,7 +5278,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
                     'Tulis berita JSON valid dengan JUDUL BERBEDA.')
                 continue
             elif rasio_judul >= 0.90:
-                # V6.17.94: judul jiplak parah — retry percuma, langsung tolak
                 msg_tolak = ('judul AI jiplak parah (' + str(int(rasio_judul * 100))
                              + '%) — retry tidak akan menolong')
                 print('       ' + msg_tolak)
@@ -5324,7 +5285,7 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
                     catat_tolak_ai_token(source_url, msg_tolak)
                 raise BeritaLama(msg_tolak)
 
-        # V6.17.96: cek kalau judul dobel dengan yang sudah terbit — retry ganti judul
+        # V6.17.96: retry judul kalau dobel dengan yang sudah terbit
         if judul and retry_dobel_dilakukan < MAX_RETRY_JUDUL_DOBEL:
             if sudah_serupa(judul):
                 retry_dobel_dilakukan += 1
@@ -5353,7 +5314,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     if ada_persen_kata(judul + ' ' + isi + ' ' + ringkasan):
         print('       Persen auto-fix diterapkan.')
 
-    # Cek final: judul masih mirip → tolak
     if judul_materi and judul:
         rasio_judul = SequenceMatcher(None, judul.lower(), judul_materi.lower()).ratio()
         if rasio_judul >= AMBANG_JUDUL_MIRIP:
@@ -5412,7 +5372,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
             if len(kata_inti(judul) & kata_inti(t)) >= DOBEL_6JAM_MIN_KATA:
                 if DOBEL_6JAM_BUTUH_NAMA:
                     if _ada_nama_diri_judul(judul) or _ada_nama_diri_judul(t):
-                        # V6.17.93: cek topik dobel NYATA (longgarkan)
                         irisan = kata_inti(judul) & kata_inti(t)
                         if not _topik_dobel6jam_nyata(judul, t, irisan):
                             continue
@@ -5438,7 +5397,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         if source_url:
             catat_tolak_ai_token(source_url, 'nama pejabat hilang: ' + nama_pejabat[:80])
         raise Exception('DITOLAK - ' + nama_pejabat[:100])
-    # V6.17.95: pakai konteks materi (ikan diizinkan kalau perikanan)
     gambar_terlarang = cek_deskripsi_gambar(gambar, materi_sumber)
     if gambar_terlarang:
         if source_url:
@@ -5483,7 +5441,6 @@ def target_kata(materi_len):
 
 def _catatan_khusus_kategori(kategori_target):
     if kategori_target in ('internasional', 'internasional_asean', 'internasional_tt'):
-        # V6.17.92: prompt dateline diperketat (anti-karang kota)
         return (
             '\n\nCATATAN KHUSUS KATEGORI LUAR NEGERI (V6.17.92):\n'
             '- DATELINE WAJIB kota LUAR NEGERI (bukan Jakarta/Indonesia).\n'
@@ -5583,7 +5540,6 @@ def _catatan_kategori_ketat(kategori_target):
             '- Turnamen seperti FIFA ASEAN Cup, Asian Games, SEA Games, Olimpiade = SAH.\n'
             '- DATELINE WAJIB kota yang ADA di materi. JANGAN karang.\n'
         )
-    # V6.17.95: catatan khusus gambar perikanan/pedagang ikan
     catatan_gambar_ikan = ''
     if kategori_target in ('nasional', 'daerah', 'ekonomi'):
         catatan_gambar_ikan = (
@@ -5761,11 +5717,9 @@ def ai_rewrite_multi(items, kategori_target=''):
                     wajib_topik=True,
                     source_url=items[0].get('link', '') if items else '')
 
-# V6.17.89: bersihkan control char dari payload sebelum insert
 def _bersih_control_char(teks):
     if not teks:
         return teks
-    # Buang \x00-\x08, \x0b, \x0c, \x0e-\x1f, \x7f. Pertahankan \n (\x0a) dan \t (\x09).
     return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', ' ', str(teks))
 
 def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
@@ -5774,7 +5728,6 @@ def insert_news(judul, isi, ringkasan, cat, img, link, source_name, status,
         raise Exception('diblokir insert: judul kosong/terlalu pendek')
     if not isi or len((isi or '').strip()) < 50:
         raise Exception('diblokir insert: isi kosong/terlalu pendek')
-    # V6.17.89: bersihkan control char (fix "Invalid control character")
     judul = _bersih_control_char(judul)
     isi = _bersih_control_char(isi)
     ringkasan = _bersih_control_char(ringkasan)
@@ -7218,7 +7171,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.96'
+FILE_VERSI = 'V6.17.97'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
