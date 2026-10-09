@@ -1109,12 +1109,17 @@ KATA_ALASAN_TRANSIENT = [
 
 # V6.17.90: alasan yang TIDAK boleh blacklist URL (transient/struktural)
 # V6.17.97: tambah "materi agregator" — false positive materi panjang
+# V6.17.98: tambah "tidak cocok kategori" — false positive kategori AI
 KATA_ALASAN_JANGAN_BLACKLIST = [
     'materi sampah',
     'materi terlalu pendek',
     'materi tidak valid: materi terlalu pendek',
     'materi agregator',
     'materi tidak valid: materi agregator',
+    # V6.17.98: judul/isi AI tidak cocok kategori (false positive AI)
+    'judul/isi ai tidak cocok kategori',
+    'materi tidak ada kata kunci kategori',
+    'judul & isi ai tidak ada kata kunci kategori',
 ]
 
 def muat_rejected_urls():
@@ -1151,8 +1156,8 @@ def catat_tolak_ai_token(source_url, alasan):
     for k in KATA_ALASAN_TRANSIENT:
         if k in alasan_low:
             return
-    # V6.17.86 + V6.17.90 + V6.17.97: jangan blacklist URL kalau materi sampah /
-    # terlalu pendek / agregator (transient/struktural)
+    # V6.17.86 + V6.17.90 + V6.17.97 + V6.17.98: jangan blacklist URL
+    # kalau materi sampah / terlalu pendek / agregator / kategori false positive
     for k in KATA_ALASAN_JANGAN_BLACKLIST:
         if k in alasan_low:
             print('   (URL tidak di-blacklist — ' + k + ' transient)')
@@ -1994,6 +1999,9 @@ MATERI_MIN_KARAKTER_RSS_DAERAH    = 250
 MATERI_MIN_KARAKTER_BREAKING = 200
 MATERI_MIN_KARAKTER_ASEAN = 600
 
+# V6.17.98: RSS tipis dari DOMAIN_SKIP_SCRAPE → buang di pre-filter
+MATERI_RSS_SKIP_TIPIS = 200
+
 # V6.17.86: deteksi materi sampah anti-bot/JS block
 def _materi_sampah(teks):
     """
@@ -2603,10 +2611,54 @@ def _ada_frasa_indonesia_plus(kata_negara, gab):
     )
     return bool(pola.search(gab))
 
+# ══════════════════════════════════════════════════════
+# V6.17.98: _kandidat_negara_asing_untuk_lokal — DILONGGARKAN
+# Jangan blok kalau ada konteks Indonesia kuat:
+#   - kunjungan ke Indonesia (El-Sisi kunjungi Indonesia)
+#   - kabut asap lintas batas Indonesia-Malaysia
+#   - kerja sama RI-X
+# ══════════════════════════════════════════════════════
+
+FRASA_KUNJUNGAN_KE_INDONESIA = [
+    'kunjungi indonesia', 'kunjungan ke indonesia', 'berkunjung ke indonesia',
+    'datang ke indonesia', 'tiba di indonesia', 'bertemu presiden ri',
+    'bertemu presiden indonesia', 'bertemu prabowo', 'sambut presiden',
+    'kunjungan kenegaraan ke indonesia', 'kunjungan resmi ke indonesia',
+    'di jakarta', 'di indonesia', 'ke jakarta', 'ke indonesia',
+    'state visit to indonesia', 'visit indonesia', 'arrives in indonesia',
+    'meets president', 'meets prabowo', 'welcome to indonesia',
+]
+
+FRASA_KERJA_SAMA_INDONESIA = [
+    'kerja sama indonesia', 'kerjasama indonesia', 'kerja sama ri',
+    'kerjasama ri', 'indonesia dan', 'indonesia dengan',
+    'ri dan', 'ri dengan', 'bilateral indonesia',
+    'asean indonesia', 'indonesia asean',
+    'lintas batas indonesia', 'indonesia malaysia', 'malaysia indonesia',
+    'transboundary', 'lintas batas',
+]
+
+def _ada_konteks_kunjungan_atau_kerjasama_indonesia(gab):
+    """V6.17.98: cek apakah teks punya konteks kunjungan/kerja sama
+    dengan Indonesia — kalau iya, jangan blok sebagai 'negara asing'."""
+    for f in FRASA_KUNJUNGAN_KE_INDONESIA:
+        if f in gab:
+            return True
+    for f in FRASA_KERJA_SAMA_INDONESIA:
+        if f in gab:
+            return True
+    # Konteks kabut asap lintas batas
+    if _ada_konteks_kabut_asap_asean(gab):
+        return True
+    return False
+
 def _kandidat_negara_asing_untuk_lokal(kategori, judul, summary):
     if kategori not in ('nasional', 'daerah'):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
+    # V6.17.98: kalau ada konteks kunjungan/kerja sama Indonesia → JANGAN blok
+    if _ada_konteks_kunjungan_atau_kerjasama_indonesia(gab):
+        return True, ''
     for negara in NEGARA_ASING:
         if len(negara) <= 4:
             m = re.search(r'\b' + re.escape(negara) + r'\b', gab)
@@ -3018,11 +3070,12 @@ def _materi_basi(judul, summary):
 
 # ══════════════════════════════════════════════════════
 # V6.17.75: REVISI #2 - TOLAK RSS TANPA TANGGAL
+# V6.17.98: PRE-FILTER RSS TIPIS DARI DOMAIN_SKIP_SCRAPE
 # ══════════════════════════════════════════════════════
 
 def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''):
     if max_umur_jam is None:
-        max_umur_jam = MAX_UMUR_BERITA_JAM
+        max_umur_jam = MAX_UMUR_BERITA_HARI
     rejected = muat_rejected_urls()
     judul_database = _judul_dari_url_supabase()
     out = []
@@ -3031,6 +3084,7 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
     skip_topik = 0
     skip_tanpa_tanggal = 0
     skip_basi = 0
+    skip_rss_tipis = 0
     for src in sources:
         try:
             feed = feedparser.parse(src['url'])
@@ -3053,6 +3107,18 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
             title = entry.get('title', '')
             summary = get_material(entry)
             if not title or not summary:
+                continue
+
+            # ══════════════════════════════════════════════════════
+            # V6.17.98: PRE-FILTER RSS TIPIS DARI DOMAIN_SKIP_SCRAPE
+            # Kalau domain akan di-skip scraping & RSS tipis (< 200 kar)
+            # → langsung buang (jangan buang token AI).
+            # ══════════════════════════════════════════════════════
+            if domain_skip_scrape(link) and len(summary) < MATERI_RSS_SKIP_TIPIS:
+                skip_rss_tipis += 1
+                if skip_rss_tipis <= 3:
+                    print('       Skip kandidat (pre-filter RSS tipis domain skip): '
+                          + str(len(summary)) + ' kar — ' + title[:50])
                 continue
 
             # ══════════════════════════════════════════════════════
@@ -3171,6 +3237,8 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
         print('       (Total skip RSS tanpa tanggal: ' + str(skip_tanpa_tanggal) + ')')
     if skip_basi > 0:
         print('       (Total skip materi basi: ' + str(skip_basi) + ')')
+    if skip_rss_tipis > 0:
+        print('       (Total skip RSS tipis domain skip: ' + str(skip_rss_tipis) + ')')
     return out
 
 def match_articles(candidates):
@@ -7323,7 +7391,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.97'
+FILE_VERSI = 'V6.17.98'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
