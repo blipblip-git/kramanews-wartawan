@@ -498,6 +498,8 @@ EKONOMI_ASING_FEEDS = [
     GN('taiwan semiconductor tsmc chip', 'en', 'GN Semikonduktor'),
 ]
 
+# V6.17.96: HAPUS rri.co.id + tarakantv.co.id dari HUNT['daerah']
+# Alasan: rri.co.id materi terlalu pendek (145-180 kar); tarakantv.co.id tidak pernah ada berita.
 HUNT = {
     'nasional': [
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -537,7 +539,8 @@ HUNT = {
         RSSF('https://www.antaranews.com/rss/daerah', 'Antara Daerah'),
         RSSF('https://adpim.kaltaraprov.go.id/feed/', 'Adpim Kaltara'),
         RSSF('https://benuanta.co.id/rss', 'Benuanta'),
-        RSSF('https://rri.co.id/rss', 'RRI'),
+        # V6.17.96: rri.co.id DIHAPUS (materi terlalu pendek)
+        # V6.17.96: tarakantv.co.id DIHAPUS (tidak pernah ada berita)
         RSSF('https://kaltarapost.co.id/rss', 'Kaltara Post'),
         RSSF('https://www.prokaltara.co.id/rss', 'Pro Kaltara'),
         RSSF('https://kaltimpost.jawapos.com/rss', 'Kaltim Post'),
@@ -1240,6 +1243,7 @@ def _gn_id_dari_url(url):
     return ''
 
 # V6.17.85: tambah pilihanindonesia.com
+# V6.17.96: tambah rri.co.id + tarakantv.co.id (materi pendek / tidak pernah ada berita)
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
@@ -1253,6 +1257,9 @@ DOMAIN_SKIP_SCRAPE = [
     'cnnindonesia.com',
     'cnbcindonesia.com',
     'pilihanindonesia.com',
+    # V6.17.96: skip total (materi terlalu pendek / tidak pernah ada berita)
+    'rri.co.id',
+    'tarakantv.co.id',
 ]
 
 def domain_skip_scrape(url):
@@ -5231,7 +5238,11 @@ AMBANG_JUDUL_MIRIP = 0.75
 # V6.17.93: pakai _topik_dobel6jam_nyata (dobel-6jam longgar)
 # V6.17.94: retry judul HANYA 75-90%, ≥90% langsung tolak (hemat token)
 # V6.17.95: cek_deskripsi_gambar pakai konteks materi (ikan diizinkan kalau perikanan)
+# V6.17.96: tambah retry judul kalau hasil AI dobel (sebelum insert_news tolak)
 # ══════════════════════════════════════════════════════
+
+# V6.17.96: jumlah maksimal retry judul saat AI hasil dobel
+MAX_RETRY_JUDUL_DOBEL = 1
 
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
              judul_materi='', summary_materi='', wajib_topik=True,
@@ -5245,6 +5256,7 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
                       'materi tidak relevan', 'tidak dapat menulis', 'tidak ada materi']
     percobaan = 0
     judul_retry_dilakukan = False
+    retry_dobel_dilakukan = 0  # V6.17.96: hitung retry karena dobel
 
     while percobaan < MAX_LOOP:
         percobaan += 1
@@ -5311,6 +5323,25 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
                 if source_url:
                     catat_tolak_ai_token(source_url, msg_tolak)
                 raise BeritaLama(msg_tolak)
+
+        # V6.17.96: cek kalau judul dobel dengan yang sudah terbit — retry ganti judul
+        if judul and retry_dobel_dilakukan < MAX_RETRY_JUDUL_DOBEL:
+            if sudah_serupa(judul):
+                retry_dobel_dilakukan += 1
+                print('       Judul AI dobel dengan yang sudah ada — minta AI ganti judul (retry '
+                      + str(retry_dobel_dilakukan) + '/' + str(MAX_RETRY_JUDUL_DOBEL) + ')...')
+                user_content = (
+                    'CATATAN PENTING — JUDUL SUDAH PERNAH TERBIT:\n'
+                    '- Judul kamu: "' + judul + '"\n'
+                    '- Judul ini MIRIP dengan berita yang sudah tayang di KramaNews.\n'
+                    '- WAJIB tulis JUDUL LAIN yang BERBEDA TOTAL.\n'
+                    '- Fokus ke SUDUT PANDANG BERBEDA dari berita yang sama.\n'
+                    '- Contoh: kalau berita lama "Gubernur Resmikan Jalan Perbatasan",\n'
+                    '  judul baru bisa "Jalan Perbatasan Kaltara Masuk Rencana Induk 2027-2029".\n'
+                    '- Semua aturan lain tetap berlaku.\n\n'
+                    'MATERI SUMBER:\n' + materi_sumber[:800] + '\n\n'
+                    'Tulis berita JSON valid dengan JUDUL BERBEDA.')
+                continue
         break
 
     if obj is None:
@@ -7187,7 +7218,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.95'
+FILE_VERSI = 'V6.17.96'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
