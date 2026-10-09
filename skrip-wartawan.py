@@ -198,7 +198,6 @@ KATA_BUKAN_NASIONAL = [
     'pacaran', 'putus', 'selingkuh', 'perselingkuhan',
     'kabur', 'nikah siri', 'istri', 'suami',
 ]
-# V6.17.101: longgarkan jadwal kapal (boleh lolos kalau ada konteks lain)
 KATA_BUKAN_DAERAH = [
     'jadwal ferry', 'jadwal pesawat', 'jadwal kereta',
     'jadwal bus', 'jadwal keberangkatan',
@@ -496,7 +495,7 @@ EKONOMI_ASING_FEEDS = [
     GN('taiwan semiconductor tsmc chip', 'en', 'GN Semikonduktor'),
 ]
 
-# V6.17.101: TAMBAH feed Radar Tarakan (feed hidup di /rss.xml)
+# V6.17.103: TAMBAH GN Bupati Gowa + MA + Pos Indonesia (nasional)
 HUNT = {
     'nasional': [
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -514,6 +513,7 @@ HUNT = {
         RSSF('https://www.jpnn.com/rss', 'JPNN'),
         RSSF('https://www.beritasatu.com/rss', 'Beritasatu'),
         RSSF('https://www.medcom.id/rss/nasional', 'Medcom Nasional'),
+        RSSF('https://www.jawapos.com/rss', 'Jawa Pos'),
         GN('pemerintah indonesia', 'id', 'Google News Nasional'),
         GN('dpr indonesia', 'id', 'Google News Nasional'),
         GN('Prabowo Subianto', 'id', 'Google News Presiden Prabowo'),
@@ -529,6 +529,12 @@ HUNT = {
         GN('tni polri indonesia', 'id', 'GN TNI Polri'),
         GN('pendidikan indonesia', 'id', 'GN Pendidikan'),
         GN('sosial budaya indonesia', 'id', 'GN Sosial Budaya'),
+        # V6.17.103: tambah GN pejabat daerah + MA + Pos
+        GN('Bupati Gowa', 'id', 'GN Bupati Gowa'),
+        GN('Mahkamah Agung surat', 'id', 'GN Mahkamah Agung'),
+        GN('PT Pos Indonesia', 'id', 'GN Pos Indonesia'),
+        GN('Bupati dan Wali Kota', 'id', 'GN Bupati Wali Kota'),
+        GN('Mahkamah Agung putusan', 'id', 'GN MA Putusan'),
     ],
     'daerah': [
         RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
@@ -536,12 +542,12 @@ HUNT = {
         RSSF('https://www.antaranews.com/rss/daerah', 'Antara Daerah'),
         RSSF('https://adpim.kaltaraprov.go.id/feed/', 'Adpim Kaltara'),
         RSSF('https://benuanta.co.id/rss', 'Benuanta'),
-        # V6.17.101: TAMBAH Radar Tarakan (feed hidup)
         RSSF('https://radartarakan.jawapos.com/rss.xml', 'Radar Tarakan'),
         RSSF('https://kaltarapost.co.id/rss', 'Kaltara Post'),
         RSSF('https://www.prokaltara.co.id/rss', 'Pro Kaltara'),
         RSSF('https://kaltimpost.jawapos.com/rss', 'Kaltim Post'),
         RSSF('https://www.jpnn.com/rss/daerah', 'JPNN Daerah'),
+        RSSF('https://makassar.tribunnews.com/rss', 'Tribun Timur'),
         GN('Tarakan', 'id', 'Google News Tarakan'),
         GN('Pemkot Tarakan', 'id', 'Google News Pemkot Tarakan'),
         GN('Wali Kota Tarakan', 'id', 'Google News Wali Kota Tarakan'),
@@ -552,6 +558,7 @@ HUNT = {
         GN('Malinau', 'id', 'Google News Malinau'),
         GN('Tana Tidung', 'id', 'Google News Tana Tidung'),
         GN('Tanjung Selor', 'id', 'Google News Tanjung Selor'),
+        GN('Gowa', 'id', 'Google News Gowa'),
         RSSF('https://jatim.tribunnews.com/rss', 'Tribun Jatim'),
         RSSF('https://jateng.tribunnews.com/rss', 'Tribun Jateng'),
         RSSF('https://jabar.tribunnews.com/rss', 'Tribun Jabar'),
@@ -1095,13 +1102,13 @@ KATA_ALASAN_TRANSIENT = [
     'error sementara', 'coba lagi', 'retry',
 ]
 
+# V6.17.103: tambah "judul-materi tidak nyambung" sebagai transient (efek materi sampah)
 KATA_ALASAN_JANGAN_BLACKLIST = [
     'materi sampah',
     'materi terlalu pendek',
     'materi tidak valid: materi terlalu pendek',
     'materi agregator',
     'materi tidak valid: materi agregator',
-    # V6.17.102: semua tolakan kategori → transient (jangan blacklist)
     'judul/isi ai tidak cocok kategori',
     'materi tidak ada kata kunci kategori',
     'judul & isi ai tidak ada kata kunci kategori',
@@ -1109,6 +1116,9 @@ KATA_ALASAN_JANGAN_BLACKLIST = [
     'materi kepolisian',
     'materi politik',
     'materi hukum',
+    # V6.17.103: judul-materi tidak nyambung (efek materi sampah)
+    'judul-materi tidak nyambung',
+    'tidak nyambung (irisan',
 ]
 
 def muat_rejected_urls():
@@ -1384,13 +1394,13 @@ def scrape_artikel(url, judul_debug=''):
         print('       [DEBUG] Domain: ' + _domain_dari_url(url_asli))
     hasil = ''
     try:
-        # V6.17.102: header lebih lengkap (Referer, Sec-Fetch-*) + timeout 20 detik
+        # V6.17.103: hapus 'br' (Brotli) — biar tidak dapat materi sampah
         domain = _domain_dari_url(url_asli)
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Encoding': 'gzip, deflate',
             'Referer': 'https://' + domain + '/',
             'Sec-Fetch-Dest': 'document',
             'Sec-Fetch-Mode': 'navigate',
@@ -1401,7 +1411,19 @@ def scrape_artikel(url, judul_debug=''):
         }
         r = requests.get(url_asli, headers=headers, timeout=20, allow_redirects=True)
         if r.ok:
+            # V6.17.103: fallback encoding + cek materi sampah binary
+            try:
+                r.encoding = r.apparent_encoding or r.encoding
+            except Exception:
+                pass
             hasil = _bersihkan_html_artikel(r.text or '')
+            if hasil and len(hasil) >= SCRAPE_MIN_KARAKTER:
+                # cek materi sampah binary
+                sampah_bin = sum(1 for ch in hasil[:500]
+                                 if ord(ch) > 0x4E00 and ord(ch) < 0xA000)
+                if sampah_bin > 100:
+                    print('       Materi sampah binary terdeteksi - buang.')
+                    hasil = ''
             if len(hasil) >= SCRAPE_MIN_KARAKTER:
                 _CACHE_SCRAPE[url] = hasil
                 return hasil
@@ -2145,7 +2167,8 @@ KATA_KUNCI_KATEGORI = {
                  'bgn', 'ketahanan pangan', 'bulog', 'koperasi', 'kdmp',
                  'merah putih', 'aturan', 'penjaminan', 'dana',
                  'kapolda', 'kapolri', 'kapolres', 'polri', 'brimob',
-                 'polda', 'polres', 'polsek', 'kriminal', 'reskrim'],
+                 'polda', 'polres', 'polsek', 'kriminal', 'reskrim',
+                 'mahkamah agung', 'ma', 'bupati', 'wali kota'],
     'daerah': ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
                'tana tidung', 'tanjung selor', 'sebatik', 'juata', 'sesayap',
                'kota', 'kabupaten', 'pemkot', 'pemkab', 'bupati', 'walikota',
@@ -2191,7 +2214,8 @@ KATA_KUNCI_KATEGORI = {
                'fakultas', 'kampus daerah',
                'santri', 'sholawat', 'gebyar', 'pesantren', 'majelis taklim',
                'pengajian', 'tahlilan', 'yasinan', 'maulid', 'rajaban',
-               'halal bihalal', 'takbir keliling', 'pawai obor'],
+               'halal bihalal', 'takbir keliling', 'pawai obor',
+               'gowa', 'sulawesi selatan', 'sulsel', 'makassar'],
     'internasional': ['amerika', 'rusia', 'china', 'jepang', 'korea',
                       'eropa', 'inggris', 'jerman', 'perancis', 'italia',
                       'timur tengah', 'israel', 'palestina', 'iran', 'irak',
@@ -4062,7 +4086,7 @@ KOTA_INDONESIA_DATELINE = [
     'lampung', 'bandar lampung', 'batam', 'gorontalo', 'palu', 'kendari', 'mamuju',
     'selumit', 'selumit pantai', 'juata', 'karang anyar', 'karang balik',
     'kampung enam', 'pamusian', 'sebengkok', 'gunung lingkas', 'karang harapan',
-    'kaltara',
+    'kaltara', 'gowa', 'sunggu-minasa', 'sungguminasa',
 ]
 
 KATA_LOKAL_KALTARA = [
@@ -5554,6 +5578,7 @@ def _catatan_kategori_ketat(kategori_target):
             '- Kalau materi TIDAK memuat nama → tulis "Pemkab X"/"Pemkot X" saja.\n'
             '- TNI/Polri: PANGKAT + NAMA + JABATAN wajib kalau ada di materi.\n'
             '- KEPOLISIAN (Kapolda, Kapolres, Polri) = SAH kategori nasional/daerah.\n'
+            '- MAHKAMAH AGUNG, PT POS, BUPATI, WALI KOTA = SAH nasional/daerah.\n'
             '- WAJIB tulis SEMUA nama pejabat yang ada di materi.\n'
             '- WAJIB sebut LOKASI spesifik kalau materi memuatnya.\n'
             '\n'
@@ -5594,6 +5619,7 @@ def _catatan_kategori_ketat(kategori_target):
         '- Kalau materi TIDAK tentang kategori ini → TULIS tolak.\n'
         '- JANGAN tolak materi KEPOLISIAN/TNI (Kapolda, Kapolres, Polri) — SAH nasional/daerah.\n'
         '- JANGAN tolak materi POLITIK/HUKUM — SAH nasional.\n'
+        '- JANGAN tolak materi MAHKAMAH AGUNG, PT POS, BUPATI, WALI KOTA.\n'
         '- WAJIB tulis alasan tolak DETIL 1-2 kata setelah titik dua.\n'
         + catatan_gelar
         + catatan_ekonomi
@@ -6565,7 +6591,6 @@ def kelompok_kaltara(items):
     return any(w in teks for w in KALTARA_WORDS)
 
 def kelompok_tarakan(items):
-    """Prioritas Tarakan asli (bukan sekadar Kaltara provinsi)."""
     teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
     return bool(re.search(r'\btarakan\b', teks))
 
@@ -6661,7 +6686,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
         print('   (' + cat + ') Semua kandidat habis setelah filter - skip.')
         return False
     groups = match_articles(cand)
-    # Tarakan didahulukan, baru Kaltara
     if utamakan_kaltara:
         groups.sort(key=lambda g: 0 if kelompok_tarakan(g['items'])
                     else (1 if kelompok_kaltara(g['items']) else 2))
@@ -7013,7 +7037,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.102'
+FILE_VERSI = 'V6.17.103'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
