@@ -247,7 +247,7 @@ JADWAL_JAM = {
     15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1},
     16: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'kesehatan': 1, 'olahraga': 1},
     17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1, 'ekonomi': 1},
-    18: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'olahraga': 1},
+    18: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'otomotif': 1, 'olahraga': 1},
 }
 
 EKONOMI_JAM_DOMESTIK = [6, 9, 11, 12, 13, 17]
@@ -800,11 +800,23 @@ BREAKING_DOMESTIK_FEEDS = [
     RSSF('https://www.sindonews.com/rss', 'Sindonews'),
     RSSF('https://rmol.id/rss', 'RMOL'),
     RSSF('https://www.jpnn.com/rss', 'JPNN'),
+    RSSF('https://www.suara.com/rss', 'Suara.com'),
+    RSSF('https://www.beritasatu.com/rss', 'Beritasatu'),
+    RSSF('https://www.medcom.id/rss/nasional', 'Medcom Nasional'),
+    RSSF('https://news.okezone.com/rss', 'Okezone'),
+    RSSF('https://www.jawapos.com/rss', 'Jawa Pos'),
+    RSSF('https://www.inews.id/feed', 'iNews'),
+    RSSF('https://www.kompas.tv/rss', 'Kompas TV'),
+    RSSF('https://www.idntimes.com/rss', 'IDN Times'),
     GN('breaking news indonesia', 'id', 'GN Breaking Indonesia'),
     GN('gempa indonesia hari ini', 'id', 'GN Gempa Indonesia'),
     GN('banjir indonesia hari ini', 'id', 'GN Banjir Indonesia'),
     GN('kecelakaan besar indonesia', 'id', 'GN Kecelakaan'),
     GN('kebakaran besar indonesia', 'id', 'GN Kebakaran'),
+    GN('berita darurat indonesia', 'id', 'GN Darurat Indonesia'),
+    GN('bencana alam indonesia hari ini', 'id', 'GN Bencana Alam'),
+    GN('evakuasi warga indonesia', 'id', 'GN Evakuasi'),
+    GN('longsor banjir bandang indonesia', 'id', 'GN Longsor Banjir Bandang'),
 ]
 
 BREAKING_DUNIA_FEEDS = [
@@ -953,6 +965,16 @@ AKTOR_NON_BREAKING = [
     'komentar artis', 'ucapan artis', 'kata artis', 'menurut artis',
     'soroti artis', 'dukung artis', 'tanggapi artis',
     'seleb tiktok', 'seleb instagram', 'vlogger', 'podcaster',
+    # V6.17.105: tambah artis K-pop + boyband/girlband Korea
+    'song mino', 'mino winner', 'winner', 'ikon', 'blackpink', 'bts',
+    'exo', 'twice', 'red velvet', 'nct', 'stray kids', 'seventeen',
+    'aespa', 'itzy', 'txt', 'enhypen', 'ateez', 'monsta x', 'got7',
+    'shinee', 'super junior', 'girls generation', 'snsd', 'bigbang',
+    '2ne1', 'mamamoo', 'g-idle', 'ive', 'newjeans', 'le sserafim',
+    'psy', 'rain', 'boa', 'iu', 'taeyeon', 'jennie', 'lisa', 'rose',
+    'jisoo', 'suga', 'rm bts', 'jin bts', 'jhope', 'jimin', 'v bts',
+    'jungkook', 'vocalis kpop', 'idol kpop', 'boyband korea',
+    'girlband korea', 'k-pop star', 'penyanyi korea', 'artis korea',
 ]
 
 def _ada_aktor_non_breaking(teks):
@@ -2011,7 +2033,7 @@ MATERI_MIN_KARAKTER_BREAKING = 200
 MATERI_MIN_KARAKTER_ASEAN = 600
 
 MATERI_RSS_SKIP_TIPIS = 200
-MATERI_RSS_NASIONAL_TIPIS = 200
+MATERI_RSS_NASIONAL_TIPIS = 150
 
 def _materi_sampah(teks):
     if not teks:
@@ -2486,7 +2508,8 @@ def _ada_singkatan_lokasi_lokal(judul, summary):
     return None
 
 def _kandidat_ada_lokasi(judul, summary, kategori=''):
-    if kategori in ('nasional', 'breaking', 'teknologi', 'kesehatan'):
+    # V6.17.105: kecualikan otomotif dari gate lokasi
+    if kategori in ('nasional', 'breaking', 'teknologi', 'kesehatan', 'otomotif'):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
     if kategori == 'daerah' and _ada_konteks_pemda_kuat(judul, summary):
@@ -2513,6 +2536,17 @@ def _kandidat_ada_lokasi(judul, summary, kategori=''):
     for tim in KAMUS_TIM_LIGA_NEGARA.keys():
         if tim in gab:
             return True, ''
+    # V6.17.105: fallback — kandidat daerah yang jelas punya kata kabupaten/kota/pemkab/pemkot
+    if kategori == 'daerah':
+        for k in ('kabupaten', 'kota', 'pemkab', 'pemkot', 'pemprov',
+                  'bupati', 'walikota', 'wali kota', 'gubernur',
+                  'kecamatan', 'kelurahan', 'desa', 'kades', 'lurah', 'camat'):
+            if len(k) <= 4:
+                if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                    return True, ''
+            else:
+                if k in gab:
+                    return True, ''
     return False, 'tidak ada lokasi (kota/provinsi) di judul/materi'
 
 def _kandidat_ada_nama_orang(judul, summary):
@@ -2939,7 +2973,20 @@ KATA_FRASA_LIVE = [
     'unconfirmed', 'belum final',
 ]
 
-def _materi_basi(judul, summary):
+# V6.17.105: frasa live yang jelas basi — KHUSUS olahraga
+KATA_FRASA_LIVE_BASI_OLAHRAGA = [
+    'babak pertama berakhir', 'babak kedua berakhir',
+    'paruh pertama berakhir', 'paruh kedua berakhir',
+    'babak pertama usai', 'babak kedua usai',
+    'paruh pertama usai', 'paruh kedua usai',
+    'babak pertama selesai', 'babak kedua selesai',
+    'paruh pertama selesai', 'paruh kedua selesai',
+    'babak pertama tuntas', 'babak kedua tuntas',
+    'babak pertama kelar', 'babak kedua kelar',
+    'babak pertama rampung', 'babak kedua rampung',
+]
+
+def _materi_basi(judul, summary, kategori=''):
     teks = ((judul or '') + ' ' + (summary or '')).strip()
     if not teks:
         return False, ''
@@ -3030,6 +3077,13 @@ def _materi_basi(judul, summary):
             frasa_ketemu = next((f for f in KATA_FRASA_PREDIKSI if f in teks_low), '')
             return True, ('materi basi prediksi (frasa "' + frasa_ketemu
                           + '" + tanggal lewat ' + detail_tanggal + ')')
+
+    # V6.17.105: frasa live basi — KHUSUS olahraga
+    if kategori == 'olahraga':
+        frasa_basi_olga = next((f for f in KATA_FRASA_LIVE_BASI_OLAHRAGA
+                                if f in teks_low), None)
+        if frasa_basi_olga:
+            return True, ('materi basi live olahraga (frasa "' + frasa_basi_olga + '")')
 
     frasa_live_ketemu = next((f for f in KATA_FRASA_LIVE if f in teks_low), None)
     if frasa_live_ketemu:
@@ -3153,7 +3207,7 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                     skip_layak += 1
                     continue
 
-            basi, alasan_basi = _materi_basi(title, summary)
+            basi, alasan_basi = _materi_basi(title, summary, kategori)
             if basi:
                 skip_basi += 1
                 if skip_basi <= 3:
@@ -4494,10 +4548,14 @@ KALIMAT_TEMPLATE_KOSONG = [
     'pada kenyataannya',
 ]
 
-def _frasa_tertangkap(isi):
+def _frasa_tertangkap(isi, materi_sumber=''):
     isi_lower = (isi or '').lower()
+    materi_lower = (materi_sumber or '').lower()
     for p in POLA_LARANG:
         if p in isi_lower:
+            # V6.17.105: kalau frasa memang ada di materi sumber → jangan tolak
+            if materi_lower and p in materi_lower:
+                continue
             return p
     return None
 
@@ -5448,7 +5506,7 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
 
     waktu = (obj.get('waktu_kejadian') or '').strip()
     gambar = (obj.get('deskripsi_gambar') or '').strip()
-    frasa_akhir = _frasa_tertangkap(isi)
+    frasa_akhir = _frasa_tertangkap(isi, materi_sumber)
     if frasa_akhir:
         if source_url:
             catat_tolak_ai_token(source_url, 'diblokir pemeriksa: ' + str(frasa_akhir)[:50])
@@ -7087,7 +7145,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.104'
+FILE_VERSI = 'V6.17.105'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
