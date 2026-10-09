@@ -766,7 +766,6 @@ _GN_DECODE_CACHE = {}
 
 DEBUG_SCRAPE = True
 
-# deteksi materi sampah (anti-bot/JS block)
 KATA_MATERI_SAMPAH = [
     'unusual traffic', 'detected unusual', 'unusual traffic from your',
     'enable javascript', 'javascript is required', 'javascript enabled',
@@ -1102,9 +1101,14 @@ KATA_ALASAN_JANGAN_BLACKLIST = [
     'materi tidak valid: materi terlalu pendek',
     'materi agregator',
     'materi tidak valid: materi agregator',
+    # V6.17.102: semua tolakan kategori → transient (jangan blacklist)
     'judul/isi ai tidak cocok kategori',
     'materi tidak ada kata kunci kategori',
     'judul & isi ai tidak ada kata kunci kategori',
+    'tidak cocok kategori',
+    'materi kepolisian',
+    'materi politik',
+    'materi hukum',
 ]
 
 def muat_rejected_urls():
@@ -1234,7 +1238,6 @@ def _gn_id_dari_url(url):
         pass
     return ''
 
-# V6.17.101: hapus radartarakan.jawapos.com dari skip (feed & scrape jalan)
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
@@ -1381,12 +1384,22 @@ def scrape_artikel(url, judul_debug=''):
         print('       [DEBUG] Domain: ' + _domain_dari_url(url_asli))
     hasil = ''
     try:
+        # V6.17.102: header lebih lengkap (Referer, Sec-Fetch-*) + timeout 20 detik
+        domain = _domain_dari_url(url_asli)
         headers = {
-            'User-Agent': random.choice(UA_LIST),
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Referer': 'https://' + domain + '/',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-User': '?1',
+            'Upgrade-Insecure-Requests': '1',
+            'Connection': 'keep-alive',
         }
-        r = requests.get(url_asli, headers=headers, timeout=SCRAPER_TIMEOUT, allow_redirects=True)
+        r = requests.get(url_asli, headers=headers, timeout=20, allow_redirects=True)
         if r.ok:
             hasil = _bersihkan_html_artikel(r.text or '')
             if len(hasil) >= SCRAPE_MIN_KARAKTER:
@@ -1474,13 +1487,11 @@ KATA_STOP_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan 
                       'for with from that this have will been are was were their they '
                       'about after'.split())
 
-# V6.17.101: tambah kata lokasi Kaltara ke stopword dobel
 STOPWORDS_DOBEL = set('yang dan di ke dari untuk pada dengan dalam ini itu akan telah '
                       'sudah oleh sebagai ada adalah kata ujar bilang menurut juga '
                       'lebih masih hanya setelah sebelum sekitar bisa dapat tidak '
                       'akan sudah karena jika agar para kami mereka the and for with '
                       'from that this have will been are was were their they about '
-                      # V6.17.101: nama lokasi jangan dihitung kata inti
                       'tarakan kaltara kalimantan bulungan nunukan malinau tidung '
                       'sesayap tanjung selor sebatik juata'.split())
 
@@ -1748,8 +1759,8 @@ DATELINE EVENT BESAR (WAJIB):
 PERSEN: selalu simbol % ("95%").
 
 KATEGORI (WAJIB TEPAT):
-- nasional: pemerintah pusat, DPR, presiden, menteri, haji/umroh/agama, pendidikan, sosial.
-- daerah: peristiwa lokal kota/kabupaten Indonesia.
+- nasional: pemerintah pusat, DPR, presiden, menteri, haji/umroh/agama, pendidikan, sosial, KEPOLISIAN (Kapolri, Kapolda, Polri).
+- daerah: peristiwa lokal kota/kabupaten Indonesia, kepolisian daerah (Polres, Kapolres).
 - internasional: luar negeri, PBB, ASEAN, event besar di luar negeri.
 - ekonomi: IHSG, kurs, saham, BI, OJK, UMKM, bisnis, ekonomi dunia, EKSPOR, IMPOR, PERDAGANGAN.
 - olahraga: sepak bola, basket, badminton, voli, tenis, MotoGP, F1.
@@ -1779,6 +1790,7 @@ JUDUL EKONOMI — WAJIB MEMUAT KATA EKONOMI:
 JANGAN SALAH KATEGORI:
 - Haji/umroh/agama → nasional (BUKAN olahraga).
 - Pendidikan/sekolah → nasional (BUKAN olahraga).
+- Kepolisian (Kapolda, Kapolres, Polri) → nasional (atau daerah kalau lokal).
 - Pajak/anggaran/bansos → ekonomi/nasional.
 - Kesehatan/vaksin/penyakit → kesehatan.
 - "hasil", "skor", "klasemen" TIDAK cukup untuk olahraga.
@@ -1787,6 +1799,7 @@ JANGAN SALAH KATEGORI:
 
 PENTING — JANGAN TOLAK BERLEBIHAN:
 - JANGAN tolak materi hanya karena ada 1 kata "politik", "ekonomi", "kepolisian".
+- KEPOLISIAN/TNI → TETAP nasional atau daerah (bukan tolak).
 - Ekspor/impor/perdagangan/pendapatan negara → TETAP ekonomi.
 - Perusahaan naik peringkat/valuasi/IPO → TETAP ekonomi.
 - Properti/perumahan/housing → TETAP ekonomi.
@@ -1975,10 +1988,7 @@ MATERI_MIN_KARAKTER_RSS_DAERAH    = 250
 MATERI_MIN_KARAKTER_BREAKING = 200
 MATERI_MIN_KARAKTER_ASEAN = 600
 
-# V6.17.98: RSS tipis dari DOMAIN_SKIP_SCRAPE → buang di pre-filter
 MATERI_RSS_SKIP_TIPIS = 200
-
-# V6.17.101: RSS tipis dari domain apa saja (nasional) → buang di pre-filter
 MATERI_RSS_NASIONAL_TIPIS = 200
 
 def _materi_sampah(teks):
@@ -2133,7 +2143,9 @@ KATA_KUNCI_KATEGORI = {
                  'pbb', 'ham', 'diplomasi', 'luar negeri', 'menteri luar',
                  'mbg', 'sppg', 'dapur', 'makan bergizi', 'gizi',
                  'bgn', 'ketahanan pangan', 'bulog', 'koperasi', 'kdmp',
-                 'merah putih', 'aturan', 'penjaminan', 'dana'],
+                 'merah putih', 'aturan', 'penjaminan', 'dana',
+                 'kapolda', 'kapolri', 'kapolres', 'polri', 'brimob',
+                 'polda', 'polres', 'polsek', 'kriminal', 'reskrim'],
     'daerah': ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
                'tana tidung', 'tanjung selor', 'sebatik', 'juata', 'sesayap',
                'kota', 'kabupaten', 'pemkot', 'pemkab', 'bupati', 'walikota',
@@ -3007,7 +3019,6 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
             if not title or not summary:
                 continue
 
-            # V6.17.98: pre-filter RSS tipis dari DOMAIN_SKIP_SCRAPE
             if domain_skip_scrape(link) and len(summary) < MATERI_RSS_SKIP_TIPIS:
                 skip_rss_tipis += 1
                 if skip_rss_tipis <= 3:
@@ -3015,7 +3026,6 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                           + str(len(summary)) + ' kar — ' + title[:50])
                 continue
 
-            # V6.17.101: pre-filter RSS tipis kandidat nasional (bukan domain skip)
             if kategori == 'nasional' and len(summary) < MATERI_RSS_NASIONAL_TIPIS:
                 skip_rss_nas_tipis += 1
                 if skip_rss_nas_tipis <= 3:
@@ -3324,7 +3334,6 @@ IBU_KOTA_NEGARA = {
     'ho chi minh city': ['vietnam', 'ho chi minh', 'hcmc', 'saigon'],
     'hcmc': ['vietnam', 'ho chi minh', 'ho chi minh city', 'saigon'],
     'saigon': ['vietnam', 'ho chi minh', 'ho chi minh city', 'hcmc'],
-    # V6.17.85: tambah ibu kota Afrika + lainnya
     'abuja': ['nigeria'], 'kano': ['nigeria'], 'ibadan': ['nigeria'],
     'dakar': ['senegal'], 'bamako': ['mali'], 'ouagadougou': ['burkina faso'],
     'niamey': ['niger'], 'n-djamena': ["chad", "chad"], 'ndjamena': ['chad'],
@@ -3362,7 +3371,6 @@ IBU_KOTA_NEGARA = {
     'durban': ['afrika selatan', 'south africa'],
     'accra': ['ghana'], 'lagos': ['nigeria'], 'abuja': ['nigeria'],
     'kano': ['nigeria'],
-    # Tambahan Asia & lain
     'yangon': ['myanmar'], 'mandalay': ['myanmar'],
     'chiang mai': ['thailand'], 'phuket': ['thailand'],
     'da nang': ['vietnam'], 'hoi an': ['vietnam'], 'hue': ['vietnam'],
@@ -5545,6 +5553,7 @@ def _catatan_kategori_ketat(kategori_target):
             '- Kalau materi memuat nama pejabat → WAJIB tulis JABATAN + NAMA + GELAR.\n'
             '- Kalau materi TIDAK memuat nama → tulis "Pemkab X"/"Pemkot X" saja.\n'
             '- TNI/Polri: PANGKAT + NAMA + JABATAN wajib kalau ada di materi.\n'
+            '- KEPOLISIAN (Kapolda, Kapolres, Polri) = SAH kategori nasional/daerah.\n'
             '- WAJIB tulis SEMUA nama pejabat yang ada di materi.\n'
             '- WAJIB sebut LOKASI spesifik kalau materi memuatnya.\n'
             '\n'
@@ -5583,6 +5592,8 @@ def _catatan_kategori_ketat(kategori_target):
         '- Kategori target: ' + kategori_target + '.\n'
         '- Materi WAJIB memuat kata kunci kategori: ' + contoh + '.\n'
         '- Kalau materi TIDAK tentang kategori ini → TULIS tolak.\n'
+        '- JANGAN tolak materi KEPOLISIAN/TNI (Kapolda, Kapolres, Polri) — SAH nasional/daerah.\n'
+        '- JANGAN tolak materi POLITIK/HUKUM — SAH nasional.\n'
         '- WAJIB tulis alasan tolak DETIL 1-2 kata setelah titik dua.\n'
         + catatan_gelar
         + catatan_ekonomi
@@ -6549,13 +6560,12 @@ def hitung_topik_hari_ini(kata_list):
         print('   Gagal hitung topik wajib: ' + str(e)[:60])
     return n
 
-# V6.17.101: bedakan Tarakan vs Kaltara (Tarakan didahulukan)
 def kelompok_kaltara(items):
     teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
     return any(w in teks for w in KALTARA_WORDS)
 
 def kelompok_tarakan(items):
-    """V6.17.101: prioritas Tarakan asli (bukan sekadar Kaltara provinsi)."""
+    """Prioritas Tarakan asli (bukan sekadar Kaltara provinsi)."""
     teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
     return bool(re.search(r'\btarakan\b', teks))
 
@@ -6651,7 +6661,7 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
         print('   (' + cat + ') Semua kandidat habis setelah filter - skip.')
         return False
     groups = match_articles(cand)
-    # V6.17.101: Tarakan didahulukan, baru Kaltara
+    # Tarakan didahulukan, baru Kaltara
     if utamakan_kaltara:
         groups.sort(key=lambda g: 0 if kelompok_tarakan(g['items'])
                     else (1 if kelompok_kaltara(g['items']) else 2))
@@ -7003,7 +7013,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.101'
+FILE_VERSI = 'V6.17.102'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
