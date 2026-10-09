@@ -500,6 +500,7 @@ EKONOMI_ASING_FEEDS = [
 
 # V6.17.96: HAPUS rri.co.id + tarakantv.co.id dari HUNT['daerah']
 # Alasan: rri.co.id materi terlalu pendek (145-180 kar); tarakantv.co.id tidak pernah ada berita.
+# V6.17.99: tambah feed The Guardian International (dobel feed, jaga-jaga)
 HUNT = {
     'nasional': [
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -641,6 +642,8 @@ HUNT = {
     'internasional': [
         RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
         RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
+        # V6.17.99: tambah feed Guardian International (dobel feed)
+        RSSF('https://www.theguardian.com/international/rss', 'The Guardian Intl'),
         RSSF('https://www.cnnindonesia.com/internasional/rss', 'CNN Indonesia'),
         RSSF('https://apnews.com/index.rss', 'AP News'),
         RSSF('https://www.france24.com/en/rss', 'France24'),
@@ -803,9 +806,12 @@ BREAKING_DOMESTIK_FEEDS = [
     GN('kebakaran besar indonesia', 'id', 'GN Kebakaran'),
 ]
 
+# V6.17.99: tambah feed Guardian International (dobel feed)
 BREAKING_DUNIA_FEEDS = [
     RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
     RSSF('https://www.theguardian.com/world/rss', 'The Guardian'),
+    # V6.17.99: tambah feed Guardian International (dobel feed, jaga-jaga)
+    RSSF('https://www.theguardian.com/international/rss', 'The Guardian Intl'),
     RSSF('http://rss.cnn.com/rss/edition_world.rss', 'CNN World'),
     RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
     RSSF('https://www.bangkokpost.com/rss/data/xml/rss.xml', 'Bangkok Post'),
@@ -3075,7 +3081,7 @@ def _materi_basi(judul, summary):
 
 def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''):
     if max_umur_jam is None:
-        max_umur_jam = MAX_UMUR_BERITA_HARI
+        max_umur_jam = MAX_UMUR_BERITA_JAM
     rejected = muat_rejected_urls()
     judul_database = _judul_dari_url_supabase()
     out = []
@@ -7391,7 +7397,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.98'
+FILE_VERSI = 'V6.17.99'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
