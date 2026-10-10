@@ -496,6 +496,7 @@ EKONOMI_ASING_FEEDS = [
 ]
 
 # V6.17.103: TAMBAH GN Bupati Gowa + MA + Pos Indonesia (nasional)
+# V6.17.106: TAMBAH GN Kaltim + provinsi lain (daerah) — biar tidak tergantung Benuanta
 HUNT = {
     'nasional': [
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -537,17 +538,13 @@ HUNT = {
         GN('Mahkamah Agung putusan', 'id', 'GN MA Putusan'),
     ],
     'daerah': [
+        # Kaltara (prioritas)
         RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
-        RSSF('https://kaltim.tribunnews.com/rss', 'Tribun Kaltim'),
-        RSSF('https://www.antaranews.com/rss/daerah', 'Antara Daerah'),
         RSSF('https://adpim.kaltaraprov.go.id/feed/', 'Adpim Kaltara'),
         RSSF('https://benuanta.co.id/rss', 'Benuanta'),
         RSSF('https://radartarakan.jawapos.com/rss.xml', 'Radar Tarakan'),
         RSSF('https://kaltarapost.co.id/rss', 'Kaltara Post'),
         RSSF('https://www.prokaltara.co.id/rss', 'Pro Kaltara'),
-        RSSF('https://kaltimpost.jawapos.com/rss', 'Kaltim Post'),
-        RSSF('https://www.jpnn.com/rss/daerah', 'JPNN Daerah'),
-        RSSF('https://makassar.tribunnews.com/rss', 'Tribun Timur'),
         GN('Tarakan', 'id', 'Google News Tarakan'),
         GN('Pemkot Tarakan', 'id', 'Google News Pemkot Tarakan'),
         GN('Wali Kota Tarakan', 'id', 'Google News Wali Kota Tarakan'),
@@ -558,44 +555,97 @@ HUNT = {
         GN('Malinau', 'id', 'Google News Malinau'),
         GN('Tana Tidung', 'id', 'Google News Tana Tidung'),
         GN('Tanjung Selor', 'id', 'Google News Tanjung Selor'),
+        # V6.17.106: Kaltim + kota (biar tidak tergantung Benuanta)
+        RSSF('https://kaltim.tribunnews.com/rss', 'Tribun Kaltim'),
+        RSSF('https://kaltimpost.jawapos.com/rss', 'Kaltim Post'),
+        GN('Kalimantan Timur', 'id', 'Google News Kaltim'),
+        GN('Balikpapan', 'id', 'Google News Balikpapan'),
+        GN('Samarinda', 'id', 'Google News Samarinda'),
+        GN('Berau', 'id', 'Google News Berau'),
+        GN('Bontang', 'id', 'Google News Bontang'),
+        GN('Kutai', 'id', 'Google News Kutai'),
+        # V6.17.106: Kalsel
+        GN('Kalimantan Selatan', 'id', 'Google News Kalsel'),
+        GN('Banjarmasin', 'id', 'Google News Banjarmasin'),
+        GN('Banjarbaru', 'id', 'Google News Banjarbaru'),
+        # V6.17.106: Kalteng
+        RSSF('https://kalteng.tribunnews.com/rss', 'Tribun Kalteng'),
+        GN('Kalimantan Tengah', 'id', 'Google News Kalteng'),
+        GN('Palangka Raya', 'id', 'Google News Palangka Raya'),
+        GN('Sampit', 'id', 'Google News Sampit'),
+        # V6.17.106: Kalbar
+        GN('Kalimantan Barat', 'id', 'Google News Kalbar'),
+        GN('Pontianak', 'id', 'Google News Pontianak'),
+        # V6.17.106: Sulawesi
+        RSSF('https://makassar.tribunnews.com/rss', 'Tribun Timur'),
+        RSSF('https://sulsel.tribunnews.com/rss', 'Tribun Sulsel'),
+        RSSF('https://sultra.tribunnews.com/rss', 'Tribun Sultra'),
+        GN('Sulawesi Selatan', 'id', 'Google News Sulsel'),
+        GN('Makassar', 'id', 'Google News Makassar'),
         GN('Gowa', 'id', 'Google News Gowa'),
+        GN('Parepare', 'id', 'Google News Parepare'),
+        GN('Palopo', 'id', 'Google News Palopo'),
+        GN('Sulawesi Tenggara', 'id', 'Google News Sultra'),
+        GN('Kendari', 'id', 'Google News Kendari'),
+        GN('Sulawesi Utara', 'id', 'Google News Sulut'),
+        GN('Manado', 'id', 'Google News Manado'),
+        GN('Sulawesi Tengah', 'id', 'Google News Sulteng'),
+        GN('Palu', 'id', 'Google News Palu'),
+        GN('Gorontalo', 'id', 'Google News Gorontalo'),
+        # V6.17.106: Jawa
         RSSF('https://jatim.tribunnews.com/rss', 'Tribun Jatim'),
         RSSF('https://jateng.tribunnews.com/rss', 'Tribun Jateng'),
         RSSF('https://jabar.tribunnews.com/rss', 'Tribun Jabar'),
         RSSF('https://dki.tribunnews.com/rss', 'Tribun DKI Jakarta'),
         RSSF('https://bali.tribunnews.com/rss', 'Tribun Bali'),
+        GN('Jawa Timur', 'id', 'Google News Jatim'),
         GN('Surabaya', 'id', 'Google News Surabaya'),
+        GN('Malang', 'id', 'Google News Malang'),
+        GN('Kediri', 'id', 'Google News Kediri'),
+        GN('Jember', 'id', 'Google News Jember'),
+        GN('Madiun', 'id', 'Google News Madiun'),
+        GN('Jawa Tengah', 'id', 'Google News Jateng'),
         GN('Semarang', 'id', 'Google News Semarang'),
+        GN('Solo', 'id', 'Google News Solo'),
+        GN('Magelang', 'id', 'Google News Magelang'),
+        GN('Jawa Barat', 'id', 'Google News Jabar'),
         GN('Bandung', 'id', 'Google News Bandung'),
+        GN('Bogor', 'id', 'Google News Bogor'),
+        GN('Bekasi', 'id', 'Google News Bekasi'),
+        GN('Depok', 'id', 'Google News Depok'),
+        GN('Cirebon', 'id', 'Google News Cirebon'),
+        # V6.17.106: Sumatera
         RSSF('https://sumut.tribunnews.com/rss', 'Tribun Sumut'),
         RSSF('https://sumsel.tribunnews.com/rss', 'Tribun Sumsel'),
+        GN('Sumatera Utara', 'id', 'Google News Sumut'),
         GN('Medan', 'id', 'Google News Medan'),
+        GN('Binjai', 'id', 'Google News Binjai'),
+        GN('Sumatera Selatan', 'id', 'Google News Sumsel'),
         GN('Palembang', 'id', 'Google News Palembang'),
+        GN('Riau', 'id', 'Google News Riau'),
         GN('Pekanbaru', 'id', 'Google News Pekanbaru'),
         GN('Padang', 'id', 'Google News Padang'),
-        RSSF('https://sulsel.tribunnews.com/rss', 'Tribun Sulsel'),
-        RSSF('https://sultra.tribunnews.com/rss', 'Tribun Sultra'),
-        GN('Makassar', 'id', 'Google News Makassar'),
-        GN('Manado', 'id', 'Google News Manado'),
-        GN('Kendari', 'id', 'Google News Kendari'),
-        GN('Kalimantan Barat', 'id', 'Google News Kalbar'),
-        GN('Pontianak', 'id', 'Google News Pontianak'),
-        GN('Kalimantan Selatan', 'id', 'Google News Kalsel'),
-        GN('Banjarmasin', 'id', 'Google News Banjarmasin'),
-        GN('Kalimantan Tengah', 'id', 'Google News Kalteng'),
-        GN('Palangka Raya', 'id', 'Google News Palangka Raya'),
-        GN('Bali', 'id', 'Google News Bali'),
-        GN('Denpasar', 'id', 'Google News Denpasar'),
-        GN('Nusa Tenggara Barat', 'id', 'Google News NTB'),
-        GN('Mataram', 'id', 'Google News Mataram'),
-        GN('Nusa Tenggara Timur', 'id', 'Google News NTT'),
-        GN('Kupang', 'id', 'Google News Kupang'),
+        GN('Lampung', 'id', 'Google News Lampung'),
+        # V6.17.106: Papua
         GN('Papua', 'id', 'Google News Papua'),
         GN('Jayapura', 'id', 'Google News Jayapura'),
+        GN('Maybrat', 'id', 'Google News Maybrat'),
+        GN('Sorong', 'id', 'Google News Sorong'),
+        GN('Manokwari', 'id', 'Google News Manokwari'),
+        # V6.17.106: Maluku
         GN('Maluku', 'id', 'Google News Maluku'),
         GN('Ambon', 'id', 'Google News Ambon'),
-        GN('Gorontalo', 'id', 'Google News Gorontalo'),
+        GN('Ternate', 'id', 'Google News Ternate'),
+        # V6.17.106: Nusa Tenggara
+        GN('Nusa Tenggara Timur', 'id', 'Google News NTT'),
+        GN('Kupang', 'id', 'Google News Kupang'),
+        GN('Nusa Tenggara Barat', 'id', 'Google News NTB'),
+        GN('Mataram', 'id', 'Google News Mataram'),
+        GN('Bima', 'id', 'Google News Bima'),
+        GN('Denpasar', 'id', 'Google News Denpasar'),
+        # V6.17.106: Lain
         GN('Batam', 'id', 'Google News Batam'),
+        GN('Jambi', 'id', 'Google News Jambi'),
     ],
     'internasional_asean': [
         RSSF('https://www.thestar.com.my/rss/latest', 'The Star Malaysia'),
@@ -860,7 +910,7 @@ INDO_GEO = ['indonesia', 'bmkg', 'aceh', 'sumatera', 'sumatra', 'jawa', 'kaliman
             'jember', 'lumajang', 'semarang', 'banggai', 'tarakan', 'kaltara',
             'nunukan', 'bulungan', 'malinau', 'pontianak', 'kalbar', 'banjarmasin',
             'kalsel', 'kalteng', 'palangka raya', 'denpasar', 'mataram', 'kupang',
-            'gorontalo', 'batam', 'pekanbaru', 'palembang']
+            'gorontalo', 'batam', 'pekanbaru', 'palembang', 'maybrat', 'sorong']
 
 DOM_KRITIS = [
     'tsunami', 'erupsi', 'gunung meletus', 'banjir bandang', 'banjir besar',
@@ -1206,6 +1256,10 @@ DOMAIN_NON_BERITA = [
     'googletagmanager.com', 'google-analytics.com', 'accounts.google.com',
     'consent.google.com', 'policies.google.com', 'support.google.com',
     'myaccount.google.com',
+    # V6.17.106: blok URL sosmed sebagai sumber berita
+    'fb.com', 'fb.watch', 'm.facebook.com', 'web.facebook.com',
+    'whatsapp.com', 'wa.me', 'telegram.org', 't.me',
+    'threads.net', 'x.com', 'linkedin.com', 'reddit.com',
 ]
 
 def _url_valid_berita(u):
@@ -1377,6 +1431,36 @@ def _bersihkan_html_artikel(html):
         return ''
     return re.sub(r'\s+', ' ', ' '.join(baris_ok)).strip()[:2500]
 
+def _coba_scrape_amp(url_asli):
+    """V6.17.106: coba AMP URL kalau URL biasa gagal (khusus jawapos/radartarakan)."""
+    low = (url_asli or '').lower()
+    if 'jawapos.com' not in low and 'radartarakan' not in low:
+        return ''
+    if '/amp/' in low:
+        return ''
+    try:
+        amp_url = re.sub(r'^(https?://[^/]+)/', r'\1/amp/', url_asli)
+        domain = _domain_dari_url(amp_url)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Referer': 'https://' + domain + '/',
+        }
+        r = requests.get(amp_url, headers=headers, timeout=20, allow_redirects=True)
+        if r.ok:
+            try:
+                r.encoding = r.apparent_encoding or r.encoding
+            except Exception:
+                pass
+            hasil = _bersihkan_html_artikel(r.text or '')
+            if hasil and len(hasil) >= SCRAPE_MIN_KARAKTER:
+                print('       AMP scrape sukses: ' + str(len(hasil)) + ' kar')
+                return hasil
+    except Exception as e:
+        print('       AMP scrape gagal: ' + str(e)[:60])
+    return ''
+
 def scrape_artikel(url, judul_debug=''):
     if not url:
         return ''
@@ -1447,6 +1531,11 @@ def scrape_artikel(url, judul_debug=''):
         print('       Langsung scrape pendek: ' + str(len(hasil)) + ' kar - ' + url_asli[:60])
     except Exception as e:
         print('       Langsung scrape gagal: ' + str(e)[:60])
+    # V6.17.106: coba AMP dulu (khusus jawapos/radartarakan)
+    hasil_amp = _coba_scrape_amp(url_asli)
+    if hasil_amp:
+        _CACHE_SCRAPE[url] = hasil_amp
+        return hasil_amp
     hasil = scrape_via_playtrafi(url_asli)
     if hasil:
         _CACHE_SCRAPE[url] = hasil
@@ -1842,7 +1931,7 @@ PENTING — JANGAN TOLAK BERLEBIHAN:
 - JANGAN tolak materi hanya karena ada 1 kata "politik", "ekonomi", "kepolisian".
 - KEPOLISIAN/TNI → TETAP nasional atau daerah (bukan tolak).
 - MAHKAMAH AGUNG, PT POS, BUPATI, WALI KOTA → TETAP nasional/daerah.
-- BERAU, KALTIM, KALTARA, NUNUKAN, TARAKAN, JAMBI → TETAP daerah.
+- BERAU, KALTIM, KALTARA, NUNUKAN, TARAKAN, JAMBI, PAPUA, MAYBRAT, SORONG → TETAP daerah.
 - KRIPTO, BITCOIN, OKX, INVESTASI DIGITAL → TETAP ekonomi.
 - Ekspor/impor/perdagangan/pendapatan negara → TETAP ekonomi.
 - Perusahaan naik peringkat/valuasi/IPO → TETAP ekonomi.
@@ -2239,7 +2328,38 @@ KATA_KUNCI_KATEGORI = {
                'halal bihalal', 'takbir keliling', 'pawai obor',
                'gowa', 'sulawesi selatan', 'sulsel', 'makassar',
                'berau', 'kaltim', 'kalimantan timur', 'balikpapan',
-               'samarinda', 'bontang', 'kutai', 'jambi'],
+               'samarinda', 'bontang', 'kutai', 'jambi',
+               # V6.17.106: Papua + Maluku + NTT + NTB + kota lain
+               'papua', 'jayapura', 'maybrat', 'sorong', 'manokwari',
+               'merauke', 'nabire', 'mimika', 'timika', 'biak',
+               'maluku', 'ambon', 'ternate', 'tidore',
+               'nusa tenggara timur', 'ntt', 'kupang', 'maumere', 'ende',
+               'nusa tenggara barat', 'ntb', 'mataram', 'bima', 'sumbawa',
+               'kalimantan selatan', 'kalsel', 'banjarmasin', 'banjarbaru',
+               'kalimantan tengah', 'kalteng', 'palangka raya', 'sampit',
+               'kalimantan barat', 'kalbar', 'pontianak', 'singkawang',
+               'sulawesi tenggara', 'sultra', 'kendari', 'bau-bau',
+               'sulawesi utara', 'sulut', 'manado', 'bitung', 'tomohon',
+               'sulawesi tengah', 'sulteng', 'palu', 'poso', 'luwuk',
+               'gorontalo', 'sulawesi barat', 'sulbar', 'mamuju', 'majene',
+               'jawa timur', 'jatim', 'surabaya', 'malang', 'kediri',
+               'jember', 'madiun', 'sidoarjo', 'banyuwangi',
+               'jawa tengah', 'jateng', 'semarang', 'solo', 'surakarta',
+               'magelang', 'purwokerto', 'tegal', 'pekalongan',
+               'jawa barat', 'jabar', 'bandung', 'bogor', 'bekasi',
+               'depok', 'cirebon', 'sukabumi', 'tasikmalaya',
+               'sumatera utara', 'sumut', 'medan', 'binjai',
+               'pematang siantar', 'tebing tinggi',
+               'sumatera selatan', 'sumsel', 'palembang', 'prabumulih',
+               'lubuklinggau', 'pagar alam',
+               'riau', 'pekanbaru', 'dumai', 'batam', 'tanjung pinang',
+               'jambi', 'bengkulu', 'lampung', 'bandar lampung', 'metro',
+               'bangka belitung', 'babel', 'pangkal pinang',
+               'aceh', 'banda aceh', 'lhokseumawe', 'langsa',
+               'sumatera barat', 'sumbar', 'padang', 'bukittinggi',
+               'payakumbuh', 'solok',
+               'dki jakarta', 'jakarta', 'banten', 'serang', 'tangerang',
+               'cilegon', 'bali', 'denpasar', 'singaraja'],
     'internasional': ['amerika', 'rusia', 'china', 'jepang', 'korea',
                       'eropa', 'inggris', 'jerman', 'perancis', 'italia',
                       'timur tengah', 'israel', 'palestina', 'iran', 'irak',
@@ -2508,7 +2628,6 @@ def _ada_singkatan_lokasi_lokal(judul, summary):
     return None
 
 def _kandidat_ada_lokasi(judul, summary, kategori=''):
-    # V6.17.105: kecualikan otomotif dari gate lokasi
     if kategori in ('nasional', 'breaking', 'teknologi', 'kesehatan', 'otomotif'):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
@@ -2647,7 +2766,6 @@ FRASA_KERJA_SAMA_INDONESIA = [
     'transboundary', 'lintas batas',
 ]
 
-# V6.17.104: frasa acara lintas negara di Indonesia → jangan blok
 FRASA_ACARA_LINTAS_NEGARA_DI_INDONESIA = [
     'peserta lintas negara', 'peserta dari berbagai negara',
     'peserta mancanegara', 'peserta internasional',
@@ -2973,7 +3091,6 @@ KATA_FRASA_LIVE = [
     'unconfirmed', 'belum final',
 ]
 
-# V6.17.105: frasa live yang jelas basi — KHUSUS olahraga
 KATA_FRASA_LIVE_BASI_OLAHRAGA = [
     'babak pertama berakhir', 'babak kedua berakhir',
     'paruh pertama berakhir', 'paruh kedua berakhir',
@@ -4553,7 +4670,6 @@ def _frasa_tertangkap(isi, materi_sumber=''):
     materi_lower = (materi_sumber or '').lower()
     for p in POLA_LARANG:
         if p in isi_lower:
-            # V6.17.105: kalau frasa memang ada di materi sumber → jangan tolak
             if materi_lower and p in materi_lower:
                 continue
             return p
@@ -5202,12 +5318,19 @@ def _catatan_portal_daerah(link, kategori_target):
     low = (link or '').lower()
     if not any(d in low for d in DOMAIN_PORTAL_DAERAH):
         return ''
+    # V6.17.106: tambah Papua, Maluku, NTT, NTB, dll
     return ('\n\nCATATAN PENTING — SUMBER PORTAL DAERAH:\n'
             '- Materi ini dari portal berita DAERAH (Radar Tarakan/Benuanta/Tribun Daerah).\n'
             '- WAJIB tulis sebagai berita DAERAH, BUKAN nasional/ekonomi/teknologi.\n'
             '- JANGAN tolak dengan alasan "tidak cocok kategori: materi jargas/infrastruktur/proyek".\n'
             '- JANGAN tolak dengan alasan "tidak cocok kategori: wilayah Berau Kaltim".\n'
-            '- Berau, Kaltim, Kaltara, Nunukan, Tarakan = TETAP kategori DAERAH.\n'
+            '- JANGAN tolak dengan alasan "tidak cocok kategori: materi Papua".\n'
+            '- Berau, Kaltim, Kaltara, Nunukan, Tarakan, Jambi = TETAP kategori DAERAH.\n'
+            '- Papua, Jayapura, Maybrat, Sorong, Manokwari, Merauke = TETAP kategori DAERAH.\n'
+            '- Maluku, Ambon, Ternate, NTT, Kupang, NTB, Mataram, Bima = TETAP kategori DAERAH.\n'
+            '- Sulawesi (Makassar, Manado, Palu, Kendari, Gorontalo) = TETAP kategori DAERAH.\n'
+            '- Jawa (Surabaya, Malang, Semarang, Solo, Bandung, dll) = TETAP kategori DAERAH.\n'
+            '- Sumatera (Medan, Palembang, Padang, Pekanbaru, dll) = TETAP kategori DAERAH.\n'
             '- Walaupun isi materi tentang proyek/infrastruktur/energi nasional,\n'
             '  karena sumber portal daerah → TETAP kategori DAERAH.\n'
             '- Fokus: dampak lokal, lokasi daerah, tokoh daerah.\n')
@@ -5682,6 +5805,8 @@ def _catatan_kategori_ketat(kategori_target):
             '- KEPOLISIAN (Kapolda, Kapolres, Polri) = SAH kategori nasional/daerah.\n'
             '- MAHKAMAH AGUNG, PT POS, BUPATI, WALI KOTA = SAH nasional/daerah.\n'
             '- BERAU, KALTIM, KALTARA, NUNUKAN, TARAKAN, JAMBI = SAH daerah.\n'
+            '- PAPUA, JAYAPURA, MAYBRAT, SORONG, MANOKWARI, MERAUKE = SAH daerah.\n'
+            '- MALUKU, AMBON, TERNATE, NTT, KUPANG, NTB, MATARAM, BIMA = SAH daerah.\n'
             '- KRIPTO, OKX, BITCOIN, INVESTASI DIGITAL = SAH ekonomi.\n'
             '- WAJIB tulis SEMUA nama pejabat yang ada di materi.\n'
             '- WAJIB sebut LOKASI spesifik kalau materi memuatnya.\n'
@@ -5726,6 +5851,8 @@ def _catatan_kategori_ketat(kategori_target):
         '- JANGAN tolak materi POLITIK/HUKUM — SAH nasional.\n'
         '- JANGAN tolak materi MAHKAMAH AGUNG, PT POS, BUPATI, WALI KOTA.\n'
         '- JANGAN tolak materi BERAU, KALTIM, KALTARA, NUNUKAN, TARAKAN, JAMBI — SAH daerah.\n'
+        '- JANGAN tolak materi PAPUA, JAYAPURA, MAYBRAT, SORONG — SAH daerah.\n'
+        '- JANGAN tolak materi MALUKU, NTT, NTB, SULAWESI, JAWA, SUMATERA — SAH daerah.\n'
         '- JANGAN tolak materi KRIPTO, OKX, BITCOIN, INVESTASI DIGITAL — SAH ekonomi.\n'
         '- WAJIB tulis alasan tolak DETIL 1-2 kata setelah titik dua.\n'
         + catatan_gelar
@@ -7145,7 +7272,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.105'
+FILE_VERSI = 'V6.17.106'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
