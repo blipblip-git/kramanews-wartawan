@@ -1357,6 +1357,7 @@ def _gn_id_dari_url(url):
         pass
     return ''
 
+# V6.17.113: tambah databoks.katadata.co.id (portal statistik, bukan berita)
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
@@ -1371,6 +1372,7 @@ DOMAIN_SKIP_SCRAPE = [
     'pilihanindonesia.com',
     'rri.co.id',
     'tarakantv.co.id',
+    'databoks.katadata.co.id',
 ]
 
 def domain_skip_scrape(url):
@@ -6942,6 +6944,11 @@ def _topik_sudah_terbit_lintas(judul_baru, kategori_target):
         return None
     if judul_topik_besar(judul_baru):
         return None
+    # V6.17.113: ASEAN min_irisan 3 (default 4) — cegah dobel lintas kategori ASEAN 3x berturut
+    if kategori_target == 'internasional_asean':
+        min_irisan = 3
+    else:
+        min_irisan = 4
     try:
         rows = rest_get('?select=title,category,created_at'
                         '&order=created_at.desc&limit=100')
@@ -6967,7 +6974,7 @@ def _topik_sudah_terbit_lintas(judul_baru, kategori_target):
             if not ki_lama:
                 continue
             irisan = ki_baru & ki_lama
-            if len(irisan) >= 4:
+            if len(irisan) >= min_irisan:
                 return ('topik sudah terbit di kategori "' + kat_lama
                         + '" < 6 jam: ' + str(len(irisan)) + ' kata kunci sama — '
                         + str(sorted(list(irisan))[:4]))
@@ -7424,8 +7431,7 @@ def sesi_kategori(today_urls, seen):
     kuota = JADWAL_JAM.get(jam)
     if not kuota:
         print('\nKATEGORI - jam ' + str(jam) + ':00 WITA di luar jadwal produksi. Lewat.')
-        return 0
-    print('\nKATEGORI - jam ' + str(jam) + ':00 WITA - kuota: ' +
+        return 0    print('\nKATEGORI - jam ' + str(jam) + ':00 WITA - kuota: ' +
           ', '.join(k + '=' + str(v) for k, v in kuota.items()))
     utamakan_kaltara = False
     if kuota.get('daerah'):
@@ -7679,7 +7685,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.112'
+FILE_VERSI = 'V6.17.113'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
