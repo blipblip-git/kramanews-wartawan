@@ -1386,7 +1386,7 @@ def _domain_dari_url(url):
 
 # AKHIR PART 2-1
 
-# PART 2-2 - SCRAPER + HELPER + PROMPT
+# PART 2-2 - SCRAPER + HELPER + DOBEL CHECK
 
 def scrape_via_playtrafi(url):
     if not _PLAYTRAFI_OK:
@@ -1840,6 +1840,10 @@ def tanggal_publikasi_str(entry):
     except Exception:
         return None
 
+# AKHIR PART 2-2
+
+# PART 2-3 - BUILD_SYSTEM_PROMPT
+
 def build_system_prompt():
     k = konteks_waktu()
     return """Kamu AI Editor KramaNews Indonesia. TUGAS: Tulis berita dari materi yang sudah lolos filter. Materi SUDAH BERSIH — jangan tolak kecuali fatal.
@@ -2003,7 +2007,7 @@ FORMAT JAWABAN - HANYA JSON valid:
  "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """)"}
 """
 
-# AKHIR PART 2-2
+# AKHIR PART 2-3
 
 # PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI + MATERI_COCOK + KANDIDAT
 
