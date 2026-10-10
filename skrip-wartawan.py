@@ -3139,7 +3139,6 @@ def _ada_nama_diri_teks(teks):
         return True
     return False
 
-# V6.17.110: longgarkan _topik_sudah_terbit khusus daerah (min_irisan 3→4)
 def _topik_sudah_terbit(judul_kandidat, judul_lama_list, kategori=''):
     if not judul_kandidat or not judul_lama_list:
         return None
@@ -3148,7 +3147,6 @@ def _topik_sudah_terbit(judul_kandidat, judul_lama_list, kategori=''):
     ki_baru = kata_inti(judul_kandidat)
     if not ki_baru:
         return None
-    # V6.17.110: daerah → min_irisan 4 (biar beda sudut pandang lolos)
     if kategori == 'daerah':
         min_irisan = 4
     else:
@@ -3355,7 +3353,8 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
         try:
             feed = feedparser.parse(src['url'])
         except Exception:
-            continue        for entry in feed.entries[:8]:
+            continue
+        for entry in feed.entries[:8]:
             link = entry.get('link', '')
             if not link or link in seen or link in today_urls:
                 continue
@@ -3457,7 +3456,6 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                           + ' — ' + title[:50])
                 continue
 
-            # V6.17.110: kirim kategori ke _topik_sudah_terbit
             topik_dobel = _topik_sudah_terbit(title, judul_database, kategori=kategori)
             if topik_dobel:
                 skip_topik += 1
