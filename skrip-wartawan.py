@@ -53,6 +53,10 @@ GOOGLE_NEWS_DECODE_MIN  = 5
 GOOGLE_NEWS_BATCH_MAX   = 10
 GN_DECODE_TIMEOUT       = 15
 
+# V6.17.110: kuota Tarakan/Kaltara = 3 Tarakan + 3 Kaltara per hari
+KUOTA_TARAKAN_HARIAN = 3
+KUOTA_KALTARA_LAIN_HARIAN = 3
+
 KAMUS_PROVINSI_IBUKOTA = {
     'aceh': 'banda aceh',
     'sumatera utara': 'medan', 'sumut': 'medan',
@@ -495,8 +499,7 @@ EKONOMI_ASING_FEEDS = [
     GN('taiwan semiconductor tsmc chip', 'en', 'GN Semikonduktor'),
 ]
 
-# V6.17.103: TAMBAH GN Bupati Gowa + MA + Pos Indonesia (nasional)
-# V6.17.106: TAMBAH GN Kaltim + provinsi lain (daerah) — biar tidak tergantung Benuanta
+# V6.17.110: tambah GN lokal + RSS lokal Kaltara
 HUNT = {
     'nasional': [
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -530,7 +533,6 @@ HUNT = {
         GN('tni polri indonesia', 'id', 'GN TNI Polri'),
         GN('pendidikan indonesia', 'id', 'GN Pendidikan'),
         GN('sosial budaya indonesia', 'id', 'GN Sosial Budaya'),
-        # V6.17.103: tambah GN pejabat daerah + MA + Pos
         GN('Bupati Gowa', 'id', 'GN Bupati Gowa'),
         GN('Mahkamah Agung surat', 'id', 'GN Mahkamah Agung'),
         GN('PT Pos Indonesia', 'id', 'GN Pos Indonesia'),
@@ -545,6 +547,9 @@ HUNT = {
         RSSF('https://radartarakan.jawapos.com/rss.xml', 'Radar Tarakan'),
         RSSF('https://kaltarapost.co.id/rss', 'Kaltara Post'),
         RSSF('https://www.prokaltara.co.id/rss', 'Pro Kaltara'),
+        # V6.17.110: tambah RSS lokal baru
+        RSSF('https://kaltaraprov.go.id/feed/', 'Kaltara Prov'),
+        RSSF('https://korankaltara.com/feed', 'Koran Kaltara'),
         GN('Tarakan', 'id', 'Google News Tarakan'),
         GN('Pemkot Tarakan', 'id', 'Google News Pemkot Tarakan'),
         GN('Wali Kota Tarakan', 'id', 'Google News Wali Kota Tarakan'),
@@ -555,7 +560,16 @@ HUNT = {
         GN('Malinau', 'id', 'Google News Malinau'),
         GN('Tana Tidung', 'id', 'Google News Tana Tidung'),
         GN('Tanjung Selor', 'id', 'Google News Tanjung Selor'),
-        # V6.17.106: Kaltim + kota (biar tidak tergantung Benuanta)
+        # V6.17.110: tambah GN lokal spesifik
+        GN('Tarakan hari ini', 'id', 'Google News Tarakan Hari Ini'),
+        GN('Kaltara hari ini', 'id', 'Google News Kaltara Hari Ini'),
+        GN('Pemprov Kaltara', 'id', 'Google News Pemprov Kaltara'),
+        GN('DPRD Kaltara', 'id', 'Google News DPRD Kaltara'),
+        GN('Kecamatan Tarakan', 'id', 'Google News Kecamatan Tarakan'),
+        GN('Kelurahan Tarakan', 'id', 'Google News Kelurahan Tarakan'),
+        GN('Diskominfo Tarakan', 'id', 'Google News Diskominfo Tarakan'),
+        GN('RSUD Tarakan', 'id', 'Google News RSUD Tarakan'),
+        # Kaltim
         RSSF('https://kaltim.tribunnews.com/rss', 'Tribun Kaltim'),
         RSSF('https://kaltimpost.jawapos.com/rss', 'Kaltim Post'),
         GN('Kalimantan Timur', 'id', 'Google News Kaltim'),
@@ -564,19 +578,19 @@ HUNT = {
         GN('Berau', 'id', 'Google News Berau'),
         GN('Bontang', 'id', 'Google News Bontang'),
         GN('Kutai', 'id', 'Google News Kutai'),
-        # V6.17.106: Kalsel
+        # Kalsel
         GN('Kalimantan Selatan', 'id', 'Google News Kalsel'),
         GN('Banjarmasin', 'id', 'Google News Banjarmasin'),
         GN('Banjarbaru', 'id', 'Google News Banjarbaru'),
-        # V6.17.106: Kalteng
+        # Kalteng
         RSSF('https://kalteng.tribunnews.com/rss', 'Tribun Kalteng'),
         GN('Kalimantan Tengah', 'id', 'Google News Kalteng'),
         GN('Palangka Raya', 'id', 'Google News Palangka Raya'),
         GN('Sampit', 'id', 'Google News Sampit'),
-        # V6.17.106: Kalbar
+        # Kalbar
         GN('Kalimantan Barat', 'id', 'Google News Kalbar'),
         GN('Pontianak', 'id', 'Google News Pontianak'),
-        # V6.17.106: Sulawesi
+        # Sulawesi
         RSSF('https://makassar.tribunnews.com/rss', 'Tribun Timur'),
         RSSF('https://sulsel.tribunnews.com/rss', 'Tribun Sulsel'),
         RSSF('https://sultra.tribunnews.com/rss', 'Tribun Sultra'),
@@ -592,7 +606,7 @@ HUNT = {
         GN('Sulawesi Tengah', 'id', 'Google News Sulteng'),
         GN('Palu', 'id', 'Google News Palu'),
         GN('Gorontalo', 'id', 'Google News Gorontalo'),
-        # V6.17.106: Jawa
+        # Jawa
         RSSF('https://jatim.tribunnews.com/rss', 'Tribun Jatim'),
         RSSF('https://jateng.tribunnews.com/rss', 'Tribun Jateng'),
         RSSF('https://jabar.tribunnews.com/rss', 'Tribun Jabar'),
@@ -614,7 +628,7 @@ HUNT = {
         GN('Bekasi', 'id', 'Google News Bekasi'),
         GN('Depok', 'id', 'Google News Depok'),
         GN('Cirebon', 'id', 'Google News Cirebon'),
-        # V6.17.106: Sumatera
+        # Sumatera
         RSSF('https://sumut.tribunnews.com/rss', 'Tribun Sumut'),
         RSSF('https://sumsel.tribunnews.com/rss', 'Tribun Sumsel'),
         GN('Sumatera Utara', 'id', 'Google News Sumut'),
@@ -626,24 +640,24 @@ HUNT = {
         GN('Pekanbaru', 'id', 'Google News Pekanbaru'),
         GN('Padang', 'id', 'Google News Padang'),
         GN('Lampung', 'id', 'Google News Lampung'),
-        # V6.17.106: Papua
+        # Papua
         GN('Papua', 'id', 'Google News Papua'),
         GN('Jayapura', 'id', 'Google News Jayapura'),
         GN('Maybrat', 'id', 'Google News Maybrat'),
         GN('Sorong', 'id', 'Google News Sorong'),
         GN('Manokwari', 'id', 'Google News Manokwari'),
-        # V6.17.106: Maluku
+        # Maluku
         GN('Maluku', 'id', 'Google News Maluku'),
         GN('Ambon', 'id', 'Google News Ambon'),
         GN('Ternate', 'id', 'Google News Ternate'),
-        # V6.17.106: Nusa Tenggara
+        # Nusa Tenggara
         GN('Nusa Tenggara Timur', 'id', 'Google News NTT'),
         GN('Kupang', 'id', 'Google News Kupang'),
         GN('Nusa Tenggara Barat', 'id', 'Google News NTB'),
         GN('Mataram', 'id', 'Google News Mataram'),
         GN('Bima', 'id', 'Google News Bima'),
         GN('Denpasar', 'id', 'Google News Denpasar'),
-        # V6.17.106: Lain
+        # Lain
         GN('Batam', 'id', 'Google News Batam'),
         GN('Jambi', 'id', 'Google News Jambi'),
     ],
@@ -3054,7 +3068,6 @@ def _kandidat_layak(judul, summary, kategori='', link=''):
         return False, 'clickbait: kata pancingan'
     if len(judul.split()) < 4:
         return False, 'judul kurang dari 4 kata'
-    # V6.17.108: tolak prakiraan cuaca rutin (tanpa peringatan dini/bencana)
     cuaca_rutin, alasan_cuaca = _adalah_prakiraan_cuaca_rutin(judul, summary)
     if cuaca_rutin:
         return False, alasan_cuaca
@@ -3126,7 +3139,8 @@ def _ada_nama_diri_teks(teks):
         return True
     return False
 
-def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
+# V6.17.110: longgarkan _topik_sudah_terbit khusus daerah (min_irisan 3→4)
+def _topik_sudah_terbit(judul_kandidat, judul_lama_list, kategori=''):
     if not judul_kandidat or not judul_lama_list:
         return None
     if judul_topik_besar(judul_kandidat):
@@ -3134,7 +3148,11 @@ def _topik_sudah_terbit(judul_kandidat, judul_lama_list):
     ki_baru = kata_inti(judul_kandidat)
     if not ki_baru:
         return None
-    min_irisan = 3
+    # V6.17.110: daerah → min_irisan 4 (biar beda sudut pandang lolos)
+    if kategori == 'daerah':
+        min_irisan = 4
+    else:
+        min_irisan = 3
     for t_lama in judul_lama_list:
         if not t_lama:
             continue
@@ -3313,7 +3331,7 @@ def _materi_basi(judul, summary, kategori=''):
     frasa_live_ketemu = next((f for f in KATA_FRASA_LIVE if f in teks_low), None)
     if frasa_live_ketemu:
         judul_lama = _judul_dari_url_supabase()
-        topik_dobel = _topik_sudah_terbit(judul, judul_lama)
+        topik_dobel = _topik_sudah_terbit(judul, judul_lama, kategori=kategori)
         if topik_dobel:
             return True, ('materi basi live (frasa "' + frasa_live_ketemu
                           + '" + topik sudah terbit: ' + topik_dobel[:60] + ')')
@@ -3337,8 +3355,7 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
         try:
             feed = feedparser.parse(src['url'])
         except Exception:
-            continue
-        for entry in feed.entries[:8]:
+            continue        for entry in feed.entries[:8]:
             link = entry.get('link', '')
             if not link or link in seen or link in today_urls:
                 continue
@@ -3440,7 +3457,8 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                           + ' — ' + title[:50])
                 continue
 
-            topik_dobel = _topik_sudah_terbit(title, judul_database)
+            # V6.17.110: kirim kategori ke _topik_sudah_terbit
+            topik_dobel = _topik_sudah_terbit(title, judul_database, kategori=kategori)
             if topik_dobel:
                 skip_topik += 1
                 if skip_topik <= 3:
@@ -6808,11 +6826,7 @@ def _topik_breaking_sudah_terbit(judul_baru, min_irisan=4):
             continue
     return None
 
-# V6.17.109: cek topik sudah terbit di kategori LAIN (lintas kategori, termasuk breaking)
 def _topik_sudah_terbit_lintas(judul_baru, kategori_target):
-    """Cek apakah topik sudah terbit di kategori manapun (termasuk breaking) < 6 jam.
-    Dipakai di produksi_satu SEBELUM panggil AI.
-    """
     if not judul_baru:
         return None
     ki_baru = kata_inti(judul_baru)
@@ -7011,7 +7025,8 @@ def teks_mengandung(teks, kata_list):
             return True
     return False
 
-def hitung_kaltara_hari_ini():
+# V6.17.110: hitung Tarakan/Kaltara terpisah
+def hitung_tarakan_hari_ini():
     n = 0
     try:
         rows = rest_get('?select=title,dateline,created_at&order=created_at.desc&limit=300')
@@ -7022,13 +7037,39 @@ def hitung_kaltara_hari_ini():
                 if d != today:
                     continue
                 teks = ((row.get('title') or '') + ' ' + (row.get('dateline') or '')).lower()
-                if any(w in teks for w in KALTARA_WORDS):
+                if re.search(r'\btarakan\b', teks):
                     n += 1
             except Exception:
                 pass
     except Exception as e:
-        print('   Gagal hitung Kaltara: ' + str(e)[:60])
+        print('   Gagal hitung Tarakan: ' + str(e)[:60])
     return n
+
+def hitung_kaltara_lain_hari_ini():
+    n = 0
+    try:
+        rows = rest_get('?select=title,dateline,created_at&order=created_at.desc&limit=300')
+        today = datetime.now(WITA).date()
+        for row in rows:
+            try:
+                d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00')).astimezone(WITA).date()
+                if d != today:
+                    continue
+                teks = ((row.get('title') or '') + ' ' + (row.get('dateline') or '')).lower()
+                if re.search(r'\btarakan\b', teks):
+                    continue
+                if any(re.search(r'\b' + re.escape(w) + r'\b', teks)
+                       for w in ['kaltara', 'nunukan', 'bulungan', 'malinau',
+                                 'tana tidung', 'sesayap', 'juata', 'tanjung selor']):
+                    n += 1
+            except Exception:
+                pass
+    except Exception as e:
+        print('   Gagal hitung Kaltara lain: ' + str(e)[:60])
+    return n
+
+def hitung_kaltara_hari_ini():
+    return hitung_tarakan_hari_ini() + hitung_kaltara_lain_hari_ini()
 
 def hitung_topik_hari_ini(kata_list):
     n = 0
@@ -7055,6 +7096,17 @@ def kelompok_kaltara(items):
 def kelompok_tarakan(items):
     teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
     return bool(re.search(r'\btarakan\b', teks))
+
+# V6.17.110: kelompok kaltara lain (bukan tarakan)
+def kelompok_kaltara_lain(items):
+    if kelompok_tarakan(items):
+        return False
+    teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
+    for w in ['kaltara', 'nunukan', 'bulungan', 'malinau', 'tana tidung',
+              'sesayap', 'juata', 'tanjung selor']:
+        if re.search(r'\b' + re.escape(w) + r'\b', teks):
+            return True
+    return False
 
 def kelompok_topik(items, kata_list):
     teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
@@ -7148,7 +7200,22 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
         print('   (' + cat + ') Semua kandidat habis setelah filter - skip.')
         return False
     groups = match_articles(cand)
-    if utamakan_kaltara:
+    # V6.17.110: prioritas Tarakan → Kaltara lain → daerah lain
+    if utamakan_kaltara and cat == 'daerah':
+        tarakan_penuh = hitung_tarakan_hari_ini() >= KUOTA_TARAKAN_HARIAN
+        kaltara_lain_penuh = hitung_kaltara_lain_hari_ini() >= KUOTA_KALTARA_LAIN_HARIAN
+        def prio_daerah(g):
+            if not tarakan_penuh and kelompok_tarakan(g['items']):
+                return 0
+            if not kaltara_lain_penuh and kelompok_kaltara_lain(g['items']):
+                return 1
+            if kelompok_tarakan(g['items']) or kelompok_kaltara_lain(g['items']):
+                return 2
+            return 3
+        groups.sort(key=prio_daerah)
+        print('   Kuota Tarakan: ' + str(hitung_tarakan_hari_ini()) + '/' + str(KUOTA_TARAKAN_HARIAN)
+              + ' — Kaltara lain: ' + str(hitung_kaltara_lain_hari_ini()) + '/' + str(KUOTA_KALTARA_LAIN_HARIAN))
+    elif utamakan_kaltara:
         groups.sort(key=lambda g: 0 if kelompok_tarakan(g['items'])
                     else (1 if kelompok_kaltara(g['items']) else 2))
     if utamakan_topik:
@@ -7185,7 +7252,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                 continue
         if sudah_serupa(top['title']):
             continue
-        # V6.17.109: cek topik sudah terbit di kategori lain (termasuk breaking) < 6 jam
         topik_lintas = _topik_sudah_terbit_lintas(top['title'], cat)
         if topik_lintas:
             print('   Skip (topik sudah terbit lintas kategori): ' + topik_lintas[:80])
@@ -7257,9 +7323,12 @@ def sesi_kategori(today_urls, seen):
           ', '.join(k + '=' + str(v) for k, v in kuota.items()))
     utamakan_kaltara = False
     if kuota.get('daerah'):
-        utamakan_kaltara = hitung_kaltara_hari_ini() < 2
+        utamakan_kaltara = hitung_kaltara_hari_ini() < (KUOTA_TARAKAN_HARIAN + KUOTA_KALTARA_LAIN_HARIAN)
         if utamakan_kaltara:
-            print('   Kuota Kaltara hari ini belum capai 2 - kandidat Tarakan/Kaltara didahulukan.')
+            print('   Kuota Kaltara hari ini: Tarakan ' + str(hitung_tarakan_hari_ini())
+                  + '/' + str(KUOTA_TARAKAN_HARIAN)
+                  + ' — Kaltara lain ' + str(hitung_kaltara_lain_hari_ini())
+                  + '/' + str(KUOTA_KALTARA_LAIN_HARIAN))
     utamakan_topik = None
     if kuota.get('nasional'):
         utamakan_topik = []
@@ -7504,7 +7573,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.109'
+FILE_VERSI = 'V6.17.110'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
