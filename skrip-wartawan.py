@@ -798,7 +798,7 @@ def judul_spam(judul):
 
 # AKHIR PART 1
 
-# PART 2 - FEEDS BREAKING, KATA-KUNCI, ANTI-DOBEL, SCRAPER, SYSTEM PROMPT
+# PART 2-1 - KONFIGURASI + FILTER + URL
 
 try:
     from gnews_decoder import decode_many as _gn_decode_many
@@ -1015,7 +1015,6 @@ AKTOR_NON_BREAKING = [
     'komentar artis', 'ucapan artis', 'kata artis', 'menurut artis',
     'soroti artis', 'dukung artis', 'tanggapi artis',
     'seleb tiktok', 'seleb instagram', 'vlogger', 'podcaster',
-    # V6.17.105: tambah artis K-pop + boyband/girlband Korea
     'song mino', 'mino winner', 'winner', 'ikon', 'blackpink', 'bts',
     'exo', 'twice', 'red velvet', 'nct', 'stray kids', 'seventeen',
     'aespa', 'itzy', 'txt', 'enhypen', 'ateez', 'monsta x', 'got7',
@@ -1256,11 +1255,22 @@ DOMAIN_NON_BERITA = [
     'googletagmanager.com', 'google-analytics.com', 'accounts.google.com',
     'consent.google.com', 'policies.google.com', 'support.google.com',
     'myaccount.google.com',
-    # V6.17.106: blok URL sosmed sebagai sumber berita
     'fb.com', 'fb.watch', 'm.facebook.com', 'web.facebook.com',
     'whatsapp.com', 'wa.me', 'telegram.org', 't.me',
     'threads.net', 'x.com', 'linkedin.com', 'reddit.com',
 ]
+
+POLA_URL_NON_ARTIKEL = [
+    '/video/', '/videos/', '/watch/', '/nightly-news/',
+    '/liveblog/', '/live-blog/', '/live-blogs/', '/live/',
+]
+
+def _url_halaman_non_artikel(u):
+    low = (u or '').lower()
+    for p in POLA_URL_NON_ARTIKEL:
+        if p in low:
+            return p
+    return ''
 
 def _url_valid_berita(u):
     if not u:
@@ -1271,6 +1281,8 @@ def _url_valid_berita(u):
     for blok in DOMAIN_NON_BERITA:
         if blok in low:
             return False
+    if _url_halaman_non_artikel(low):
+        return False
     m = re.match(r'^https?://[^/]+(/.*)?$', low)
     if not m or not m.group(1):
         return False
@@ -1348,6 +1360,9 @@ def _domain_dari_url(url):
         return m.group(1) if m else '?'
     except Exception:
         return '?'
+
+# AKHIR PART 2-1
+# PART 2-2 - SCRAPER + HELPER + PROMPT
 
 def scrape_via_playtrafi(url):
     if not _PLAYTRAFI_OK:
@@ -1432,7 +1447,6 @@ def _bersihkan_html_artikel(html):
     return re.sub(r'\s+', ' ', ' '.join(baris_ok)).strip()[:2500]
 
 def _coba_scrape_amp(url_asli):
-    """V6.17.106: coba AMP URL kalau URL biasa gagal (khusus jawapos/radartarakan)."""
     low = (url_asli or '').lower()
     if 'jawapos.com' not in low and 'radartarakan' not in low:
         return ''
@@ -1489,7 +1503,7 @@ def scrape_artikel(url, judul_debug=''):
         _CACHE_SCRAPE[url] = ''
         return ''
     if not _url_valid_berita(url_asli):
-        print('       URL hasil resolusi tidak valid (non-berita) - skip: ' + url_asli[:60])
+        print('       URL hasil resolusi tidak valid (non-berita/video/liveblog) - skip: ' + url_asli[:60])
         STAT_SCRAPE['skip'] += 1
         _CACHE_SCRAPE[url] = ''
         return ''
@@ -1531,7 +1545,6 @@ def scrape_artikel(url, judul_debug=''):
         print('       Langsung scrape pendek: ' + str(len(hasil)) + ' kar - ' + url_asli[:60])
     except Exception as e:
         print('       Langsung scrape gagal: ' + str(e)[:60])
-    # V6.17.106: coba AMP dulu (khusus jawapos/radartarakan)
     hasil_amp = _coba_scrape_amp(url_asli)
     if hasil_amp:
         _CACHE_SCRAPE[url] = hasil_amp
@@ -1966,7 +1979,8 @@ FORMAT JAWABAN - HANYA JSON valid:
  "waktu_kejadian": "Hari (Tanggal Bulan """ + k['tahun'] + """)"}
 """
 
-# AKHIR PART 2
+# AKHIR PART 2-2
+
 # PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI + MATERI_COCOK + KANDIDAT
 
 def edge_call(payload_json):
@@ -4656,7 +4670,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
 
 # AKHIR PART 3-3
 
-# PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI
+# PART 3B-1 - SUMBER DOMAIN + HELPER GAMBAR + ANTI-JIPLAK + CATATAN
 
 def sumber_kesehatan_hari_ini(jam):
     if jam not in JAM_KESEHATAN:
@@ -5584,17 +5598,12 @@ AMBANG_JUDUL_MIRIP = 0.75
 
 MAX_RETRY_JUDUL_DOBEL = 1
 
-# V6.17.107: anti-dobel lintas kategori di ai_write
 def _dobel_lintas_kategori(judul_baru, kategori_target):
-    """Cek apakah topik judul baru sudah terbit di kategori manapun < 6 jam.
-    Kecuali topik bencana besar (gempa/tsunami/banjir) → longgarkan.
-    """
     if not judul_baru:
         return None
     ki_baru = kata_inti(judul_baru)
     if not ki_baru:
         return None
-    # kecualikan topik besar (gempa, tsunami, banjir, dsb)
     if judul_topik_besar(judul_baru):
         return None
     try:
@@ -5615,7 +5624,6 @@ def _dobel_lintas_kategori(judul_baru, kategori_target):
             if judul_topik_besar(t_lama):
                 continue
             kat_lama = row.get('category') or ''
-            # kalau kategori sama, biar _topik_sudah_terbit yang urus
             if kat_lama == kategori_target:
                 continue
             ki_lama = kata_inti(t_lama)
@@ -5629,6 +5637,9 @@ def _dobel_lintas_kategori(judul_baru, kategori_target):
         except Exception:
             continue
     return None
+
+# AKHIR PART 3B-1
+# PART 3B-2 - AI WRITE s/d AI REWRITE TEKNOLOGI MULTI
 
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
              judul_materi='', summary_materi='', wajib_topik=True,
@@ -5789,7 +5800,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         if source_url:
             catat_tolak_ai_token(source_url, 'diblokir anti-dobel-dateline: ' + dobel_dt[:80])
         raise Exception('diblokir anti-dobel-dateline: ' + dobel_dt[:100])
-    # V6.17.107: anti-dobel lintas kategori
     dobel_lintas = _dobel_lintas_kategori(judul, kategori)
     if dobel_lintas:
         if source_url:
@@ -6318,7 +6328,8 @@ def ai_rewrite_teknologi_multi(items, dom):
                     wajib_topik=True,
                     source_url=items[0].get('link', '') if items else '')
 
-# AKHIR PART 3B
+# AKHIR PART 3B-2
+
 # PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS
 
 KALENDER_EVENT = [
