@@ -7431,7 +7431,8 @@ def sesi_kategori(today_urls, seen):
     kuota = JADWAL_JAM.get(jam)
     if not kuota:
         print('\nKATEGORI - jam ' + str(jam) + ':00 WITA di luar jadwal produksi. Lewat.')
-        return 0    print('\nKATEGORI - jam ' + str(jam) + ':00 WITA - kuota: ' +
+        return 0
+    print('\nKATEGORI - jam ' + str(jam) + ':00 WITA - kuota: ' +
           ', '.join(k + '=' + str(v) for k, v in kuota.items()))
     utamakan_kaltara = False
     if kuota.get('daerah'):
