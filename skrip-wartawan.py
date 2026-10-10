@@ -2994,6 +2994,37 @@ def _kandidat_bukan_pendidikan(kategori, judul, summary):
         return False, 'materi murni pendidikan bukan berita daerah (' + str(hit) + ' kata kunci)'
     return True, ''
 
+# V6.17.112: materi olahraga ke nasional → arahkan ke olahraga
+KATA_MATERI_OLAHRAGA_KUAT = [
+    'motogp', 'moto2', 'moto3', 'motoe', 'formula 1', 'f1 ',
+    'kualifikasi', 'pole position', 'pole ', 'grid ', 'start grid',
+    'balapan', 'sirkuit', 'pembalap', 'tim balap',
+    'liga', 'piala', 'turnamen', 'kejuaraan', 'kompetisi',
+    'pertandingan', 'laga', 'kick off', 'kick-off',
+    'klasemen', 'gol', 'skor akhir', 'babak ', 'ronde',
+    'atlet', 'juara', 'runner-up', 'medali', 'olimpiade',
+    'sea games', 'asian games', 'piala dunia',
+    'liga champions', 'premier league', 'la liga',
+]
+
+def _kandidat_bukan_olahraga_murni(kategori, judul, summary):
+    """V6.17.112: materi olahraga tidak boleh masuk nasional/daerah/ekonomi."""
+    if kategori not in ('nasional', 'daerah', 'ekonomi'):
+        return True, ''
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    hit = 0
+    for k in KATA_MATERI_OLAHRAGA_KUAT:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                hit += 1
+        else:
+            if k in gab:
+                hit += 1
+        if hit >= 2:
+            return False, ('materi olahraga (bukan ' + kategori + '): '
+                           + str(hit) + ' kata kunci olahraga')
+    return True, ''
+
 def _kandidat_bukan_dobel(judul):
     if sudah_serupa(judul):
         return False, 'dobel dengan judul yang sudah ada'
@@ -3055,6 +3086,18 @@ def _kandidat_domain_skip(kategori, judul, link):
         return True
     return False
 
+# V6.17.112: tolak judul "FOTO:", "GALERI:", "POTRET:" sebagai breaking
+KATA_JUDUL_FOTO = ['foto:', 'foto :', 'galeri:', 'galeri :', 'potret:',
+                   'potret :', 'in pictures', 'photos:', 'images:',
+                   'see photos', 'in photos', 'foto-foto', 'foto foto']
+
+def _judul_foto_galeri(judul):
+    j = (judul or '').lower().strip()
+    for k in KATA_JUDUL_FOTO:
+        if j.startswith(k):
+            return k
+    return ''
+
 def _kandidat_layak(judul, summary, kategori='', link=''):
     judul = (judul or '').strip()
     summary = (summary or '').strip()
@@ -3064,6 +3107,10 @@ def _kandidat_layak(judul, summary, kategori='', link=''):
         return False, 'domain skip (blog opini/portal gagal)'
     if _kandidat_domain_olahraga_skip(kategori, judul, link):
         return False, 'portal olahraga inggris (judul tidak kontekstual)'
+    # V6.17.112: tolak judul foto/galeri
+    fg = _judul_foto_galeri(judul)
+    if fg:
+        return False, 'judul foto/galeri (bukan berita): ' + fg
     tl = judul.lower()
     for k in KATA_FEATURE_OPINI:
         if k in tl:
@@ -3080,6 +3127,10 @@ def _kandidat_layak(judul, summary, kategori='', link=''):
     if not ok:
         return False, alasan
     ok, alasan = _kandidat_topik_nyambung(judul, summary)
+    if not ok:
+        return False, alasan
+    # V6.17.112: materi olahraga tidak boleh masuk nasional/daerah/ekonomi
+    ok, alasan = _kandidat_bukan_olahraga_murni(kategori, judul, summary)
     if not ok:
         return False, alasan
     ok, alasan = _kandidat_negara_asing_untuk_lokal(kategori, judul, summary)
@@ -3367,7 +3418,6 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
             if link in rejected:
                 skip_rejected += 1
                 continue
-            # V6.17.111: cek URL RSS non-artikel (opini/indepth/video/liveblog)
             pola_na = _link_rss_non_artikel(link)
             if pola_na:
                 skip_link_non_artikel += 1
@@ -5604,12 +5654,13 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
                                              'berita terkini', 'update terkini',
                                              'headline', 'top news')):
         return None
+    # V6.17.112: batasi window pola ke 60 karakter (bukan 120) — cegah salah tangkap frasa judul
     pola_nama_pejabat = re.compile(
         r'\b(?:'
         r'wali\s+kota|wakil\s+wali\s+kota|bupati|wakil\s+bupati|gubernur|wakil\s+gubernur|'
         r'presiden|menteri|kepala\s+lapas|kepala\s+dinas|kepala\s+badan|kepala\s+uptd|'
         r'kepala\s+bidang|kapolres|kapolsek|kajari|direktur|ketua|kades|lurah|camat'
-        r')\s+([A-Z][a-zA-Z\.\'\-\s]{3,80})',
+        r')\s+([A-Z][a-zA-Z\.\'\-\s]{3,60})',
         re.IGNORECASE
     )
     nama_materi = []
@@ -5631,6 +5682,20 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
         if len(nama_bersih) < 1:
             continue
         if len(nama_bersih) < 2:
+            continue
+        # V6.17.112: cek kalau nama_full panjang > 80 char — kemungkinan salah tangkap frasa judul
+        if len(nama_full) > 80:
+            continue
+        # V6.17.112: cek kalau ada kata kerja di nama_full — salah tangkap
+        nama_full_low = nama_full.lower()
+        ada_verba = False
+        for v in ['banbinsa', 'bersama', 'gotong', 'warga', 'memimpin',
+                  'menggelar', 'melakukan', 'meninjau', 'resmikan',
+                  'kunjungi', 'hadiri', 'pimpin', 'bahas']:
+            if v in nama_full_low:
+                ada_verba = True
+                break
+        if ada_verba:
             continue
         nama_kunci = nama_bersih[-1]
         if len(nama_kunci) < 3:
@@ -7610,7 +7675,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.111'
+FILE_VERSI = 'V6.17.112'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
