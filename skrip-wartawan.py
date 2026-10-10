@@ -1260,9 +1260,12 @@ DOMAIN_NON_BERITA = [
     'threads.net', 'x.com', 'linkedin.com', 'reddit.com',
 ]
 
+# V6.17.108: skip URL halaman video + liveblog
+# V6.17.109: tambah /opini/, /indepth/, /analysis/, /editorial/
 POLA_URL_NON_ARTIKEL = [
     '/video/', '/videos/', '/watch/', '/nightly-news/',
     '/liveblog/', '/live-blog/', '/live-blogs/', '/live/',
+    '/opini/', '/indepth/', '/analysis/', '/editorial/',
 ]
 
 def _url_halaman_non_artikel(u):
@@ -1334,6 +1337,7 @@ def _gn_id_dari_url(url):
         pass
     return ''
 
+# V6.17.109: kompasiana sudah ada, tinggal pastikan pre-filter RSS juga cek domain_skip
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
@@ -1362,6 +1366,7 @@ def _domain_dari_url(url):
         return '?'
 
 # AKHIR PART 2-1
+
 # PART 2-2 - SCRAPER + HELPER + PROMPT
 
 def scrape_via_playtrafi(url):
@@ -6745,7 +6750,6 @@ def _kandidat_beda_topik(kandidat_baru, kandidat_lama):
         return False
     return True
 
-# V6.17.107: min_irisan 4 → 3 untuk bencana besar
 KATA_BENCANA_BESAR_BREAKING = [
     'gempa', 'tsunami', 'earthquake', 'magnitude', 'magnitudo',
     'banjir', 'flood', 'banjir bandang', 'flash flood',
@@ -6775,7 +6779,6 @@ def _topik_breaking_sudah_terbit(judul_baru, min_irisan=4):
     ki_baru = kata_inti(judul_baru)
     if not ki_baru:
         return None
-    # V6.17.107: bencana besar → min_irisan 3
     if _adalah_bencana_besar(judul_baru):
         min_irisan = 3
     try:
@@ -6801,6 +6804,51 @@ def _topik_breaking_sudah_terbit(judul_baru, min_irisan=4):
             if len(irisan) >= min_irisan:
                 return ('topik breaking sudah terbit < 6 jam: ' + str(len(irisan))
                         + ' kata kunci sama — ' + str(sorted(list(irisan))[:4]))
+        except Exception:
+            continue
+    return None
+
+# V6.17.109: cek topik sudah terbit di kategori LAIN (lintas kategori, termasuk breaking)
+def _topik_sudah_terbit_lintas(judul_baru, kategori_target):
+    """Cek apakah topik sudah terbit di kategori manapun (termasuk breaking) < 6 jam.
+    Dipakai di produksi_satu SEBELUM panggil AI.
+    """
+    if not judul_baru:
+        return None
+    ki_baru = kata_inti(judul_baru)
+    if not ki_baru:
+        return None
+    if judul_topik_besar(judul_baru):
+        return None
+    try:
+        rows = rest_get('?select=title,category,created_at'
+                        '&order=created_at.desc&limit=100')
+    except Exception:
+        return None
+    now = datetime.now(timezone.utc)
+    for row in rows:
+        try:
+            d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00'))
+            if d.tzinfo is None:
+                d = d.replace(tzinfo=timezone.utc)
+            if (now - d).total_seconds() > 6 * 3600:
+                continue
+            t_lama = row.get('title') or ''
+            if not t_lama:
+                continue
+            if judul_topik_besar(t_lama):
+                continue
+            kat_lama = row.get('category') or ''
+            if kat_lama == kategori_target:
+                continue
+            ki_lama = kata_inti(t_lama)
+            if not ki_lama:
+                continue
+            irisan = ki_baru & ki_lama
+            if len(irisan) >= 4:
+                return ('topik sudah terbit di kategori "' + kat_lama
+                        + '" < 6 jam: ' + str(len(irisan)) + ' kata kunci sama — '
+                        + str(sorted(list(irisan))[:4]))
         except Exception:
             continue
     return None
@@ -6856,7 +6904,6 @@ def sesi_breaking(today_urls, seen):
         if sudah_serupa(c['title']):
             print('   Skip (dobel): ' + c['title'][:50])
             continue
-        # V6.17.107: min_irisan ditentukan di dalam fungsi (bencana besar = 3)
         topik_brk = _topik_breaking_sudah_terbit(c['title'], min_irisan=4)
         if topik_brk:
             print('   Skip (topik breaking sudah terbit): ' + topik_brk[:80])
@@ -6881,7 +6928,6 @@ def sesi_breaking(today_urls, seen):
             if not _breaking_ada_lokasi(judul, isi):
                 print('   DITOLAK - breaking tanpa lokasi spesifik: ' + judul[:50])
                 continue
-        # V6.17.107: min_irisan ditentukan di dalam fungsi
         topik_brk_final = _topik_breaking_sudah_terbit(judul, min_irisan=4)
         if topik_brk_final:
             print('   DITOLAK - topik breaking sudah terbit: ' + topik_brk_final[:80])
@@ -7138,6 +7184,11 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
             if b and barat_sudah_terbit(b):
                 continue
         if sudah_serupa(top['title']):
+            continue
+        # V6.17.109: cek topik sudah terbit di kategori lain (termasuk breaking) < 6 jam
+        topik_lintas = _topik_sudah_terbit_lintas(top['title'], cat)
+        if topik_lintas:
+            print('   Skip (topik sudah terbit lintas kategori): ' + topik_lintas[:80])
             continue
         if kandidat_terpakai and not _kandidat_beda_topik(top, kandidat_terpakai[0]):
             print('   Skip (cadangan sama topik): ' + top['title'][:50])
@@ -7453,7 +7504,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.108'
+FILE_VERSI = 'V6.17.109'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
