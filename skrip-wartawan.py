@@ -1967,7 +1967,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 """
 
 # AKHIR PART 2
-# PART 3-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI + MATERI_COCOK + KANDIDAT
+# PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI + MATERI_COCOK + KANDIDAT
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -2119,10 +2119,72 @@ MATERI_MIN_KARAKTER_RSS = 120
 MATERI_MIN_KARAKTER_RSS_NASIONAL = 300
 MATERI_MIN_KARAKTER_RSS_DAERAH    = 250
 MATERI_MIN_KARAKTER_BREAKING = 200
+MATERI_MIN_KARAKTER_BREAKING_RSS = 150
+MATERI_MIN_KARAKTER_BREAKING_BENCANA = 120
 MATERI_MIN_KARAKTER_ASEAN = 600
 
 MATERI_RSS_SKIP_TIPIS = 200
 MATERI_RSS_NASIONAL_TIPIS = 150
+
+# V6.17.108: kata kunci bencana besar (untuk threshold breaking longgar)
+KATA_BENCANA_BESAR = [
+    'gempa', 'tsunami', 'earthquake', 'magnitude', 'magnitudo',
+    'erupsi', 'gunung meletus', 'volcanic eruption',
+    'banjir bandang', 'flash flood', 'banjir besar',
+    'longsor', 'landslide', 'tanah longsor',
+    'kebakaran hutan', 'karhutla', 'wildfire',
+    'angin topan', 'typhoon', 'hurricane', 'cyclone',
+    'puting beliung', 'tornado',
+]
+
+def _adalah_bencana_besar_teks(teks):
+    if not teks:
+        return False
+    t = teks.lower()
+    for k in KATA_BENCANA_BESAR:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', t):
+                return True
+        else:
+            if k in t:
+                return True
+    return False
+
+# V6.17.108: prakiraan cuaca rutin → TOLAK. Yang ada peringatan dini → IZINKAN.
+KATA_PRAKIRAAN_CUACA_RUTIN = [
+    'prakiraan cuaca', 'cuaca hari ini', 'cuaca besok',
+    'cuaca pagi', 'cuaca siang', 'cuaca sore', 'cuaca malam',
+    'prakiraan cuaca hari ini', 'prakiraan cuaca besok',
+    'ramalan cuaca', 'cuaca cerah', 'cerah berawan',
+    'berawan', 'hujan ringan', 'hujan sedang', 'hujan lebat',
+    'suhu udara', 'kelembapan udara', 'angin timur',
+    'angin barat', 'angin utara', 'angin selatan',
+    'bmkg prakiraan cuaca', 'suhu capai', 'suhu mencapai',
+]
+
+KATA_PERINGATAN_DINI_CUACA = [
+    'peringatan dini', 'waspada', 'potensi banjir', 'potensi tsunami',
+    'potensi longsor', 'potensi angin puting beliung', 'potensi gelombang tinggi',
+    'gelombang tinggi', 'angin puting beliung', 'cuaca ekstrem',
+    'hujan lebat disertai angin', 'hujan es', 'banjir rob',
+    'pasang surut', 'rob', 'genangan', 'siaga', 'awas',
+    'evakuasi', 'darurat', 'bencana', 'mitigasi',
+    'waspada banjir', 'waspada longsor', 'waspada gelombang',
+]
+
+def _adalah_prakiraan_cuaca_rutin(judul, summary):
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    hit_cuaca = sum(1 for k in KATA_PRAKIRAAN_CUACA_RUTIN if k in gab)
+    if hit_cuaca < 1:
+        return False, ''
+    for k in KATA_PERINGATAN_DINI_CUACA:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                return False, ''
+        else:
+            if k in gab:
+                return False, ''
+    return True, 'prakiraan cuaca rutin (tanpa peringatan dini/bencana): hit ' + str(hit_cuaca)
 
 def _materi_sampah(teks):
     if not teks:
@@ -2210,7 +2272,13 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
     if _materi_sampah(materi):
         return False, 'materi sampah (anti-bot/JS block)'
     if kategori == 'breaking':
-        min_kar = MATERI_MIN_KARAKTER_BREAKING
+        # V6.17.108: threshold breaking RSS dilonggarkan
+        if dari_scraping:
+            min_kar = MATERI_MIN_KARAKTER_BREAKING
+        elif _adalah_bencana_besar_teks(judul + ' ' + materi):
+            min_kar = MATERI_MIN_KARAKTER_BREAKING_BENCANA
+        else:
+            min_kar = MATERI_MIN_KARAKTER_BREAKING_RSS
     elif kategori == 'internasional_asean':
         min_kar = MATERI_MIN_KARAKTER_ASEAN
     elif kategori == 'nasional':
@@ -2523,7 +2591,6 @@ KATA_SINYAL_EKONOMI_KUAT = [
     'okx', 'binance', 'coinbase', 'token', 'nft', 'defi', 'stablecoin',
 ]
 
-# V6.17.107: sinyal ekonomi ASEAN kuat → arahkan ke ekonomi
 KATA_EKONOMI_ASEAN_KUAT = [
     'budget', 'anggaran', 'fiscal', 'fiskal', 'gdp', 'pdb',
     'pertumbuhan ekonomi', 'economic growth', 'inflasi', 'inflation',
@@ -2546,7 +2613,6 @@ def _kandidat_kategori_materi(kategori, judul, summary):
         hit_eko = sum(1 for k in KATA_SINYAL_EKONOMI_KUAT if k in gab)
         if hit_eko >= 3:
             return False, 'kategori asean tapi materi ekonomi (hit ' + str(hit_eko) + ')'
-        # V6.17.107: cek sinyal ekonomi ASEAN kuat → arahkan ke ekonomi
         hit_eko_asean = sum(1 for k in KATA_EKONOMI_ASEAN_KUAT if k in gab)
         if hit_eko_asean >= 2:
             return False, ('kategori asean tapi materi ekonomi negara ASEAN '
@@ -2594,9 +2660,9 @@ def _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary):
             return False, 'kategori luar tapi ada lembaga Indonesia: ' + lem
     return True, ''
 
-# AKHIR PART 3-1
+# AKHIR PART 3A-1
 
-# PART 3-2 - SISA KANDIDAT + COLLECT + MATCH
+# PART 3A-2 - SISA KANDIDAT + COLLECT + MATCH
 
 SINGKATAN_LOKASI_LOKAL = {
     'ubt': 'tarakan', 'untan': 'pontianak', 'unmul': 'samarinda',
@@ -2969,6 +3035,10 @@ def _kandidat_layak(judul, summary, kategori='', link=''):
         return False, 'clickbait: kata pancingan'
     if len(judul.split()) < 4:
         return False, 'judul kurang dari 4 kata'
+    # V6.17.108: tolak prakiraan cuaca rutin (tanpa peringatan dini/bencana)
+    cuaca_rutin, alasan_cuaca = _adalah_prakiraan_cuaca_rutin(judul, summary)
+    if cuaca_rutin:
+        return False, alasan_cuaca
     ok, alasan = _kandidat_bukan_dobel(judul)
     if not ok:
         return False, alasan
@@ -3420,7 +3490,7 @@ def match_articles(candidates):
             groups.append({'kw': k, 'items': [c]})
     return groups
 
-# AKHIR PART 3-2
+# AKHIR PART 3A-2
 
 # PART 3-3 - KATEGORI_BARAT s/d CEK_TOPIK_AI_VS_MATERI
 
@@ -7372,7 +7442,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.107'
+FILE_VERSI = 'V6.17.108'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
