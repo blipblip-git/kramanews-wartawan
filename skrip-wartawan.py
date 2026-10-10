@@ -7684,6 +7684,21 @@ def run_session():
     print('Sesi selesai - breaking: ' + str(n_brk) + ' - kategori: ' + str(n_kat))
     return n_brk + n_kat
 
+# V6.17.117: cek toggle runtime dari Supabase (ai_wartawan_on, breaking_on)
+def cek_settings_runtime():
+    try:
+        rows = rest_get('?select=key,value&key=in.(ai_wartawan_on,breaking_on)')
+        out = {'ai_wartawan_on': True, 'breaking_on': True}
+        for r in rows:
+            k = r.get('key')
+            v = r.get('value')
+            if k in out:
+                out[k] = bool(v)
+        return out
+    except Exception as e:
+        print('   Gagal cek runtime_settings (default ON): ' + str(e)[:60])
+        return {'ai_wartawan_on': True, 'breaking_on': True}
+
 def main_sekali():
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
         print('Kunci belum lengkap! Cek Secrets GitHub: DEEPSEEK_KEY, SUPABASE_PUBLISHABLE')
@@ -7692,11 +7707,21 @@ def main_sekali():
         print('ADMIN_OPS_SECRET belum ada di Secrets GitHub!')
         return
     print('Kunci gerbang admin-ops: OK')
+    settings = cek_settings_runtime()
     if '--breaking' in sys.argv:
+        if not settings.get('breaking_on', True):
+            print('⏸️ Breaking OFF oleh pemilik — skip.')
+            return
         sesi_breaking_saja()
     elif '--kategori' in sys.argv:
+        if not settings.get('ai_wartawan_on', True):
+            print('⏸️ AI Wartawan OFF oleh pemilik — skip.')
+            return
         sesi_kategori_saja()
     else:
+        if not settings.get('ai_wartawan_on', True) and not settings.get('breaking_on', True):
+            print('⏸️ AI Wartawan & Breaking OFF oleh pemilik — skip.')
+            return
         run_session()
 
 def main():
@@ -7714,7 +7739,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.115'
+FILE_VERSI = 'V6.17.117'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
