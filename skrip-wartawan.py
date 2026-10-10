@@ -1967,7 +1967,7 @@ FORMAT JAWABAN - HANYA JSON valid:
 """
 
 # AKHIR PART 2
-# PART 3A-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI + MATERI_COCOK + KANDIDAT + COLLECT + MATCH + DOBEL_DATELINE
+# PART 3-1 - EDGE CALL + REST + STATE + GAMBAR + VALIDATOR + KATA_KUNCI_KATEGORI + MATERI_COCOK + KANDIDAT
 
 def edge_call(payload_json):
     if not ADMIN_SECRET:
@@ -2329,7 +2329,6 @@ KATA_KUNCI_KATEGORI = {
                'gowa', 'sulawesi selatan', 'sulsel', 'makassar',
                'berau', 'kaltim', 'kalimantan timur', 'balikpapan',
                'samarinda', 'bontang', 'kutai', 'jambi',
-               # V6.17.106: Papua + Maluku + NTT + NTB + kota lain
                'papua', 'jayapura', 'maybrat', 'sorong', 'manokwari',
                'merauke', 'nabire', 'mimika', 'timika', 'biak',
                'maluku', 'ambon', 'ternate', 'tidore',
@@ -2524,6 +2523,19 @@ KATA_SINYAL_EKONOMI_KUAT = [
     'okx', 'binance', 'coinbase', 'token', 'nft', 'defi', 'stablecoin',
 ]
 
+# V6.17.107: sinyal ekonomi ASEAN kuat → arahkan ke ekonomi
+KATA_EKONOMI_ASEAN_KUAT = [
+    'budget', 'anggaran', 'fiscal', 'fiskal', 'gdp', 'pdb',
+    'pertumbuhan ekonomi', 'economic growth', 'inflasi', 'inflation',
+    'ekspor', 'impor', 'exports', 'imports', 'trade', 'perdagangan',
+    'neraca dagang', 'trade balance', 'investasi', 'investment',
+    'pajak', 'tax', 'subsidi', 'subsidy', 'belanja negara', 'spending',
+    'utang', 'debt', 'defisit', 'deficit', 'surplus',
+    'apbn', 'apbd', 'bank sentral', 'central bank', 'suku bunga',
+    'interest rate', 'kurs', 'exchange rate', 'mata uang', 'currency',
+    'saham', 'stock', 'bursa', 'market', 'pasar modal',
+]
+
 def _kandidat_kategori_materi(kategori, judul, summary):
     if not kategori:
         return True, ''
@@ -2534,6 +2546,11 @@ def _kandidat_kategori_materi(kategori, judul, summary):
         hit_eko = sum(1 for k in KATA_SINYAL_EKONOMI_KUAT if k in gab)
         if hit_eko >= 3:
             return False, 'kategori asean tapi materi ekonomi (hit ' + str(hit_eko) + ')'
+        # V6.17.107: cek sinyal ekonomi ASEAN kuat → arahkan ke ekonomi
+        hit_eko_asean = sum(1 for k in KATA_EKONOMI_ASEAN_KUAT if k in gab)
+        if hit_eko_asean >= 2:
+            return False, ('kategori asean tapi materi ekonomi negara ASEAN '
+                           '(sinyal ekonomi: ' + str(hit_eko_asean) + ' → ke ekonomi)')
         if not any(k in gab for k in KATA_ASEAN_WAJIB):
             return False, 'kategori asean tapi materi tidak ada kata ASEAN'
     elif kategori == 'internasional_tt':
@@ -2576,6 +2593,10 @@ def _kandidat_tanpa_tokoh_indonesia(kategori, judul, summary):
         if re.search(r'\b' + re.escape(lem) + r'\b', gab):
             return False, 'kategori luar tapi ada lembaga Indonesia: ' + lem
     return True, ''
+
+# AKHIR PART 3-1
+
+# PART 3-2 - SISA KANDIDAT + COLLECT + MATCH
 
 SINGKATAN_LOKASI_LOKAL = {
     'ubt': 'tarakan', 'untan': 'pontianak', 'unmul': 'samarinda',
@@ -2655,7 +2676,6 @@ def _kandidat_ada_lokasi(judul, summary, kategori=''):
     for tim in KAMUS_TIM_LIGA_NEGARA.keys():
         if tim in gab:
             return True, ''
-    # V6.17.105: fallback — kandidat daerah yang jelas punya kata kabupaten/kota/pemkab/pemkot
     if kategori == 'daerah':
         for k in ('kabupaten', 'kota', 'pemkab', 'pemkot', 'pemprov',
                   'bupati', 'walikota', 'wali kota', 'gubernur',
@@ -3195,7 +3215,6 @@ def _materi_basi(judul, summary, kategori=''):
             return True, ('materi basi prediksi (frasa "' + frasa_ketemu
                           + '" + tanggal lewat ' + detail_tanggal + ')')
 
-    # V6.17.105: frasa live basi — KHUSUS olahraga
     if kategori == 'olahraga':
         frasa_basi_olga = next((f for f in KATA_FRASA_LIVE_BASI_OLAHRAGA
                                 if f in teks_low), None)
@@ -3401,8 +3420,9 @@ def match_articles(candidates):
             groups.append({'kw': k, 'items': [c]})
     return groups
 
-# AKHIR PART 3A-1
-# PART 3A-2 - BARAT + DATELINE + JANJI + SKOR + NARASUMBER + BUKAN_BERITA + LUAR_NEGERI + TOKOH + KOTA + CEK_KATEGORI + TOPIK
+# AKHIR PART 3-2
+
+# PART 3-3 - KATEGORI_BARAT s/d CEK_TOPIK_AI_VS_MATERI
 
 def kategori_barat(title, summary):
     t = ((title or '') + ' ' + (summary or '')).lower()
@@ -4564,7 +4584,7 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
         return None
     return ('judul AI tidak nyambung materi: tidak ada irisan nama diri/angka/kata kunci')
 
-# AKHIR PART 3A-2
+# AKHIR PART 3-3
 
 # PART 3B - SUMBER DOMAIN, AI WRITE, ANTI-JIPLAK, INSERT, TEKNOLOGI
 
@@ -5318,7 +5338,6 @@ def _catatan_portal_daerah(link, kategori_target):
     low = (link or '').lower()
     if not any(d in low for d in DOMAIN_PORTAL_DAERAH):
         return ''
-    # V6.17.106: tambah Papua, Maluku, NTT, NTB, dll
     return ('\n\nCATATAN PENTING — SUMBER PORTAL DAERAH:\n'
             '- Materi ini dari portal berita DAERAH (Radar Tarakan/Benuanta/Tribun Daerah).\n'
             '- WAJIB tulis sebagai berita DAERAH, BUKAN nasional/ekonomi/teknologi.\n'
@@ -5495,6 +5514,52 @@ AMBANG_JUDUL_MIRIP = 0.75
 
 MAX_RETRY_JUDUL_DOBEL = 1
 
+# V6.17.107: anti-dobel lintas kategori di ai_write
+def _dobel_lintas_kategori(judul_baru, kategori_target):
+    """Cek apakah topik judul baru sudah terbit di kategori manapun < 6 jam.
+    Kecuali topik bencana besar (gempa/tsunami/banjir) → longgarkan.
+    """
+    if not judul_baru:
+        return None
+    ki_baru = kata_inti(judul_baru)
+    if not ki_baru:
+        return None
+    # kecualikan topik besar (gempa, tsunami, banjir, dsb)
+    if judul_topik_besar(judul_baru):
+        return None
+    try:
+        rows = rest_get('?select=title,category,created_at&order=created_at.desc&limit=100')
+    except Exception:
+        return None
+    now = datetime.now(timezone.utc)
+    for row in rows:
+        try:
+            d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00'))
+            if d.tzinfo is None:
+                d = d.replace(tzinfo=timezone.utc)
+            if (now - d).total_seconds() > 6 * 3600:
+                continue
+            t_lama = row.get('title') or ''
+            if not t_lama:
+                continue
+            if judul_topik_besar(t_lama):
+                continue
+            kat_lama = row.get('category') or ''
+            # kalau kategori sama, biar _topik_sudah_terbit yang urus
+            if kat_lama == kategori_target:
+                continue
+            ki_lama = kata_inti(t_lama)
+            if not ki_lama:
+                continue
+            irisan = ki_baru & ki_lama
+            if len(irisan) >= 4:
+                return ('topik sudah terbit di kategori "' + kat_lama + '" < 6 jam: '
+                        + str(len(irisan)) + ' kata kunci sama — '
+                        + str(sorted(list(irisan))[:4]))
+        except Exception:
+            continue
+    return None
+
 def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
              judul_materi='', summary_materi='', wajib_topik=True,
              source_url=''):
@@ -5654,6 +5719,12 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
         if source_url:
             catat_tolak_ai_token(source_url, 'diblokir anti-dobel-dateline: ' + dobel_dt[:80])
         raise Exception('diblokir anti-dobel-dateline: ' + dobel_dt[:100])
+    # V6.17.107: anti-dobel lintas kategori
+    dobel_lintas = _dobel_lintas_kategori(judul, kategori)
+    if dobel_lintas:
+        if source_url:
+            catat_tolak_ai_token(source_url, 'anti-dobel-lintas-kategori: ' + dobel_lintas[:80])
+        raise Exception('diblokir anti-dobel-lintas-kategori: ' + dobel_lintas[:100])
     if not judul_topik_besar(judul):
         for t in JUDUL_6JAM:
             if len(kata_inti(judul) & kata_inti(t)) >= DOBEL_6JAM_MIN_KATA:
@@ -6593,12 +6664,39 @@ def _kandidat_beda_topik(kandidat_baru, kandidat_lama):
         return False
     return True
 
+# V6.17.107: min_irisan 4 → 3 untuk bencana besar
+KATA_BENCANA_BESAR_BREAKING = [
+    'gempa', 'tsunami', 'earthquake', 'magnitude', 'magnitudo',
+    'banjir', 'flood', 'banjir bandang', 'flash flood',
+    'longsor', 'landslide', 'tanah longsor',
+    'kebakaran', 'wildfire', 'karhutla',
+    'erupsi', 'gunung meletus', 'volcanic eruption',
+    'angin topan', 'typhoon', 'hurricane', 'cyclone',
+    'letusan', 'ledakan', 'explosion',
+]
+
+def _adalah_bencana_besar(judul):
+    if not judul:
+        return False
+    t = judul.lower()
+    for k in KATA_BENCANA_BESAR_BREAKING:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', t):
+                return True
+        else:
+            if k in t:
+                return True
+    return False
+
 def _topik_breaking_sudah_terbit(judul_baru, min_irisan=4):
     if not judul_baru:
         return None
     ki_baru = kata_inti(judul_baru)
     if not ki_baru:
         return None
+    # V6.17.107: bencana besar → min_irisan 3
+    if _adalah_bencana_besar(judul_baru):
+        min_irisan = 3
     try:
         rows = rest_get('?select=title,created_at&breaking=eq.true'
                         '&order=created_at.desc&limit=20')
@@ -6677,6 +6775,7 @@ def sesi_breaking(today_urls, seen):
         if sudah_serupa(c['title']):
             print('   Skip (dobel): ' + c['title'][:50])
             continue
+        # V6.17.107: min_irisan ditentukan di dalam fungsi (bencana besar = 3)
         topik_brk = _topik_breaking_sudah_terbit(c['title'], min_irisan=4)
         if topik_brk:
             print('   Skip (topik breaking sudah terbit): ' + topik_brk[:80])
@@ -6701,6 +6800,7 @@ def sesi_breaking(today_urls, seen):
             if not _breaking_ada_lokasi(judul, isi):
                 print('   DITOLAK - breaking tanpa lokasi spesifik: ' + judul[:50])
                 continue
+        # V6.17.107: min_irisan ditentukan di dalam fungsi
         topik_brk_final = _topik_breaking_sudah_terbit(judul, min_irisan=4)
         if topik_brk_final:
             print('   DITOLAK - topik breaking sudah terbit: ' + topik_brk_final[:80])
@@ -7272,7 +7372,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.106'
+FILE_VERSI = 'V6.17.107'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
