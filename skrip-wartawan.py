@@ -1274,8 +1274,6 @@ DOMAIN_NON_BERITA = [
     'threads.net', 'x.com', 'linkedin.com', 'reddit.com',
 ]
 
-# V6.17.108: skip URL halaman video + liveblog
-# V6.17.109: tambah /opini/, /indepth/, /analysis/, /editorial/
 POLA_URL_NON_ARTIKEL = [
     '/video/', '/videos/', '/watch/', '/nightly-news/',
     '/liveblog/', '/live-blog/', '/live-blogs/', '/live/',
@@ -1309,6 +1307,14 @@ def _url_valid_berita(u):
                      '.css', '.js', '.woff', '.woff2', '.ttf', '.eot')):
         return False
     return True
+
+# V6.17.111: cek URL non-artikel untuk RSS link juga (bukan cuma hasil resolusi)
+def _link_rss_non_artikel(url):
+    low = (url or '').lower()
+    for p in POLA_URL_NON_ARTIKEL:
+        if p in low:
+            return p
+    return ''
 
 def _gn_decode_satu(url):
     if not url:
@@ -1351,7 +1357,6 @@ def _gn_id_dari_url(url):
         pass
     return ''
 
-# V6.17.109: kompasiana sudah ada, tinggal pastikan pre-filter RSS juga cek domain_skip
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
@@ -3349,6 +3354,7 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
     skip_basi = 0
     skip_rss_tipis = 0
     skip_rss_nas_tipis = 0
+    skip_link_non_artikel = 0
     for src in sources:
         try:
             feed = feedparser.parse(src['url'])
@@ -3360,6 +3366,14 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                 continue
             if link in rejected:
                 skip_rejected += 1
+                continue
+            # V6.17.111: cek URL RSS non-artikel (opini/indepth/video/liveblog)
+            pola_na = _link_rss_non_artikel(link)
+            if pola_na:
+                skip_link_non_artikel += 1
+                if skip_link_non_artikel <= 3:
+                    print('       Skip kandidat (link non-artikel ' + pola_na + '): '
+                          + (entry.get('title') or '')[:50])
                 continue
             u = umur_jam(entry)
             if u is None:
@@ -3494,6 +3508,8 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
         print('       (Total skip RSS tipis domain skip: ' + str(skip_rss_tipis) + ')')
     if skip_rss_nas_tipis > 0:
         print('       (Total skip RSS nasional tipis: ' + str(skip_rss_nas_tipis) + ')')
+    if skip_link_non_artikel > 0:
+        print('       (Total skip link non-artikel: ' + str(skip_link_non_artikel) + ')')
     return out
 
 def match_articles(candidates):
@@ -3527,7 +3543,7 @@ def match_articles(candidates):
 
 # AKHIR PART 3A-2
 
-# PART 3-3 - KATEGORI_BARAT s/d CEK_TOPIK_AI_VS_MATERI
+# PART 3A-3 - KATEGORI_BARAT s/d CEK_TOPIK_AI_VS_MATERI
 
 def kategori_barat(title, summary):
     t = ((title or '') + ' ' + (summary or '')).lower()
@@ -3633,6 +3649,10 @@ VARIAN_KOTA_EN_ID = {
     'saigon': ['ho chi minh', 'ho chi minh city', 'hcmc', 'saigon'],
     'hanoi': ['hanoi', 'ha noi'],
     'ha noi': ['hanoi', 'ha noi'],
+    # V6.17.111: tambah kota Kaltara
+    'tideng pale': ['tideng pale', 'tana tidung'],
+    'tanjung redeb': ['tanjung redeb', 'berau'],
+    'tanjung selor': ['tanjung selor', 'bulungan'],
 }
 
 def _varian_cocok(kota, sumber):
@@ -3737,6 +3757,9 @@ IBU_KOTA_NEGARA = {
     'tarakan': ['indonesia'], 'tanjung selor': ['indonesia'], 'nunukan': ['indonesia'],
     'palembang': ['indonesia'], 'pekanbaru': ['indonesia'], 'padang': ['indonesia'],
     'yogyakarta': ['indonesia'], 'solo': ['indonesia'], 'malang': ['indonesia'],
+    # V6.17.111: tambah kota Kaltara
+    'tideng pale': ['indonesia', 'kaltara', 'tana tidung'],
+    'tanjung redeb': ['indonesia', 'kaltim', 'berau'],
 }
 
 def _kota_ibu_kota_provinsi_di_materi(kota, sumber):
@@ -3800,7 +3823,7 @@ def cek_dateline(isi, user_content):
     if kota and not _varian_cocok(kota, sumber):
         return 'kota dateline "' + kota + '" tidak ada di materi sumber'
     if 'kalimantan utara' in wilayah:
-        daftar = KALTARA_WORDS + ['sebatik', 'tanjung selor', 'tana tidung']
+        daftar = KALTARA_WORDS + ['sebatik', 'tanjung selor', 'tana tidung', 'tideng pale']
         if kota and not any(k in kota for k in daftar):
             return 'klaim KALTARA tapi kota "' + kota + '" bukan wilayah Kaltara'
     return None
@@ -4423,6 +4446,8 @@ KOTA_INDONESIA_DATELINE = [
     'kampung enam', 'pamusian', 'sebengkok', 'gunung lingkas', 'karang harapan',
     'kaltara', 'gowa', 'sunggu-minasa', 'sungguminasa',
     'tanjung redeb', 'berau', 'bontang', 'kutai', 'jambi',
+    # V6.17.111: tambah kota Kaltara
+    'tideng pale',
 ]
 
 KATA_LOKAL_KALTARA = [
@@ -4654,6 +4679,12 @@ def _cari_varian_id_en(teks):
                 hasil.add(en_kata)
     return hasil
 
+# V6.17.111: cek topik AI vs materi lebih ketat
+KATA_TOPIK_UMUM = [
+    'manajer', 'pelatih', 'pemain', 'klub', 'tim', 'laga', 'pertandingan',
+    'liga', 'klub', 'stadion', 'gol', 'skor', 'klasemen',
+]
+
 def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kategori=''):
     if not judul_ai or not judul_materi:
         return None
@@ -4685,11 +4716,21 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
         return None
     kata_materi_4 = set(re.findall(r'[a-z]{4,}', teks_materi.lower())) - KATA_UMUM_EN
     kata_ai_4 = set(re.findall(r'[a-z]{4,}', teks_ai.lower())) - KATA_STOP_DOBEL
-    if len(kata_materi_4 & kata_ai_4) >= 2:
+    irisan_4 = kata_materi_4 & kata_ai_4
+    if len(irisan_4) >= 2:
+        # V6.17.111: cek apakah irisan cuma kata topik umum (manajer, pelatih, dll)
+        irisan_4_tanpa_umum = irisan_4 - set(KATA_TOPIK_UMUM)
+        if len(irisan_4_tanpa_umum) >= 1:
+            return None
+        # kalau irisan cuma kata topik umum → tolak
+        if len(irisan_4_tanpa_umum) == 0:
+            return ('judul AI tidak nyambung materi: irisan hanya kata topik umum '
+                    + str(sorted(list(irisan_4))[:5]))
+    if len(irisan_4) >= 1:
         return None
     return ('judul AI tidak nyambung materi: tidak ada irisan nama diri/angka/kata kunci')
 
-# AKHIR PART 3-3
+# AKHIR PART 3A-3
 
 # PART 3B-1 - SUMBER DOMAIN + HELPER GAMBAR + ANTI-JIPLAK + CATATAN
 
@@ -7023,7 +7064,6 @@ def teks_mengandung(teks, kata_list):
             return True
     return False
 
-# V6.17.110: hitung Tarakan/Kaltara terpisah
 def hitung_tarakan_hari_ini():
     n = 0
     try:
@@ -7095,7 +7135,6 @@ def kelompok_tarakan(items):
     teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
     return bool(re.search(r'\btarakan\b', teks))
 
-# V6.17.110: kelompok kaltara lain (bukan tarakan)
 def kelompok_kaltara_lain(items):
     if kelompok_tarakan(items):
         return False
@@ -7198,7 +7237,7 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
         print('   (' + cat + ') Semua kandidat habis setelah filter - skip.')
         return False
     groups = match_articles(cand)
-    # V6.17.110: prioritas Tarakan → Kaltara lain → daerah lain
+    # V6.17.110/111: prioritas Tarakan → Kaltara lain → daerah lain
     if utamakan_kaltara and cat == 'daerah':
         tarakan_penuh = hitung_tarakan_hari_ini() >= KUOTA_TARAKAN_HARIAN
         kaltara_lain_penuh = hitung_kaltara_lain_hari_ini() >= KUOTA_KALTARA_LAIN_HARIAN
@@ -7571,7 +7610,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.110'
+FILE_VERSI = 'V6.17.111'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
