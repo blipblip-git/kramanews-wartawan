@@ -6907,11 +6907,16 @@ def _topik_breaking_sudah_terbit(judul_baru, min_irisan=4):
     ki_baru = kata_inti(judul_baru)
     if not ki_baru:
         return None
+    # V6.17.114: bencana besar → jendela 72 jam (cegah dobel lintas hari, seperti Panama 7,7)
+    # Non-bencana → jendela 6 jam
     if _adalah_bencana_besar(judul_baru):
         min_irisan = 3
+        jendela_detik = 72 * 3600
+    else:
+        jendela_detik = 6 * 3600
     try:
         rows = rest_get('?select=title,created_at&breaking=eq.true'
-                        '&order=created_at.desc&limit=20')
+                        '&order=created_at.desc&limit=50')
     except Exception:
         return None
     now = datetime.now(timezone.utc)
@@ -6920,7 +6925,7 @@ def _topik_breaking_sudah_terbit(judul_baru, min_irisan=4):
             d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00'))
             if d.tzinfo is None:
                 d = d.replace(tzinfo=timezone.utc)
-            if (now - d).total_seconds() > 6 * 3600:
+            if (now - d).total_seconds() > jendela_detik:
                 continue
             t_lama = row.get('title') or ''
             if not t_lama:
@@ -6930,8 +6935,10 @@ def _topik_breaking_sudah_terbit(judul_baru, min_irisan=4):
                 continue
             irisan = ki_baru & ki_lama
             if len(irisan) >= min_irisan:
-                return ('topik breaking sudah terbit < 6 jam: ' + str(len(irisan))
-                        + ' kata kunci sama — ' + str(sorted(list(irisan))[:4]))
+                return ('topik breaking sudah terbit (jendela '
+                        + str(int(jendela_detik / 3600)) + ' jam): '
+                        + str(len(irisan)) + ' kata kunci sama — '
+                        + str(sorted(list(irisan))[:4]))
         except Exception:
             continue
     return None
@@ -7686,7 +7693,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.113'
+FILE_VERSI = 'V6.17.114'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
