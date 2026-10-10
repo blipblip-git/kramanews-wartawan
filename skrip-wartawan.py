@@ -2323,6 +2323,11 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
             min_kar = MATERI_MIN_KARAKTER_BREAKING_BENCANA
         else:
             min_kar = MATERI_MIN_KARAKTER_BREAKING_RSS
+        # V6.17.115: RSS tipis (< 250 kar) & bukan bencana besar → tolak sebelum AI
+        if not dari_scraping and not _adalah_bencana_besar_teks(judul + ' ' + materi):
+            if len(materi) < 250:
+                return False, ('materi RSS tipis (' + str(len(materi))
+                               + ' < 250) bukan bencana besar — tolak sebelum AI')
     elif kategori == 'internasional_asean':
         min_kar = MATERI_MIN_KARAKTER_ASEAN
     elif kategori == 'nasional':
@@ -5788,6 +5793,22 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     judul_retry_dilakukan = False
     retry_dobel_dilakukan = 0
 
+    # V6.17.115: kalau judul materi mirip dengan yang sudah terbit → minta AI tulis judul beda
+    # di prompt pertama (hemat 1 call retry judul)
+    if judul_materi and sudah_serupa(judul_materi):
+        user_content = (
+            'CATATAN KHUSUS — JUDUL SUDAH MIRIP DENGAN YANG TERBIT:\n'
+            '- Judul materi asli: "' + judul_materi + '"\n'
+            '- Judul ini MIRIP dengan berita yang sudah tayang di KramaNews.\n'
+            '- WAJIB tulis JUDUL BERBEDA TOTAL dari judul materi.\n'
+            '- DILARANG menyalin 5+ kata berturut-turut dari judul materi.\n'
+            '- Fokus SUDUT PANDANG BERBEDA dari berita yang sama.\n'
+            '- Contoh: kalau judul materi "Wali Kota Resmikan 3 Dapur MBG",\n'
+            '  judul baru bisa "Tiga Fasilitas MBG Baru Hadir di Cilegon".\n'
+            '- Semua aturan lain tetap berlaku.\n\n'
+            + user_content
+        )
+
     while percobaan < MAX_LOOP:
         percobaan += 1
         temp = 0.5
@@ -7693,7 +7714,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.114'
+FILE_VERSI = 'V6.17.115'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
