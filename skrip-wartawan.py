@@ -3085,7 +3085,6 @@ def _kandidat_bukan_olahraga_murni(kategori, judul, summary):
     if kategori not in ('nasional', 'daerah', 'ekonomi'):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
-    # V6.17.119: cek event lari di ekonomi
     if kategori == 'ekonomi':
         hit_lari = sum(1 for k in KATA_EVENT_LARI if k in gab)
         hit_konteks = sum(1 for k in KATA_EVENT_LARI_KONTEKS if k in gab)
@@ -3166,7 +3165,6 @@ def _kandidat_domain_skip(kategori, judul, link):
         return True
     return False
 
-# V6.17.112: tolak judul "FOTO:", "GALERI:", "POTRET:" sebagai breaking
 KATA_JUDUL_FOTO = ['foto:', 'foto :', 'galeri:', 'galeri :', 'potret:',
                    'potret :', 'in pictures', 'photos:', 'images:',
                    'see photos', 'in photos', 'foto-foto', 'foto foto']
@@ -3178,7 +3176,6 @@ def _judul_foto_galeri(judul):
             return k
     return ''
 
-# V6.17.116: kata kunci breaking tapi sebenarnya bukan breaking (acara, ponpes, dll)
 KATA_BUKAN_BREAKING = [
     'pentas seni', 'pensi', 'lomba', 'perlombaan', 'festival',
     'peringatan', 'hut', 'ulang tahun', 'syukuran', 'tasyakuran',
@@ -3194,7 +3191,6 @@ KATA_BUKAN_BREAKING = [
 ]
 
 def _materi_bukan_breaking_acara(judul, summary):
-    """V6.17.116: tolak 'breaking' yang sebenarnya acara/seremonial."""
     if not judul:
         return False, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
@@ -3207,7 +3203,6 @@ def _materi_bukan_breaking_acara(judul, summary):
                 return True, 'bukan breaking (acara/seremonial): ' + k
     return False, ''
 
-# V6.17.116: materi breaking kadaluarsa — cek tanggal spesifik (> 24 jam)
 KATA_BULAN_ID_BREAKING = {
     'januari': 1, 'februari': 2, 'maret': 3, 'april': 4,
     'mei': 5, 'juni': 6, 'juli': 7, 'agustus': 8,
@@ -3215,7 +3210,6 @@ KATA_BULAN_ID_BREAKING = {
 }
 
 def _materi_breaking_kadaluarsa(judul, summary, jam_maks=24):
-    """V6.17.116: tolak breaking kalau tanggal kejadian > N jam lalu."""
     teks = ((judul or '') + ' ' + (summary or '')).strip()
     if not teks:
         return False, ''
@@ -3239,7 +3233,6 @@ def _materi_breaking_kadaluarsa(judul, summary, jam_maks=24):
             continue
     return False, ''
 
-# V6.17.116: breaking wajib ada lokasi spesifik — longgarkan definisi
 KOTA_ASING_BREAKING_DIIZINKAN = [
     'erie', 'pennsylvania', 'new york', 'miami', 'florida',
     'california', 'texas', 'washington', 'los angeles', 'chicago',
@@ -3258,7 +3251,6 @@ KOTA_ASING_BREAKING_DIIZINKAN = [
 ]
 
 def _breaking_ada_lokasi_layak(judul, isi):
-    """V6.17.116: breaking wajib ada lokasi (Indonesia atau asing diizinkan)."""
     gab = ((judul or '') + ' ' + (isi or '')).lower()
     for kota in KOTA_INDONESIA_DATELINE:
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
@@ -3285,7 +3277,6 @@ def _breaking_ada_lokasi_layak(judul, isi):
             return True, ''
     return False, 'breaking tanpa lokasi spesifik'
 
-# V6.17.116: AI Editor Luar — jangan tolak olahraga daerah kalau ada konteks daerah
 KATA_KONTEKS_DAERAH_KUAT = [
     'kabupaten', 'kecamatan', 'kelurahan', 'desa', 'bupati', 'walikota',
     'pemkab', 'pemkot', 'dprd', 'camat', 'lurah', 'kades',
@@ -3349,7 +3340,8 @@ def _kandidat_layak(judul, summary, kategori='', link=''):
         return False, alasan
     ok, alasan = _kandidat_negara_asing_untuk_lokal(kategori, judul, summary)
     if not ok:
-        return False, alasan    ok, alasan = _kandidat_bukan_kontes(kategori, judul, summary)
+        return False, alasan
+    ok, alasan = _kandidat_bukan_kontes(kategori, judul, summary)
     if not ok:
         return False, alasan
     ok, alasan = _kandidat_bukan_pendidikan(kategori, judul, summary)
