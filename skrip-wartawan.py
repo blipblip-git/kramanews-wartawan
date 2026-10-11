@@ -499,7 +499,26 @@ EKONOMI_ASING_FEEDS = [
     GN('taiwan semiconductor tsmc chip', 'en', 'GN Semikonduktor'),
 ]
 
-# V6.17.110: tambah GN lokal + RSS lokal Kaltara
+# V6.17.117: sumber khusus MBG/KDMP/Kegiatan Menteri
+SUMBER_MBG_KDMP = [
+    GN('makan bergizi gratis', 'id', 'GN MBG'),
+    GN('program MBG Indonesia', 'id', 'GN MBG Program'),
+    GN('badan gizi nasional BGN', 'id', 'GN BGN'),
+    GN('SPPG dapur MBG', 'id', 'GN SPPG'),
+    GN('koperasi desa merah putih', 'id', 'GN KDMP'),
+    GN('kopdes merah putih', 'id', 'GN Kopdes'),
+    GN('koperasi desa kelurahan', 'id', 'GN Koperasi Desa'),
+    GN('Kemenkop UKM program', 'id', 'GN Kemenkop'),
+    GN('menteri koperasi program', 'id', 'GN Menteri Koperasi'),
+    GN('menteri meresmikan program', 'id', 'GN Menteri Resmikan'),
+    GN('kunjungan kerja menteri', 'id', 'GN Menteri Kunker'),
+    GN('menteri meninjau program', 'id', 'GN Menteri Tinjau'),
+    GN('setkab program pemerintah', 'id', 'GN Setkab'),
+    RSSF('https://setkab.go.id/feed/', 'Setkab'),
+    RSSF('https://bgn.go.id/feed/', 'BGN'),
+    RSSF('https://kemenkop.go.id/feed/', 'Kemenkop'),
+]
+
 HUNT = {
     'nasional': [
         RSSF('https://www.cnnindonesia.com/nasional/rss', 'CNN Indonesia'),
@@ -538,7 +557,7 @@ HUNT = {
         GN('PT Pos Indonesia', 'id', 'GN Pos Indonesia'),
         GN('Bupati dan Wali Kota', 'id', 'GN Bupati Wali Kota'),
         GN('Mahkamah Agung putusan', 'id', 'GN MA Putusan'),
-    ],
+    ] + SUMBER_MBG_KDMP,
     'daerah': [
         # Kaltara (prioritas)
         RSSF('https://kaltara.tribunnews.com/rss', 'Tribun Kaltara'),
@@ -2162,17 +2181,17 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# V6.17.116: threshold RSS nasional 300 → 200
+# V6.17.117: threshold RSS nasional 200 → 150
 MATERI_MIN_KARAKTER_RSS = 120
-MATERI_MIN_KARAKTER_RSS_NASIONAL = 200
-MATERI_MIN_KARAKTER_RSS_DAERAH    = 200
+MATERI_MIN_KARAKTER_RSS_NASIONAL = 150
+MATERI_MIN_KARAKTER_RSS_DAERAH    = 150
 MATERI_MIN_KARAKTER_BREAKING = 200
 MATERI_MIN_KARAKTER_BREAKING_RSS = 150
 MATERI_MIN_KARAKTER_BREAKING_BENCANA = 120
 MATERI_MIN_KARAKTER_ASEAN = 600
 
 MATERI_RSS_SKIP_TIPIS = 200
-MATERI_RSS_NASIONAL_TIPIS = 150
+MATERI_RSS_NASIONAL_TIPIS = 120
 
 # V6.17.108: kata kunci bencana besar (untuk threshold breaking longgar)
 KATA_BENCANA_BESAR = [
@@ -7938,7 +7957,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.116'
+FILE_VERSI = 'V6.17.117'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
