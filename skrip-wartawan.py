@@ -238,6 +238,17 @@ def GN(q, lang='id', label=None, when='1d'):
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
+# V6.17.118: sumber MBG/KDMP ditandai agar bypass pre-filter RSS tipis
+def GN_MBG(q, lang='id', label=None, when='1d'):
+    s = GN(q, lang, label, when)
+    s['mbg_kdmp'] = True
+    return s
+
+def RSSF_MBG(url, source):
+    s = RSSF(url, source)
+    s['mbg_kdmp'] = True
+    return s
+
 JADWAL_JAM = {
     6:  {'nasional': 2, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1, 'ekonomi': 1},
@@ -499,24 +510,24 @@ EKONOMI_ASING_FEEDS = [
     GN('taiwan semiconductor tsmc chip', 'en', 'GN Semikonduktor'),
 ]
 
-# V6.17.117: sumber khusus MBG/KDMP/Kegiatan Menteri
+# V6.17.117: sumber khusus MBG/KDMP/Kegiatan Menteri (V6.17.118: ditandai mbg_kdmp)
 SUMBER_MBG_KDMP = [
-    GN('makan bergizi gratis', 'id', 'GN MBG'),
-    GN('program MBG Indonesia', 'id', 'GN MBG Program'),
-    GN('badan gizi nasional BGN', 'id', 'GN BGN'),
-    GN('SPPG dapur MBG', 'id', 'GN SPPG'),
-    GN('koperasi desa merah putih', 'id', 'GN KDMP'),
-    GN('kopdes merah putih', 'id', 'GN Kopdes'),
-    GN('koperasi desa kelurahan', 'id', 'GN Koperasi Desa'),
-    GN('Kemenkop UKM program', 'id', 'GN Kemenkop'),
-    GN('menteri koperasi program', 'id', 'GN Menteri Koperasi'),
-    GN('menteri meresmikan program', 'id', 'GN Menteri Resmikan'),
-    GN('kunjungan kerja menteri', 'id', 'GN Menteri Kunker'),
-    GN('menteri meninjau program', 'id', 'GN Menteri Tinjau'),
-    GN('setkab program pemerintah', 'id', 'GN Setkab'),
-    RSSF('https://setkab.go.id/feed/', 'Setkab'),
-    RSSF('https://bgn.go.id/feed/', 'BGN'),
-    RSSF('https://kemenkop.go.id/feed/', 'Kemenkop'),
+    GN_MBG('makan bergizi gratis', 'id', 'GN MBG'),
+    GN_MBG('program MBG Indonesia', 'id', 'GN MBG Program'),
+    GN_MBG('badan gizi nasional BGN', 'id', 'GN BGN'),
+    GN_MBG('SPPG dapur MBG', 'id', 'GN SPPG'),
+    GN_MBG('koperasi desa merah putih', 'id', 'GN KDMP'),
+    GN_MBG('kopdes merah putih', 'id', 'GN Kopdes'),
+    GN_MBG('koperasi desa kelurahan', 'id', 'GN Koperasi Desa'),
+    GN_MBG('Kemenkop UKM program', 'id', 'GN Kemenkop'),
+    GN_MBG('menteri koperasi program', 'id', 'GN Menteri Koperasi'),
+    GN_MBG('menteri meresmikan program', 'id', 'GN Menteri Resmikan'),
+    GN_MBG('kunjungan kerja menteri', 'id', 'GN Menteri Kunker'),
+    GN_MBG('menteri meninjau program', 'id', 'GN Menteri Tinjau'),
+    GN_MBG('setkab program pemerintah', 'id', 'GN Setkab'),
+    RSSF_MBG('https://setkab.go.id/feed/', 'Setkab'),
+    RSSF_MBG('https://bgn.go.id/feed/', 'BGN'),
+    RSSF_MBG('https://kemenkop.go.id/feed/', 'Kemenkop'),
 ]
 
 HUNT = {
@@ -1362,6 +1373,13 @@ def resolusi_link_google(url):
         return url
     hasil = _gn_decode_satu(url)
     if hasil:
+        # V6.17.118: cek hasil resolusi juga — tolak URL non-artikel (opini/indepth/dll)
+        pola_na = _url_halaman_non_artikel(hasil)
+        if pola_na:
+            print('       GN resolusi ke URL non-artikel (' + pola_na + ') — skip: '
+                  + hasil[:80])
+            STAT_SCRAPE['skip'] += 1
+            return ''
         return hasil
     print('       GN decode GAGAL — skip artikel ini')
     STAT_SCRAPE['gn_gagal_decode'] += 1
@@ -2181,17 +2199,17 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# V6.17.117: threshold RSS nasional 200 → 150
+# V6.17.118: threshold breaking RSS 150 → 200 (non-bencana), ASEAN 600 → 400
 MATERI_MIN_KARAKTER_RSS = 120
 MATERI_MIN_KARAKTER_RSS_NASIONAL = 150
 MATERI_MIN_KARAKTER_RSS_DAERAH    = 150
 MATERI_MIN_KARAKTER_BREAKING = 200
-MATERI_MIN_KARAKTER_BREAKING_RSS = 150
+MATERI_MIN_KARAKTER_BREAKING_RSS = 200
 MATERI_MIN_KARAKTER_BREAKING_BENCANA = 120
-MATERI_MIN_KARAKTER_ASEAN = 600
+MATERI_MIN_KARAKTER_ASEAN = 400
 
 MATERI_RSS_SKIP_TIPIS = 200
-MATERI_RSS_NASIONAL_TIPIS = 120
+MATERI_RSS_NASIONAL_TIPIS = 100
 
 # V6.17.108: kata kunci bencana besar (untuk threshold breaking longgar)
 KATA_BENCANA_BESAR = [
@@ -2339,19 +2357,15 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
     if _materi_sampah(materi):
         return False, 'materi sampah (anti-bot/JS block)'
     if kategori == 'breaking':
-        # V6.17.108: threshold breaking RSS dilonggarkan
+        # V6.17.118: threshold breaking RSS dinaikkan kembali ke 200 (non-bencana)
         if dari_scraping:
             min_kar = MATERI_MIN_KARAKTER_BREAKING
         elif _adalah_bencana_besar_teks(judul + ' ' + materi):
             min_kar = MATERI_MIN_KARAKTER_BREAKING_BENCANA
         else:
             min_kar = MATERI_MIN_KARAKTER_BREAKING_RSS
-        # V6.17.115: RSS tipis (< 250 kar) & bukan bencana besar → tolak sebelum AI
-        if not dari_scraping and not _adalah_bencana_besar_teks(judul + ' ' + materi):
-            if len(materi) < 250:
-                return False, ('materi RSS tipis (' + str(len(materi))
-                               + ' < 250) bukan bencana besar — tolak sebelum AI')
     elif kategori == 'internasional_asean':
+        # V6.17.118: threshold ASEAN 600 → 400
         min_kar = MATERI_MIN_KARAKTER_ASEAN
     elif kategori == 'nasional':
         if dari_scraping:
@@ -7686,7 +7700,7 @@ def sesi_kategori(today_urls, seen):
         if utamakan_kaltara:
             print('   Kuota Kaltara hari ini: Tarakan ' + str(hitung_tarakan_hari_ini())
                   + '/' + str(KUOTA_TARAKAN_HARIAN)
-                  + ' — Kaltara lain ' + str(hitung_kaltara_lain_hari_ini())
+                  + ' — Kaltara lain: ' + str(hitung_kaltara_lain_hari_ini())
                   + '/' + str(KUOTA_KALTARA_LAIN_HARIAN))
     utamakan_topik = None
     if kuota.get('nasional'):
@@ -7957,7 +7971,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.117'
+FILE_VERSI = 'V6.17.118'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
