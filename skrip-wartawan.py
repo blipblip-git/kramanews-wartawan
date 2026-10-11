@@ -924,7 +924,10 @@ INDO_GEO = ['indonesia', 'bmkg', 'aceh', 'sumatera', 'sumatra', 'jawa', 'kaliman
             'jember', 'lumajang', 'semarang', 'banggai', 'tarakan', 'kaltara',
             'nunukan', 'bulungan', 'malinau', 'pontianak', 'kalbar', 'banjarmasin',
             'kalsel', 'kalteng', 'palangka raya', 'denpasar', 'mataram', 'kupang',
-            'gorontalo', 'batam', 'pekanbaru', 'palembang', 'maybrat', 'sorong']
+            'gorontalo', 'batam', 'pekanbaru', 'palembang', 'maybrat', 'sorong',
+            'sukabumi', 'lebak', 'banten', 'pangkalpinang', 'babel', 'mojokerto',
+            'sungailliat', 'sorowako', 'halmahera', 'ternate', 'sumedang',
+            'bandung barat', 'subang', 'garut', 'tasikmalaya', 'brebes', 'tegal']
 
 DOM_KRITIS = [
     'tsunami', 'erupsi', 'gunung meletus', 'banjir bandang', 'banjir besar',
@@ -1357,7 +1360,7 @@ def _gn_id_dari_url(url):
         pass
     return ''
 
-# V6.17.113: tambah databoks.katadata.co.id (portal statistik, bukan berita)
+# V6.17.116: tambah rri.co.id (5x gagal materi tipis) + databoks
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
@@ -2159,9 +2162,10 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
+# V6.17.116: threshold RSS nasional 300 → 200
 MATERI_MIN_KARAKTER_RSS = 120
-MATERI_MIN_KARAKTER_RSS_NASIONAL = 300
-MATERI_MIN_KARAKTER_RSS_DAERAH    = 250
+MATERI_MIN_KARAKTER_RSS_NASIONAL = 200
+MATERI_MIN_KARAKTER_RSS_DAERAH    = 200
 MATERI_MIN_KARAKTER_BREAKING = 200
 MATERI_MIN_KARAKTER_BREAKING_RSS = 150
 MATERI_MIN_KARAKTER_BREAKING_BENCANA = 120
@@ -3109,6 +3113,151 @@ def _judul_foto_galeri(judul):
             return k
     return ''
 
+# V6.17.116: kata kunci breaking tapi sebenarnya bukan breaking (acara, ponpes, dll)
+KATA_BUKAN_BREAKING = [
+    'pentas seni', 'pensi', 'lomba', 'perlombaan', 'festival',
+    'peringatan', 'hut', 'ulang tahun', 'syukuran', 'tasyakuran',
+    'wisuda', 'haflah', 'gebyar', 'tabligh akbar', 'tablig akbar',
+    'pengajian akbar', 'maulid akbar', 'seminar', 'workshop',
+    'lokakarya', 'webinar', 'talkshow', 'diskusi panel',
+    'rapat kerja', 'rakernas', 'musyawarah', 'mubes', 'munas',
+    'konferensi pers', 'press conference', 'jumpa pers',
+    'deklarasi', 'pencanangan', 'groundbreaking', 'peletakan batu',
+    'peresmian gedung', 'peresmian kantor', 'peresmian jalan',
+    'pameran', 'expo', 'bazar', 'bazaar',
+    'ponpes', 'pesantren', 'santri', 'ponpes bahrul',
+]
+
+def _materi_bukan_breaking_acara(judul, summary):
+    """V6.17.116: tolak 'breaking' yang sebenarnya acara/seremonial."""
+    if not judul:
+        return False, ''
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    for k in KATA_BUKAN_BREAKING:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                return True, 'bukan breaking (acara/seremonial): ' + k
+        else:
+            if k in gab:
+                return True, 'bukan breaking (acara/seremonial): ' + k
+    return False, ''
+
+# V6.17.116: materi breaking kadaluarsa — cek tanggal spesifik (> 24 jam)
+KATA_BULAN_ID_BREAKING = {
+    'januari': 1, 'februari': 2, 'maret': 3, 'april': 4,
+    'mei': 5, 'juni': 6, 'juli': 7, 'agustus': 8,
+    'september': 9, 'oktober': 10, 'november': 11, 'desember': 12,
+}
+
+def _materi_breaking_kadaluarsa(judul, summary, jam_maks=24):
+    """V6.17.116: tolak breaking kalau tanggal kejadian > N jam lalu."""
+    teks = ((judul or '') + ' ' + (summary or '')).strip()
+    if not teks:
+        return False, ''
+    now = datetime.now(WITA)
+    # Cari tanggal lengkap "11 Oktober 2026" atau "1 Oktober 2026"
+    for m in re.finditer(
+        r'\b(\d{1,2})\s+(januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember)\s+(\d{4})\b',
+        teks, re.IGNORECASE
+    ):
+        try:
+            hari = int(m.group(1))
+            bulan = KATA_BULAN_ID_BREAKING.get(m.group(2).lower(), 0)
+            tahun = int(m.group(3))
+            if bulan == 0:
+                continue
+            kejadian = datetime(tahun, bulan, hari, tzinfo=WITA)
+            selisih_jam = (now - kejadian).total_seconds() / 3600
+            if selisih_jam > jam_maks:
+                return True, ('breaking kadaluarsa: kejadian ' + m.group(0)
+                              + ' (' + str(int(selisih_jam)) + ' jam lalu)')
+        except Exception:
+            continue
+    # Cek frasa "pada 1 Oktober" tanpa tahun
+    return False, ''
+
+# V6.17.116: breaking wajib ada lokasi spesifik — longgarkan definisi
+KOTA_ASING_BREAKING_DIIZINKAN = [
+    'erie', 'pennsylvania', 'new york', 'miami', 'florida',
+    'california', 'texas', 'washington', 'los angeles', 'chicago',
+    'london', 'paris', 'berlin', 'tokyo', 'beijing', 'seoul',
+    'moskow', 'moscow', 'kyiv', 'kiev', 'tehran', 'teheran',
+    'gaza', 'tel aviv', 'jerusalem', 'beirut', 'damaskus',
+    'bangkok', 'manila', 'kuala lumpur', 'singapura', 'hanoi',
+    'jakarta', 'surabaya', 'bandung', 'medan', 'makassar',
+    'tarakan', 'balikpapan', 'samarinda', 'pontianak', 'banjarmasin',
+    'palembang', 'pekanbaru', 'padang', 'semarang', 'yogyakarta',
+    'denpasar', 'mataram', 'kupang', 'jayapura', 'ambon', 'manado',
+    'palu', 'kendari', 'gorontalo', 'mamuju', 'sofifi', 'ternate',
+    'sukabumi', 'lebak', 'banten', 'pangkalpinang', 'mojokerto',
+    'sungailliat', 'sorowako', 'halmahera', 'sumedang', 'subang',
+    'brebes', 'tegal', 'cilacap', 'garut', 'tasikmalaya', 'cianjur',
+]
+
+def _breaking_ada_lokasi_layak(judul, isi):
+    """V6.17.116: breaking wajib ada lokasi (Indonesia atau asing diizinkan)."""
+    gab = ((judul or '') + ' ' + (isi or '')).lower()
+    # Cek kota Indonesia
+    for kota in KOTA_INDONESIA_DATELINE:
+        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
+            return True, ''
+    # Cek provinsi Indonesia
+    for prov in KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN:
+        if re.search(r'\b' + re.escape(prov) + r'\b', gab):
+            return True, ''
+    # Cek kota asing yang diizinkan untuk breaking
+    for kota in KOTA_ASING_BREAKING_DIIZINKAN:
+        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
+            return True, ''
+    # Cek negara asing (untuk konteks breaking dunia)
+    for negara in LUAR_NEGERI_WORDS:
+        if re.search(r'\b' + re.escape(negara) + r'\b', gab):
+            return True, ''
+    # Cek ibukota negara
+    for kota_asing in IBU_KOTA_NEGARA.keys():
+        if re.search(r'\b' + re.escape(kota_asing) + r'\b', gab):
+            return True, ''
+    # Cek variasi
+    for kota in VARIAN_KOTA_EN_ID.keys():
+        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
+            return True, ''
+    # Cek provinsi umum
+    for prov in ['kalimantan', 'sumatera', 'sumatra', 'jawa', 'sulawesi',
+                 'papua', 'bali', 'nusa tenggara', 'maluku',
+                 'jakarta', 'yogyakarta', 'jogja']:
+        if re.search(r'\b' + re.escape(prov) + r'\b', gab):
+            return True, ''
+    return False, 'breaking tanpa lokasi spesifik'
+
+# V6.17.116: AI Editor Luar — jangan tolak olahraga daerah kalau ada konteks daerah
+KATA_KONTEKS_DAERAH_KUAT = [
+    'kabupaten', 'kecamatan', 'kelurahan', 'desa', 'bupati', 'walikota',
+    'pemkab', 'pemkot', 'dprd', 'camat', 'lurah', 'kades',
+    'tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau', 'tana tidung',
+    'berau', 'kutai', 'bontang', 'samarinda', 'balikpapan',
+    'papua', 'jayapura', 'sorong', 'manokwari', 'merauke', 'maybrat',
+    'maluku', 'ambon', 'ternate', 'tidore',
+    'ntt', 'ntb', 'kupang', 'mataram', 'bima', 'sumbawa', 'flores',
+    'sulawesi', 'makassar', 'manado', 'palu', 'kendari', 'gorontalo',
+    'jawa', 'surabaya', 'malang', 'semarang', 'bandung', 'bogor',
+    'sumatera', 'medan', 'palembang', 'padang', 'pekanbaru',
+    'kalimantan', 'banjarmasin', 'palangka raya', 'pontianak',
+]
+
+def _ada_konteks_daerah_kuat(teks):
+    t = (teks or '').lower()
+    hit = 0
+    for k in KATA_KONTEKS_DAERAH_KUAT:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', t):
+                hit += 1
+        else:
+            if k in t:
+                hit += 1
+        if hit >= 2:
+            return True
+    return False
+
 def _kandidat_layak(judul, summary, kategori='', link=''):
     judul = (judul or '').strip()
     summary = (summary or '').strip()
@@ -3521,6 +3670,14 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                 _tolak_brk = sum(1 for k in BREAKING_INT_TOLAK if k in _t_low)
                 if _tolak_brk >= 1:
                     skip_layak += 1
+                    continue
+                # V6.17.116: tolak "breaking" yang sebenarnya acara
+                acara_bukan, alasan_acara = _materi_bukan_breaking_acara(title, summary)
+                if acara_bukan:
+                    skip_layak += 1
+                    if skip_layak <= 3:
+                        print('       Skip kandidat (pre-filter breaking-acara): '
+                              + alasan_acara[:60] + ' — ' + title[:50])
                     continue
 
             basi, alasan_basi = _materi_basi(title, summary, kategori)
@@ -7010,6 +7167,25 @@ def _topik_sudah_terbit_lintas(judul_baru, kategori_target):
             continue
     return None
 
+# V6.17.116: cek dateline alternatif di judul kalau tidak ada di materi
+def _dateline_ada_di_materi_atau_judul(kota, materi, judul):
+    kota_low = (kota or '').lower().strip()
+    if not kota_low:
+        return True
+    if kota_low in (materi or '').lower():
+        return True
+    if kota_low in (judul or '').lower():
+        return True
+    # Cek variasi
+    for varian in VARIAN_KOTA_EN_ID.get(kota_low, []):
+        if varian in (materi or '').lower() or varian in (judul or '').lower():
+            return True
+    # Cek ibu kota provinsi
+    for prov, ibukota in KAMUS_PROVINSI_IBUKOTA.items():
+        if kota_low == ibukota and (prov in (materi or '').lower() or prov in (judul or '').lower()):
+            return True
+    return False
+
 def sesi_breaking(today_urls, seen):
     made = 0
     slots = BREAKING_MAX_SLOT - len(get_breaking_list())
@@ -7111,20 +7287,8 @@ def sesi_breaking(today_urls, seen):
     return made
 
 def _breaking_ada_lokasi(judul, isi):
-    gab = ((judul or '') + ' ' + (isi or '')).lower()
-    for kota in KOTA_INDONESIA_DATELINE:
-        if re.search(r'\b' + re.escape(kota) + r'\b', gab):
-            return True
-    for prov in KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN:
-        if re.search(r'\b' + re.escape(prov) + r'\b', gab):
-            return True
-    provinsi_tambahan = ['kalimantan', 'sumatera', 'sumatra', 'jawa', 'sulawesi',
-                         'papua', 'bali', 'nusa tenggara', 'maluku',
-                         'jakarta', 'yogyakarta', 'jogja']
-    for prov in provinsi_tambahan:
-        if re.search(r'\b' + re.escape(prov) + r'\b', gab):
-            return True
-    return False
+    # V6.17.116: pakai fungsi baru yang longgarkan kota asing
+    return _breaking_ada_lokasi_layak(judul, isi)[0]
 
 KATA_DOMINAN_INDONESIA = [
     'indonesia', 'jakarta', 'jawa', 'sumatera', 'sumatra', 'kalimantan',
@@ -7257,6 +7421,32 @@ def kelompok_regional_olahraga(items):
     teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
     return teks_mengandung(teks, KATA_REGIONAL_OLAHRAGA)
 
+# V6.17.116: kelompok topik wajib nasional (MBG/KDMP/Kegiatan Menteri)
+KATA_TOPIK_WAJIB_NASIONAL = {
+    'mbg': ['mbg', 'makan bergizi', 'makan bergizi gratis',
+            'bgn', 'badan gizi nasional', 'sppg',
+            'satuan pelayanan pemenuhan gizi', 'dapur mbg'],
+    'kdmp': ['kdmp', 'kopdes', 'koperasi desa', 'koperasi kelurahan',
+             'koperasi merah putih', 'kopdes merah putih'],
+    'kegiatan_menteri': ['menteri meresmikan', 'kunjungan kerja menteri',
+                          'menteri mengunjungi', 'menteri meninjau',
+                          'program menteri', 'kementerian meresmikan',
+                          'kunker menteri', 'ratas', 'sidang kabinet'],
+}
+
+def _kandidat_topik_wajib_nasional(judul, summary):
+    """V6.17.116: cek apakah kandidat termasuk topik wajib nasional."""
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    for kategori, kata_list in KATA_TOPIK_WAJIB_NASIONAL.items():
+        for k in kata_list:
+            if len(k) <= 4:
+                if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                    return True, kategori
+            else:
+                if k in gab:
+                    return True, kategori
+    return False, None
+
 def tolak_amerika_lokal(teks):
     t = (teks or '').lower()
     KATA_OLAHRAGA_TOLAK = [
@@ -7377,6 +7567,15 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                 return 2 if barat_sudah_terbit(b) else 1
             return 1
         groups.sort(key=asean_prio)
+    # V6.17.116: force priority MBG/KDMP/Kegiatan Menteri di kategori nasional
+    if cat == 'nasional':
+        def wajib_prio(g):
+            for it in g['items']:
+                wajib, _kat = _kandidat_topik_wajib_nasional(it.get('title', ''), it.get('summary', ''))
+                if wajib:
+                    return 0
+            return 1
+        groups.sort(key=wajib_prio)
     percobaan = 0
     kandidat_terpakai = []
     for g in groups:
@@ -7739,7 +7938,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.117'
+FILE_VERSI = 'V6.17.116'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
