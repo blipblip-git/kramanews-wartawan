@@ -29,7 +29,7 @@ BREAKING_MAX_SLOT       = 2
 BREAKING_UMUR_MENIT     = 30
 MAX_UMUR_BERITA_JAM     = 30
 JENDELA_DOBEL_JAM       = 72
-GEMPA_DOM_MIN           = 5.5
+GEMPA_DOM_MIN           = 6.0
 GEMPA_DUNIA_MIN         = 6.5
 SKOR_BREAKING_MIN       = 15
 SKOR_BREAKING_MIN_DOM   = 15
@@ -814,6 +814,15 @@ HUNT = {
         GN('new car launch', 'en', 'GN Car Launch'),
         GN('electric vehicle launch', 'en', 'GN EV Launch'),
         GN('car review', 'en', 'GN Car Review'),
+    ],
+    'teknologi': [
+        RSSF('https://inet.detik.com/rss', 'Detik Inet'),
+        RSSF('https://tekno.kompas.com/rss', 'Kompas Tekno'),
+        RSSF('https://www.suara.com/tekno/rss', 'Suara Tekno'),
+        RSSF('https://www.liputan6.com/tekno/rss', 'Liputan6 Tekno'),
+        GN('AI terbaru', 'id', 'GN AI Terbaru'),
+        GN('startup Indonesia pendanaan', 'id', 'GN Startup'),
+        GN('gadget baru rilis', 'id', 'GN Gadget Baru'),
     ],
 }
 
@@ -2200,12 +2209,13 @@ def gn_split(title):
     return title.strip(), 'Google News'
 
 # V6.17.118: threshold breaking RSS 150 → 200 (non-bencana), ASEAN 600 → 400
+# V6.17.119: threshold bencana 120 → 150
 MATERI_MIN_KARAKTER_RSS = 120
 MATERI_MIN_KARAKTER_RSS_NASIONAL = 150
 MATERI_MIN_KARAKTER_RSS_DAERAH    = 150
 MATERI_MIN_KARAKTER_BREAKING = 200
 MATERI_MIN_KARAKTER_BREAKING_RSS = 200
-MATERI_MIN_KARAKTER_BREAKING_BENCANA = 120
+MATERI_MIN_KARAKTER_BREAKING_BENCANA = 150
 MATERI_MIN_KARAKTER_ASEAN = 400
 
 MATERI_RSS_SKIP_TIPIS = 200
@@ -2357,7 +2367,8 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
     if _materi_sampah(materi):
         return False, 'materi sampah (anti-bot/JS block)'
     if kategori == 'breaking':
-        # V6.17.118: threshold breaking RSS dinaikkan kembali ke 200 (non-bencana)
+        # V6.17.118: threshold breaking RSS 200 (non-bencana)
+        # V6.17.119: threshold bencana 120 → 150
         if dari_scraping:
             min_kar = MATERI_MIN_KARAKTER_BREAKING
         elif _adalah_bencana_besar_teks(judul + ' ' + materi):
@@ -3055,11 +3066,32 @@ KATA_MATERI_OLAHRAGA_KUAT = [
     'liga champions', 'premier league', 'la liga',
 ]
 
+# V6.17.119: event lari di ekonomi → arahkan ke olahraga
+KATA_EVENT_LARI = [
+    'night run', 'marathon', 'maraton', 'half marathon', 'fun run',
+    'trail run', 'charity run', 'city run', 'heritage run',
+    'lomba lari', 'lari maraton', 'event lari', 'festival lari',
+    '10k', '21k', '42k', '5k run',
+]
+
+KATA_EVENT_LARI_KONTEKS = [
+    'event', 'festival', 'peserta', 'pelari',
+    'lomba', 'race', 'kompetisi lari',
+]
+
 def _kandidat_bukan_olahraga_murni(kategori, judul, summary):
-    """V6.17.112: materi olahraga tidak boleh masuk nasional/daerah/ekonomi."""
+    """V6.17.112: materi olahraga tidak boleh masuk nasional/daerah/ekonomi.
+    V6.17.119: event lari di ekonomi → arahkan ke olahraga."""
     if kategori not in ('nasional', 'daerah', 'ekonomi'):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
+    # V6.17.119: cek event lari di ekonomi
+    if kategori == 'ekonomi':
+        hit_lari = sum(1 for k in KATA_EVENT_LARI if k in gab)
+        hit_konteks = sum(1 for k in KATA_EVENT_LARI_KONTEKS if k in gab)
+        if hit_lari >= 2 or (hit_lari >= 1 and hit_konteks >= 2):
+            return False, ('materi event lari (bukan ekonomi): '
+                           + 'lari=' + str(hit_lari) + ' konteks=' + str(hit_konteks))
     hit = 0
     for k in KATA_MATERI_OLAHRAGA_KUAT:
         if len(k) <= 4:
@@ -3188,7 +3220,6 @@ def _materi_breaking_kadaluarsa(judul, summary, jam_maks=24):
     if not teks:
         return False, ''
     now = datetime.now(WITA)
-    # Cari tanggal lengkap "11 Oktober 2026" atau "1 Oktober 2026"
     for m in re.finditer(
         r'\b(\d{1,2})\s+(januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember)\s+(\d{4})\b',
         teks, re.IGNORECASE
@@ -3206,7 +3237,6 @@ def _materi_breaking_kadaluarsa(judul, summary, jam_maks=24):
                               + ' (' + str(int(selisih_jam)) + ' jam lalu)')
         except Exception:
             continue
-    # Cek frasa "pada 1 Oktober" tanpa tahun
     return False, ''
 
 # V6.17.116: breaking wajib ada lokasi spesifik — longgarkan definisi
@@ -3230,31 +3260,24 @@ KOTA_ASING_BREAKING_DIIZINKAN = [
 def _breaking_ada_lokasi_layak(judul, isi):
     """V6.17.116: breaking wajib ada lokasi (Indonesia atau asing diizinkan)."""
     gab = ((judul or '') + ' ' + (isi or '')).lower()
-    # Cek kota Indonesia
     for kota in KOTA_INDONESIA_DATELINE:
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
             return True, ''
-    # Cek provinsi Indonesia
     for prov in KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN:
         if re.search(r'\b' + re.escape(prov) + r'\b', gab):
             return True, ''
-    # Cek kota asing yang diizinkan untuk breaking
     for kota in KOTA_ASING_BREAKING_DIIZINKAN:
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
             return True, ''
-    # Cek negara asing (untuk konteks breaking dunia)
     for negara in LUAR_NEGERI_WORDS:
         if re.search(r'\b' + re.escape(negara) + r'\b', gab):
             return True, ''
-    # Cek ibukota negara
     for kota_asing in IBU_KOTA_NEGARA.keys():
         if re.search(r'\b' + re.escape(kota_asing) + r'\b', gab):
             return True, ''
-    # Cek variasi
     for kota in VARIAN_KOTA_EN_ID.keys():
         if re.search(r'\b' + re.escape(kota) + r'\b', gab):
             return True, ''
-    # Cek provinsi umum
     for prov in ['kalimantan', 'sumatera', 'sumatra', 'jawa', 'sulawesi',
                  'papua', 'bali', 'nusa tenggara', 'maluku',
                  'jakarta', 'yogyakarta', 'jogja']:
@@ -3300,7 +3323,6 @@ def _kandidat_layak(judul, summary, kategori='', link=''):
         return False, 'domain skip (blog opini/portal gagal)'
     if _kandidat_domain_olahraga_skip(kategori, judul, link):
         return False, 'portal olahraga inggris (judul tidak kontekstual)'
-    # V6.17.112: tolak judul foto/galeri
     fg = _judul_foto_galeri(judul)
     if fg:
         return False, 'judul foto/galeri (bukan berita): ' + fg
@@ -3322,14 +3344,12 @@ def _kandidat_layak(judul, summary, kategori='', link=''):
     ok, alasan = _kandidat_topik_nyambung(judul, summary)
     if not ok:
         return False, alasan
-    # V6.17.112: materi olahraga tidak boleh masuk nasional/daerah/ekonomi
     ok, alasan = _kandidat_bukan_olahraga_murni(kategori, judul, summary)
     if not ok:
         return False, alasan
     ok, alasan = _kandidat_negara_asing_untuk_lokal(kategori, judul, summary)
     if not ok:
-        return False, alasan
-    ok, alasan = _kandidat_bukan_kontes(kategori, judul, summary)
+        return False, alasan    ok, alasan = _kandidat_bukan_kontes(kategori, judul, summary)
     if not ok:
         return False, alasan
     ok, alasan = _kandidat_bukan_pendidikan(kategori, judul, summary)
@@ -3585,7 +3605,8 @@ def _materi_basi(judul, summary, kategori=''):
 
     return False, ''
 
-def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''):
+def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori='',
+                        is_mbg_kdmp=False):
     if max_umur_jam is None:
         max_umur_jam = MAX_UMUR_BERITA_JAM
     rejected = muat_rejected_urls()
@@ -3704,7 +3725,6 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                 if _tolak_brk >= 1:
                     skip_layak += 1
                     continue
-                # V6.17.116: tolak "breaking" yang sebenarnya acara
                 acara_bukan, alasan_acara = _materi_bukan_breaking_acara(title, summary)
                 if acara_bukan:
                     skip_layak += 1
@@ -3721,12 +3741,14 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                           + ' — ' + title[:50])
                 continue
 
-            topik_dobel = _topik_sudah_terbit(title, judul_database, kategori=kategori)
-            if topik_dobel:
-                skip_topik += 1
-                if skip_topik <= 3:
-                    print('       Skip kandidat (dobel topik): ' + topik_dobel[:70] + ' — ' + title[:50])
-                continue
+            # V6.17.119: MBG/KDMP bypass dobel topik
+            if not is_mbg_kdmp:
+                topik_dobel = _topik_sudah_terbit(title, judul_database, kategori=kategori)
+                if topik_dobel:
+                    skip_topik += 1
+                    if skip_topik <= 3:
+                        print('       Skip kandidat (dobel topik): ' + topik_dobel[:70] + ' — ' + title[:50])
+                    continue
 
             layak, alasan = _kandidat_layak(title, summary, kategori, link)
             if not layak:
@@ -5843,6 +5865,22 @@ KATA_BUKAN_NAMA_PEJABAT = [
 KATA_SAMBUNG_NAMA = {'dan', 'atau', 'serta', 'maupun', 'hingga', 'sampai',
                      'dengan', 'untuk', 'pada', 'di', 'ke', 'dari', 'oleh'}
 
+# V6.17.112: window 60 → 40 + filter jabatan ganda + cek titik + 2+ kata besar
+# V6.17.119: tambah whitelist jabatan awal (hindari false negative)
+JABATAN_AWAL_SAH = [
+    'wali kota', 'wakil wali kota', 'bupati', 'wakil bupati',
+    'gubernur', 'wakil gubernur', 'presiden', 'wakil presiden',
+    'menteri', 'wakil menteri',
+]
+
+JABATAN_KEDUA_CEK = [
+    'wali kota', 'wakil wali kota', 'bupati', 'wakil bupati',
+    'gubernur', 'wakil gubernur', 'presiden', 'wakil presiden',
+    'menteri', 'wakil menteri',
+    'kapolres', 'kapolda', 'kajari', 'ketua', 'kepala',
+    'direktur', 'sekretaris', 'komandan', 'jenderal',
+]
+
 def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     if not materi or not isi_ai:
         return None
@@ -5855,13 +5893,13 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
                                              'berita terkini', 'update terkini',
                                              'headline', 'top news')):
         return None
-    # V6.17.112: batasi window pola ke 60 karakter (bukan 120) — cegah salah tangkap frasa judul
+    # V6.17.119: window 40 char (dari 60)
     pola_nama_pejabat = re.compile(
         r'\b(?:'
         r'wali\s+kota|wakil\s+wali\s+kota|bupati|wakil\s+bupati|gubernur|wakil\s+gubernur|'
         r'presiden|menteri|kepala\s+lapas|kepala\s+dinas|kepala\s+badan|kepala\s+uptd|'
         r'kepala\s+bidang|kapolres|kapolsek|kajari|direktur|ketua|kades|lurah|camat'
-        r')\s+([A-Z][a-zA-Z\.\'\-\s]{3,60})',
+        r')\s+([A-Z][a-zA-Z\.\'\-\s]{3,40})',
         re.IGNORECASE
     )
     nama_materi = []
@@ -5880,15 +5918,47 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
             nama_bersih.append(k)
             if len(nama_bersih) >= 2:
                 break
-        if len(nama_bersih) < 1:
-            continue
         if len(nama_bersih) < 2:
             continue
-        # V6.17.112: cek kalau nama_full panjang > 80 char — kemungkinan salah tangkap frasa judul
-        if len(nama_full) > 80:
+        # V6.17.119: filter 1 — nama_full terlalu panjang
+        if len(nama_full) > 40:
             continue
-        # V6.17.112: cek kalau ada kata kerja di nama_full — salah tangkap
+        # V6.17.119: filter 2 — cek jabatan ganda
         nama_full_low = nama_full.lower()
+        jabatan_ditemukan = 0
+        for j in ['direktur', 'bupati', 'walikota', 'gubernur', 'menteri',
+                  'kapolres', 'kapolda', 'kajari', 'ketua', 'kepala',
+                  'presiden', 'wakil', 'sekretaris', 'komandan', 'jenderal']:
+            if j in nama_full_low:
+                jabatan_ditemukan += 1
+        if jabatan_ditemukan >= 2:
+            continue
+        # V6.17.119: filter 3 — pola ". Bupati" / ". H." — potongan kalimat
+        if re.search(r'\.\s+[A-Z]', nama_full):
+            continue
+        # V6.17.119: filter 4 — 2+ kata besar (≥4 char) bukan preposisi
+        # TAPI kecualikan kalau kalimat diawali jabatan tunggal sah
+        kata_besar = re.findall(r'\b[A-Z][a-z]{3,}\b', nama_full)
+        if len(kata_besar) >= 3:
+            # Cek apakah diawali jabatan tunggal sah
+            diawali_jabatan_sah = False
+            for jsah in JABATAN_AWAL_SAH:
+                if nama_full_low.startswith(jsah):
+                    # Cek jabatan kedua di sisa
+                    sisa = nama_full_low[len(jsah):].strip()
+                    ada_jabatan_kedua = False
+                    for j2 in JABATAN_KEDUA_CEK:
+                        if j2 in sisa:
+                            ada_jabatan_kedua = True
+                            break
+                    if ada_jabatan_kedua:
+                        break
+                    # Cuma 1 jabatan sah di awal → LANJUT proses normal
+                    diawali_jabatan_sah = True
+                    break
+            if not diawali_jabatan_sah:
+                continue
+        # V6.17.112: cek kalau ada kata kerja di nama_full — salah tangkap
         ada_verba = False
         for v in ['banbinsa', 'bersama', 'gotong', 'warga', 'memimpin',
                   'menggelar', 'melakukan', 'meninjau', 'resmikan',
@@ -7200,6 +7270,26 @@ def _topik_sudah_terbit_lintas(judul_baru, kategori_target):
             continue
     return None
 
+# V6.17.119: batasi breaking gempa 1x/6 jam
+def _breaking_gempa_sudah_terbit_6jam():
+    """V6.17.119: cek sudah ada breaking gempa dalam 6 jam terakhir."""
+    try:
+        rows = rest_get('?select=title,created_at&breaking=eq.true'
+                        '&order=created_at.desc&limit=20')
+        now = datetime.now(timezone.utc)
+        for row in rows:
+            d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00'))
+            if d.tzinfo is None:
+                d = d.replace(tzinfo=timezone.utc)
+            if (now - d).total_seconds() > 6 * 3600:
+                continue
+            t = (row.get('title') or '').lower()
+            if 'gempa' in t or 'magnitudo' in t or 'magnitude' in t:
+                return True
+        return False
+    except Exception:
+        return False
+
 # V6.17.116: cek dateline alternatif di judul kalau tidak ada di materi
 def _dateline_ada_di_materi_atau_judul(kota, materi, judul):
     kota_low = (kota or '').lower().strip()
@@ -7209,11 +7299,9 @@ def _dateline_ada_di_materi_atau_judul(kota, materi, judul):
         return True
     if kota_low in (judul or '').lower():
         return True
-    # Cek variasi
     for varian in VARIAN_KOTA_EN_ID.get(kota_low, []):
         if varian in (materi or '').lower() or varian in (judul or '').lower():
             return True
-    # Cek ibu kota provinsi
     for prov, ibukota in KAMUS_PROVINSI_IBUKOTA.items():
         if kota_low == ibukota and (prov in (materi or '').lower() or prov in (judul or '').lower()):
             return True
@@ -7274,6 +7362,12 @@ def sesi_breaking(today_urls, seen):
         if topik_brk:
             print('   Skip (topik breaking sudah terbit): ' + topik_brk[:80])
             continue
+        # V6.17.119: batasi breaking gempa 1x/6 jam
+        jdl_low = (c.get('title') or '').lower()
+        if 'gempa' in jdl_low or 'magnitudo' in jdl_low or 'magnitude' in jdl_low:
+            if _breaking_gempa_sudah_terbit_6jam():
+                print('   Skip (gempa sudah terbit < 6 jam): ' + c['title'][:50])
+                continue
         jdl_lower = (c.get('title') or '').lower()
         if any(x in jdl_lower for x in ('potret', 'sorotan', 'foto-foto', 'galeri',
                                          'in pictures', 'photos:', 'images:',
@@ -7507,8 +7601,12 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
     jam_sekarang = datetime.now(WITA).hour
     batas_percobaan = 1
     max_umur = max_umur_kategori(cat)
-    cand = collect_candidates(sumber_custom if sumber_custom else HUNT.get(cat, []),
-                              today_urls, seen, max_umur_jam=max_umur, kategori=cat)
+    # V6.17.119: cek apakah sumber MBG/KDMP (bypass dobel topik)
+    _sumber_pakai = sumber_custom if sumber_custom else HUNT.get(cat, [])
+    is_mbg = any(s.get('mbg_kdmp') for s in _sumber_pakai if isinstance(s, dict))
+    cand = collect_candidates(_sumber_pakai,
+                              today_urls, seen, max_umur_jam=max_umur, kategori=cat,
+                              is_mbg_kdmp=is_mbg)
     if not cand:
         print('   (' + cat + ') Tidak ada kandidat segar.')
         return False
@@ -7971,7 +8069,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.118'
+FILE_VERSI = 'V6.17.119'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
