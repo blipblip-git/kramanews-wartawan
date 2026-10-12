@@ -1080,6 +1080,26 @@ AKTOR_NON_BREAKING = [
     'jisoo', 'suga', 'rm bts', 'jin bts', 'jhope', 'jimin', 'v bts',
     'jungkook', 'vocalis kpop', 'idol kpop', 'boyband korea',
     'girlband korea', 'k-pop star', 'penyanyi korea', 'artis korea',
+    'maia estianty', 'maia', 'raffi ahmad', 'nagita slavina', 'nagita',
+    'gading marteen', 'gading', 'baim wong', 'paula verhoeven',
+    'deddy corbuzier', 'corbuzier', 'iwan fals', 'once mekel',
+    'ari lasso', 'dewa 19', 'dewa19', 'slank', 'noah band',
+    'peterpan', 'sheila on 7', 'sheilaon7', 'padi band',
+    'didi kempot', 'via vallen', 'nella kharisma', 'denny caknan',
+    'happy asmara', 'ndarboy genk', 'nadin amizah', 'tiara andini',
+    'lyodra', 'mahalini', 'raisa', 'andmesh', 'judika', 'armand maulana',
+    'vidi aldiano', 'rossa', 'tulus', 'glenn fredly', 'tompi',
+    'bunga citra lestari', 'bcl', 'ashanty', 'anang hermansyah',
+    'krisdayanti', 'raffi', 'deddy', 'sule', 'andre taulany',
+    'parto', 'azis gagap', 'ernest prakasa', 'ernest', 'cinta laura',
+    'ashraf sinclair', 'sinclair', 'amanda manopo', 'amanda',
+    'arysal fauzi', 'beby tsabina', 'prilly lembong', 'prilly',
+    'nicholas saputra', 'rio dewantara', 'rio', 'adipati dolken',
+    'dolken', 'iqbaal ramadhan', 'iqbaal', 'jefri nichol', 'jefri',
+    'angga yunanda', 'angga', 'jeff smith', 'jeff', 'bryan domani',
+    'bryan', 'yuki kato', 'yuki', 'megan daffa', 'megan',
+    'ditanya soal', 'tanggapan artis', 'respon artis', 'kata seleb',
+    'menurut seleb', 'kata penyanyi', 'menurut penyanyi',
 ]
 
 def _ada_aktor_non_breaking(teks):
@@ -1091,6 +1111,30 @@ def _ada_aktor_non_breaking(teks):
         else:
             if k in t:
                 return k
+    return ''
+
+# V6.17.122: cek pola "doa/ucapan/komentar [nama]" untuk breaking
+POLA_ARTIS_UMUM = [
+    'doa ', 'ucapan ', 'komentar ', 'kata ', 'tanggapan ',
+    'dukungan ', 'respon ', 'respons ', 'kritik ',
+    'sorotan ', 'dikritik ', 'disorot ',
+    'menurut ', 'ujar ', 'kata ',
+]
+
+def _ada_pola_artis_di_judul(judul):
+    """V6.17.122: deteksi pola 'doa [nama]/ucapan [nama]' → kemungkinan artis."""
+    if not judul:
+        return ''
+    j_low = (judul or '').lower()
+    for pola in POLA_ARTIS_UMUM:
+        if pola in j_low:
+            # Cek apakah ada nama orang setelah pola (2 kata kapital)
+            # atau minimal ada kata kapital setelah pola
+            idx = j_low.find(pola)
+            sisa = judul[idx + len(pola):].strip()
+            # Kalau sisa minimal 2 kata, kemungkinan nama orang
+            if len(sisa.split()) >= 2:
+                return pola.strip()
     return ''
 
 def _pesawat_kecil(text):
@@ -1316,7 +1360,6 @@ DOMAIN_NON_BERITA = [
     'threads.net', 'x.com', 'linkedin.com', 'reddit.com',
 ]
 
-# V6.17.121: tambah /commentisfree/, /opinion/, /letters/ (blog opini)
 POLA_URL_NON_ARTIKEL = [
     '/video/', '/videos/', '/watch/', '/nightly-news/',
     '/liveblog/', '/live-blog/', '/live-blogs/', '/live/',
@@ -1352,7 +1395,6 @@ def _url_valid_berita(u):
         return False
     return True
 
-# V6.17.111: cek URL non-artikel untuk RSS link juga (bukan cuma hasil resolusi)
 def _link_rss_non_artikel(url):
     low = (url or '').lower()
     for p in POLA_URL_NON_ARTIKEL:
@@ -1384,7 +1426,6 @@ def resolusi_link_google(url):
         return url
     hasil = _gn_decode_satu(url)
     if hasil:
-        # V6.17.118: cek hasil resolusi juga — tolak URL non-artikel
         pola_na = _url_halaman_non_artikel(hasil)
         if pola_na:
             print('       GN resolusi ke URL non-artikel (' + pola_na + ') — skip: '
@@ -1408,7 +1449,6 @@ def _gn_id_dari_url(url):
         pass
     return ''
 
-# V6.17.121: tambah jabarprov.go.id (Cloudflare 1000S)
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
@@ -1935,6 +1975,19 @@ YANG DILARANG (kalau materi TIDAK ada):
   "seorang bos", "seorang pengusaha" kalau materi tidak sebut.
 - Kalau materi sebut "Gedung Putih"/"White House" → tulis itu.
 - Kalau materi tidak ada narasumber → fokus ke fakta, JANGAN tambah narasumber fiktif.
+
+DATELINE — JANGAN KARANG (SANGAT PENTING):
+- DATELINE WAJIB SALIN DARI MATERI.
+- Kalau materi cuma nyebut nama gunung/kabupaten (contoh: "Gunung Semeru")
+  TANPA kota → JANGAN karang kota. Pakai provinsi atau negara.
+  Contoh BENAR: materi "Gunung Semeru" → "JAWA TIMUR, INDONESIA - "
+  Contoh SALAH: materi "Gunung Semeru" → "LUMAJANG, JAWA TIMUR - " (KARANG!)
+- Contoh BENAR: materi "Gunung Ibu" → "MALUKU UTARA, INDONESIA - "
+  Contoh SALAH: materi "Gunung Ibu" → "HALMAHERA BARAT, MALUKU UTARA - " (KARANG!)
+- Contoh BENAR: materi "gempa Panama" → "PANAMA - "
+  Contoh SALAH: materi "gempa Panama" → "PANAMA CITY, PANAMA - " (KARANG!)
+- Kalau materi sebut kota spesifik → WAJIB pakai kota itu.
+- Kalau materi TIDAK sebut kota → pakai provinsi (Indonesia) atau negara (luar).
 
 NARASI — WAJIB DIUBAH:
 - Kalimat wajib beda dengan materi.
@@ -7356,6 +7409,28 @@ def _breaking_gempa_sudah_terbit_6jam():
     except Exception:
         return False
 
+# V6.17.122: batasi breaking karhutla 1x/6 jam
+def _breaking_karhutla_sudah_terbit_6jam():
+    """V6.17.122: cek sudah ada breaking karhutla dalam 6 jam terakhir."""
+    try:
+        rows = rest_get('?select=title,created_at&breaking=eq.true'
+                        '&order=created_at.desc&limit=20')
+        now = datetime.now(timezone.utc)
+        for row in rows:
+            d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00'))
+            if d.tzinfo is None:
+                d = d.replace(tzinfo=timezone.utc)
+            if (now - d).total_seconds() > 6 * 3600:
+                continue
+            t = (row.get('title') or '').lower()
+            if ('karhutla' in t or 'kebakaran hutan' in t
+                    or 'kebakaran lahan' in t or 'kabut asap' in t
+                    or 'titik api' in t or 'titik panas' in t):
+                return True
+        return False
+    except Exception:
+        return False
+
 # V6.17.116: cek dateline alternatif di judul kalau tidak ada di materi
 def _dateline_ada_di_materi_atau_judul(kota, materi, judul):
     kota_low = (kota or '').lower().strip()
@@ -7434,6 +7509,13 @@ def sesi_breaking(today_urls, seen):
             if _breaking_gempa_sudah_terbit_6jam():
                 print('   Skip (gempa sudah terbit < 6 jam): ' + c['title'][:50])
                 continue
+        # V6.17.122: batasi breaking karhutla 1x/6 jam
+        if ('karhutla' in jdl_low or 'kebakaran hutan' in jdl_low
+                or 'kebakaran lahan' in jdl_low or 'kabut asap' in jdl_low
+                or 'titik api' in jdl_low or 'titik panas' in jdl_low):
+            if _breaking_karhutla_sudah_terbit_6jam():
+                print('   Skip (karhutla sudah terbit < 6 jam): ' + c['title'][:50])
+                continue
         jdl_lower = (c.get('title') or '').lower()
         if any(x in jdl_lower for x in ('potret', 'sorotan', 'foto-foto', 'galeri',
                                          'in pictures', 'photos:', 'images:',
@@ -7480,7 +7562,6 @@ def sesi_breaking(today_urls, seen):
     return made
 
 def _breaking_ada_lokasi(judul, isi):
-    # V6.17.116: pakai fungsi baru yang longgarkan kota asing
     return _breaking_ada_lokasi_layak(judul, isi)[0]
 
 KATA_DOMINAN_INDONESIA = [
@@ -7614,7 +7695,6 @@ def kelompok_regional_olahraga(items):
     teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
     return teks_mengandung(teks, KATA_REGIONAL_OLAHRAGA)
 
-# V6.17.116: kelompok topik wajib nasional (MBG/KDMP/Kegiatan Menteri)
 KATA_TOPIK_WAJIB_NASIONAL = {
     'mbg': ['mbg', 'makan bergizi', 'makan bergizi gratis',
             'bgn', 'badan gizi nasional', 'sppg',
@@ -7667,7 +7747,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
     jam_sekarang = datetime.now(WITA).hour
     batas_percobaan = 1
     max_umur = max_umur_kategori(cat)
-    # V6.17.119: cek apakah sumber MBG/KDMP (bypass dobel topik)
     _sumber_pakai = sumber_custom if sumber_custom else HUNT.get(cat, [])
     is_mbg = any(s.get('mbg_kdmp') for s in _sumber_pakai if isinstance(s, dict))
     cand = collect_candidates(_sumber_pakai,
@@ -7728,7 +7807,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
         print('   (' + cat + ') Semua kandidat habis setelah filter - skip.')
         return False
     groups = match_articles(cand)
-    # V6.17.110/111: prioritas Tarakan → Kaltara lain → daerah lain
     if utamakan_kaltara and cat == 'daerah':
         tarakan_penuh = hitung_tarakan_hari_ini() >= KUOTA_TARAKAN_HARIAN
         kaltara_lain_penuh = hitung_kaltara_lain_hari_ini() >= KUOTA_KALTARA_LAIN_HARIAN
@@ -7764,7 +7842,6 @@ def produksi_satu(cat, today_urls, seen, utamakan_kaltara, utamakan_topik=None,
                 return 2 if barat_sudah_terbit(b) else 1
             return 1
         groups.sort(key=asean_prio)
-    # V6.17.116: force priority MBG/KDMP/Kegiatan Menteri di kategori nasional
     if cat == 'nasional':
         def wajib_prio(g):
             for it in g['items']:
@@ -8080,7 +8157,6 @@ def run_session():
     print('Sesi selesai - breaking: ' + str(n_brk) + ' - kategori: ' + str(n_kat))
     return n_brk + n_kat
 
-# V6.17.117: cek toggle runtime dari Supabase (ai_wartawan_on, breaking_on)
 def cek_settings_runtime():
     try:
         rows = rest_get('?select=key,value&key=in.(ai_wartawan_on,breaking_on)')
@@ -8135,7 +8211,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.121'
+FILE_VERSI = 'V6.17.122'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
