@@ -1989,6 +1989,15 @@ DATELINE — JANGAN KARANG (SANGAT PENTING):
 - Kalau materi sebut kota spesifik → WAJIB pakai kota itu.
 - Kalau materi TIDAK sebut kota → pakai provinsi (Indonesia) atau negara (luar).
 
+JUDUL BREAKING — WAJIB NAMA KOTA/KABUPATEN SPESIFIK:
+- Judul breaking WAJIB memuat NAMA KOTA atau KABUPATEN spesifik.
+- DILARANG pakai kata "Kota" generic TANPA nama (contoh: "Banjir Hancurkan Kota").
+- Contoh BENAR: "Banjir Hancurkan Kota Semarang"
+- Contoh SALAH: "Banjir Hancurkan Kota pada Malam Hari"
+- Contoh BENAR: "Longsor Tewaskan 5 Warga di Kabupaten Bogor"
+- Contoh SALAH: "Longsor Tewaskan 5 Warga di Sebuah Kota"
+- Kalau materi tidak sebut nama kota → JANGAN tulis breaking.
+
 NARASI — WAJIB DIUBAH:
 - Kalimat wajib beda dengan materi.
 - DILARANG 25+ kata berurutan sama materi (kecuali fakta di atas).
@@ -2275,12 +2284,13 @@ def gn_split(title):
 
 # V6.17.118: threshold breaking RSS 150 → 200 (non-bencana), ASEAN 600 → 400
 # V6.17.119: threshold bencana 120 → 150
+# V6.17.123: threshold bencana 150 → 200
 MATERI_MIN_KARAKTER_RSS = 120
 MATERI_MIN_KARAKTER_RSS_NASIONAL = 150
 MATERI_MIN_KARAKTER_RSS_DAERAH    = 150
 MATERI_MIN_KARAKTER_BREAKING = 200
 MATERI_MIN_KARAKTER_BREAKING_RSS = 200
-MATERI_MIN_KARAKTER_BREAKING_BENCANA = 150
+MATERI_MIN_KARAKTER_BREAKING_BENCANA = 200
 MATERI_MIN_KARAKTER_ASEAN = 400
 
 MATERI_RSS_SKIP_TIPIS = 200
@@ -2434,6 +2444,7 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
     if kategori == 'breaking':
         # V6.17.118: threshold breaking RSS 200 (non-bencana)
         # V6.17.119: threshold bencana 120 → 150
+        # V6.17.123: threshold bencana 150 → 200
         if dari_scraping:
             min_kar = MATERI_MIN_KARAKTER_BREAKING
         elif _adalah_bencana_besar_teks(judul + ' ' + materi):
@@ -2441,7 +2452,6 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
         else:
             min_kar = MATERI_MIN_KARAKTER_BREAKING_RSS
     elif kategori == 'internasional_asean':
-        # V6.17.118: threshold ASEAN 600 → 400
         min_kar = MATERI_MIN_KARAKTER_ASEAN
     elif kategori == 'nasional':
         if dari_scraping:
@@ -7431,6 +7441,41 @@ def _breaking_karhutla_sudah_terbit_6jam():
     except Exception:
         return False
 
+# V6.17.123: breaking wajib ada lokasi di materi asli (bukan cuma judul/isi AI)
+def _breaking_ada_lokasi_di_materi(c):
+    """V6.17.123: cek apakah materi asli punya lokasi spesifik."""
+    materi = (c.get('title', '') or '') + ' ' + (c.get('summary', '') or '')
+    if not materi.strip():
+        return False
+    return _breaking_ada_lokasi_layak(c.get('title', ''), c.get('summary', ''))[0]
+
+# V6.17.123: cek judul breaking ada nama kota/kabupaten spesifik
+KOTA_UMUM_GENERIC = ['kota', 'kabupaten', 'provinsi', 'daerah', 'wilayah', 'negeri']
+
+def _judul_breaking_ada_kota_spesifik(judul):
+    """V6.17.123: judul breaking wajib ada nama kota/kabupaten spesifik."""
+    if not judul:
+        return False, 'judul kosong'
+    j_low = judul.lower()
+    # Cek ada nama kota Indonesia
+    for kota in KOTA_INDONESIA_DATELINE:
+        if re.search(r'\b' + re.escape(kota) + r'\b', j_low):
+            return True, ''
+    # Cek ada nama provinsi
+    for prov in KALIMANTAN_PROVINSI + PROVINSI_INDONESIA_LAIN:
+        if re.search(r'\b' + re.escape(prov) + r'\b', j_low):
+            return True, ''
+    # Cek ada nama kota asing
+    for kota in KOTA_ASING_BREAKING_DIIZINKAN:
+        if re.search(r'\b' + re.escape(kota) + r'\b', j_low):
+            return True, ''
+    # Cek ada nama negara
+    for negara in LUAR_NEGERI_WORDS:
+        if re.search(r'\b' + re.escape(negara) + r'\b', j_low):
+            return True, ''
+    # Nggak ada nama spesifik
+    return False, 'judul breaking tanpa nama kota/kabupaten spesifik (hanya kata generic)'
+
 # V6.17.116: cek dateline alternatif di judul kalau tidak ada di materi
 def _dateline_ada_di_materi_atau_judul(kota, materi, judul):
     kota_low = (kota or '').lower().strip()
@@ -7522,6 +7567,11 @@ def sesi_breaking(today_urls, seen):
                                          'see photos', 'in photos')):
             print('   Skip (feature/potret, bukan breaking): ' + c['title'][:50])
             continue
+        # V6.17.123: cek materi asli punya lokasi spesifik (bukan cuma AI)
+        if tip == 'dom':
+            if not _breaking_ada_lokasi_di_materi(c):
+                print('   Skip (materi asli tidak ada lokasi spesifik): ' + c['title'][:50])
+                continue
         label = 'BREAKING DOM' if tip == 'dom' else 'BREAKING DUNIA'
         print('\n   [' + label + '] ' + c['title'][:70])
         percobaan += 1
@@ -7535,6 +7585,13 @@ def sesi_breaking(today_urls, seen):
         if tip == 'dom':
             if not _breaking_ada_lokasi(judul, isi):
                 print('   DITOLAK - breaking tanpa lokasi spesifik: ' + judul[:50])
+                continue
+            # V6.17.123: judul breaking wajib ada nama kota/kabupaten spesifik
+            ok_kota, alasan_kota = _judul_breaking_ada_kota_spesifik(judul)
+            if not ok_kota:
+                print('   DITOLAK - ' + alasan_kota + ': ' + judul[:50])
+                if c.get('link'):
+                    catat_tolak_ai_token(c.get('link'), 'breaking tanpa kota spesifik: ' + judul[:80])
                 continue
         topik_brk_final = _topik_breaking_sudah_terbit(judul, min_irisan=4)
         if topik_brk_final:
@@ -8211,7 +8268,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.122'
+FILE_VERSI = 'V6.17.123'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
