@@ -1316,10 +1316,12 @@ DOMAIN_NON_BERITA = [
     'threads.net', 'x.com', 'linkedin.com', 'reddit.com',
 ]
 
+# V6.17.121: tambah /commentisfree/, /opinion/, /letters/ (blog opini)
 POLA_URL_NON_ARTIKEL = [
     '/video/', '/videos/', '/watch/', '/nightly-news/',
     '/liveblog/', '/live-blog/', '/live-blogs/', '/live/',
     '/opini/', '/indepth/', '/analysis/', '/editorial/',
+    '/commentisfree/', '/opinion/', '/letters/',
 ]
 
 def _url_halaman_non_artikel(u):
@@ -1382,7 +1384,7 @@ def resolusi_link_google(url):
         return url
     hasil = _gn_decode_satu(url)
     if hasil:
-        # V6.17.118: cek hasil resolusi juga — tolak URL non-artikel (opini/indepth/dll)
+        # V6.17.118: cek hasil resolusi juga — tolak URL non-artikel
         pola_na = _url_halaman_non_artikel(hasil)
         if pola_na:
             print('       GN resolusi ke URL non-artikel (' + pola_na + ') — skip: '
@@ -1406,7 +1408,7 @@ def _gn_id_dari_url(url):
         pass
     return ''
 
-# V6.17.116: tambah rri.co.id (5x gagal materi tipis) + databoks
+# V6.17.121: tambah jabarprov.go.id (Cloudflare 1000S)
 DOMAIN_SKIP_SCRAPE = [
     'berita.tarakankota.go.id',
     'vnexpress.net',
@@ -1422,6 +1424,7 @@ DOMAIN_SKIP_SCRAPE = [
     'rri.co.id',
     'tarakantv.co.id',
     'databoks.katadata.co.id',
+    'jabarprov.go.id',
 ]
 
 def domain_skip_scrape(url):
@@ -8132,7 +8135,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.120'
+FILE_VERSI = 'V6.17.121'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
