@@ -238,7 +238,6 @@ def GN(q, lang='id', label=None, when='1d'):
 def RSSF(url, source):
     return {'url': url, 'source': source, 'gn': False}
 
-# V6.17.118: sumber MBG/KDMP ditandai agar bypass pre-filter RSS tipis
 def GN_MBG(q, lang='id', label=None, when='1d'):
     s = GN(q, lang, label, when)
     s['mbg_kdmp'] = True
@@ -249,20 +248,21 @@ def RSSF_MBG(url, source):
     s['mbg_kdmp'] = True
     return s
 
+# V6.17.125: JADWAL_JAM dirapikan — semua jam 5 slot
 JADWAL_JAM = {
-    6:  {'nasional': 2, 'daerah': 2, 'ekonomi': 1},
+    6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1, 'ekonomi': 1},
-    8:  {'nasional': 1, 'daerah': 2, 'internasional_asean': 1, 'teknologi': 1, 'kesehatan': 1},
-    9:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'olahraga': 1, 'ekonomi': 1},
-    10: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'kesehatan': 1},
-    11: {'nasional': 1, 'daerah': 2, 'ekonomi': 1, 'olahraga': 1, 'otomotif': 1},
+    8:  {'daerah': 2, 'internasional_asean': 1, 'teknologi': 1, 'kesehatan': 1},
+    9:  {'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'olahraga': 1, 'ekonomi': 1},
+    10: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'kesehatan': 1, 'teknologi': 1},
+    11: {'daerah': 2, 'ekonomi': 1, 'olahraga': 1, 'otomotif': 1},
     12: {'nasional': 1, 'daerah': 2, 'ekonomi': 1, 'olahraga': 1},
     13: {'nasional': 1, 'daerah': 1, 'ekonomi': 1, 'teknologi': 1, 'otomotif': 1},
-    14: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1, 'ekonomi': 1},
-    15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1},
-    16: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'kesehatan': 1, 'olahraga': 1},
+    14: {'daerah': 1, 'internasional_asean': 1, 'olahraga': 1, 'ekonomi': 1, 'nasional': 0},
+    15: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'kesehatan': 1, 'teknologi': 1},
+    16: {'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'kesehatan': 1, 'olahraga': 1},
     17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1, 'ekonomi': 1},
-    18: {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'otomotif': 1, 'olahraga': 1},
+    18: {'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'otomotif': 1, 'olahraga': 1},
 }
 
 EKONOMI_JAM_DOMESTIK = [6, 9, 11, 12, 13, 17]
@@ -444,7 +444,8 @@ DOMAIN_TEKNOLOGI = [
         ('inovasi teknologi riset', 'id'),
     ]},
 ]
-JAM_TEKNOLOGI = {8: 0, 13: 1, 18: 2}
+# V6.17.125: tambah jam 10, 16 (dari 3 slot → 5 slot)
+JAM_TEKNOLOGI = {8: 0, 10: 1, 13: 2, 16: 3, 18: 4}
 
 EKONOMI_DOMESTIK_FEEDS = [
     RSSF('https://market.bisnis.com/feed', 'Bisnis Market'),
@@ -510,7 +511,6 @@ EKONOMI_ASING_FEEDS = [
     GN('taiwan semiconductor tsmc chip', 'en', 'GN Semikonduktor'),
 ]
 
-# V6.17.117: sumber khusus MBG/KDMP/Kegiatan Menteri (V6.17.118: ditandai mbg_kdmp)
 SUMBER_MBG_KDMP = [
     GN_MBG('makan bergizi gratis', 'id', 'GN MBG'),
     GN_MBG('program MBG Indonesia', 'id', 'GN MBG Program'),
@@ -568,6 +568,13 @@ HUNT = {
         GN('PT Pos Indonesia', 'id', 'GN Pos Indonesia'),
         GN('Bupati dan Wali Kota', 'id', 'GN Bupati Wali Kota'),
         GN('Mahkamah Agung putusan', 'id', 'GN MA Putusan'),
+        # V6.17.125: topik wajib presiden/wapres
+        GN('Presiden Prabowo meresmikan', 'id', 'GN Presiden Resmikan'),
+        GN('kunjungan Presiden Prabowo', 'id', 'GN Presiden Kunjungan'),
+        GN('Presiden meninjau', 'id', 'GN Presiden Tinjau'),
+        GN('Wapres Gibran meninjau', 'id', 'GN Wapres Tinjau'),
+        GN('Wapres Gibran meresmikan', 'id', 'GN Wapres Resmikan'),
+        GN('kunjungan Wapres Gibran', 'id', 'GN Wapres Kunjungan'),
     ] + SUMBER_MBG_KDMP,
     'daerah': [
         # Kaltara (prioritas)
@@ -577,7 +584,6 @@ HUNT = {
         RSSF('https://radartarakan.jawapos.com/rss.xml', 'Radar Tarakan'),
         RSSF('https://kaltarapost.co.id/rss', 'Kaltara Post'),
         RSSF('https://www.prokaltara.co.id/rss', 'Pro Kaltara'),
-        # V6.17.110: tambah RSS lokal baru
         RSSF('https://kaltaraprov.go.id/feed/', 'Kaltara Prov'),
         RSSF('https://korankaltara.com/feed', 'Koran Kaltara'),
         GN('Tarakan', 'id', 'Google News Tarakan'),
@@ -590,7 +596,6 @@ HUNT = {
         GN('Malinau', 'id', 'Google News Malinau'),
         GN('Tana Tidung', 'id', 'Google News Tana Tidung'),
         GN('Tanjung Selor', 'id', 'Google News Tanjung Selor'),
-        # V6.17.110: tambah GN lokal spesifik
         GN('Tarakan hari ini', 'id', 'Google News Tarakan Hari Ini'),
         GN('Kaltara hari ini', 'id', 'Google News Kaltara Hari Ini'),
         GN('Pemprov Kaltara', 'id', 'Google News Pemprov Kaltara'),
@@ -816,13 +821,21 @@ HUNT = {
         GN('car review', 'en', 'GN Car Review'),
     ],
     'teknologi': [
+        # V6.17.125: tambah RSS + GN teknologi (dari 4 RSS + 3 GN → 9 RSS + 5 GN)
         RSSF('https://inet.detik.com/rss', 'Detik Inet'),
         RSSF('https://tekno.kompas.com/rss', 'Kompas Tekno'),
         RSSF('https://www.suara.com/tekno/rss', 'Suara Tekno'),
         RSSF('https://www.liputan6.com/tekno/rss', 'Liputan6 Tekno'),
+        RSSF('https://selular.id/feed', 'Selular'),
+        RSSF('https://jalantikus.com/feed', 'JalanTikus'),
+        RSSF('https://gizmologi.id/feed', 'Gizmologi'),
+        RSSF('https://dailysocial.id/feed', 'DailySocial'),
+        RSSF('https://www.tek.id/feed', 'Tek.id'),
         GN('AI terbaru', 'id', 'GN AI Terbaru'),
         GN('startup Indonesia pendanaan', 'id', 'GN Startup'),
         GN('gadget baru rilis', 'id', 'GN Gadget Baru'),
+        GN('keamanan siber Indonesia', 'id', 'GN Keamanan Siber'),
+        GN('AI Indonesia terkini', 'id', 'GN AI Indonesia'),
     ],
 }
 
@@ -2282,9 +2295,6 @@ def gn_split(title):
             return parts[0].strip(), parts[1].strip()
     return title.strip(), 'Google News'
 
-# V6.17.118: threshold breaking RSS 150 → 200 (non-bencana), ASEAN 600 → 400
-# V6.17.119: threshold bencana 120 → 150
-# V6.17.123: threshold bencana 150 → 200
 MATERI_MIN_KARAKTER_RSS = 120
 MATERI_MIN_KARAKTER_RSS_NASIONAL = 150
 MATERI_MIN_KARAKTER_RSS_DAERAH    = 150
@@ -2296,7 +2306,6 @@ MATERI_MIN_KARAKTER_ASEAN = 400
 MATERI_RSS_SKIP_TIPIS = 200
 MATERI_RSS_NASIONAL_TIPIS = 100
 
-# V6.17.108: kata kunci bencana besar (untuk threshold breaking longgar)
 KATA_BENCANA_BESAR = [
     'gempa', 'tsunami', 'earthquake', 'magnitude', 'magnitudo',
     'erupsi', 'gunung meletus', 'volcanic eruption',
@@ -2320,7 +2329,6 @@ def _adalah_bencana_besar_teks(teks):
                 return True
     return False
 
-# V6.17.108: prakiraan cuaca rutin → TOLAK. Yang ada peringatan dini → IZINKAN.
 KATA_PRAKIRAAN_CUACA_RUTIN = [
     'prakiraan cuaca', 'cuaca hari ini', 'cuaca besok',
     'cuaca pagi', 'cuaca siang', 'cuaca sore', 'cuaca malam',
@@ -2442,9 +2450,6 @@ def _materi_valid(judul, materi, dari_scraping=True, kategori=''):
     if _materi_sampah(materi):
         return False, 'materi sampah (anti-bot/JS block)'
     if kategori == 'breaking':
-        # V6.17.118: threshold breaking RSS 200 (non-bencana)
-        # V6.17.119: threshold bencana 120 → 150
-        # V6.17.123: threshold bencana 150 → 200
         if dari_scraping:
             min_kar = MATERI_MIN_KARAKTER_BREAKING
         elif _adalah_bencana_besar_teks(judul + ' ' + materi):
@@ -2773,6 +2778,18 @@ KATA_EKONOMI_ASEAN_KUAT = [
     'apbn', 'apbd', 'bank sentral', 'central bank', 'suku bunga',
     'interest rate', 'kurs', 'exchange rate', 'mata uang', 'currency',
     'saham', 'stock', 'bursa', 'market', 'pasar modal',
+]
+
+# V6.17.125: Opsi C — longgarkan filter ekonomi (3 sinyal → 2 sinyal untuk bidang kuat)
+KATA_SINYAL_EKONOMI_BIDANG_KUAT = [
+    'properti', 'perumahan', 'real estate', 'housing', 'kpr',
+    'tambang', 'mining', 'smelter', 'hilirisasi', 'nikel', 'batu bara',
+    'litium', 'baterai', 'pertambangan',
+    'kripto', 'crypto', 'bitcoin', 'ethereum', 'blockchain',
+    'okx', 'binance', 'coinbase', 'aset digital',
+    'ipo', 'merger', 'akuisisi', 'valuasi', 'pendanaan', 'funding',
+    'kunjungan dagang', 'delegasi dagang', 'kerja sama dagang',
+    'properti', 'perumahan', 'investasi',
 ]
 
 def _kandidat_kategori_materi(kategori, judul, summary):
@@ -8275,7 +8292,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.124'
+FILE_VERSI = 'V6.17.125'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
