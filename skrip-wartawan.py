@@ -4051,7 +4051,6 @@ VARIAN_KOTA_EN_ID = {
     'saigon': ['ho chi minh', 'ho chi minh city', 'hcmc', 'saigon'],
     'hanoi': ['hanoi', 'ha noi'],
     'ha noi': ['hanoi', 'ha noi'],
-    # V6.17.111: tambah kota Kaltara
     'tideng pale': ['tideng pale', 'tana tidung'],
     'tanjung redeb': ['tanjung redeb', 'berau'],
     'tanjung selor': ['tanjung selor', 'bulungan'],
@@ -4159,7 +4158,6 @@ IBU_KOTA_NEGARA = {
     'tarakan': ['indonesia'], 'tanjung selor': ['indonesia'], 'nunukan': ['indonesia'],
     'palembang': ['indonesia'], 'pekanbaru': ['indonesia'], 'padang': ['indonesia'],
     'yogyakarta': ['indonesia'], 'solo': ['indonesia'], 'malang': ['indonesia'],
-    # V6.17.111: tambah kota Kaltara
     'tideng pale': ['indonesia', 'kaltara', 'tana tidung'],
     'tanjung redeb': ['indonesia', 'kaltim', 'berau'],
 }
@@ -4336,6 +4334,7 @@ KATA_LARANG_GAMBAR_HARD = [
     'slippers', 'footwear', 'high heels', 'stiletto', 'sendal', 'sepatu',
 ]
 
+# V6.17.124: tambah komoditas perikanan (lobster, udang, kepiting, kerang, rumput laut)
 KONTEKS_IKAN_DIIZINKAN = [
     'pedagang ikan', 'ikan segar', 'ikan asin', 'ikan hias',
     'nelayan', 'perikanan', 'budidaya ikan', 'tambak',
@@ -4343,6 +4342,11 @@ KONTEKS_IKAN_DIIZINKAN = [
     'ikan bandeng', 'ikan lele', 'ikan nila', 'ikan mujair',
     'pasar ikan', 'pelelangan ikan', 'kapal ikan', 'perahu nelayan',
     'keramba', 'jaring ikan', 'pancing', 'memancing',
+    'lobster', 'benih lobster', 'benih bening lobster', 'bbl',
+    'udang', 'udang vaname', 'udang windu', 'kepiting', 'kerang',
+    'rumput laut', 'bandeng', 'patin', 'gurame', 'bawal',
+    'budidaya udang', 'budidaya lobster', 'budidaya kerang',
+    'ekspor lobster', 'ekspor udang', 'harga lobster', 'harga udang',
 ]
 
 def _konteks_ikan_diizinkan(teks):
@@ -4463,6 +4467,10 @@ def skor_domestik(title, summary):
     aktor_nb = _ada_aktor_non_breaking(t)
     if aktor_nb:
         return 0
+    # V6.17.122: pola "doa/ucapan [nama]" → tolak
+    pola_artis = _ada_pola_artis_di_judul(title)
+    if pola_artis:
+        return 0
     if _ada_konteks_kabut_asap_asean(t):
         pass
     else:
@@ -4488,6 +4496,9 @@ def skor_dunia(title, summary):
         return 0
     aktor_nb = _ada_aktor_non_breaking(t)
     if aktor_nb:
+        return 0
+    pola_artis = _ada_pola_artis_di_judul(title)
+    if pola_artis:
         return 0
     for k in BREAKING_INT_TOLAK:
         if k in t:
@@ -4848,7 +4859,6 @@ KOTA_INDONESIA_DATELINE = [
     'kampung enam', 'pamusian', 'sebengkok', 'gunung lingkas', 'karang harapan',
     'kaltara', 'gowa', 'sunggu-minasa', 'sungguminasa',
     'tanjung redeb', 'berau', 'bontang', 'kutai', 'jambi',
-    # V6.17.111: tambah kota Kaltara
     'tideng pale',
 ]
 
@@ -5081,7 +5091,6 @@ def _cari_varian_id_en(teks):
                 hasil.add(en_kata)
     return hasil
 
-# V6.17.111: cek topik AI vs materi lebih ketat
 KATA_TOPIK_UMUM = [
     'manajer', 'pelatih', 'pemain', 'klub', 'tim', 'laga', 'pertandingan',
     'liga', 'klub', 'stadion', 'gol', 'skor', 'klasemen',
@@ -5120,11 +5129,9 @@ def cek_topik_ai_vs_materi(judul_ai, isi_ai, judul_materi, summary_materi, kateg
     kata_ai_4 = set(re.findall(r'[a-z]{4,}', teks_ai.lower())) - KATA_STOP_DOBEL
     irisan_4 = kata_materi_4 & kata_ai_4
     if len(irisan_4) >= 2:
-        # V6.17.111: cek apakah irisan cuma kata topik umum (manajer, pelatih, dll)
         irisan_4_tanpa_umum = irisan_4 - set(KATA_TOPIK_UMUM)
         if len(irisan_4_tanpa_umum) >= 1:
             return None
-        # kalau irisan cuma kata topik umum → tolak
         if len(irisan_4_tanpa_umum) == 0:
             return ('judul AI tidak nyambung materi: irisan hanya kata topik umum '
                     + str(sorted(list(irisan_4))[:5]))
@@ -8268,7 +8275,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.123'
+FILE_VERSI = 'V6.17.124'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
