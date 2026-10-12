@@ -268,11 +268,18 @@ JADWAL_JAM = {
 EKONOMI_JAM_DOMESTIK = [6, 9, 11, 12, 13, 17]
 EKONOMI_JAM_ASING    = [7, 14]
 
+# V6.17.126: tambah list presiden/wapres + kegiatan menteri
 TOPIK_NASIONAL_WAJIB = [
     ['makan bergizi gratis', 'mbg'],
     ['koperasi desa merah putih', 'kdmp'],
     ['menteri meresmikan', 'kunjungan kerja menteri', 'menteri mengunjungi',
      'menteri meninjau', 'program menteri', 'kementerian meresmikan'],
+    # V6.17.126: tambah presiden/wapres
+    ['presiden prabowo', 'presiden meresmikan', 'presiden meninjau',
+     'kunjungan presiden', 'kunjungan kerja presiden', 'presiden mengunjungi'],
+    ['wapres gibran', 'wakil presiden gibran', 'wapres meresmikan',
+     'wapres meninjau', 'kunjungan wapres', 'kunjungan kerja wapres',
+     'wapres mengunjungi'],
 ]
 
 KALTARA_WORDS = ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
@@ -1301,6 +1308,19 @@ KATA_ALASAN_JANGAN_BLACKLIST = [
     'materi hukum',
     'judul-materi tidak nyambung',
     'tidak nyambung (irisan',
+    # V6.17.126: jangan blacklist permanen kalau judul AI gagal (bukan materi buruk)
+    'judul breaking tanpa kota spesifik',
+    'judul ai terlalu pendek',
+    'judul ai kosong',
+    'judul ai mirip judul materi',
+    'judul ai jiplak',
+    'judul ai dobel',
+    'anti-dobel-6jam',
+    'anti-dobel-lintas-kategori',
+    'anti-dobel-dateline',
+    'dobel-6jam',
+    'breaking tanpa kota spesifik',
+    'breaking dobel topik',
 ]
 
 def muat_rejected_urls():
@@ -2525,11 +2545,13 @@ KATA_KUNCI_KATEGORI = {
                  'kapolda', 'kapolri', 'kapolres', 'polri', 'brimob',
                  'polda', 'polres', 'polsek', 'kriminal', 'reskrim',
                  'mahkamah agung', 'ma', 'bupati', 'wali kota'],
+    # V6.17.126: tambah 'daerah' + kata umum daerah
     'daerah': ['tarakan', 'kaltara', 'nunukan', 'bulungan', 'malinau',
                'tana tidung', 'tanjung selor', 'sebatik', 'juata', 'sesayap',
                'kota', 'kabupaten', 'pemkot', 'pemkab', 'bupati', 'walikota',
                'dprd', 'polres', 'kodim', 'kelurahan', 'kecamatan', 'desa',
                'provinsi', 'gubernur', 'camat', 'lurah', 'rt', 'rw',
+               'daerah', 'pemda', 'pemprov', 'opd', 'apbd',
                'kppn', 'kpp', 'satker', 'ikpa', 'narkotika', 'narkoba',
                'terjaring', 'kasus', 'pembiayaan', 'penerimaan',
                'sekolah rakyat', 'gotong royong', 'kerja bakti',
@@ -2792,6 +2814,21 @@ KATA_SINYAL_EKONOMI_BIDANG_KUAT = [
     'properti', 'perumahan', 'investasi',
 ]
 
+# V6.17.126: fungsi bantu cek topik wajib nasional (dipakai di 3A-2 dan 4B)
+def _cek_topik_wajib_nasional(judul, summary):
+    """V6.17.126: cek apakah kandidat termasuk topik wajib nasional
+    (menteri/presiden/wapres/MBG/KDMP)."""
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    for kl in TOPIK_NASIONAL_WAJIB:
+        for k in kl:
+            if len(k) <= 4:
+                if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                    return True
+            else:
+                if k in gab:
+                    return True
+    return False
+
 def _kandidat_kategori_materi(kategori, judul, summary):
     if not kategori:
         return True, ''
@@ -2826,6 +2863,9 @@ def _kandidat_kategori_materi(kategori, judul, summary):
             return False, 'kategori ekonomi tapi materi bukan ekonomi (' + non_eko + ')'
         if not any(k in gab for k in KATA_EKONOMI_WAJIB):
             return False, 'kategori ekonomi tapi materi tidak ada kata ekonomi'
+    # V6.17.126: bypass _materi_cocok_kategori kalau topik wajib nasional
+    if kategori in ('nasional', 'daerah') and _cek_topik_wajib_nasional(judul, summary):
+        return True, ''
     ok, alasan = _materi_cocok_kategori(kategori, judul, summary)
     if not ok:
         return False, alasan
@@ -3074,11 +3114,22 @@ def _ada_konteks_kunjungan_atau_kerjasama_indonesia(gab):
         return True
     return False
 
+# V6.17.126: kata lokal Kaltara untuk bypass false positive negara asing
+KATA_LOKAL_KALTARA_BYPASS = [
+    'nunukan', 'kaltara', 'tarakan', 'bulungan', 'malinau',
+    'tana tidung', 'sesayap', 'juata', 'tanjung selor', 'sebatik',
+]
+
 def _kandidat_negara_asing_untuk_lokal(kategori, judul, summary):
     if kategori not in ('nasional', 'daerah'):
         return True, ''
     gab = ((judul or '') + ' ' + (summary or '')).lower()
     if _ada_konteks_kunjungan_atau_kerjasama_indonesia(gab):
+        return True, ''
+    # V6.17.126: bypass kalau didominasi lokal Kaltara (2+ kata lokal)
+    _hit_lokal = sum(1 for k in KATA_LOKAL_KALTARA_BYPASS
+                     if re.search(r'\b' + re.escape(k) + r'\b', gab))
+    if _hit_lokal >= 2:
         return True, ''
     for negara in NEGARA_ASING:
         if len(negara) <= 4:
@@ -3756,6 +3807,7 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
     skip_rss_nas_tipis = 0
     skip_link_non_artikel = 0
     skip_skenario = 0
+    skip_topik_wajib_bypass = 0
     for src in sources:
         try:
             feed = feedparser.parse(src['url'])
@@ -3786,6 +3838,9 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
             if not title or not summary:
                 continue
 
+            # V6.17.126: cek topik wajib nasional (menteri/presiden/wapres/MBG/KDMP)
+            _is_topik_wajib = _cek_topik_wajib_nasional(title, summary)
+
             if domain_skip_scrape(link) and len(summary) < MATERI_RSS_SKIP_TIPIS:
                 skip_rss_tipis += 1
                 if skip_rss_tipis <= 3:
@@ -3793,7 +3848,9 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                           + str(len(summary)) + ' kar — ' + title[:50])
                 continue
 
-            if kategori == 'nasional' and len(summary) < MATERI_RSS_NASIONAL_TIPIS:
+            # V6.17.126: bypass pre-filter RSS nasional tipis kalau topik wajib
+            if (kategori == 'nasional' and len(summary) < MATERI_RSS_NASIONAL_TIPIS
+                    and not _is_topik_wajib):
                 skip_rss_nas_tipis += 1
                 if skip_rss_nas_tipis <= 3:
                     print('       Skip kandidat (pre-filter RSS nasional tipis): '
@@ -3834,27 +3891,34 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                 skip_layak += 1
                 continue
 
+            # V6.17.126: bypass pre-filter kategori kalau topik wajib nasional
             if kategori and kategori != 'breaking':
-                _kata_kat = KATA_KUNCI_KATEGORI.get(kategori, [])
-                if _kata_kat:
-                    _gab_cek = _t_low[:500]
-                    _hit_kat = 0
-                    for _kk in _kata_kat:
-                        if len(_kk) <= 4:
-                            if re.search(r'\b' + re.escape(_kk) + r'\b', _gab_cek):
-                                _hit_kat += 1
-                                break
-                        else:
-                            if _kk in _gab_cek:
-                                _hit_kat += 1
-                                break
-                    if _hit_kat == 0:
-                        skip_layak += 1
-                        if skip_layak <= 3:
-                            print('       Skip kandidat (pre-filter kategori): '
-                                  'tidak ada kata kunci ' + kategori
-                                  + ' — ' + title[:50])
-                        continue
+                if _is_topik_wajib and kategori in ('nasional', 'daerah', 'ekonomi'):
+                    skip_topik_wajib_bypass += 1
+                    if skip_topik_wajib_bypass <= 3:
+                        print('       Bypass pre-filter kategori (topik wajib nasional): '
+                              + title[:60])
+                else:
+                    _kata_kat = KATA_KUNCI_KATEGORI.get(kategori, [])
+                    if _kata_kat:
+                        _gab_cek = _t_low[:500]
+                        _hit_kat = 0
+                        for _kk in _kata_kat:
+                            if len(_kk) <= 4:
+                                if re.search(r'\b' + re.escape(_kk) + r'\b', _gab_cek):
+                                    _hit_kat += 1
+                                    break
+                            else:
+                                if _kk in _gab_cek:
+                                    _hit_kat += 1
+                                    break
+                        if _hit_kat == 0:
+                            skip_layak += 1
+                            if skip_layak <= 3:
+                                print('       Skip kandidat (pre-filter kategori): '
+                                      'tidak ada kata kunci ' + kategori
+                                      + ' — ' + title[:50])
+                            continue
 
             if kategori == 'breaking':
                 _tolak_brk = sum(1 for k in BREAKING_INT_TOLAK if k in _t_low)
@@ -4864,6 +4928,7 @@ KALIMANTAN_PROVINSI = [
     'kalimantan utara', 'kaltara',
 ]
 
+# V6.17.126: tambah muara enim + kabupaten Sumsel lain + kota lain yang sering muncul
 KOTA_INDONESIA_DATELINE = [
     'jakarta', 'surabaya', 'bandung', 'semarang', 'yogyakarta', 'medan',
     'palembang', 'makassar', 'denpasar', 'balikpapan', 'samarinda',
@@ -4877,6 +4942,15 @@ KOTA_INDONESIA_DATELINE = [
     'kaltara', 'gowa', 'sunggu-minasa', 'sungguminasa',
     'tanjung redeb', 'berau', 'bontang', 'kutai', 'jambi',
     'tideng pale',
+    # V6.17.126: kabupaten Sumsel (sering muncul berita karhutla)
+    'muara enim', 'ogan ilir', 'ogan komering ilir', 'ogan komering ulu',
+    'lahat', 'muba', 'musi banyuasin', 'musi rawas', 'banyuasin',
+    'prabumulih', 'lubuklinggau', 'pagar alam', 'palembang',
+    # V6.17.126: kabupaten lain yang sering muncul breaking
+    'sidoarjo', 'gresik', 'banyuwangi', 'jember', 'lumajang', 'kediri',
+    'madiun', 'mojokerto', 'pasuruan', 'probolinggo', 'malang',
+    'sukabumi', 'cianjur', 'garut', 'tasikmalaya', 'brebes', 'tegal',
+    'cilacap', 'purwokerto', 'banyumas', 'kebumen', 'magelang',
 ]
 
 KATA_LOKAL_KALTARA = [
@@ -6206,6 +6280,12 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     judul_retry_dilakukan = False
     retry_dobel_dilakukan = 0
 
+    # V6.17.126: cek apakah kandidat topik wajib nasional → batas retry lebih tinggi
+    _is_topik_wajib = False
+    if judul_materi and summary_materi:
+        _is_topik_wajib = _cek_topik_wajib_nasional(judul_materi, summary_materi)
+    _max_retry_judul = 2 if _is_topik_wajib else MAX_RETRY_JUDUL_DOBEL
+
     # V6.17.115: kalau judul materi mirip dengan yang sudah terbit → minta AI tulis judul beda
     # di prompt pertama (hemat 1 call retry judul)
     if judul_materi and sudah_serupa(judul_materi):
@@ -6286,11 +6366,11 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
                     catat_tolak_ai_token(source_url, msg_tolak)
                 raise BeritaLama(msg_tolak)
 
-        if judul and retry_dobel_dilakukan < MAX_RETRY_JUDUL_DOBEL:
+        if judul and retry_dobel_dilakukan < _max_retry_judul:
             if sudah_serupa(judul):
                 retry_dobel_dilakukan += 1
                 print('       Judul AI dobel dengan yang sudah ada — minta AI ganti judul (retry '
-                      + str(retry_dobel_dilakukan) + '/' + str(MAX_RETRY_JUDUL_DOBEL) + ')...')
+                      + str(retry_dobel_dilakukan) + '/' + str(_max_retry_judul) + ')...')
                 user_content = (
                     'CATATAN PENTING — JUDUL SUDAH PERNAH TERBIT:\n'
                     '- Judul kamu: "' + judul + '"\n'
@@ -7776,6 +7856,7 @@ def kelompok_regional_olahraga(items):
     teks = ' '.join((it.get('title') or '') + ' ' + (it.get('summary') or '') for it in items).lower()
     return teks_mengandung(teks, KATA_REGIONAL_OLAHRAGA)
 
+# V6.17.126: tambah kategori presiden/wapres
 KATA_TOPIK_WAJIB_NASIONAL = {
     'mbg': ['mbg', 'makan bergizi', 'makan bergizi gratis',
             'bgn', 'badan gizi nasional', 'sppg',
@@ -7786,6 +7867,14 @@ KATA_TOPIK_WAJIB_NASIONAL = {
                           'menteri mengunjungi', 'menteri meninjau',
                           'program menteri', 'kementerian meresmikan',
                           'kunker menteri', 'ratas', 'sidang kabinet'],
+    # V6.17.126: tambah kegiatan presiden/wapres
+    'kegiatan_presiden': ['presiden prabowo', 'presiden meresmikan',
+                           'presiden meninjau', 'kunjungan presiden',
+                           'kunjungan kerja presiden', 'presiden mengunjungi'],
+    'kegiatan_wapres': ['wapres gibran', 'wakil presiden gibran',
+                         'wapres meresmikan', 'wapres meninjau',
+                         'kunjungan wapres', 'kunjungan kerja wapres',
+                         'wapres mengunjungi'],
 }
 
 def _kandidat_topik_wajib_nasional(judul, summary):
@@ -8037,6 +8126,10 @@ def sesi_kategori(today_urls, seen):
                     nama.append('MBG')
                 elif 'kdmp' in kl:
                     nama.append('KDMP')
+                elif 'presiden' in ' '.join(kl):
+                    nama.append('Kegiatan Presiden')
+                elif 'wapres' in ' '.join(kl):
+                    nama.append('Kegiatan Wapres')
                 else:
                     nama.append('Kegiatan Menteri')
             print('   Topik wajib nasional belum terpenuhi: ' + ' & '.join(nama) + ' - kandidatnya didahulukan.')
@@ -8292,7 +8385,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.125'
+FILE_VERSI = 'V6.17.126'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
