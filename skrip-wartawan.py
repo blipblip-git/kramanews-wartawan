@@ -1928,6 +1928,10 @@ FAKTA WAJIB-MUTLAK (harus ada di berita):
 YANG DILARANG (kalau materi TIDAK ada):
 - DILARANG mengarang nama pejabat, perusahaan, produk, lokasi spesifik.
 - Kalau materi tidak ada nama → tulis "Pemkab X" saja.
+- DILARANG tulis "seorang pejabat", "seorang pengamat", "seorang tokoh",
+  "seorang bos", "seorang pengusaha" kalau materi tidak sebut.
+- Kalau materi sebut "Gedung Putih"/"White House" → tulis itu.
+- Kalau materi tidak ada narasumber → fokus ke fakta, JANGAN tambah narasumber fiktif.
 
 NARASI — WAJIB DIUBAH:
 - Kalimat wajib beda dengan materi.
@@ -1941,6 +1945,11 @@ KALIMAT TERLARANG (JANGAN PAKAI):
 - "Peran aktif warga dinilai efektif"
 - "Warga diimbau tetap waspada" (kecuali materi sebut)
 - "Koordinasi lintas instansi tetap berjalan" (kecuali materi sebut)
+
+JANGAN PAKAI KATA PREDIKSI UNTUK BREAKING:
+- "diprediksi", "diperkirakan", "berpotensi", "skenario"
+- kalau materi bukan breaking aktual.
+- Kalau materi breaking aktual → tulis apa adanya (tanpa kata prediksi).
 
 WAJIB KONKRET — JANGAN UMUM:
 - Sebut nama pejabat (kalau ada di materi).
@@ -3190,6 +3199,57 @@ KATA_BUKAN_BREAKING = [
     'ponpes', 'pesantren', 'santri', 'ponpes bahrul',
 ]
 
+# V6.17.120: kata skenario/prediksi/simulasi (bukan breaking aktual)
+KATA_SKENARIO_PREDIKSI = [
+    'skenario', 'simulasi', 'prediksi', 'diprediksi',
+    'perkiraan', 'proyeksi', 'kajian', 'riset',
+    'studi', 'penelitian',
+]
+
+# V6.17.120: kata penanda breaking AKTUAL
+KATA_BREAKING_AKTUAL = [
+    'hari ini', 'kemarin', 'sedang', 'baru saja', 'baru terjadi',
+    'terjadi', 'melanda', 'mengguncang', 'menewaskan', 'mengakibatkan',
+    'dilaporkan', 'terkini', 'update',
+]
+
+def _materi_bukan_breaking_skenario(judul, summary):
+    """V6.17.120: tolak breaking yang isinya skenario/prediksi/simulasi.
+    Logika: ada kata skenario/prediksi + tidak ada tanggal spesifik + tidak ada kata aktual → tolak."""
+    gab = ((judul or '') + ' ' + (summary or '')).lower()
+    # Cek ada kata skenario/prediksi
+    hit_skenario = 0
+    for k in KATA_SKENARIO_PREDIKSI:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                hit_skenario += 1
+        else:
+            if k in gab:
+                hit_skenario += 1
+    if hit_skenario < 1:
+        return False, ''
+    # Cek ada tanggal spesifik (dd/mm/yyyy atau "dd bulan yyyy")
+    ada_tanggal = bool(re.search(
+        r'\b(\d{1,2})\s+'
+        r'(januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember)'
+        r'\s+(\d{4})\b',
+        gab, re.IGNORECASE
+    )) or bool(re.search(r'\b\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}\b', gab))
+    # Cek ada kata aktual (hari ini/kemarin/sedang/dll)
+    hit_aktual = 0
+    for k in KATA_BREAKING_AKTUAL:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', gab):
+                hit_aktual += 1
+        else:
+            if k in gab:
+                hit_aktual += 1
+    # Tolak kalau: ada skenario + TIDAK ada tanggal + TIDAK ada kata aktual
+    if not ada_tanggal and hit_aktual == 0:
+        return True, ('bukan breaking (skenario/prediksi/simulasi): '
+                      + str(hit_skenario) + ' kata skenario, tanpa tanggal & aktual')
+    return False, ''
+
 def _materi_bukan_breaking_acara(judul, summary):
     if not judul:
         return False, ''
@@ -3612,6 +3672,7 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
     skip_rss_tipis = 0
     skip_rss_nas_tipis = 0
     skip_link_non_artikel = 0
+    skip_skenario = 0
     for src in sources:
         try:
             feed = feedparser.parse(src['url'])
@@ -3724,6 +3785,14 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                         print('       Skip kandidat (pre-filter breaking-acara): '
                               + alasan_acara[:60] + ' — ' + title[:50])
                     continue
+                # V6.17.120: tolak skenario/prediksi/simulasi
+                skenario_bukan, alasan_skenario = _materi_bukan_breaking_skenario(title, summary)
+                if skenario_bukan:
+                    skip_skenario += 1
+                    if skip_skenario <= 3:
+                        print('       Skip kandidat (pre-filter breaking-skenario): '
+                              + alasan_skenario[:70] + ' — ' + title[:50])
+                    continue
 
             basi, alasan_basi = _materi_basi(title, summary, kategori)
             if basi:
@@ -3775,6 +3844,8 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
         print('       (Total skip RSS nasional tipis: ' + str(skip_rss_nas_tipis) + ')')
     if skip_link_non_artikel > 0:
         print('       (Total skip link non-artikel: ' + str(skip_link_non_artikel) + ')')
+    if skip_skenario > 0:
+        print('       (Total skip breaking-skenario: ' + str(skip_skenario) + ')')
     return out
 
 def match_articles(candidates):
@@ -7180,7 +7251,7 @@ def _topik_breaking_sudah_terbit(judul_baru, min_irisan=4):
     ki_baru = kata_inti(judul_baru)
     if not ki_baru:
         return None
-    # V6.17.114: bencana besar → jendela 72 jam (cegah dobel lintas hari, seperti Panama 7,7)
+    # V6.17.114: bencana besar → jendela 72 jam (cegah dobel lintas hari)
     # Non-bencana → jendela 6 jam
     if _adalah_bencana_besar(judul_baru):
         min_irisan = 3
@@ -7224,7 +7295,7 @@ def _topik_sudah_terbit_lintas(judul_baru, kategori_target):
         return None
     if judul_topik_besar(judul_baru):
         return None
-    # V6.17.113: ASEAN min_irisan 3 (default 4) — cegah dobel lintas kategori ASEAN 3x berturut
+    # V6.17.113: ASEAN min_irisan 3 (default 4)
     if kategori_target == 'internasional_asean':
         min_irisan = 3
     else:
@@ -8061,7 +8132,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.119'
+FILE_VERSI = 'V6.17.120'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
