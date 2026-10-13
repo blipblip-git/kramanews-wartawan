@@ -474,6 +474,8 @@ EKONOMI_DOMESTIK_FEEDS = [
     RSSF('https://www.kompas.com/ekonomi/rss', 'Kompas Ekonomi'),
     RSSF('https://money.kompas.com/rss', 'Kompas Money'),
     RSSF('https://www.medcom.id/rss/ekonomi', 'Medcom Ekonomi'),
+    # V6.17.130: tambah sumber ekonomi baru
+    RSSF('https://tirto.id/rss', 'Tirto.id'),
     GN('ekonomi indonesia hari ini', 'id', 'GN Ekonomi Indonesia'),
     GN('IHSG hari ini', 'id', 'GN IHSG'),
     GN('rupiah dolar hari ini', 'id', 'GN Kurs Rupiah'),
@@ -488,6 +490,10 @@ EKONOMI_DOMESTIK_FEEDS = [
     GN('pertambangan smelter hilirisasi Indonesia', 'id', 'GN Tambang'),
     GN('properti perumahan Indonesia', 'id', 'GN Properti'),
     GN('kripto aset digital Indonesia', 'id', 'GN Kripto'),
+    # V6.17.130: tambah GN harga harian
+    GN('harga emas Antam hari ini', 'id', 'GN Harga Emas'),
+    GN('harga BBM Pertamina', 'id', 'GN Harga BBM'),
+    GN('harga pangan nasional', 'id', 'GN Harga Pangan'),
 ]
 
 EKONOMI_ASING_FEEDS = [
@@ -828,7 +834,6 @@ HUNT = {
         GN('car review', 'en', 'GN Car Review'),
     ],
     'teknologi': [
-        # V6.17.125: tambah RSS + GN teknologi (dari 4 RSS + 3 GN → 9 RSS + 5 GN)
         RSSF('https://inet.detik.com/rss', 'Detik Inet'),
         RSSF('https://tekno.kompas.com/rss', 'Kompas Tekno'),
         RSSF('https://www.suara.com/tekno/rss', 'Suara Tekno'),
@@ -3699,6 +3704,8 @@ KATA_FRASA_LIVE_BASI_OLAHRAGA = [
     'babak pertama rampung', 'babak kedua rampung',
 ]
 
+# V6.17.130: kategori evergreen (kesehatan/otomotif) tetap cek tanggal kejadian
+# Kalau kejadian >30 hari → tolak, walau umur kategori longgar
 def _materi_basi(judul, summary, kategori=''):
     teks = ((judul or '') + ' ' + (summary or '')).strip()
     if not teks:
@@ -3805,6 +3812,35 @@ def _materi_basi(judul, summary, kategori=''):
             return True, ('materi basi live (frasa "' + frasa_live_ketemu
                           + '" + topik sudah terbit: ' + topik_dobel[:60] + ')')
 
+    return False, ''
+
+# V6.17.130: cek tanggal kejadian untuk kategori evergreen (kesehatan/otomotif)
+# Kalau kejadian >30 hari → tolak
+def _materi_basi_evergreen(judul, summary, kategori=''):
+    """V6.17.130: khusus kesehatan/otomotif — cek tanggal kejadian.
+    Kalau ada tanggal lewat >30 hari → tolak."""
+    if kategori not in ('kesehatan', 'otomotif'):
+        return False, ''
+    teks = ((judul or '') + ' ' + (summary or '')).strip()
+    if not teks:
+        return False, ''
+    now = datetime.now(WITA)
+    batas = now - timedelta(days=30)
+    for m in POLA_TANGGAL_LENGKAP.finditer(teks):
+        try:
+            hari = int(m.group(1))
+            nama_bulan = m.group(2).lower()
+            tahun = int(m.group(3))
+            bulan = _NAMA_BULAN_KE_ANGKA.get(nama_bulan, 0)
+            if bulan == 0:
+                continue
+            kejadian = datetime(tahun, bulan, hari, tzinfo=WITA)
+            if kejadian < batas:
+                selisih_hari = (now - kejadian).days
+                return True, ('materi basi evergreen: kejadian ' + m.group(0)
+                              + ' (' + str(selisih_hari) + ' hari lalu)')
+        except Exception:
+            continue
     return False, ''
 
 def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori='',
@@ -3962,6 +3998,15 @@ def collect_candidates(sources, today_urls, seen, max_umur_jam=None, kategori=''
                 skip_basi += 1
                 if skip_basi <= 3:
                     print('       Skip kandidat (basi): ' + alasan_basi[:70]
+                          + ' — ' + title[:50])
+                continue
+
+            # V6.17.130: cek basi evergreen (kesehatan/otomotif) — kejadian >30 hari → tolak
+            basi_evg, alasan_basi_evg = _materi_basi_evergreen(title, summary, kategori)
+            if basi_evg:
+                skip_basi += 1
+                if skip_basi <= 3:
+                    print('       Skip kandidat (basi evergreen): ' + alasan_basi_evg[:70]
                           + ' — ' + title[:50])
                 continue
 
@@ -4968,6 +5013,7 @@ KALIMANTAN_PROVINSI = [
 ]
 
 # V6.17.126: tambah muara enim + kabupaten Sumsel lain + kota lain yang sering muncul
+# V6.17.130: tambah tanjung puting + taman nasional lain
 KOTA_INDONESIA_DATELINE = [
     'jakarta', 'surabaya', 'bandung', 'semarang', 'yogyakarta', 'medan',
     'palembang', 'makassar', 'denpasar', 'balikpapan', 'samarinda',
@@ -4990,6 +5036,12 @@ KOTA_INDONESIA_DATELINE = [
     'madiun', 'mojokerto', 'pasuruan', 'probolinggo', 'malang',
     'sukabumi', 'cianjur', 'garut', 'tasikmalaya', 'brebes', 'tegal',
     'cilacap', 'purwokerto', 'banyumas', 'kebumen', 'magelang',
+    # V6.17.130: taman nasional + kawasan konservasi (sering muncul breaking karhutla)
+    'tanjung puting', 'tanjung puting national park',
+    'gunung leuser', 'kerinci seblat', 'bukit barisan',
+    'way kambas', 'ujung kulon', 'komodo', 'bromo tengger semeru',
+    'bromo', 'semeru', 'merbabu', 'merapi', 'rinjani', 'lorentz',
+    'wasur', 'lore lindu', 'bogani nani', 'wakatobi', 'bunaken',
 ]
 
 KATA_LOKAL_KALTARA = [
@@ -8487,7 +8539,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.129'
+FILE_VERSI = 'V6.17.130'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
