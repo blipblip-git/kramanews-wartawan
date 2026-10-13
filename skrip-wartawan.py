@@ -8411,14 +8411,19 @@ def run_session():
     return n_brk + n_kat
 
 def cek_settings_runtime():
+    """V6.17.128: fix query — 'key'/'value' reserved word di PostgREST.
+    Bungkus pakai tanda kutip (%22)."""
     try:
-        rows = rest_get('?select=key,value&key=in.(ai_wartawan_on,breaking_on)')
+        rows = rest_get('?select=%22key%22,%22value%22&key=in.(ai_wartawan_on,breaking_on)')
         out = {'ai_wartawan_on': True, 'breaking_on': True}
         for r in rows:
             k = r.get('key')
             v = r.get('value')
             if k in out:
                 out[k] = bool(v)
+        print('   runtime_settings OK — AI Wartawan: '
+              + ('ON' if out.get('ai_wartawan_on') else 'OFF')
+              + ' | Breaking: ' + ('ON' if out.get('breaking_on') else 'OFF'))
         return out
     except Exception as e:
         print('   Gagal cek runtime_settings (default ON): ' + str(e)[:60])
@@ -8464,7 +8469,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.127'
+FILE_VERSI = 'V6.17.128'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
