@@ -6417,7 +6417,6 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     retry_dobel_dilakukan = 0
 
     # V6.17.126: cek apakah kandidat topik wajib nasional → batas retry lebih tinggi
-    # V6.17.132: kurangi retry — topik wajib 2x, biasa 1x (tetap)
     _is_topik_wajib = False
     if judul_materi and summary_materi:
         _is_topik_wajib = _cek_topik_wajib_nasional(judul_materi, summary_materi)
@@ -6818,6 +6817,22 @@ def _catatan_ibu_kota_provinsi(judul_materi, summary_materi, kategori_target):
         '- Ejaan kota WAJIB PERSIS (contoh: "Madiun" BUKAN "Madium").\n'
     )
 
+# V6.17.134: cek basi SETELAH scraping (materi penuh, bukan cuma judul+summary)
+def _cek_basi_setelah_scrape(materi, judul, kategori):
+    """V6.17.134: panggil _materi_basi + _materi_basi_evergreen pada materi penuh
+    yang sudah di-scrape. Tangkap berita basi yang tanggalnya cuma ada di isi."""
+    if not materi:
+        return None
+    # Ambil 1500 char pertama untuk scan (biar efisien)
+    teks_scan = materi[:1500]
+    basi, alasan = _materi_basi(judul, teks_scan, kategori)
+    if basi:
+        return alasan
+    basi_evg, alasan_evg = _materi_basi_evergreen(judul, teks_scan, kategori)
+    if basi_evg:
+        return alasan_evg
+    return None
+
 def ai_rewrite_single(c, kategori_target=''):
     k = konteks_waktu()
     materi, kaya = ambil_materi_kaya(c)
@@ -6827,6 +6842,13 @@ def ai_rewrite_single(c, kategori_target=''):
         if c.get('link'):
             catat_tolak_ai_token(c.get('link'), 'materi tidak valid: ' + alasan_valid[:100])
         raise BeritaLama('materi tidak valid: ' + alasan_valid[:60])
+    # V6.17.134: cek basi SETELAH scraping — materi penuh bisa ada tanggal kejadian lama
+    basi_scrape = _cek_basi_setelah_scrape(materi, c.get('title', ''), kategori_target)
+    if basi_scrape:
+        print('       Materi basi setelah scrape - skip: ' + basi_scrape[:80])
+        if c.get('link'):
+            catat_tolak_ai_token(c.get('link'), 'basi setelah scrape: ' + basi_scrape[:100])
+        raise BeritaLama('basi setelah scrape: ' + basi_scrape[:60])
     label_materi = 'ISI PENUH ARTIKEL SUMBER (scraping)' if kaya else 'RINGKASAN SUMBER'
     tgl = c.get('tgl_pub')
     if tgl:
@@ -6906,6 +6928,13 @@ def ai_rewrite_multi(items, kategori_target=''):
         if items[0].get('link'):
             catat_tolak_ai_token(items[0].get('link'), 'materi gabungan tidak valid: ' + alasan_valid[:100])
         raise BeritaLama('materi gabungan tidak valid: ' + alasan_valid[:60])
+    # V6.17.134: cek basi SETELAH scraping — materi gabungan penuh
+    basi_scrape = _cek_basi_setelah_scrape(semua_materi, items[0].get('title', ''), kategori_target)
+    if basi_scrape:
+        print('       Materi gabungan basi setelah scrape - skip: ' + basi_scrape[:80])
+        if items[0].get('link'):
+            catat_tolak_ai_token(items[0].get('link'), 'basi setelah scrape: ' + basi_scrape[:100])
+        raise BeritaLama('basi setelah scrape: ' + basi_scrape[:60])
     judul_materi_gabung = ' | '.join(semua_judul)
     summary_materi_gabung = ' '.join(semua_summary)
     if tgl:
@@ -7016,6 +7045,13 @@ def ai_rewrite_teknologi_single(c, dom):
         if c.get('link'):
             catat_tolak_ai_token(c.get('link'), 'materi tidak valid: ' + alasan_valid[:100])
         raise BeritaLama('materi tidak valid: ' + alasan_valid[:60])
+    # V6.17.134: cek basi setelah scrape
+    basi_scrape = _cek_basi_setelah_scrape(materi, c.get('title', ''), 'teknologi')
+    if basi_scrape:
+        print('       Materi teknologi basi setelah scrape - skip: ' + basi_scrape[:80])
+        if c.get('link'):
+            catat_tolak_ai_token(c.get('link'), 'basi setelah scrape: ' + basi_scrape[:100])
+        raise BeritaLama('basi setelah scrape: ' + basi_scrape[:60])
     label_materi = 'ISI PENUH ARTIKEL SUMBER (scraping)' if kaya else 'RINGKASAN SUMBER'
     tgl = c.get('tgl_pub')
     if tgl:
@@ -7079,6 +7115,13 @@ def ai_rewrite_teknologi_multi(items, dom):
         if items[0].get('link'):
             catat_tolak_ai_token(items[0].get('link'), 'materi gabungan tidak valid: ' + alasan_valid[:100])
         raise BeritaLama('materi gabungan tidak valid: ' + alasan_valid[:60])
+    # V6.17.134: cek basi setelah scrape
+    basi_scrape = _cek_basi_setelah_scrape(semua_materi, items[0].get('title', ''), 'teknologi')
+    if basi_scrape:
+        print('       Materi teknologi gabungan basi setelah scrape - skip: ' + basi_scrape[:80])
+        if items[0].get('link'):
+            catat_tolak_ai_token(items[0].get('link'), 'basi setelah scrape: ' + basi_scrape[:100])
+        raise BeritaLama('basi setelah scrape: ' + basi_scrape[:60])
     judul_materi_gabung = ' | '.join(semua_judul)
     summary_materi_gabung = ' '.join(semua_summary)
     if tgl:
@@ -8561,7 +8604,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.133'
+FILE_VERSI = 'V6.17.134'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
