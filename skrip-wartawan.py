@@ -1074,6 +1074,20 @@ BREAKING_INT_TOLAK = [
     'will bring', 'will show', 'will demonstrate',
     'ready for', 'getting ready', 'prepares for',
     'mock', 'rehearsal', 'trial run', 'test run',
+    # V6.17.129: materi ekonomi/non-breaking yang lolos skor
+    'pajak turis', 'tourist tax', 'departure tax', 'pajak keberangkatan',
+    'tourism tax', 'visa fee', 'biaya visa',
+    'pajak karbon', 'carbon tax',
+    'pajak barang mewah', 'luxury tax',
+    'pajak warisan', 'inheritance tax',
+    'pajak properti', 'property tax',
+    'pajak penghasilan', 'income tax',
+    'pajak perusahaan', 'corporate tax',
+    'pajak digital', 'digital tax',
+    'bea masuk', 'import duty',
+    'cukai', 'excise',
+    'pajak ekspor', 'export tax',
+    'pajak impor', 'import tax',
 ]
 
 DUNIA_KRITIS = BREAKING_INT_KRITIS
@@ -1498,7 +1512,6 @@ DOMAIN_SKIP_SCRAPE = [
     'tarakantv.co.id',
     'databoks.katadata.co.id',
     'jabarprov.go.id',
-    # V6.17.127: tambah domain yang scrape-nya konsisten pendek/gagal
     'myanmar-now.org',
     'goalmedia.co',
 ]
@@ -6121,6 +6134,22 @@ KATA_BUKAN_NAMA_PEJABAT = [
 KATA_SAMBUNG_NAMA = {'dan', 'atau', 'serta', 'maupun', 'hingga', 'sampai',
                      'dengan', 'untuk', 'pada', 'di', 'ke', 'dari', 'oleh'}
 
+# V6.17.129: kata seru + kata non-nama pejabat (biar "Geram!"/"Nomor" nggak salah tangkap)
+KATA_SERU_NON_NAMA = [
+    'geram', 'tegas', 'sigap', 'cepat', 'siap', 'gas', 'maju',
+    'hentikan', 'stop', 'awas', 'hati-hati', 'waspada', 'jangan',
+    'nomor', 'tahun', 'pasal', 'ayat', 'huruf', 'angka',
+    'total', 'jumlah', 'sebanyak', 'sejumlah', 'sekitar', 'kurang',
+    'lebih', 'hanya', 'cuma', 'saja', 'juga', 'serta',
+    'pertama', 'kedua', 'ketiga', 'keempat', 'kelima',
+    'januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli',
+    'agustus', 'september', 'oktober', 'november', 'desember',
+    'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu',
+    'hari', 'pekan', 'bulan', 'tahun',
+    'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh',
+    'delapan', 'sembilan', 'sepuluh', 'sebelas', 'dua belas',
+]
+
 # V6.17.112: window 60 → 40 + filter jabatan ganda + cek titik + 2+ kata besar
 # V6.17.119: tambah whitelist jabatan awal (hindari false negative)
 JABATAN_AWAL_SAH = [
@@ -6162,7 +6191,7 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     for m in pola_nama_pejabat.finditer(materi):
         nama_full = m.group(0).strip()
         after_jabatan = m.group(1) if m.group(1) else ''
-        after_jabatan = re.split(r'[,;]', after_jabatan)[0]
+        after_jabatan = re.split(r'[,;!?]', after_jabatan)[0]
         bagian = re.findall(r'\b[A-Z][a-z]+\b', after_jabatan)
         nama_bersih = []
         for k in bagian:
@@ -6170,6 +6199,9 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
             if k_low in KATA_BUKAN_NAMA_PEJABAT:
                 break
             if k_low in KATA_SAMBUNG_NAMA:
+                break
+            # V6.17.129: filter kata seru + kata non-nama
+            if k_low in KATA_SERU_NON_NAMA:
                 break
             nama_bersih.append(k)
             if len(nama_bersih) >= 2:
@@ -6191,6 +6223,17 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
             continue
         # V6.17.119: filter 3 — pola ". Bupati" / ". H." — potongan kalimat
         if re.search(r'\.\s+[A-Z]', nama_full):
+            continue
+        # V6.17.129: filter 4a — nama_full ada tanda seru (? !) → potongan kalimat
+        if '!' in nama_full or '?' in nama_full:
+            continue
+        # V6.17.129: filter 4b — nama_full ada kata seru non-nama
+        _ada_seru = False
+        for _s in KATA_SERU_NON_NAMA:
+            if _s in nama_full_low:
+                _ada_seru = True
+                break
+        if _ada_seru:
             continue
         # V6.17.119: filter 4 — 2+ kata besar (≥4 char) bukan preposisi
         # TAPI kecualikan kalau kalimat diawali jabatan tunggal sah
@@ -6231,6 +6274,8 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
             continue
         if nama_kunci.lower() in KATA_SAMBUNG_NAMA:
             continue
+        if nama_kunci.lower() in KATA_SERU_NON_NAMA:
+            continue
         if nama_kunci.isupper() and len(nama_kunci) <= 6:
             continue
         nama_materi.append((nama_full, nama_kunci))
@@ -6240,6 +6285,8 @@ def _cek_nama_pejabat_dari_materi(materi, isi_ai, kategori):
     materi_low = materi.lower()
     for nama_full, nama_kunci in nama_materi[:3]:
         if nama_kunci.lower() in KATA_BUKAN_NAMA_PEJABAT:
+            continue
+        if nama_kunci.lower() in KATA_SERU_NON_NAMA:
             continue
         if nama_kunci.lower() not in materi_low:
             continue
@@ -8410,25 +8457,6 @@ def run_session():
     print('Sesi selesai - breaking: ' + str(n_brk) + ' - kategori: ' + str(n_kat))
     return n_brk + n_kat
 
-def cek_settings_runtime():
-    """V6.17.128: fix query — 'key'/'value' reserved word di PostgREST.
-    Bungkus pakai tanda kutip (%22)."""
-    try:
-        rows = rest_get('?select=%22key%22,%22value%22&key=in.(ai_wartawan_on,breaking_on)')
-        out = {'ai_wartawan_on': True, 'breaking_on': True}
-        for r in rows:
-            k = r.get('key')
-            v = r.get('value')
-            if k in out:
-                out[k] = bool(v)
-        print('   runtime_settings OK — AI Wartawan: '
-              + ('ON' if out.get('ai_wartawan_on') else 'OFF')
-              + ' | Breaking: ' + ('ON' if out.get('breaking_on') else 'OFF'))
-        return out
-    except Exception as e:
-        print('   Gagal cek runtime_settings (default ON): ' + str(e)[:60])
-        return {'ai_wartawan_on': True, 'breaking_on': True}
-
 def main_sekali():
     if not DEEPSEEK_KEY or not SUPABASE_PUBLISHABLE:
         print('Kunci belum lengkap! Cek Secrets GitHub: DEEPSEEK_KEY, SUPABASE_PUBLISHABLE')
@@ -8437,21 +8465,11 @@ def main_sekali():
         print('ADMIN_OPS_SECRET belum ada di Secrets GitHub!')
         return
     print('Kunci gerbang admin-ops: OK')
-    settings = cek_settings_runtime()
     if '--breaking' in sys.argv:
-        if not settings.get('breaking_on', True):
-            print('⏸️ Breaking OFF oleh pemilik — skip.')
-            return
         sesi_breaking_saja()
     elif '--kategori' in sys.argv:
-        if not settings.get('ai_wartawan_on', True):
-            print('⏸️ AI Wartawan OFF oleh pemilik — skip.')
-            return
         sesi_kategori_saja()
     else:
-        if not settings.get('ai_wartawan_on', True) and not settings.get('breaking_on', True):
-            print('⏸️ AI Wartawan & Breaking OFF oleh pemilik — skip.')
-            return
         run_session()
 
 def main():
@@ -8469,7 +8487,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.128'
+FILE_VERSI = 'V6.17.129'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
