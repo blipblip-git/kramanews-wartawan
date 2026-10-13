@@ -5014,6 +5014,7 @@ KALIMANTAN_PROVINSI = [
 
 # V6.17.126: tambah muara enim + kabupaten Sumsel lain + kota lain yang sering muncul
 # V6.17.130: tambah tanjung puting + taman nasional lain
+# V6.17.131: tambah yahukimo + kabupaten Papua lain
 KOTA_INDONESIA_DATELINE = [
     'jakarta', 'surabaya', 'bandung', 'semarang', 'yogyakarta', 'medan',
     'palembang', 'makassar', 'denpasar', 'balikpapan', 'samarinda',
@@ -5042,6 +5043,11 @@ KOTA_INDONESIA_DATELINE = [
     'way kambas', 'ujung kulon', 'komodo', 'bromo tengger semeru',
     'bromo', 'semeru', 'merbabu', 'merapi', 'rinjani', 'lorentz',
     'wasur', 'lore lindu', 'bogani nani', 'wakatobi', 'bunaken',
+    # V6.17.131: kabupaten Papua (sering muncul breaking KKB/karhutla)
+    'yahukimo', 'asmat', 'mappi', 'boven digoel', 'pegunungan bintang',
+    'nduga', 'intan jaya', 'puncak', 'puncak jaya', 'mimika', 'timika',
+    'merauke', 'biak', 'nabire', 'wamena', 'jayawijaya', 'sarmi',
+    'keerom', 'tolikara', 'yalimo', 'lanney', 'deiyai', 'dogiyai',
 ]
 
 KATA_LOKAL_KALTARA = [
@@ -7674,10 +7680,12 @@ def _breaking_karhutla_sudah_terbit_6jam():
         return False
 
 # V6.17.127: kata kunci tokoh nasional — bypass cek lokasi breaking
+# V6.17.131: tambah bnpb, basarnas, bmkg
 KATA_TOKOH_NASIONAL_BREAKING = [
     'prabowo', 'presiden', 'wapres', 'wakil presiden',
     'gibran', 'jokowi', 'joko widodo',
     'menteri', 'kementerian', 'kemenko',
+    'bnpb', 'basarnas', 'bmkg',
 ]
 
 def _breaking_ada_tokoh_nasional(c):
@@ -8539,7 +8547,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.130'
+FILE_VERSI = 'V6.17.131'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
