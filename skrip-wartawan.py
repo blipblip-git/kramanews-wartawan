@@ -1498,6 +1498,9 @@ DOMAIN_SKIP_SCRAPE = [
     'tarakantv.co.id',
     'databoks.katadata.co.id',
     'jabarprov.go.id',
+    # V6.17.127: tambah domain yang scrape-nya konsisten pendek/gagal
+    'myanmar-now.org',
+    'goalmedia.co',
 ]
 
 def domain_skip_scrape(url):
@@ -4870,6 +4873,29 @@ KATA_EKONOMI_KUAT_TENTUKAN = [
     'kripto', 'crypto', 'bitcoin', 'ethereum', 'blockchain',
 ]
 
+# V6.17.127: sinyal ekonomi kuat tambahan — Rp + triliun/miliar + investasi
+POLA_RP_BESAR = re.compile(
+    r'\brp\s*\.?\s*\d[\d\.,]*\s*(?:triliun|miliar|juta|t)\b',
+    re.IGNORECASE
+)
+
+KATA_INVESTASI_MODAL = [
+    'investasi', 'modal', 'pendanaan', 'funding', 'penanaman modal',
+    'pembiayaan', 'venture', 'investor', 'dana segar',
+]
+
+def _cek_sinyal_ekonomi_tambahan(teks):
+    """V6.17.127: hitung sinyal ekonomi kuat tambahan.
+    Kalau ada Rp + triliun/miliar + investasi/modal/pendanaan → +2 sinyal."""
+    t = (teks or '').lower()
+    hit_tambahan = 0
+    if POLA_RP_BESAR.search(t):
+        hit_tambahan += 1
+    _hit_investasi = sum(1 for k in KATA_INVESTASI_MODAL if k in t)
+    if _hit_investasi >= 1:
+        hit_tambahan += 1
+    return hit_tambahan
+
 KATA_POLITIK_HUKUM_LOKAL = [
     'tersangka', 'korupsi', 'kpk', 'kejaksaan', 'pengadilan', 'sidang',
     'dakwaan', 'hukuman', 'pidana', 'penjara', 'ditahan', 'dpr', 'presiden',
@@ -5059,8 +5085,11 @@ def cek_kategori_dari_isi(isi, judul, kategori_target):
 def tentukan_kategori_dari_isi(judul, isi):
     gab = (judul or '') + ' ' + (isi or '')
     t = gab.lower()
+    # V6.17.127: hitung sinyal ekonomi kuat (existing + tambahan)
     hit_eko = sum(1 for k in KATA_EKONOMI_KUAT_TENTUKAN if k in t)
-    if hit_eko >= 2:
+    hit_tambahan = _cek_sinyal_ekonomi_tambahan(gab)
+    # Kalau sinyal ekonomi ≥ 2 (dengan tambahan) → jangan paksa ke nasional
+    if (hit_eko + hit_tambahan) >= 2:
         return None
     is_indo = False
     for tokoh in NAMA_TOKOH_INDONESIA:
@@ -7545,9 +7574,32 @@ def _breaking_karhutla_sudah_terbit_6jam():
     except Exception:
         return False
 
+# V6.17.127: kata kunci tokoh nasional — bypass cek lokasi breaking
+KATA_TOKOH_NASIONAL_BREAKING = [
+    'prabowo', 'presiden', 'wapres', 'wakil presiden',
+    'gibran', 'jokowi', 'joko widodo',
+    'menteri', 'kementerian', 'kemenko',
+]
+
+def _breaking_ada_tokoh_nasional(c):
+    """V6.17.127: cek apakah judul/materi ada tokoh nasional → bypass cek lokasi."""
+    teks = ((c.get('title', '') or '') + ' ' + (c.get('summary', '') or '')).lower()
+    for k in KATA_TOKOH_NASIONAL_BREAKING:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', teks):
+                return True, k
+        else:
+            if k in teks:
+                return True, k
+    return False, ''
+
 # V6.17.123: breaking wajib ada lokasi di materi asli (bukan cuma judul/isi AI)
 def _breaking_ada_lokasi_di_materi(c):
-    """V6.17.123: cek apakah materi asli punya lokasi spesifik."""
+    """V6.17.123: cek apakah materi asli punya lokasi spesifik.
+    V6.17.127: bypass kalau ada tokoh nasional (Prabowo/Presiden/Wapres/Menteri)."""
+    is_tokoh, tokoh = _breaking_ada_tokoh_nasional(c)
+    if is_tokoh:
+        return True
     materi = (c.get('title', '') or '') + ' ' + (c.get('summary', '') or '')
     if not materi.strip():
         return False
@@ -7577,6 +7629,14 @@ def _judul_breaking_ada_kota_spesifik(judul):
     for negara in LUAR_NEGERI_WORDS:
         if re.search(r'\b' + re.escape(negara) + r'\b', j_low):
             return True, ''
+    # V6.17.127: cek ada tokoh nasional juga bisa lolos
+    for k in KATA_TOKOH_NASIONAL_BREAKING:
+        if len(k) <= 4:
+            if re.search(r'\b' + re.escape(k) + r'\b', j_low):
+                return True, ''
+        else:
+            if k in j_low:
+                return True, ''
     # Nggak ada nama spesifik
     return False, 'judul breaking tanpa nama kota/kabupaten spesifik (hanya kata generic)'
 
@@ -7672,10 +7732,14 @@ def sesi_breaking(today_urls, seen):
             print('   Skip (feature/potret, bukan breaking): ' + c['title'][:50])
             continue
         # V6.17.123: cek materi asli punya lokasi spesifik (bukan cuma AI)
+        # V6.17.127: bypass kalau ada tokoh nasional
         if tip == 'dom':
-            if not _breaking_ada_lokasi_di_materi(c):
+            is_tokoh, _tokoh = _breaking_ada_tokoh_nasional(c)
+            if not is_tokoh and not _breaking_ada_lokasi_di_materi(c):
                 print('   Skip (materi asli tidak ada lokasi spesifik): ' + c['title'][:50])
                 continue
+            if is_tokoh:
+                print('   Bypass lokasi (tokoh nasional: ' + _tokoh + '): ' + c['title'][:60])
         label = 'BREAKING DOM' if tip == 'dom' else 'BREAKING DUNIA'
         print('\n   [' + label + '] ' + c['title'][:70])
         percobaan += 1
@@ -7687,10 +7751,25 @@ def sesi_breaking(today_urls, seen):
         except Exception as e:
             print('   ' + str(e)[:90]); continue
         if tip == 'dom':
-            if not _breaking_ada_lokasi(judul, isi):
+            # V6.17.127: kalau ada tokoh nasional, skip cek lokasi di judul AI
+            _is_tokoh_ai = False
+            _jdl_ai_low = (judul or '').lower()
+            for _k in KATA_TOKOH_NASIONAL_BREAKING:
+                if len(_k) <= 4:
+                    if re.search(r'\b' + re.escape(_k) + r'\b', _jdl_ai_low):
+                        _is_tokoh_ai = True
+                        break
+                else:
+                    if _k in _jdl_ai_low:
+                        _is_tokoh_ai = True
+                        break
+            if not _is_tokoh_ai and not _breaking_ada_lokasi(judul, isi):
                 print('   DITOLAK - breaking tanpa lokasi spesifik: ' + judul[:50])
                 continue
+            if _is_tokoh_ai:
+                print('   Bypass lokasi (judul AI ada tokoh nasional): ' + judul[:60])
             # V6.17.123: judul breaking wajib ada nama kota/kabupaten spesifik
+            # V6.17.127: kecuali ada tokoh nasional
             ok_kota, alasan_kota = _judul_breaking_ada_kota_spesifik(judul)
             if not ok_kota:
                 print('   DITOLAK - ' + alasan_kota + ': ' + judul[:50])
@@ -8385,7 +8464,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.126'
+FILE_VERSI = 'V6.17.127'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
