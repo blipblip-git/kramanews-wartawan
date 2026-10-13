@@ -761,6 +761,8 @@ HUNT = {
         RSSF('https://www.cnnindonesia.com/internasional/rss', 'CNN Indonesia'),
         RSSF('https://apnews.com/index.rss', 'AP News'),
         RSSF('https://www.france24.com/en/rss', 'France24'),
+        # V6.17.133: tambah Al Jazeera ke internasional (bukan cuma internasional_tt)
+        RSSF('https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'),
         RSSF('http://rss.cnn.com/rss/edition_world.rss', 'CNN World'),
         RSSF('https://www.cgtn.com/subscribe/rss/section/world.xml', 'CGTN World'),
         RSSF('https://www.cgtn.com/subscribe/rss/section/business.xml', 'CGTN Business'),
@@ -7660,9 +7662,17 @@ def _breaking_gempa_sudah_terbit_6jam():
 
 # V6.17.122: batasi breaking karhutla 1x/6 jam
 # V6.17.132: perketat — jendela 12 jam + cek juga di artikel breaking yang sudah expire
+# V6.17.133: PERKETAT — cek kata kunci karhutla SPESIFIK, jangan "bnpb" generik
+KATA_KARHUTLA_SPESIFIK = [
+    'karhutla', 'kebakaran hutan', 'kebakaran lahan',
+    'kabut asap', 'titik api', 'titik panas',
+    'asap karhutla', 'hotspot', 'wildfire',
+]
+
 def _breaking_karhutla_sudah_terbit_6jam():
-    """V6.17.132: cek sudah ada breaking karhutla dalam 12 jam terakhir.
-    Alasan: breaking dicabut tiap 30 menit, jadi jendela 6 jam terlalu pendek."""
+    """V6.17.133: cek sudah ada breaking karhutla dalam 12 jam terakhir.
+    HANYA hitung kalau judul breaking ada kata kunci karhutla SPESIFIK.
+    Jangan hitung 'bnpb' generik — karena BNPB bisa muncul di berita KPK/lain."""
     try:
         rows = rest_get('?select=title,created_at&breaking=eq.true'
                         '&order=created_at.desc&limit=30')
@@ -7675,10 +7685,10 @@ def _breaking_karhutla_sudah_terbit_6jam():
             if (now - d).total_seconds() > 12 * 3600:
                 continue
             t = (row.get('title') or '').lower()
-            if ('karhutla' in t or 'kebakaran hutan' in t
-                    or 'kebakaran lahan' in t or 'kabut asap' in t
-                    or 'titik api' in t or 'titik panas' in t):
-                return True
+            # V6.17.133: cek HANYA kata kunci spesifik karhutla
+            for k in KATA_KARHUTLA_SPESIFIK:
+                if k in t:
+                    return True
         return False
     except Exception:
         return False
@@ -7829,10 +7839,10 @@ def sesi_breaking(today_urls, seen):
             if _breaking_gempa_sudah_terbit_6jam():
                 print('   Skip (gempa sudah terbit < 6 jam): ' + c['title'][:50])
                 continue
-        # V6.17.122 + V6.17.132: batasi breaking karhutla 1x/12 jam
-        if ('karhutla' in jdl_low or 'kebakaran hutan' in jdl_low
-                or 'kebakaran lahan' in jdl_low or 'kabut asap' in jdl_low
-                or 'titik api' in jdl_low or 'titik panas' in jdl_low):
+        # V6.17.122 + V6.17.132 + V6.17.133: batasi breaking karhutla 1x/12 jam
+        # cek HANYA kalau judul kandidat ada kata kunci spesifik karhutla
+        _ada_karhutla_kandidat = any(k in jdl_low for k in KATA_KARHUTLA_SPESIFIK)
+        if _ada_karhutla_kandidat:
             if _breaking_karhutla_sudah_terbit_6jam():
                 print('   Skip (karhutla sudah terbit < 12 jam): ' + c['title'][:50])
                 continue
@@ -8551,7 +8561,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.132'
+FILE_VERSI = 'V6.17.133'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
