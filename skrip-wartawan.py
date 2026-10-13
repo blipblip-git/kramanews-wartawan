@@ -6415,6 +6415,7 @@ def ai_write(user_content, timeout=150, materi_sumber='', kategori='',
     retry_dobel_dilakukan = 0
 
     # V6.17.126: cek apakah kandidat topik wajib nasional → batas retry lebih tinggi
+    # V6.17.132: kurangi retry — topik wajib 2x, biasa 1x (tetap)
     _is_topik_wajib = False
     if judul_materi and summary_materi:
         _is_topik_wajib = _cek_topik_wajib_nasional(judul_materi, summary_materi)
@@ -7658,17 +7659,20 @@ def _breaking_gempa_sudah_terbit_6jam():
         return False
 
 # V6.17.122: batasi breaking karhutla 1x/6 jam
+# V6.17.132: perketat — jendela 12 jam + cek juga di artikel breaking yang sudah expire
 def _breaking_karhutla_sudah_terbit_6jam():
-    """V6.17.122: cek sudah ada breaking karhutla dalam 6 jam terakhir."""
+    """V6.17.132: cek sudah ada breaking karhutla dalam 12 jam terakhir.
+    Alasan: breaking dicabut tiap 30 menit, jadi jendela 6 jam terlalu pendek."""
     try:
         rows = rest_get('?select=title,created_at&breaking=eq.true'
-                        '&order=created_at.desc&limit=20')
+                        '&order=created_at.desc&limit=30')
         now = datetime.now(timezone.utc)
         for row in rows:
             d = datetime.fromisoformat(str(row['created_at']).replace('Z', '+00:00'))
             if d.tzinfo is None:
                 d = d.replace(tzinfo=timezone.utc)
-            if (now - d).total_seconds() > 6 * 3600:
+            # V6.17.132: jendela 12 jam
+            if (now - d).total_seconds() > 12 * 3600:
                 continue
             t = (row.get('title') or '').lower()
             if ('karhutla' in t or 'kebakaran hutan' in t
@@ -7825,12 +7829,12 @@ def sesi_breaking(today_urls, seen):
             if _breaking_gempa_sudah_terbit_6jam():
                 print('   Skip (gempa sudah terbit < 6 jam): ' + c['title'][:50])
                 continue
-        # V6.17.122: batasi breaking karhutla 1x/6 jam
+        # V6.17.122 + V6.17.132: batasi breaking karhutla 1x/12 jam
         if ('karhutla' in jdl_low or 'kebakaran hutan' in jdl_low
                 or 'kebakaran lahan' in jdl_low or 'kabut asap' in jdl_low
                 or 'titik api' in jdl_low or 'titik panas' in jdl_low):
             if _breaking_karhutla_sudah_terbit_6jam():
-                print('   Skip (karhutla sudah terbit < 6 jam): ' + c['title'][:50])
+                print('   Skip (karhutla sudah terbit < 12 jam): ' + c['title'][:50])
                 continue
         jdl_lower = (c.get('title') or '').lower()
         if any(x in jdl_lower for x in ('potret', 'sorotan', 'foto-foto', 'galeri',
@@ -8547,7 +8551,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.131'
+FILE_VERSI = 'V6.17.132'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
