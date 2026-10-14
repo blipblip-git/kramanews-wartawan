@@ -1314,10 +1314,11 @@ KATA_ALASAN_TRANSIENT = [
     'error sementara', 'coba lagi', 'retry',
 ]
 
+# V6.17.136: bedakan "materi terlalu pendek" transient vs domain skip permanen
 KATA_ALASAN_JANGAN_BLACKLIST = [
     'materi sampah',
-    'materi terlalu pendek',
-    'materi tidak valid: materi terlalu pendek',
+    'materi terlalu pendek (transient)',
+    'materi tidak valid: materi terlalu pendek (transient)',
     'materi agregator',
     'materi tidak valid: materi agregator',
     'judul/isi ai tidak cocok kategori',
@@ -6189,6 +6190,12 @@ KATA_BUKAN_NAMA_PEJABAT = [
     'menko pmk', 'koordinator', 'bidang',
     'kunker', 'kunjungan kerja', 'kunjungan',
     'perhatikan', 'pelayaran',
+    # V6.17.136: kata "capai" dkk — sering salah tangkap potongan judul
+    'capai', 'capaian', 'mencapai', 'dicapai', 'tercapai', 'pencapaian',
+    'raih', 'raihan', 'meraih', 'diraih', 'peraih',
+    'tembus', 'menembus', 'ditembus', 'tembusan',
+    'sentuh', 'menyentuh', 'tersentuh',
+    'jadi', 'menjadi', 'terjadi', 'kejadian',
 ]
 
 KATA_SAMBUNG_NAMA = {'dan', 'atau', 'serta', 'maupun', 'hingga', 'sampai',
@@ -6840,7 +6847,14 @@ def ai_rewrite_single(c, kategori_target=''):
     if not ok_valid:
         print('       Materi tidak valid - skip: ' + alasan_valid[:80])
         if c.get('link'):
-            catat_tolak_ai_token(c.get('link'), 'materi tidak valid: ' + alasan_valid[:100])
+            # V6.17.136: domain skip scrape + materi tipis → blacklist permanen (bukan transient)
+            _alasan_low = (alasan_valid or '').lower()
+            _link_low = (c.get('link') or '').lower()
+            if 'terlalu pendek' in _alasan_low and domain_skip_scrape(_link_low):
+                catat_tolak_ai_token(c.get('link'),
+                    'domain skip scrape (permanen): materi terlalu pendek - ' + alasan_valid[:80])
+            else:
+                catat_tolak_ai_token(c.get('link'), 'materi tidak valid (transient): ' + alasan_valid[:100])
         raise BeritaLama('materi tidak valid: ' + alasan_valid[:60])
     # V6.17.134: cek basi SETELAH scraping — materi penuh bisa ada tanggal kejadian lama
     basi_scrape = _cek_basi_setelah_scrape(materi, c.get('title', ''), kategori_target)
@@ -6926,7 +6940,14 @@ def ai_rewrite_multi(items, kategori_target=''):
     if not ok_valid:
         print('       Materi gabungan tidak valid - skip: ' + alasan_valid[:80])
         if items[0].get('link'):
-            catat_tolak_ai_token(items[0].get('link'), 'materi gabungan tidak valid: ' + alasan_valid[:100])
+            # V6.17.136: domain skip scrape + materi tipis → blacklist permanen
+            _alasan_low = (alasan_valid or '').lower()
+            _link_low = (items[0].get('link') or '').lower()
+            if 'terlalu pendek' in _alasan_low and domain_skip_scrape(_link_low):
+                catat_tolak_ai_token(items[0].get('link'),
+                    'domain skip scrape (permanen): materi terlalu pendek - ' + alasan_valid[:80])
+            else:
+                catat_tolak_ai_token(items[0].get('link'), 'materi gabungan tidak valid (transient): ' + alasan_valid[:100])
         raise BeritaLama('materi gabungan tidak valid: ' + alasan_valid[:60])
     # V6.17.134: cek basi SETELAH scraping — materi gabungan penuh
     basi_scrape = _cek_basi_setelah_scrape(semua_materi, items[0].get('title', ''), kategori_target)
@@ -7043,7 +7064,14 @@ def ai_rewrite_teknologi_single(c, dom):
     if not ok_valid:
         print('       Materi teknologi tidak valid - skip: ' + alasan_valid[:80])
         if c.get('link'):
-            catat_tolak_ai_token(c.get('link'), 'materi tidak valid: ' + alasan_valid[:100])
+            # V6.17.136: domain skip scrape + materi tipis → blacklist permanen
+            _alasan_low = (alasan_valid or '').lower()
+            _link_low = (c.get('link') or '').lower()
+            if 'terlalu pendek' in _alasan_low and domain_skip_scrape(_link_low):
+                catat_tolak_ai_token(c.get('link'),
+                    'domain skip scrape (permanen): materi terlalu pendek - ' + alasan_valid[:80])
+            else:
+                catat_tolak_ai_token(c.get('link'), 'materi tidak valid (transient): ' + alasan_valid[:100])
         raise BeritaLama('materi tidak valid: ' + alasan_valid[:60])
     # V6.17.134: cek basi setelah scrape
     basi_scrape = _cek_basi_setelah_scrape(materi, c.get('title', ''), 'teknologi')
@@ -7113,7 +7141,14 @@ def ai_rewrite_teknologi_multi(items, dom):
     if not ok_valid:
         print('       Materi gabungan teknologi tidak valid - skip: ' + alasan_valid[:80])
         if items[0].get('link'):
-            catat_tolak_ai_token(items[0].get('link'), 'materi gabungan tidak valid: ' + alasan_valid[:100])
+            # V6.17.136: domain skip scrape + materi tipis → blacklist permanen
+            _alasan_low = (alasan_valid or '').lower()
+            _link_low = (items[0].get('link') or '').lower()
+            if 'terlalu pendek' in _alasan_low and domain_skip_scrape(_link_low):
+                catat_tolak_ai_token(items[0].get('link'),
+                    'domain skip scrape (permanen): materi terlalu pendek - ' + alasan_valid[:80])
+            else:
+                catat_tolak_ai_token(items[0].get('link'), 'materi gabungan tidak valid (transient): ' + alasan_valid[:100])
         raise BeritaLama('materi gabungan tidak valid: ' + alasan_valid[:60])
     # V6.17.134: cek basi setelah scrape
     basi_scrape = _cek_basi_setelah_scrape(semua_materi, items[0].get('title', ''), 'teknologi')
@@ -8604,7 +8639,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.135'
+FILE_VERSI = 'V6.17.136'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
