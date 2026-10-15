@@ -249,6 +249,7 @@ def RSSF_MBG(url, source):
     return s
 
 # V6.17.125: JADWAL_JAM dirapikan — semua jam 5 slot
+# V6.17.137: tambah internasional_tt di jam 21 (minimal 1 TT gejolak/hari)
 JADWAL_JAM = {
     6:  {'nasional': 1, 'daerah': 2, 'ekonomi': 1},
     7:  {'nasional': 1, 'daerah': 1, 'internasional_asean': 1, 'olahraga': 1, 'ekonomi': 1},
@@ -263,6 +264,8 @@ JADWAL_JAM = {
     16: {'daerah': 1, 'internasional_asean': 1, 'otomotif': 1, 'kesehatan': 1, 'olahraga': 1},
     17: {'nasional': 1, 'daerah': 1, 'internasional_tt': 1, 'olahraga': 1, 'ekonomi': 1},
     18: {'daerah': 1, 'internasional_asean': 1, 'teknologi': 1, 'otomotif': 1, 'olahraga': 1},
+    # V6.17.137: tambah slot internasional_tt jam 21 (gejolak TT malam)
+    21: {'internasional_tt': 1, 'ekonomi': 1, 'internasional': 1, 'nasional': 1, 'teknologi': 1},
 }
 
 EKONOMI_JAM_DOMESTIK = [6, 9, 11, 12, 13, 17]
@@ -753,6 +756,11 @@ HUNT = {
         GN('iran middle east', 'en', 'Google News Iran'),
         GN('turkey middle east', 'en', 'Google News Turki'),
         GN('west asia conflict', 'en', 'Google News Asia Barat'),
+        # V6.17.137: tambah 4 GN gejolak TT (prioritas minimal 1 TT gejolak/hari)
+        GN('gaza israel hari ini', 'id', 'GN Gaza Israel Hari Ini'),
+        GN('iran israel konflik', 'en', 'GN Iran Israel Konflik'),
+        GN('yemen houthi attack', 'en', 'GN Yemen Houthi Attack'),
+        GN('lebanon hezbollah', 'en', 'GN Lebanon Hezbollah'),
     ],
     'internasional': [
         RSSF('https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'),
@@ -2046,6 +2054,18 @@ DATELINE — JANGAN KARANG (SANGAT PENTING):
 - Kalau materi sebut kota spesifik → WAJIB pakai kota itu.
 - Kalau materi TIDAK sebut kota → pakai provinsi (Indonesia) atau negara (luar).
 
+DATELINE KHUSUS OLAHRAGA & EVENT (V6.17.137 — SANGAT PENTING):
+- Materi olahraga (sepak bola, NBA, F1, dll) SERING TIDAK sebut kota.
+- Kalau materi TIDAK sebut kota → WAJIB pakai NAMA NEGARA saja.
+  Contoh BENAR: materi "Aston Villa revival" → "INGGRIS - "
+  Contoh SALAH: materi "Aston Villa revival" → "BIRMINGHAM, INGGRIS - " (KARANG!)
+  Contoh BENAR: materi "FIFA presidency" → "SWISS - "
+  Contoh SALAH: materi "FIFA presidency" → "ZURICH, SWISS - " (KARANG!)
+  Contoh BENAR: materi "NBA preview" → "AMERIKA SERIKAT - "
+  Contoh SALAH: materi "NBA preview" → "NEW YORK, AMERIKA SERIKAT - " (KARANG!)
+- DILARANG menebak kota markas klub/organisasi (Aston Villa ≠ Birmingham,
+  FIFA ≠ Zurich, NBA ≠ New York, Premier League ≠ London).
+
 JUDUL BREAKING — WAJIB NAMA KOTA/KABUPATEN SPESIFIK:
 - Judul breaking WAJIB memuat NAMA KOTA atau KABUPATEN spesifik.
 - DILARANG pakai kata "Kota" generic TANPA nama (contoh: "Banjir Hancurkan Kota").
@@ -2134,6 +2154,12 @@ EKONOMI — DEFINISI SANGAT LUAS (WAJIB):
   * Pertumbuhan ekonomi China/USA/Jepang/Korsel/India/Vietnam/Eropa
   * Fed, ECB, BOJ, BOE, PBOC
   * WTO, IMF, World Bank, ADB, G20, G7, BRICS, APEC
+- KONFLIK GEOPOLITIK YANG DAMPAKNYA EKONOMI → TETAP EKONOMI:
+  * Serangan Houthi ke Arab Saudi → dampak pasokan minyak → EKONOMI
+  * Perang/konflik → harga minyak, gas, komoditas, pasar saham → EKONOMI
+  * Sanksi ekonomi, embargo → EKONOMI
+  * JANGAN tolak materi ekonomi hanya karena ada kata "konflik"/"perang"/
+    "serangan"/"Houthi"/"Israel". Fokus: DAMPAK EKONOMI.
 - KUNJUNGAN MENTERI LUAR NEGERI / DIPLOMATIK yang isinya ekonomi → TETAP EKONOMI.
 
 JUDUL EKONOMI — WAJIB MEMUAT KATA EKONOMI:
@@ -5018,6 +5044,7 @@ KALIMANTAN_PROVINSI = [
 # V6.17.126: tambah muara enim + kabupaten Sumsel lain + kota lain yang sering muncul
 # V6.17.130: tambah tanjung puting + taman nasional lain
 # V6.17.131: tambah yahukimo + kabupaten Papua lain
+# V6.17.137: tambah kecamatan Jakarta/Bogor/Depok/Tangerang/Bekasi (fix judul breaking generic)
 KOTA_INDONESIA_DATELINE = [
     'jakarta', 'surabaya', 'bandung', 'semarang', 'yogyakarta', 'medan',
     'palembang', 'makassar', 'denpasar', 'balikpapan', 'samarinda',
@@ -5051,6 +5078,27 @@ KOTA_INDONESIA_DATELINE = [
     'nduga', 'intan jaya', 'puncak', 'puncak jaya', 'mimika', 'timika',
     'merauke', 'biak', 'nabire', 'wamena', 'jayawijaya', 'sarmi',
     'keerom', 'tolikara', 'yalimo', 'lanney', 'deiyai', 'dogiyai',
+    # V6.17.137: kecamatan Jakarta/Bogor/Depok/Tangerang/Bekasi + wilayah Jabodetabek
+    # (fix "Ledakan Pasar Cimanggis", "Penembakan Kampung Ambon", dll)
+    'cengkareng', 'cimanggis', 'kampung ambon', 'penjaringan',
+    'pademangan', 'tanjung priok', 'koja', 'cilincing', 'kelapa gading',
+    'matraman', 'jatinegara', 'pulogadung', 'duren sawit', 'kramat jati',
+    'makasar', 'pasar rebo', 'ciracas', 'cipayung', 'jagakarsa',
+    'pasar minggu', 'mampang prapatan', 'kebayoran baru', 'kebayoran lama',
+    'pesanggrahan', 'cilandak', 'setiabudi', 'tebet', 'kuningan',
+    'menteng', 'senen', 'gambir', 'sawah besar', 'tanah abang',
+    'cempaka putih', 'johar baru', 'kemayoran', 'kebon jeruk',
+    'kembangan', 'palmerah', 'grogol petamburan', 'tambora', 'taman sari',
+    'cibinong', 'cileungsi', 'gunung putri', 'sukaraja', 'parung',
+    'bojongsari', 'sawangan', 'pancoran mas', 'beji', 'sukmajaya',
+    'cimanggis depok', 'tapos', 'cipeucang', 'cilodong', 'limo',
+    'cinere', 'sukmajaya depok', 'pamulang', 'ciputat', 'serpong',
+    'setu', 'cisauk', 'kelapa dua', 'legok', 'pagedangan', 'curug',
+    'cikupa', 'balaraja', 'tigaraksa', 'kresek', 'mauk', 'kronjo',
+    'kemiri', 'pasar kemis', 'sindang jaya', 'jayanti', 'sukamulya',
+    'rajeg', 'sepatan', 'mekar baru', 'cikarang', 'cibitung', 'tambun',
+    'babelan', 'tarumajaya', 'setu bekasi', 'cikarang barat',
+    'cikarang timur', 'cikarang utara', 'cikarang selatan', 'cikarang pusat',
 ]
 
 KATA_LOKAL_KALTARA = [
@@ -6766,6 +6814,8 @@ def _catatan_kategori_ketat(kategori_target):
             '- JUDUL WAJIB memuat minimal 1 kata ekonomi.\n'
             '- ISI WAJIB memuat angka/data konkret dari materi.\n'
             '- KRIPTO, BITCOIN, OKX, BLOCKCHAIN, ASET DIGITAL = SAH ekonomi.\n'
+            '- KONFLIK GEOPOLITIK → DAMPAK EKONOMI (harga minyak, gas, pasar, dll) = SAH ekonomi.\n'
+            '- JANGAN tolak materi ekonomi hanya karena ada kata "konflik"/"perang".\n'
         )
     catatan_olahraga = ''
     if kategori_target == 'olahraga':
@@ -6774,6 +6824,13 @@ def _catatan_kategori_ketat(kategori_target):
             '- "Klasemen medali" (ASIAD/Asian Games) = SAH kategori olahraga.\n'
             '- Turnamen seperti FIFA ASEAN Cup, Asian Games, SEA Games, Olimpiade = SAH.\n'
             '- DATELINE WAJIB kota yang ADA di materi. JANGAN karang.\n'
+            '- KHUSUS OLAHRAGA — DATELINE NEGARA SAJA (V6.17.137):\n'
+            '  * Kalau materi TIDAK sebut kota → WAJIB pakai NAMA NEGARA saja.\n'
+            '  * Contoh BENAR: "Aston Villa revival" → "INGGRIS - "\n'
+            '  * Contoh SALAH: "Aston Villa revival" → "BIRMINGHAM, INGGRIS - " (KARANG!)\n'
+            '  * Contoh BENAR: "FIFA presidency" → "SWISS - "\n'
+            '  * Contoh SALAH: "FIFA presidency" → "ZURICH, SWISS - " (KARANG!)\n'
+            '  * DILARANG menebak markas klub/organisasi.\n'
         )
     catatan_gambar_ikan = ''
     if kategori_target in ('nasional', 'daerah', 'ekonomi'):
@@ -7191,7 +7248,6 @@ def ai_rewrite_teknologi_multi(items, dom):
                     source_url=items[0].get('link', '') if items else '')
 
 # AKHIR PART 3B-2
-
 # PART 4A - KALENDER EVENT, RANGKUMAN, SESI OLAHRAGA CERDAS
 
 KALENDER_EVENT = [
@@ -8639,7 +8695,7 @@ if __name__ == '__main__':
     else:
         main()
 
-FILE_VERSI = 'V6.17.136'
+FILE_VERSI = 'V6.17.137'
 FILE_PART_AKHIR = 'PART 4B'
 
 # AKHIR PART 4B
